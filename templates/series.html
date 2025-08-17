@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ series["Title"] }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+      type="image/x-icon"
+    />
+    <style>
+      :root {
+        --primary: #00a8e1; /* Blue accent for series */
+        --secondary: #141414;
+        --dark-bg: #181818;
+        --text-light: #ffffff;
+        --text-grey: #e5e5e5;
+        --card-bg: rgba(20, 20, 20, 0.9);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+          sans-serif;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: var(--text-light);
+        line-height: 1.6;
+        cursor: default;
+      }
+
+      .overlay {
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.9) 0%,
+          rgba(20, 20, 20, 0.8) 100%
+        );
+        min-height: 100vh;
+        padding: 1rem;
+        backdrop-filter: blur(5px);
+      }
+
+      .series-detail {
+        max-width: 900px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        margin-bottom: 1.5rem;
+        color: white;
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(0, 168, 225, 0.3);
+        padding-bottom: 1rem;
+      }
+
+      .trailer-container {
+        margin: 1.5rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+      }
+
+      .trailer-thumbnail {
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        border-radius: 8px;
+      }
+
+      .trailer-thumbnail:hover {
+        transform: scale(1.02);
+      }
+
+      .trailer-thumbnail::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        transition: background 0.3s ease;
+      }
+
+      .trailer-thumbnail:hover::after {
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      .trailer-thumbnail::before {
+        content: "▶";
+        font-size: clamp(3rem, 8vw, 4rem);
+        color: var(--text-light);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        opacity: 0.9;
+        transition: all 0.3s ease;
+      }
+
+      .trailer-thumbnail:hover::before {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+      }
+
+      .series-info {
+        margin: 1.5rem 0;
+      }
+
+      .series-info p {
+        font-size: clamp(1rem, 3vw, 1.1rem);
+        margin-bottom: 1rem;
+        padding: 0.8rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .series-info p strong {
+        min-width: 100px;
+        display: inline-block;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .series-info p span {
+        white-space: pre-wrap;
+        display: block;
+        /* margin-top: 0.3rem; */
+        font-weight: 400;
+        color: #ccc;
+        flex: 1 1 70%;
+      }
+
+      .back-link {
+        margin-top: 1.5rem;
+        display: inline-block;
+        padding: 0.8rem 1.5rem;
+        background: rgba(0, 168, 225, 0.2);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        border: 1px solid rgba(0, 168, 225, 0.3);
+        width: 100%;
+        text-align: center;
+      }
+
+      .back-link:hover {
+        background: rgba(0, 168, 225, 0.3);
+        transform: translateY(-2px);
+      }
+
+      iframe {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        border: none;
+        border-radius: 8px;
+      }
+
+      /* Related Series Section */
+      .related-series {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(0, 168, 225, 0.3);
+      }
+
+      .related-series h3 {
+        color: var(--primary);
+        margin-bottom: 1rem;
+        text-align: center;
+        font-size: clamp(1.2rem, 4vw, 1.5rem);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        position: relative;
+        padding-bottom: 0.5rem;
+      }
+
+      .related-series h3::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 2px;
+        background: var(--primary);
+      }
+
+      .related-series-list {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.8rem;
+        margin: 0 auto;
+        max-width: 100%;
+      }
+
+      .related-series-list li {
+        transition: transform 0.3s ease;
+        flex: 1 0 calc(50% - 1rem);
+        max-width: calc(50% - 1rem);
+      }
+
+      .related-series-list li:hover {
+        transform: translateY(-3px);
+      }
+
+      .related-series-list a {
+        display: inline-block;
+        padding: 0.6rem 0.8rem;
+        background: rgba(36, 36, 36, 0.8);
+        color: var(--text-light);
+        text-decoration: none;
+        border-radius: 4px;
+        border-left: 3px solid var(--primary);
+        transition: all 0.3s ease;
+        font-size: clamp(0.8rem, 3vw, 0.95rem);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        text-align: center;
+      }
+
+      .related-series-list a:hover {
+        background: rgba(0, 168, 225, 0.2);
+        color: var(--primary);
+      }
+
+      /* Responsive adjustments */
+      @media (min-width: 600px) {
+        .overlay {
+          padding: 2rem;
+        }
+
+        .series-detail {
+          padding: 2rem;
+        }
+
+        .series-info p {
+          flex-direction: row;
+        }
+
+        .back-link {
+          width: auto;
+        }
+
+        .related-series-list li {
+          flex: 0 0 auto;
+          max-width: none;
+        }
+
+        .related-series-list a {
+          white-space: normal;
+        }
+      }
+
+      @media (min-width: 768px) {
+        .related-series-list {
+          gap: 1rem;
+        }
+
+        .related-series-list a {
+          padding: 0.8rem 1rem;
+        }
+      }
+
+      @media (min-width: 992px) {
+        .series-info p strong {
+          min-width: 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay">
+      <div class="series-detail">
+        <h1>{{ series["Title"] }}</h1>
+
+        <!-- Trailer will be inserted here -->
+        <div id="trailer-container" class="trailer-container"></div>
+
+        <div class="series-info">
+          <p>
+            <strong>Rating:</strong>
+            <span>{{ series.get("Rating", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Genres:</strong>
+            <span>{{ series.get("Genres", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Actors:</strong>
+            <span>{{ series.get("Actors", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Years:</strong>
+            <span>{{ series.get("Years", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Episode Duration:</strong>
+            {% set duration = series.get("EpisodeDuration(in Minutes)", "N/A")
+            %}
+            <span>&nbsp;{{ duration }} min</span>
+          </p>
+          <p>
+            <strong>Votes:</strong>
+            <span>{{ series.get("Votes", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>About:</strong>
+            <span>{{ series.get("About", "N/A") }}</span>
+          </p>
+        </div>
+
+        <!-- Related Series Section -->
+        <div class="related-series">
+          <h3>More {{ series["Genres"] }} Series</h3>
+          <ul class="related-series-list">
+            {% for s in related_series %}
+            <li>
+              <a href="/series/{{ s['ID'] }}"> {{ s['Title'] }} </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <a href="/" class="back-link">⬅ Back to Search</a>
+      </div>
+    </div>
+
+    <script>
+      const seriesName = "{{ series['Title'] }} {{ series['Genres'] }} series - official trailer";
+      const API_KEYS = ["{{ api_key_1 }}", "{{ api_key_2 }}"];
+      let currentKeyIndex = 0;
+
+      function fetchTrailerWithKey() {
+        if (currentKeyIndex >= API_KEYS.length) {
+          document.getElementById("trailer-container").innerHTML =
+            "<p style='text-align:center; color:var(--primary);'>Trailer could not be loaded.</p>";
+          return;
+        }
+
+        const currentKey = API_KEYS[currentKeyIndex];
+
+        fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+            seriesName
+          )}&key=${currentKey}&maxResults=1&type=video`
+        )
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data?.items?.length > 0) {
+              const videoId = data.items[0].id.videoId;
+              const thumbnail = data.items[0].snippet.thumbnails.high.url;
+
+              document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${thumbnail}')`;
+
+              document.getElementById("trailer-container").innerHTML = `
+            <div class="trailer-thumbnail"
+                 style="background-image:url('${thumbnail}')"
+                 onclick="playTrailer('${videoId}')">
+            </div>
+          `;
+            } else {
+              throw new Error("No items found in response");
+            }
+          })
+          .catch((err) => {
+            console.error("Error with key:", currentKey, err);
+            currentKeyIndex++;
+            fetchTrailerWithKey();
+          });
+      }
+
+      function playTrailer(videoId) {
+        document.getElementById("trailer-container").innerHTML = `
+      <iframe width="560" height="315"
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
+          frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+      </iframe>
+    `;
+      }
+
+      // Start fetching trailer with first API key
+      fetchTrailerWithKey();
+    </script>
+  </body>
+</html>
