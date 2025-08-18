@@ -16,7 +16,10 @@
       href="{{ url_for('static', filename='favicon.png') }}"
       type="image/x-icon"
     />
-    <meta name="google-site-verification" content="gg6xc-On8WRCTie0ZczIaGGIvmGDBiEHsnKo7COP0iE" />
+    <meta
+      name="google-site-verification"
+      content="gg6xc-On8WRCTie0ZczIaGGIvmGDBiEHsnKo7COP0iE"
+    />
     <style>
       :root {
         --primary: #e50914;
@@ -954,6 +957,65 @@
       <script>
         window.addEventListener("load", () => {
           document.getElementById("preloader").style.display = "none";
+        });
+      </script>
+    </div>
+
+    <div class="disclaimer" id="disclaimer">
+      <button class="close-btn" id="closeBtn">&times;</button>
+      <h3>Disclaimer</h3>
+      <p>
+        This website helps you with media recommendations and filtering. The
+        dataset may sometimes be outdated or inaccurate.
+      </p>
+      <style>
+        #disclaimer {
+          position: fixed;
+          top: 70px;
+          right: 20px;
+          max-width: 300px;
+          background: #fff;
+          color: #333;
+          border: 1px solid #ccc;
+          border-radius: 8px;
+          padding: 16px 20px;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+          z-index: 9999;
+          display: none; /* hidden at start */
+        }
+        #disclaimer h3 {
+          margin: 0 0 8px;
+          font-size: 16px;
+        }
+        #disclaimer p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+        #disclaimer .close-btn {
+          position: absolute;
+          top: 6px;
+          right: 10px;
+          border: none;
+          background: transparent;
+          font-size: 18px;
+          cursor: pointer;
+          color: #666;
+        }
+        #disclaimer .close-btn:hover {
+          color: #000;
+        }
+      </style>
+
+      <script>
+        window.addEventListener("load", () => {
+          setTimeout(() => {
+            document.getElementById("disclaimer").style.display = "block";
+          }, 1000); // show after 1s
+        });
+
+        document.getElementById("closeBtn").addEventListener("click", () => {
+          document.getElementById("disclaimer").style.display = "none";
         });
       </script>
     </div>
