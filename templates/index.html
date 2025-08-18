@@ -1338,6 +1338,258 @@
         <!-- Search Results -->
         <div id="artist-results" class="artist-grid"></div>
 
+        <!-- ===== Author's Choice Section ===== -->
+        <section
+          id="authors-choice"
+          style="padding: 20px; font-family: Arial, sans-serif"
+        >
+          <h3
+            style="
+              text-align: center;
+              margin-bottom: 15px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+              cursor: pointer;
+            "
+            id="toggle-authors-choice"
+          >
+            Author's Choice
+            <span id="author-icon" style="font-size: 20px">🖱️</span>
+          </h3>
+
+          <!-- Collapsible Content -->
+          <div
+            id="authors-choice-content"
+            style="display: none; margin-top: 20px"
+          >
+            <div class="author-card">
+              <img
+                src="{{ url_for('static', filename='artist/yoyohoneysingh.jpg') }}"
+                alt="Artist"
+                class="author-photo"
+              />
+              <div class="track-scroller">
+                <div class="track-scroll-inner">
+                  <!-- Track list with duplicate items for seamless looping -->
+                  <span onclick="playTrack('wSOnIVKh6gU')">Angreji Beat</span>
+                  <span onclick="playTrack('13uzQU0mfnM')">Yaar Bathere</span>
+                  <span onclick="playTrack('NrXdauEv9HY')">Dope Shope</span>
+                  <span onclick="playTrack('gwoaVMIiwjo')">Chaska</span>
+                  <span onclick="playTrack('k3PA-39uXHY')">Goliyan</span>
+                  <span onclick="playTrack('q1wK0r51ARs')">Gabru</span>
+                  <span onclick="playTrack('nCD2hj6zJEc')">Dheere Dheere</span>
+                  <span onclick="playTrack('m4lPhauTvtw')">Haye Mera Dil</span>
+                  <span onclick="playTrack('AmrRPNwrGQU')">Khadke Glassy</span>
+                  <span onclick="playTrack('eizmCZv3aKI')">Brown Rang</span>
+                  <span onclick="playTrack('gAt_hSIIUMU')">Bring me Back</span>
+                  <span onclick="playTrack('KhnVcAC5bIM')">Desi Kalakar</span>
+                  <span onclick="playTrack('Tkgad9gngOQ')">High Heels</span>
+                  <!-- Duplicate items for seamless looping -->
+                  <span onclick="playTrack('wSOnIVKh6gU')">Angreji Beat</span>
+                  <span onclick="playTrack('13uzQU0mfnM')">Yaar Bathere</span>
+                  <span onclick="playTrack('NrXdauEv9HY')">Dope Shope</span>
+                  <span onclick="playTrack('gwoaVMIiwjo')">Chaska</span>
+                  <span onclick="playTrack('k3PA-39uXHY')">Goliyan</span>
+                  <span onclick="playTrack('q1wK0r51ARs')">Gabru</span>
+                  <span onclick="playTrack('nCD2hj6zJEc')">Dheere Dheere</span>
+                  <span onclick="playTrack('m4lPhauTvtw')">Haye Mera Dil</span>
+                  <span onclick="playTrack('AmrRPNwrGQU')">Khadke Glassy</span>
+                  <span onclick="playTrack('eizmCZv3aKI')">Brown Rang</span>
+                  <span onclick="playTrack('gAt_hSIIUMU')">Bring me Back</span>
+                  <span onclick="playTrack('KhnVcAC5bIM')">Desi Kalakar</span>
+                  <span onclick="playTrack('Tkgad9gngOQ')">High Heels</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden YouTube Player -->
+          <div
+            id="yt-player"
+            style="width: 0; height: 0; overflow: hidden; position: absolute"
+          ></div>
+
+          <style>
+            .author-card {
+              display: flex;
+              align-items: center;
+              gap: 20px;
+              background: var(--light-color);
+              border-radius: 12px;
+              padding: 15px;
+              box-shadow: var(--shadow);
+              border: 1px solid var(--border-color);
+              margin-bottom: 15px;
+            }
+
+            .author-photo {
+              width: 80px;
+              height: 80px;
+              border-radius: 50%;
+              object-fit: cover;
+              border: 3px solid black;
+            }
+
+            .track-scroller {
+              flex: 1;
+              overflow: hidden;
+              position: relative;
+              width: 100%;
+            }
+
+            .track-scroll-inner {
+              display: inline-flex;
+              gap: 40px;
+              animation: scrollTracks 30s linear infinite;
+              white-space: nowrap;
+              will-change: transform;
+            }
+
+            .track-scroll-inner span {
+              font-size: 16px;
+              font-weight: 500;
+              color: var(--dark-color);
+              cursor: pointer;
+              transition: color 0.2s ease;
+              flex-shrink: 0;
+            }
+
+            .track-scroll-inner span:hover {
+              color: var(--primary-color);
+            }
+
+            @keyframes scrollTracks {
+              0% {
+                transform: translateX(0);
+              }
+              100% {
+                transform: translateX(-50%);
+              }
+            }
+          </style>
+
+          <script src="https://www.youtube.com/iframe_api"></script>
+          <script>
+            let player;
+            let playerReady = false;
+            let currentVideoId = "";
+
+            // YouTube Player Setup
+            function onYouTubeIframeAPIReady() {
+              player = new YT.Player("yt-player", {
+                height: "0",
+                width: "0",
+                playerVars: {
+                  autoplay: 1,
+                  controls: 0,
+                  disablekb: 1,
+                  modestbranding: 1,
+                  rel: 0,
+                  origin: window.location.origin,
+                },
+                events: {
+                  onReady: onPlayerReady,
+                  onStateChange: onPlayerStateChange,
+                  onError: onPlayerError,
+                },
+              });
+            }
+
+            function onPlayerReady(event) {
+              playerReady = true;
+              console.log("YouTube Player Ready");
+            }
+
+            function onPlayerStateChange(event) {
+              // Handle player state changes if needed
+            }
+
+            function onPlayerError(event) {
+              console.error("YouTube Player Error:", event.data);
+
+              if (
+                event.data === 150 ||
+                event.data === 101 ||
+                event.data === 100
+              ) {
+                // Embedding or playback restrictions - fallback to YouTube.com
+                window.open(
+                  `https://www.youtube.com/watch?v=${currentVideoId}`,
+                  "_blank"
+                );
+              }
+            }
+
+            function playTrack(videoId) {
+              currentVideoId = videoId;
+
+              if (!playerReady) {
+                console.warn("Player not ready yet");
+                return;
+              }
+
+              try {
+                player.loadVideoById(videoId);
+                console.log(
+                  "Now playing:",
+                  document.querySelector(
+                    `span[onclick="playTrack('${videoId}')"]`
+                  ).textContent
+                );
+              } catch (error) {
+                console.error("Error playing video:", error);
+                window.open(
+                  `https://www.youtube.com/watch?v=${videoId}`,
+                  "_blank"
+                );
+              }
+            }
+
+            // Toggle Author's Choice section
+            document
+              .getElementById("toggle-authors-choice")
+              .addEventListener("click", function () {
+                const content = document.getElementById(
+                  "authors-choice-content"
+                );
+                const icon = document.getElementById("author-icon");
+
+                if (content.style.display === "none") {
+                  content.style.display = "block";
+                  icon.textContent = "🖱️";
+
+                  // Restart animation when showing
+                  const trackInner = document.querySelector(
+                    ".track-scroll-inner"
+                  );
+                  trackInner.style.animation = "none";
+                  void trackInner.offsetWidth; // Trigger reflow
+                  trackInner.style.animation =
+                    "scrollTracks 30s linear infinite";
+                } else {
+                  content.style.display = "none";
+                  icon.textContent = "🖱️";
+                }
+              });
+
+            // Initialize animation after load
+            window.addEventListener("load", function () {
+              const trackInner = document.querySelector(".track-scroll-inner");
+              if (trackInner) {
+                // Calculate proper duration based on content width
+                const trackWidth = trackInner.scrollWidth / 2; // We duplicated the content
+                const viewportWidth =
+                  document.querySelector(".track-scroller").offsetWidth;
+                const duration = (trackWidth / viewportWidth) * 15; // Adjust speed factor
+
+                trackInner.style.animationDuration = `${duration}s`;
+              }
+            });
+          </script>
+        </section>
+
         <!-- Random Suggestions -->
         <h3 style="margin-top: 40px; text-align: center">Featured Artists</h3>
         <div id="artist-suggestions" class="artist-grid"></div>
