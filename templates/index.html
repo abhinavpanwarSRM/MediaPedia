@@ -2843,21 +2843,66 @@
           key: "contentType",
         },
         {
-          question: "What mood are you in?",
+          question: "Which genres are you interested in? (Select multiple)",
           options: [
-            "Action-packed",
-            "Thought-provoking",
-            "Lighthearted",
-            "Romantic",
-            "Scary",
+            "Action",
+            "Adventure",
+            "Animation",
+            "Biography",
+            "Comedy",
+            "Crime",
+            "Documentary",
+            "Drama",
+            "Family",
+            "Fantasy",
+            "Film-Noir",
+            "Game-Show",
+            "History",
+            "Horror",
+            "Music",
+            "Musical",
+            "Mystery",
+            "News",
+            "Reality-TV",
+            "Romance",
+            "Sci-Fi",
+            "Short",
+            "Sport",
+            "Talk-Show",
+            "Thriller",
+            "War",
+            "Western",
           ],
-          key: "mood",
+          key: "genres", // Changed to plural
+          multiSelect: true, // Added multi-select flag
           genreMap: {
-            "Action-packed": "Action,Adventure",
-            "Thought-provoking": "Drama,Biography",
-            Lighthearted: "Comedy,Family",
-            Romantic: "Romance",
-            Scary: "Horror,Thriller",
+            Action: "Action",
+            Adventure: "Adventure",
+            Animation: "Animation",
+            Biography: "Biography",
+            Comedy: "Comedy",
+            Crime: "Crime",
+            Documentary: "Documentary",
+            Drama: "Drama",
+            Family: "Family",
+            Fantasy: "Fantasy",
+            "Film-Noir": "Film-Noir",
+            "Game-Show": "Game-Show",
+            History: "History",
+            Horror: "Horror",
+            Music: "Music",
+            Musical: "Musical",
+            Mystery: "Mystery",
+            News: "News",
+            "Reality-TV": "Reality-TV",
+            Romance: "Romance",
+            "Sci-Fi": "Sci-Fi",
+            Short: "Short",
+            Sport: "Sport",
+            "Talk-Show": "Talk-Show",
+            Thriller: "Thriller",
+            War: "War",
+            Western: "Western",
           },
         },
         {
@@ -2887,20 +2932,22 @@
         {
           question: "How popular should it be?",
           options: [
-            "Hidden Gem (< 10k votes)",
-            "Popular (10k-100k votes)",
-            "Blockbuster (100k+ votes)",
+            "Hidden Gem (<100k votes)",
+            "Popular (100k-500k votes)",
+            "Hit (500k-1M votes)",
+            "Blockbuster (1M+ votes)",
           ],
           key: "popularity",
           votesMap: {
-            "Hidden Gem (< 10k votes)": [0, 10000],
-            "Popular (10k-100k votes)": [10000, 100000],
-            "Blockbuster (100k+ votes)": [100000, 9999999],
+            "Hidden Gem (<100k votes)": [0, 100000],
+            "Popular (100k-500k votes)": [100000, 500000],
+            "Hit (500k-1M votes)": [500000, 1000000],
+            "Blockbuster (1M+ votes)": [1000000, 99999999],
           },
         },
         {
           question: "Minimum rating preference?",
-          options: ["7+ (Good)", "8+ (Great)", "9+ (Excellent)"],
+          options: ["6+ (Decent)", "7+ (Good)", "8+ (Great)", "9+ (Excellent)"],
           key: "rating",
         },
       ];
@@ -2922,15 +2969,34 @@
         });
 
         document.getElementById("next-btn").addEventListener("click", () => {
-          const selectedOption = document.querySelector(".option-btn.selected");
-          if (!selectedOption && currentQuestionIndex > 0) {
-            alert("Please select an option");
-            return;
-          }
+          const currentQuestion = questions[currentQuestionIndex];
 
-          if (selectedOption) {
-            const currentQuestion = questions[currentQuestionIndex];
-            userAnswers[currentQuestion.key] = selectedOption.dataset.value;
+          // For multi-select questions, get all selected options
+          if (currentQuestion.multiSelect) {
+            const selectedOptions = Array.from(
+              document.querySelectorAll(".option-btn.selected")
+            ).map((btn) => btn.dataset.value);
+
+            if (selectedOptions.length === 0 && currentQuestionIndex > 0) {
+              alert("Please select at least one option");
+              return;
+            }
+
+            userAnswers[currentQuestion.key] = selectedOptions;
+          }
+          // For single-select questions
+          else {
+            const selectedOption = document.querySelector(
+              ".option-btn.selected"
+            );
+            if (!selectedOption && currentQuestionIndex > 0) {
+              alert("Please select an option");
+              return;
+            }
+
+            if (selectedOption) {
+              userAnswers[currentQuestion.key] = selectedOption.dataset.value;
+            }
           }
 
           if (currentQuestionIndex < questions.length - 1) {
@@ -2977,21 +3043,35 @@
           optionBtn.textContent = option;
           optionBtn.dataset.value = option;
 
-          // Check if this option was previously selected
-          if (userAnswers[question.key] === option) {
-            optionBtn.classList.add("selected");
-          }
+          // For multi-select questions
+          if (question.multiSelect) {
+            // Check if this option was previously selected
+            if (
+              userAnswers[question.key] &&
+              userAnswers[question.key].includes(option)
+            ) {
+              optionBtn.classList.add("selected");
+            }
 
-          optionBtn.addEventListener("click", () => {
-            // Remove selected class from all options
-            document.querySelectorAll(".option-btn").forEach((btn) => {
-              btn.classList.remove("selected");
+            optionBtn.addEventListener("click", () => {
+              // Toggle selection for multi-select
+              optionBtn.classList.toggle("selected");
             });
+          } else {
+            // Single selection logic
+            if (userAnswers[question.key] === option) {
+              optionBtn.classList.add("selected");
+            }
 
-            // Add selected class to clicked option
-            optionBtn.classList.add("selected");
-          });
-
+            optionBtn.addEventListener("click", () => {
+              // Remove selected class from all options
+              document.querySelectorAll(".option-btn").forEach((btn) => {
+                btn.classList.remove("selected");
+              });
+              // Add selected class to clicked option
+              optionBtn.classList.add("selected");
+            });
+          }
           optionsContainer.appendChild(optionBtn);
         });
       }
@@ -3021,22 +3101,25 @@
           '<div class="loading"><div class="spinner"></div></div>';
 
         // Build query based on user answers
-        let queryParams = new URLSearchParams();
         const minRating =
-          userAnswers.rating === "7+ (Good)"
+          userAnswers.rating === "6+ (Decent)"
+            ? 6
+            : userAnswers.rating === "7+ (Good)"
             ? 7
             : userAnswers.rating === "8+ (Great)"
             ? 8
             : 9;
 
-        // Apply genre filter based on mood
-        let genreFilter = "";
-        if (userAnswers.mood && questions[1].genreMap[userAnswers.mood]) {
-          genreFilter = questions[1].genreMap[userAnswers.mood].toLowerCase();
+        // Apply genre filter for multiple genres
+        let genreFilters = [];
+        if (userAnswers.genres && userAnswers.genres.length > 0) {
+          genreFilters = userAnswers.genres.map((genre) =>
+            questions[1].genreMap[genre].toLowerCase()
+          );
         }
 
         // Get popularity range
-        let [minVotes, maxVotes] = [0, 9999999];
+        let [minVotes, maxVotes] = [0, 99999999];
         if (userAnswers.popularity) {
           [minVotes, maxVotes] = questions[3].votesMap[userAnswers.popularity];
         }
@@ -3053,25 +3136,35 @@
         // Fetch data based on content type
         const endpoint =
           userAnswers.contentType === "Movies" ? "/search" : "/search_series";
+
+        // Add error handling for fetch
         fetch(endpoint)
-          .then((res) => res.json())
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+          })
           .then((data) => {
             // Filter the data based on user preferences
             const filteredData = data.filter((item) => {
               // Rating filter
               if (parseFloat(item.Rating) < minRating) return false;
 
-              // Genre filter
-              if (genreFilter) {
+              // Genre filter for multiple genres
+              if (genreFilters.length > 0) {
                 const itemGenres = (
                   userAnswers.contentType === "Movies"
                     ? item.Genre
                     : item.Genres || ""
                 ).toLowerCase();
-                const requiredGenres = genreFilter.split(",");
-                if (
-                  !requiredGenres.some((genre) => itemGenres.includes(genre))
-                ) {
+
+                // Check if the item contains at least one of the selected genres
+                const hasMatchingGenre = genreFilters.some((genre) =>
+                  itemGenres.includes(genre)
+                );
+
+                if (!hasMatchingGenre) {
                   return false;
                 }
               }
