@@ -2835,6 +2835,16 @@
       }, 2000);
     </script>
     <script>
+      document.getElementById("next-btn").addEventListener("click", () => {
+        document
+          .getElementById("recommendation-engine")
+          .scrollIntoView({ behavior: "smooth" });
+      });
+      document.getElementById("restart-btn").addEventListener("click", () => {
+        document
+          .getElementById("recommendation-engine")
+          .scrollIntoView({ behavior: "smooth" });
+      });
       // Recommendation Engine Questions
       const questions = [
         {
@@ -2933,15 +2943,15 @@
           question: "How popular should it be?",
           options: [
             "Hidden Gem (<100k votes)",
-            "Popular (100k-500k votes)",
-            "Hit (500k-1M votes)",
+            "Popular (100k+ votes)",
+            "Hit (500k+ votes)",
             "Blockbuster (1M+ votes)",
           ],
           key: "popularity",
           votesMap: {
             "Hidden Gem (<100k votes)": [0, 100000],
-            "Popular (100k-500k votes)": [100000, 500000],
-            "Hit (500k-1M votes)": [500000, 1000000],
+            "Popular (100k+ votes)": [100000, 99999999],
+            "Hit (500k+ votes)": [500000, 99999999],
             "Blockbuster (1M+ votes)": [1000000, 99999999],
           },
         },
@@ -3193,7 +3203,7 @@
               (a, b) => parseFloat(b.Rating) - parseFloat(a.Rating)
             );
             displayRecommendations(
-              filteredData.slice(0, 20),
+              filteredData.slice(0, 50),
               userAnswers.contentType === "Movies" ? "movie" : "series"
             );
           })
