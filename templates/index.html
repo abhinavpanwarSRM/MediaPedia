@@ -2835,6 +2835,11 @@
       }, 2000);
     </script>
     <script>
+      document.getElementById("prev-btn").addEventListener("click", () => {
+        document
+          .getElementById("recommendation-engine")
+          .scrollIntoView({ behavior: "smooth" });
+      });
       document.getElementById("next-btn").addEventListener("click", () => {
         document
           .getElementById("recommendation-engine")
