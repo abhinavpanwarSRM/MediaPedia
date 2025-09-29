@@ -20,6 +20,10 @@ df = df.fillna("")
 def home():
     return render_template("index.html")
 
+@app.route('/authors_choice')
+def authors_choice():
+    return render_template('authors_choice.html')
+
 @app.route("/movie/<int:movie_id>")
 def movie_detail(movie_id):
     movie = df[df['ID'] == movie_id].to_dict(orient="records")
