@@ -1152,8 +1152,33 @@
     <div class="bg-overlay"></div>
 
     <div class="title-container">
-      <h1 class="title">MEDIA PEDIA</h1>
+      <h1
+        class="title"
+        id="main-title"
+        onmouseenter="hoverTitle(true)"
+        onmouseleave="hoverTitle(false)"
+        onclick="goToAuthorsChoice()"
+        style="cursor: pointer; transition: opacity 0.5s ease"
+      >
+        MEDIA PEDIA
+      </h1>
       <div class="subtitle">YOUR PERSONALIZED GUIDE</div>
+
+      <script>
+        const title = document.getElementById("main-title");
+
+        function hoverTitle(isHover) {
+          title.style.opacity = 0;
+          setTimeout(() => {
+            title.innerText = isHover ? "AUTHOR'S CHOICE" : "MEDIA PEDIA";
+            title.style.opacity = 1;
+          }, 250);
+        }
+
+        function goToAuthorsChoice() {
+          window.location.href = "/authors_choice";
+        }
+      </script>
     </div>
 
     <div class="content-wrapper">
