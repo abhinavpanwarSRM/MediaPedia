@@ -14,11 +14,12 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
+        cursor: default;
       }
 
       body {
-        font-family: "Arial", sans-serif;
-        background: #0f0f0f;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, rgba(15, 15, 15, 0.9) 0%, rgba(26, 26, 26, 0.9) 100%);
         color: #fff;
         height: 100vh;
         display: flex;
@@ -27,137 +28,126 @@
         padding: 20px;
         text-align: center;
         overflow: hidden;
+        position: relative;
+      }
+
+      body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: var(--poster-bg);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: -1;
+        opacity: 0.3;
+        transition: opacity 0.5s ease;
       }
 
       .container {
-        max-width: 500px;
+        max-width: 800px;
         width: 100%;
-        max-height: 90vh;
-      }
-
-      .meme-container {
-        margin-bottom: 2rem;
-      }
-
-      .meme-image {
-        width: 100%;
-        max-width: 400px;
-        max-height: 50vh;
-        object-fit: contain;
-        border-radius: 10px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        background: #1a1a1a;
+        z-index: 1;
       }
 
       .error-code {
-        font-size: 4rem;
-        font-weight: bold;
+        font-size: 15rem;
+        font-weight: 900;
         color: #e50914;
         margin-bottom: 1rem;
+        text-shadow: 0 0 30px rgba(229, 9, 20, 0.5);
+        line-height: 1;
+        letter-spacing: -5px;
       }
 
       .error-text {
-        font-size: 1.5rem;
-        margin-bottom: 2rem;
+        font-size: 2rem;
+        margin-bottom: 3rem;
         opacity: 0.9;
+        font-weight: 300;
       }
 
       .back-btn {
         background: #e50914;
         color: white;
         border: none;
-        padding: 15px 40px;
-        font-size: 1.1rem;
-        border-radius: 25px;
+        padding: 18px 50px;
+        font-size: 1.2rem;
+        border-radius: 30px;
         cursor: pointer;
         transition: all 0.3s ease;
         text-decoration: none;
         display: inline-block;
+        font-weight: 600;
+        letter-spacing: 1px;
       }
 
       .back-btn:hover {
         background: #b2070f;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(229, 9, 20, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(229, 9, 20, 0.3);
       }
 
-      .loading {
-        opacity: 0.6;
+      @media (max-width: 768px) {
+        .error-code {
+          font-size: 10rem;
+          letter-spacing: -3px;
+        }
+        .error-text {
+          font-size: 1.5rem;
+        }
+        .back-btn {
+          padding: 15px 40px;
+          font-size: 1.1rem;
+        }
       }
 
       @media (max-width: 480px) {
         .error-code {
-          font-size: 3rem;
+          font-size: 8rem;
         }
         .error-text {
-          font-size: 1.2rem;
+          font-size: 1.3rem;
         }
         .back-btn {
-          padding: 12px 30px;
+          padding: 12px 35px;
           font-size: 1rem;
-        }
-        .meme-image {
-          max-height: 40vh;
         }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="meme-container">
-        <img id="memeImage" src="" alt="Random Meme" class="meme-image" />
-      </div>
-
       <div class="error-code">404</div>
-      <div class="error-text">This scene must be from the director's cut</div>
-
+      <div class="error-text">NOT FOUND</div>
       <button onclick="goBack()" class="back-btn">← Go Back</button>
     </div>
 
     <script>
-      // Fallback memes if APIs fail
-      const fallbackMemes = [
-        "https://i.imgflip.com/1wz1x.jpg", // First Time?
-        "https://i.imgflip.com/1bij.jpg", // One Does Not Simply
-        "https://i.imgflip.com/261o3j.jpg", // But that's none of my business
-        "https://i.imgflip.com/30b1gx.jpg", // Left Exit 12 Off Ramp
+      // List of poster filenames in your static/poster folder
+      const posters = [
+        "poster1.jpg", "poster2.jpg", "poster3.jpg", "poster4.jpg", 
+        "poster5.jpg", "poster6.jpg", "poster7.jpg", "poster8.jpg",
+        "poster9.jpg", "poster10.jpg", "poster11.jpg", "poster12.jpg"
       ];
 
-      async function loadRandomMeme() {
-        const memeImage = document.getElementById("memeImage");
-        memeImage.classList.add("loading");
-        memeImage.alt = "Loading meme...";
+      function getRandomPoster() {
+        // Select a random poster from the list
+        const randomIndex = Math.floor(Math.random() * posters.length);
+        const posterFile = posters[randomIndex];
+        
+        // Create the full URL to the poster in your static folder
+        const posterUrl = "{{ url_for('static', filename='poster/') }}" + posterFile;
+        
+        return posterUrl;
+      }
 
-        try {
-          // Try the main meme API first
-          const response = await fetch("https://meme-api.com/gimme");
-          const data = await response.json();
-
-          if (data.url) {
-            memeImage.src = data.url;
-            memeImage.alt = data.title || "Random Meme";
-          } else {
-            throw new Error("No image URL in response");
-          }
-        } catch (error) {
-          console.log("API failed, using fallback memes:", error);
-          // Use fallback memes
-          const randomIndex = Math.floor(Math.random() * fallbackMemes.length);
-          memeImage.src = fallbackMemes[randomIndex];
-          memeImage.alt = "Movie Meme";
-        }
-
-        memeImage.onload = () => {
-          memeImage.classList.remove("loading");
-        };
-
-        memeImage.onerror = () => {
-          // If image fails to load, try another fallback
-          const randomIndex = Math.floor(Math.random() * fallbackMemes.length);
-          memeImage.src = fallbackMemes[randomIndex];
-          memeImage.alt = "Movie Meme";
-          memeImage.classList.remove("loading");
-        };
+      function setRandomPosterBackground() {
+        const posterUrl = getRandomPoster();
+        document.body.style.setProperty('--poster-bg', `url('${posterUrl}')`);
       }
 
       function goBack() {
@@ -168,8 +158,8 @@
         }
       }
 
-      // Load a random meme when page loads
-      document.addEventListener("DOMContentLoaded", loadRandomMeme);
+      // Set random poster background when page loads
+      document.addEventListener("DOMContentLoaded", setRandomPosterBackground);
     </script>
   </body>
 </html>
