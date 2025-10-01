@@ -24,11 +24,16 @@ def home():
 def authors_choice():
     return render_template('authors_choice.html')
 
+# ===== Custom Error Handler =====
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
 @app.route("/movie/<int:movie_id>")
 def movie_detail(movie_id):
     movie = df[df['ID'] == movie_id].to_dict(orient="records")
     if not movie:
-        return "Movie not found", 404
+        return render_template('404.html'), 404
     movie = movie[0]
     genre = movie.get('Genre', '').lower()
 
@@ -107,7 +112,7 @@ series_df = series_df.fillna("")
 def series_detail(series_id):
     series = series_df[series_df['ID'] == series_id].to_dict(orient="records")
     if not series:
-        return "Series not found", 404
+        return render_template('404.html'), 404
     series = series[0]
 
     genre = series.get('Genres', '').lower()
@@ -197,7 +202,7 @@ def search_artist():
 def artist_detail(artist_id):
     artist = artists_df[artists_df['ID'] == artist_id].to_dict(orient="records")
     if not artist:
-        return "Artist not found", 404
+        return render_template('404.html'), 404
     artist = artist[0]
 
     genre = artist.get('artist_genre', '').lower()
@@ -243,7 +248,7 @@ games_df = games_df.fillna("")
 def game_detail(game_id):
     game = games_df[games_df['ID'] == game_id].to_dict(orient="records")
     if not game:
-        return "Game not found", 404
+        return render_template('404.html'), 404
     game = game[0]
 
     # Get recommendations with 9:1 ratio
