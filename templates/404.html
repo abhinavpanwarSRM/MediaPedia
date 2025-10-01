@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+      type="image/x-icon"
+    />
+    <title>404</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: #0f0f0f;
+        color: #fff;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .container {
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+      }
+
+      .meme-container {
+        margin-bottom: 2rem;
+      }
+
+      .meme-image {
+        width: 100%;
+        max-width: 400px;
+        max-height: 50vh;
+        object-fit: contain;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        background: #1a1a1a;
+      }
+
+      .error-code {
+        font-size: 4rem;
+        font-weight: bold;
+        color: #e50914;
+        margin-bottom: 1rem;
+      }
+
+      .error-text {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+      }
+
+      .back-btn {
+        background: #e50914;
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.1rem;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .back-btn:hover {
+        background: #b2070f;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(229, 9, 20, 0.4);
+      }
+
+      .loading {
+        opacity: 0.6;
+      }
+
+      @media (max-width: 480px) {
+        .error-code {
+          font-size: 3rem;
+        }
+        .error-text {
+          font-size: 1.2rem;
+        }
+        .back-btn {
+          padding: 12px 30px;
+          font-size: 1rem;
+        }
+        .meme-image {
+          max-height: 40vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="meme-container">
+        <img id="memeImage" src="" alt="Random Meme" class="meme-image" />
+      </div>
+
+      <div class="error-code">404</div>
+      <div class="error-text">This scene must be from the director's cut</div>
+
+      <button onclick="goBack()" class="back-btn">← Go Back</button>
+    </div>
+
+    <script>
+      // Fallback memes if APIs fail
+      const fallbackMemes = [
+        "https://i.imgflip.com/1wz1x.jpg", // First Time?
+        "https://i.imgflip.com/1bij.jpg", // One Does Not Simply
+        "https://i.imgflip.com/261o3j.jpg", // But that's none of my business
+        "https://i.imgflip.com/30b1gx.jpg", // Left Exit 12 Off Ramp
+      ];
+
+      async function loadRandomMeme() {
+        const memeImage = document.getElementById("memeImage");
+        memeImage.classList.add("loading");
+        memeImage.alt = "Loading meme...";
+
+        try {
+          // Try the main meme API first
+          const response = await fetch("https://meme-api.com/gimme");
+          const data = await response.json();
+
+          if (data.url) {
+            memeImage.src = data.url;
+            memeImage.alt = data.title || "Random Meme";
+          } else {
+            throw new Error("No image URL in response");
+          }
+        } catch (error) {
+          console.log("API failed, using fallback memes:", error);
+          // Use fallback memes
+          const randomIndex = Math.floor(Math.random() * fallbackMemes.length);
+          memeImage.src = fallbackMemes[randomIndex];
+          memeImage.alt = "Movie Meme";
+        }
+
+        memeImage.onload = () => {
+          memeImage.classList.remove("loading");
+        };
+
+        memeImage.onerror = () => {
+          // If image fails to load, try another fallback
+          const randomIndex = Math.floor(Math.random() * fallbackMemes.length);
+          memeImage.src = fallbackMemes[randomIndex];
+          memeImage.alt = "Movie Meme";
+          memeImage.classList.remove("loading");
+        };
+      }
+
+      function goBack() {
+        if (document.referrer) {
+          window.history.back();
+        } else {
+          window.location.href = "/";
+        }
+      }
+
+      // Load a random meme when page loads
+      document.addEventListener("DOMContentLoaded", loadRandomMeme);
+    </script>
+  </body>
+</html>
