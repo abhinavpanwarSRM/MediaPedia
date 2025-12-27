@@ -1377,12 +1377,31 @@
               justify-content: center;
               gap: 10px;
               cursor: pointer;
+              padding: 5px;
+              background-color: white;
+              border-radius: 12px;
+              color: #000;
+              text-shadow: 0 0 10px rgba(30, 215, 96, 0.8);
+              animation: text-glow 2s ease-in-out infinite alternate;
             "
             id="toggle-authors-choice"
           >
-            Author's Choice
-            <span id="author-icon" style="font-size: 20px">🖱️</span>
+          Author's Choice
           </h3>
+
+          <style>
+            @keyframes text-glow {
+              from {
+                text-shadow: 0 0 5px rgba(30, 215, 96, 0.6),
+                  0 0 10px rgba(30, 215, 96, 0.4);
+              }
+              to {
+                text-shadow: 0 0 10px rgba(30, 215, 96, 1),
+                  0 0 20px rgba(30, 215, 96, 0.8),
+                  0 0 30px rgba(30, 215, 96, 0.6);
+              }
+            }
+          </style>
 
           <!-- Collapsible Content -->
           <div
