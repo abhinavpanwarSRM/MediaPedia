@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <title>{{ series["Title"] }}</title>
@@ -24,8 +24,8 @@
 
       body {
         margin: 0;
-        font-family: "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-          sans-serif;
+        font-family:
+          "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", sans-serif;
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
@@ -296,11 +296,82 @@
         }
       }
     </style>
+    <style>
+      /* Add to your existing CSS */
+      .heart-save-section {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 1.5rem 0;
+      }
+
+      .heart-btn {
+        background: rgba(20, 20, 20, 0.8);
+        border: 2px solid var(--primary);
+        color: white;
+        border-radius: 50px;
+        padding: 0.8rem 2rem;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+      }
+
+      .heart-btn:hover {
+        background: rgba(1, 43, 74, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px #0088b6;
+      }
+
+      .saved-counter {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--card-bg);
+        padding: 6px;
+        border-radius: 999px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+      }
+
+      .view-saved-btn {
+        padding: 6px 14px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition:
+          background-color 0.25s ease,
+          transform 0.15s ease;
+      }
+
+      .view-saved-btn:hover {
+        background: #0088b6;
+        transform: scale(1.05);
+      }
+    </style>
   </head>
   <body>
     <div class="overlay">
       <div class="series-detail">
         <h1>{{ series["Title"] }}</h1>
+
+        <div class="heart-save-section">
+          <button class="heart-btn" id="save-series-btn">
+            <span id="save-text">Save</span>
+          </button>
+        </div>
+
+        <div class="saved-counter">
+          <button id="saved-count" class="view-saved-btn" onclick="viewSaved()">
+            0
+          </button>
+        </div>
 
         <!-- Trailer will be inserted here -->
         <div id="trailer-container" class="trailer-container"></div>
@@ -355,7 +426,8 @@
     </div>
 
     <script>
-      const seriesName = "{{ series['Title'] }} {{ series['Genres'] }} series - official trailer";
+      const seriesName =
+        "{{ series['Title'] }} {{ series['Genres'] }} series - official trailer";
       const API_KEYS = ["{{ api_key_1 }}", "{{ api_key_2 }}"];
       let currentKeyIndex = 0;
 
@@ -370,8 +442,8 @@
 
         fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
-            seriesName
-          )}&key=${currentKey}&maxResults=1&type=video`
+            seriesName,
+          )}&key=${currentKey}&maxResults=1&type=video`,
         )
           .then((res) => {
             if (!res.ok) {
@@ -415,6 +487,253 @@
 
       // Start fetching trailer with first API key
       fetchTrailerWithKey();
+    </script>
+    <script>
+      // Save Manager WITHOUT expiry
+      const SaveManager = {
+          storageKey: 'saved_series',
+
+          // Get all saved items
+          getSavedItems() {
+              const data = localStorage.getItem(this.storageKey);
+              if (!data) return [];
+
+              try {
+                  const parsed = JSON.parse(data);
+                  return parsed.items || [];
+              } catch {
+                  this.clear();
+                  return [];
+              }
+          },
+
+          // Save item
+          saveItem(item) {
+              const items = this.getSavedItems();
+              const itemId = `${item.type}_${item.id}`;
+              const existingIndex = items.findIndex(i => i.itemId === itemId);
+
+              if (existingIndex === -1) {
+                  // Add new item
+                  items.push({
+                      itemId: itemId,
+                      type: item.type,
+                      id: item.id,
+                      title: item.title,
+                      data: item.data,
+                      savedAt: new Date().toISOString()
+                  });
+                  this.saveAll(items);
+                  return true; // Added
+              } else {
+                  // Remove item
+                  items.splice(existingIndex, 1);
+                  this.saveAll(items);
+                  return false; // Removed
+              }
+          },
+
+          // Save all items
+          saveAll(items) {
+              const data = {
+                  items: items,
+                  lastUpdated: new Date().toISOString()
+              };
+
+              localStorage.setItem(this.storageKey, JSON.stringify(data));
+              this.updateUI();
+          },
+
+          // Clear all saved items
+          clear() {
+              localStorage.removeItem(this.storageKey);
+              this.updateUI();
+          },
+
+          // Check if item is saved
+          isSaved(itemType, itemId) {
+              const items = this.getSavedItems();
+              const itemIdStr = `${itemType}_${itemId}`;
+              return items.some(item => item.itemId === itemIdStr);
+          },
+
+          // Update UI elements
+          updateUI() {
+              const items = this.getSavedItems();
+
+              // Update counter
+              document.getElementById('saved-count').textContent = items.length;
+
+              // Update current series's heart button if on series page
+              const seriesId = {{ series.get('ID', 0) }};
+              if (seriesId) {
+                  const isSaved = this.isSaved('series', seriesId);
+                  const btn = document.getElementById('save-series-btn');
+                  const icon = btn.querySelector('i');
+                  const text = document.getElementById('save-text');
+
+                  btn.classList.toggle('saved', isSaved);
+                  text.textContent = isSaved ? 'Saved' : 'Save';
+              }
+          }
+      };
+
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+          // Initialize save manager
+          SaveManager.updateUI();
+
+          // Add click handler for save button
+          const saveBtn = document.getElementById('save-series-btn');
+          if (saveBtn) {
+              saveBtn.addEventListener('click', function() {
+                  const seriesId = {{ series.get('ID', 0) }};
+                  const seriesTitle = "{{ series['Title'] }}";
+                  const seriesData = {
+                      rating: "{{ series['Rating'] }}",
+                      genre: "{{ series['Genres'] }}",
+                      year: "{{ series.get('Years', 'N/A') }}"
+                  };
+
+                  const wasAdded = SaveManager.saveItem({
+                      type: 'series',
+                      id: seriesId,
+                      title: seriesTitle,
+                      data: seriesData
+                  });
+
+                  // Visual feedback only - no message
+                  const icon = this.querySelector('i');
+                  icon.style.transform = 'scale(1.3)';
+                  setTimeout(() => {
+                      icon.style.transform = 'scale(1)';
+                  }, 300);
+              });
+          }
+      });
+
+      // View saved items
+      function viewSaved() {
+          const items = SaveManager.getSavedItems();
+
+          if (items.length === 0) {
+              return;
+          }
+
+          // Create modal
+          const modal = document.createElement('div');
+          modal.style.cssText = `
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.9);
+              z-index: 2000;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              padding: 2rem;
+              overflow-y: auto;
+          `;
+
+          // Filter series only
+          const seriesItems = items.filter(item => item.type === 'series');
+
+          modal.innerHTML = `
+              <div style="max-width: 800px; width: 100%;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                      <h2 style="color: white; margin: 0;">
+                          Saved Series (${seriesItems.length})
+                      </h2>
+                      <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                              style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">
+                          ×
+                      </button>
+                  </div>
+
+                  <div id="saved-series-list" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
+                      ${seriesItems.map(item => `
+                          <div style="background: var(--card-bg); border-radius: 8px; padding: 1rem; border-left: 4px solid var(--primary);">
+                              <h4 style="color: white; margin: 0 0 10px 0;">${item.title}</h4>
+                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
+                                  ${item.data.rating || 'N/A'}
+                              </p>
+                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
+                                  ${item.data.genre || 'N/A'}
+                              </p>
+                              <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                  <a href="/series/${item.id}"
+                                     style="background: var(--primary); color: white; padding: 8px 15px;
+                                            border-radius: 4px; text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;">
+                                      View
+                                  </a>
+                                  <button onclick="removeSavedItem('${item.itemId}')"
+                                          style="background: black; color: #0088b6; border: 1px solid #0088b6;
+                                                 padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                      Remove
+                                  </button>
+                              </div>
+                          </div>
+                      `).join('')}
+                  </div>
+
+                  ${seriesItems.length === 0 ? `
+                      <div style="text-align: center; padding: 3rem; color: #ccc;">
+                          <p style="font-size: 1.2rem;">No series saved yet!</p>
+                      </div>
+                  ` : ''}
+
+                  <div style="margin-top: 2rem; text-align: center;">
+                      <button onclick="SaveManager.clear()"
+                              style="background: black; color: #0088b6; border: 1px solid #0088b6;
+                                     padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                          Clear All
+                      </button>
+                  </div>
+              </div>
+          `;
+
+          document.body.appendChild(modal);
+
+          // Close modal on ESC key
+          document.addEventListener('keydown', function closeModal(e) {
+              if (e.key === 'Escape') {
+                  modal.remove();
+                  document.removeEventListener('keydown', closeModal);
+              }
+          });
+      }
+
+      // Remove individual saved item
+      function removeSavedItem(itemId) {
+          const items = SaveManager.getSavedItems();
+          const index = items.findIndex(item => item.itemId === itemId);
+          if (index !== -1) {
+              items.splice(index, 1);
+              SaveManager.saveAll(items);
+
+              // Update the modal if open
+              setTimeout(() => {
+                  const modal = document.querySelector('div[style*="position: fixed; top: 0; left: 0"]');
+                  if (modal) {
+                      modal.remove();
+                      viewSaved();
+                  }
+              }, 500);
+          }
+      }
+
+      // Add animation styles for heart icon only
+      const style = document.createElement('style');
+      style.textContent = `
+      @keyframes heartBeat {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+          100% { transform: scale(1); }
+      }
+      `;
+      document.head.appendChild(style);
     </script>
   </body>
 </html>
