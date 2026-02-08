@@ -303,9 +303,10 @@
         justify-content: center;
         align-items: center;
         margin: 1.5rem 0;
+        gap: 20px;
       }
 
-      .heart-btn {
+      .btn {
         background: rgba(20, 20, 20, 0.8);
         border: 2px solid var(--primary);
         color: white;
@@ -319,7 +320,7 @@
         transition: all 0.3s ease;
       }
 
-      .heart-btn:hover {
+      .btn:hover {
         background: rgba(1, 43, 74, 0.2);
         transform: translateY(-2px);
         box-shadow: 0 5px 15px #0088b6;
@@ -362,8 +363,11 @@
         <h1>{{ series["Title"] }}</h1>
 
         <div class="heart-save-section">
-          <button class="heart-btn" id="save-series-btn">
+          <button class="btn" id="save-series-btn">
             <span id="save-text">Save</span>
+          </button>
+          <button class="btn" id="link-series-btn">
+            <span id="link-text">Link</span>
           </button>
         </div>
 
@@ -734,6 +738,115 @@
       }
       `;
       document.head.appendChild(style);
+    </script>
+    <script>
+      document
+        .getElementById("link-series-btn")
+        .addEventListener("click", openLinksModal);
+
+      function openLinksModal() {
+        const seriesName = "{{ series['Title'] }}";
+        const encodedName = encodeURIComponent(seriesName);
+
+        const links = [
+          {
+            name: "SeriesOnline",
+            url: `https://seriesonline.sx/search/${encodedName}`,
+          },
+          {
+            name: "Series2Watch",
+            url: `https://series2watch.net/search/${encodedName}`,
+          },
+          {
+            name: "Noxx",
+            url: `https://noxx.to/browse?q=${encodedName}`,
+          },
+          {
+            name: "1HD",
+            url: `https://1hd.gg/search?keyword=${encodedName}`,
+          },
+          {
+            name: "Flixtor",
+            url: `https://flixtor.mov/browser?keyword=${encodedName}`,
+          },
+        ];
+
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+        overlay.innerHTML = `
+      <div style="
+        width: 90%;
+        max-width: 420px;
+        max-height: 70vh;
+        background: var(--card-bg);
+        border-radius: 10px;
+        padding: 1.2rem;
+        overflow-y: auto;
+        border: 1px solid rgba(255,255,255,0.1);
+      ">
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        ">
+          <h3 style="margin:0; color:white;">Watch Links</h3>
+          <button onclick="this.parentElement.parentElement.parentElement.remove()"
+            style="
+              background:none;
+              border:none;
+              color:white;
+              font-size:22px;
+              cursor:pointer;
+            ">
+            ×
+          </button>
+        </div>
+
+        ${links
+          .map(
+            (link) => `
+          <a href="${link.url}" target="_blank"
+            style="
+              display:block;
+              padding:0.7rem;
+              margin-bottom:0.6rem;
+              background: rgba(255,255,255,0.05);
+              border-left: 4px solid var(--primary);
+              color:white;
+              text-decoration:none;
+              border-radius:6px;
+              transition: background 0.2s ease;
+            "
+            onmouseover="this.style.background='#0088b6'"
+            onmouseout="this.style.background='rgba(255,255,255,0.05)'"
+          >
+            ${link.name}
+          </a>
+        `,
+          )
+          .join("")}
+      </div>
+    `;
+
+        document.body.appendChild(overlay);
+
+        document.addEventListener("keydown", function escClose(e) {
+          if (e.key === "Escape") {
+            overlay.remove();
+            document.removeEventListener("keydown", escClose);
+          }
+        });
+      }
     </script>
   </body>
 </html>
