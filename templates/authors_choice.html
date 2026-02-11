@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -594,7 +594,17 @@
           { title: "Who Am I", id: "1851" },
         ],
         hindi: [
+          { title: "Gully Boy", id: "791" },
+          { title: "Uri: The Surgical Strike", id: "297" },
+          { title: "Dhurandhar", id: "0" },
+          { title: "Badhaai Ho", id: "820" },
+          { title: "Bahubali 1", id: "0" },
+          { title: "Bahubali 2", id: "0" },
+          { title: "Jab We Met", id: "804" },
+          { title: "Dil Chahta Hai", id: "435" },
           { title: "3 Idiots", id: "130" },
+          { title: "English Vinglish", id: "1081" },
+          { title: "Queen", id: "441" },
           { title: "Hasee Toh Phasee", id: "4865" },
           { title: "Andhadhun", id: "285" },
           { title: "Dhamaal", id: "2393" },
@@ -637,7 +647,7 @@
         // Movies count
         const moviesCount = Object.values(moviesData).reduce(
           (total, category) => total + category.length,
-          0
+          0,
         );
 
         // Categories count
@@ -842,7 +852,7 @@
 
         // Filter series
         const filteredSeries = seriesData.filter((series) =>
-          series.title.toLowerCase().includes(searchTerm)
+          series.title.toLowerCase().includes(searchTerm),
         );
 
         seriesList.innerHTML = "";
@@ -895,7 +905,7 @@
         ];
 
         const filteredMovies = allMovies.filter((movie) =>
-          movie.title.toLowerCase().includes(searchTerm)
+          movie.title.toLowerCase().includes(searchTerm),
         );
 
         moviesList.innerHTML = "";
