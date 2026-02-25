@@ -2,8 +2,175 @@ import json
 from flask import Flask, request, jsonify, render_template
 import pandas as pd
 import os
+from pymongo import MongoClient
+from datetime import datetime
+import uuid
 
 app = Flask(__name__)
+
+MONGO_URI = "mongodb+srv://abhinavpanwar:Abhinav1234@cluster0.rxyvwoo.mongodb.net/?appName=Cluster0"
+DB_NAME = "mediapedia"
+
+try:
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    comments_collection = db.comments
+    
+    # Create indexes for better performance
+    comments_collection.create_index("movie_id")
+    comments_collection.create_index("created_at")
+    print("✅ MongoDB connected successfully")
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    comments_collection = None
+
+# ===== Comment Routes =====
+
+@app.route("/api/comments/<int:movie_id>", methods=["GET"])
+def get_comments(movie_id):
+    """Get all comments for a specific movie"""
+    if comments_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    try:
+        # Get comments sorted by newest first
+        comments = list(comments_collection.find(
+            {"movie_id": movie_id},
+            {"_id": 0}  # Exclude MongoDB _id from response
+        ).sort("created_at", -1).limit(100))
+        
+        # Convert datetime objects to strings for JSON
+        for comment in comments:
+            if "created_at" in comment:
+                comment["created_at"] = comment["created_at"].isoformat()
+        
+        return jsonify(comments)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/comments", methods=["POST"])
+def add_comment():
+    """Add a new comment"""
+    if comments_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    try:
+        data = request.json
+        
+        # Validate required fields
+        if not data.get("movie_id"):
+            return jsonify({"error": "Movie ID required"}), 400
+        if not data.get("username") or not data.get("text"):
+            return jsonify({"error": "Username and comment text required"}), 400
+        
+        # Create comment document
+        comment = {
+            "comment_id": str(uuid.uuid4()),  # Generate unique ID
+            "movie_id": data["movie_id"],
+            "username": data["username"][:50],  # Limit length
+            "text": data["text"][:1000],  # Limit length
+            "rating": min(5, max(1, int(data.get("rating", 5)))),  # 1-5 stars
+            "created_at": datetime.utcnow(),
+            "likes": 0,
+            "replies": []
+        }
+        
+        # Insert into MongoDB
+        result = comments_collection.insert_one(comment)
+        
+        # Prepare response
+        comment["_id"] = str(result.inserted_id)
+        comment["created_at"] = comment["created_at"].isoformat()
+        
+        return jsonify(comment), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/comments/<comment_id>/like", methods=["POST"])
+def like_comment(comment_id):
+    """Like/unlike a comment"""
+    if comments_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    try:
+        # Increment likes count
+        result = comments_collection.update_one(
+            {"comment_id": comment_id},
+            {"$inc": {"likes": 1}}
+        )
+        
+        if result.modified_count == 0:
+            return jsonify({"error": "Comment not found"}), 404
+        
+        # Get updated comment
+        comment = comments_collection.find_one(
+            {"comment_id": comment_id},
+            {"_id": 0, "likes": 1}
+        )
+        
+        return jsonify({"likes": comment.get("likes", 0)})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/comments/<comment_id>", methods=["DELETE"])
+def delete_comment(comment_id):
+    """Delete a comment (requires username verification)"""
+    if comments_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    try:
+        username = request.args.get("username")
+        if not username:
+            return jsonify({"error": "Username required"}), 400
+        
+        # Find and delete comment (only if username matches)
+        result = comments_collection.delete_one({
+            "comment_id": comment_id,
+            "username": username
+        })
+        
+        if result.deleted_count == 0:
+            return jsonify({"error": "Comment not found or unauthorized"}), 404
+        
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/comments/<int:movie_id>/stats", methods=["GET"])
+def get_comment_stats(movie_id):
+    """Get comment statistics for a movie"""
+    if comments_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
+    
+    try:
+        # Get comment count
+        total_comments = comments_collection.count_documents({"movie_id": movie_id})
+        
+        # Get average rating
+        pipeline = [
+            {"$match": {"movie_id": movie_id}},
+            {"$group": {
+                "_id": None,
+                "avg_rating": {"$avg": "$rating"},
+                "total_ratings": {"$sum": 1}
+            }}
+        ]
+        
+        result = list(comments_collection.aggregate(pipeline))
+        
+        stats = {
+            "total_comments": total_comments,
+            "avg_rating": round(result[0]["avg_rating"], 1) if result else 0,
+            "total_ratings": result[0]["total_ratings"] if result else 0
+        }
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Load CSV (adjust path if needed)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -41,16 +208,20 @@ def movie_detail(movie_id):
     related_movies = same_genre_movies.sample(n=min(10, len(same_genre_movies))) \
                       .to_dict(orient='records')
     
-    # Pass keys as separate variables
     api_key_1 = "AIzaSyBdgQrCmB6XxxOXSN3Oyk8zmsRIxq9V_kg"
     api_key_2 = "AIzaSyCW13LFIN7BBQWREenK5rcZ1XGQuX8ijKg"
+
+    # Check if MongoDB is connected
+    mongo_connected = comments_collection is not None
 
     return render_template(
         "movie.html", 
         movie=movie, 
         related_movies=related_movies,
         api_key_1=api_key_1,
-        api_key_2=api_key_2
+        api_key_2=api_key_2,
+        mongo_connected=mongo_connected,
+        movie_id=movie_id  # Pass movie_id to template
     )
 
 @app.route("/search")
