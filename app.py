@@ -304,7 +304,8 @@ def series_detail(series_id):
         series=series,
         related_series=related_series,
         api_key_1=api_key_1,
-        api_key_2=api_key_2
+        api_key_2=api_key_2,
+        series_id=series_id  # Add this line
     )
 
 # ===== Series Search =====
