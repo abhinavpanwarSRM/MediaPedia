@@ -17,7 +17,7 @@ try:
     comments_collection = db.comments
     
     # Create indexes for better performance
-    comments_collection.create_index("movie_id")
+    comments_collection.create_index("id")
     comments_collection.create_index("created_at")
     print("✅ MongoDB connected successfully")
 except Exception as e:
@@ -26,8 +26,8 @@ except Exception as e:
 
 # ===== Comment Routes =====
 
-@app.route("/api/comments/<int:movie_id>", methods=["GET"])
-def get_comments(movie_id):
+@app.route("/api/comments/<int:id>", methods=["GET"])
+def get_comments(id):
     """Get all comments for a specific movie"""
     if comments_collection is None:
         return jsonify({"error": "Database not connected"}), 500
@@ -35,7 +35,7 @@ def get_comments(movie_id):
     try:
         # Get comments sorted by newest first
         comments = list(comments_collection.find(
-            {"movie_id": movie_id},
+            {"id": id},
             {"_id": 0}  # Exclude MongoDB _id from response
         ).sort("created_at", -1).limit(100))
         
@@ -58,7 +58,7 @@ def add_comment():
         data = request.json
         
         # Validate required fields
-        if not data.get("movie_id"):
+        if not data.get("id"):
             return jsonify({"error": "Movie ID required"}), 400
         if not data.get("username") or not data.get("text"):
             return jsonify({"error": "Username and comment text required"}), 400
@@ -66,7 +66,7 @@ def add_comment():
         # Create comment document
         comment = {
             "comment_id": str(uuid.uuid4()),  # Generate unique ID
-            "movie_id": data["movie_id"],
+            "id": data["id"],
             "username": data["username"][:50],  # Limit length
             "text": data["text"][:1000],  # Limit length
             "rating": min(5, max(1, int(data.get("rating", 5)))),  # 1-5 stars
@@ -139,19 +139,19 @@ def delete_comment(comment_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/api/comments/<int:movie_id>/stats", methods=["GET"])
-def get_comment_stats(movie_id):
+@app.route("/api/comments/<int:id>/stats", methods=["GET"])
+def get_comment_stats(id):
     """Get comment statistics for a movie"""
     if comments_collection is None:
         return jsonify({"error": "Database not connected"}), 500
     
     try:
         # Get comment count
-        total_comments = comments_collection.count_documents({"movie_id": movie_id})
+        total_comments = comments_collection.count_documents({"id": id})
         
         # Get average rating
         pipeline = [
-            {"$match": {"movie_id": movie_id}},
+            {"$match": {"id": id}},
             {"$group": {
                 "_id": None,
                 "avg_rating": {"$avg": "$rating"},
