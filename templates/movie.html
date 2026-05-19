@@ -369,6 +369,9 @@
           <button class="btn" id="link-movie-btn">
             <span id="link-text">Link</span>
           </button>
+          <button class="btn" id="share-movie-btn" onclick="shareItem()">
+            <span>Share</span>
+          </button>
         </div>
 
         <div class="saved-counter">
@@ -812,6 +815,22 @@
               font-size: 1rem;
             }
           }
+
+          .sort-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #999;
+            padding: 0.3rem 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            transition: all 0.2s ease;
+          }
+          .sort-btn:hover, .sort-btn.active {
+            background: rgba(229,9,20,0.15);
+            border-color: var(--primary);
+            color: white;
+          }
         </style>
 
         <!-- Comment Section HTML -->
@@ -882,6 +901,14 @@
             </button>
           </div>
 
+          <!-- Comment Sort Controls -->
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+            <span style="color:#999;font-size:0.8rem;align-self:center;">Sort:</span>
+            <button class="sort-btn active" data-sort="newest" onclick="sortComments('newest')">Newest</button>
+            <button class="sort-btn" data-sort="oldest" onclick="sortComments('oldest')">Oldest</button>
+            <button class="sort-btn" data-sort="liked" onclick="sortComments('liked')">Most Liked</button>
+          </div>
+
           <!-- Comments List -->
           <div id="commentsList" class="comments-list">
             <div class="comments-loading">
@@ -897,6 +924,19 @@
         <script>
           const movieId = {{ movie_id }};
           let currentUsername = localStorage.getItem('commentUsername') || '';
+          let allComments = [];
+          let currentSort = 'newest';
+
+          // Track recently viewed
+          (function trackRecentlyViewed() {
+              const key = 'recently_viewed';
+              const item = { type: 'movie', id: {{ movie_id }}, title: {{ movie['Movie Name']|tojson }}, url: window.location.pathname };
+              let viewed = JSON.parse(localStorage.getItem(key) || '[]');
+              viewed = viewed.filter(v => !(v.type === item.type && v.id === item.id));
+              viewed.unshift(item);
+              if (viewed.length > 10) viewed = viewed.slice(0, 10);
+              localStorage.setItem(key, JSON.stringify(viewed));
+          })();
 
           // Toggle comment form
           function toggleCommentForm() {
@@ -927,7 +967,8 @@
               fetch(`/api/comments/${movieId}`)
                   .then(res => res.json())
                   .then(comments => {
-                      displayComments(comments);
+                      allComments = comments || [];
+                      displayComments(getSortedComments());
                   })
                   .catch(error => {
                       console.error('Error loading comments:', error);
@@ -937,6 +978,20 @@
                           </div>
                       `;
                   });
+          }
+
+          function getSortedComments() {
+              const sorted = [...allComments];
+              if (currentSort === 'newest') sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              else if (currentSort === 'oldest') sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+              else if (currentSort === 'liked') sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+              return sorted;
+          }
+
+          function sortComments(order) {
+              currentSort = order;
+              document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === order));
+              displayComments(getSortedComments());
           }
 
           function loadCommentStats() {
