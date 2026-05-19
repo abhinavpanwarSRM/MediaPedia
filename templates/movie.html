@@ -1111,6 +1111,20 @@
 
               return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           }
+
+          function shareItem() {
+              if (navigator.share) {
+                  navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
+              } else {
+                  navigator.clipboard.writeText(window.location.href)
+                      .then(() => {
+                          const btn = document.getElementById('share-movie-btn');
+                          btn.querySelector('span').textContent = 'Copied!';
+                          setTimeout(() => btn.querySelector('span').textContent = 'Share', 2000);
+                      })
+                      .catch(() => prompt('Copy this link:', window.location.href));
+              }
+          }
         </script>
         <a href="/" class="back-link">⬅ Back to Search</a>
       </div>

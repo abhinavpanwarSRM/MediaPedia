@@ -173,6 +173,16 @@
         justify-content: center;
       }
 
+      #recently-viewed {
+        background: var(--card-bg);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        width: 100%;
+        box-sizing: border-box;
+      }
+
       #random-list a {
         background: rgba(36, 36, 36, 0.8);
         color: var(--text-light);
@@ -1214,6 +1224,12 @@
         </div>
       </section>
 
+      <!-- Recently Viewed Section -->
+      <section id="recently-viewed" style="display:none;">
+        <h2>Recently Viewed</h2>
+        <div id="recently-viewed-list" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;"></div>
+      </section>
+
       <section id="random-movies">
         <h2>Featured Movies</h2>
         <div id="random-list">Loading...</div>
@@ -1248,6 +1264,10 @@
           <input type="text" id="director" placeholder="Christopher Nolan" />
         </div>
         <div class="filter-group">
+          <label for="year">Year</label>
+          <input type="number" id="year" placeholder="2010" min="1900" max="2099" />
+        </div>
+        <div class="filter-group">
           <label for="min_rating">Min Rating</label>
           <input
             type="number"
@@ -1272,6 +1292,7 @@
           />
         </div>
         <button onclick="searchMovies()">Search Movies</button>
+        <button onclick="surpriseMe('movie')" style="background:rgba(229,9,20,0.15);border:1px solid rgba(229,9,20,0.4);color:white;padding:0.9rem 1rem;border-radius:4px;cursor:pointer;font-weight:600;font-size:1rem;grid-column:1/-1;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(229,9,20,0.3)'" onmouseout="this.style.background='rgba(229,9,20,0.15)'">🎲 Surprise Me</button>
       </section>
 
       <section id="filters2">
@@ -1287,6 +1308,10 @@
         <div class="filter-group2">
           <label for="actor2">Actor</label>
           <input type="text" id="actor2" placeholder="Bryan Cranston" />
+        </div>
+        <div class="filter-group2">
+          <label for="year2">Year</label>
+          <input type="number" id="year2" placeholder="2008" min="1900" max="2099" />
         </div>
         <div class="filter-group2">
           <label for="director2">Director</label>
@@ -1317,6 +1342,7 @@
           />
         </div>
         <button onclick="searchSeries()">Search Series</button>
+        <button onclick="surpriseMe('series')" style="background:rgba(0,168,225,0.15);border:1px solid rgba(0,168,225,0.4);color:white;padding:0.9rem 1rem;border-radius:4px;cursor:pointer;font-weight:600;font-size:1rem;grid-column:1/-1;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(0,168,225,0.3)'" onmouseout="this.style.background='rgba(0,168,225,0.15)'">🎲 Surprise Me</button>
       </section>
 
       <!-- ===== Artist Search & Suggestions Section ===== -->
@@ -2777,6 +2803,7 @@
         const query = document.getElementById("query2").value;
         const genre = document.getElementById("genre2").value;
         const actor = document.getElementById("actor2").value;
+        const year = document.getElementById("year2").value;
         const minRating = document.getElementById("min_rating2").value;
         const maxRating = document.getElementById("max_rating2").value;
 
@@ -2784,6 +2811,7 @@
         if (query) params.append("query", query);
         if (genre) params.append("genre", genre);
         if (actor) params.append("actor", actor);
+        if (year) params.append("year", year);
         params.append("min_rating", minRating);
         params.append("max_rating", maxRating);
 
@@ -2822,6 +2850,7 @@
             document.getElementById("genre2").value = "";
             document.getElementById("actor2").value = "";
             document.getElementById("director2").value = "";
+            document.getElementById("year2").value = "";
             document.getElementById("min_rating2").value = "";
             document.getElementById("max_rating2").value = "";
           })
@@ -2852,6 +2881,7 @@
         const genre = document.getElementById("genre").value;
         const actor = document.getElementById("actor").value;
         const director = document.getElementById("director").value;
+        const year = document.getElementById("year").value;
         const minRating = document.getElementById("min_rating").value;
         const maxRating = document.getElementById("max_rating").value;
 
@@ -2860,6 +2890,7 @@
         if (genre) params.append("genre", genre);
         if (actor) params.append("actor", actor);
         if (director) params.append("director", director);
+        if (year) params.append("year", year);
         params.append("min_rating", minRating);
         params.append("max_rating", maxRating);
 
@@ -2895,6 +2926,7 @@
             document.getElementById("genre").value = "";
             document.getElementById("actor").value = "";
             document.getElementById("director").value = "";
+            document.getElementById("year").value = "";
             document.getElementById("min_rating").value = "";
             document.getElementById("max_rating").value = "";
           })
@@ -2980,12 +3012,47 @@
       document.addEventListener("DOMContentLoaded", () => {
         loadRandomMovies();
         fetchTmdbMovies();
+        loadRecentlyViewed();
 
         document.querySelector("#filters").addEventListener("submit", (e) => {
           e.preventDefault();
           searchMovies();
         });
       });
+
+      function loadRecentlyViewed() {
+        const viewed = JSON.parse(localStorage.getItem('recently_viewed') || '[]');
+        if (viewed.length === 0) return;
+        const section = document.getElementById('recently-viewed');
+        const list = document.getElementById('recently-viewed-list');
+        section.style.display = 'block';
+        list.innerHTML = viewed.map(item => `
+          <a href="${item.url}" style="
+            background:rgba(36,36,36,0.8);
+            color:white;
+            padding:0.8rem 1.2rem;
+            border-radius:4px;
+            text-decoration:none;
+            font-weight:500;
+            font-size:0.9rem;
+            border-left:3px solid ${item.type === 'movie' ? 'var(--primary)' : '#00a8e1'};
+            transition:all 0.3s ease;
+          " onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">${item.title}</a>
+        `).join('');
+      }
+
+      async function surpriseMe(type) {
+        try {
+          const endpoint = type === 'movie' ? '/search?min_rating=7' : '/search_series?min_rating=7';
+          const res = await fetch(endpoint);
+          const data = await res.json();
+          if (!data || data.length === 0) return;
+          const item = data[Math.floor(Math.random() * data.length)];
+          window.location.href = type === 'movie' ? `/movie/${item.ID}` : `/series/${item.ID}`;
+        } catch (e) {
+          console.error('Surprise Me error:', e);
+        }
+      }
 
       const genres = [
         "Action",

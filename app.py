@@ -5,10 +5,13 @@ import os
 from pymongo import MongoClient
 from datetime import datetime
 import uuid
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
-MONGO_URI = "mongodb+srv://abhinavpanwar:Abhinav1234@cluster0.rxyvwoo.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
 
 try:
@@ -208,8 +211,8 @@ def movie_detail(movie_id):
     related_movies = same_genre_movies.sample(n=min(10, len(same_genre_movies))) \
                       .to_dict(orient='records')
     
-    api_key_1 = "AIzaSyBdgQrCmB6XxxOXSN3Oyk8zmsRIxq9V_kg"
-    api_key_2 = "AIzaSyCW13LFIN7BBQWREenK5rcZ1XGQuX8ijKg"
+    api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
+    api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
 
     # Check if MongoDB is connected
     mongo_connected = comments_collection is not None
@@ -221,7 +224,7 @@ def movie_detail(movie_id):
         api_key_1=api_key_1,
         api_key_2=api_key_2,
         mongo_connected=mongo_connected,
-        movie_id=movie_id  # Pass movie_id to template
+        movie_id=movie_id
     )
 
 @app.route("/search")
@@ -243,6 +246,8 @@ def search():
 
     results = df.copy()
 
+    year = request.args.get("year", "").strip()
+
     if query:
         results = results[results['Movie Name'].str.lower().str.contains(query, na=False)]
 
@@ -254,6 +259,9 @@ def search():
 
     if director:
         results = results[results['Directors'].str.lower().str.contains(director, na=False)]
+
+    if year:
+        results = results[results['Year'].astype(str).str.contains(year, na=False)]
 
     # Convert Rating to numeric and filter
     results['Rating'] = pd.to_numeric(results['Rating'], errors='coerce').fillna(0)
@@ -296,8 +304,8 @@ def series_detail(series_id):
                                       .to_dict(orient='records')
 
     # Pass YouTube API keys for trailer loading
-    api_key_1 = "AIzaSyBdgQrCmB6XxxOXSN3Oyk8zmsRIxq9V_kg"
-    api_key_2 = "AIzaSyCW13LFIN7BBQWREenK5rcZ1XGQuX8ijKg"
+    api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
+    api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
 
     return render_template(
         "series.html",
@@ -305,7 +313,7 @@ def series_detail(series_id):
         related_series=related_series,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
-        series_id=series_id  # Add this line
+        series_id=series_id
     )
 
 # ===== Series Search =====
@@ -314,6 +322,7 @@ def search_series():
     query = request.args.get("query", "").strip().lower()
     genre = request.args.get("genre", "").strip().lower()
     actor = request.args.get("actor", "").strip().lower()
+    year = request.args.get("year", "").strip()
     min_rating = float(request.args.get("min_rating", 0) or 0)
     max_rating = float(request.args.get("max_rating", 10) or 10)
 
@@ -325,6 +334,8 @@ def search_series():
         results = results[results['Genres'].str.lower().str.replace(" ", "").str.contains(genre.replace(" ", ""), na=False)]
     if actor:
         results = results[results['Actors'].str.lower().str.contains(actor, na=False)]
+    if year:
+        results = results[results['Years'].astype(str).str.contains(year, na=False)]
 
     results['Rating'] = pd.to_numeric(results['Rating'], errors='coerce').fillna(0)
     results = results[(results['Rating'] >= min_rating) & (results['Rating'] <= max_rating)]
@@ -387,8 +398,8 @@ def artist_detail(artist_id):
     related_artists = same_genre.sample(n=min(10, len(same_genre))).to_dict(orient='records')
 
     # YouTube API keys for video embedding
-    api_key_1 = "AIzaSyBdgQrCmB6XxxOXSN3Oyk8zmsRIxq9V_kg"  # Replace with your actual keys
-    api_key_2 = "AIzaSyCW13LFIN7BBQWREenK5rcZ1XGQuX8ijKg"  # Replace with your actual keys
+    api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
+    api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
 
     return render_template(
         "artist.html",
@@ -427,8 +438,8 @@ def game_detail(game_id):
     recommendations = get_game_recommendations(game_id)
 
     # YouTube API keys for video embedding
-    api_key_1 = "AIzaSyBdgQrCmB6XxxOXSN3Oyk8zmsRIxq9V_kg"  # Replace with your actual key
-    api_key_2 = "AIzaSyCW13LFIN7BBQWREenK5rcZ1XGQuX8ijKg"  # Replace with your actual key
+    api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
+    api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
 
     return render_template(
         "game.html",
