@@ -439,7 +439,8 @@ def artist_detail(artist_id):
         artist=artist,
         related_artists=related_artists,
         api_key_1=api_key_1,
-        api_key_2=api_key_2
+        api_key_2=api_key_2,
+        username=current_user()
     )
 
 # ===== Random Artists =====

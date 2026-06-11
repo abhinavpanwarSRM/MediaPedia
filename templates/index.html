@@ -998,13 +998,16 @@
 
       <script>
         window.addEventListener("load", () => {
-          setTimeout(() => {
-            document.getElementById("disclaimer").style.display = "block";
-          }, 1000); // show after 1s
+          if (!sessionStorage.getItem('disclaimer_closed')) {
+            setTimeout(() => {
+              document.getElementById("disclaimer").style.display = "block";
+            }, 1000);
+          }
         });
 
         document.getElementById("closeBtn").addEventListener("click", () => {
           document.getElementById("disclaimer").style.display = "none";
+          sessionStorage.setItem('disclaimer_closed', '1');
         });
       </script>
     </div>
@@ -1137,7 +1140,6 @@
         </div>
       </div></div>
       <div class="navbar-auth">{% if username %}<a href="/u/{{ username }}" class="auth-user">{{ username }}</a><a href="/logout">Logout</a>{% else %}<a href="/feed">Feed</a><a href="/login">Login</a><a href="/register" class="auth-reg">Register</a>{% endif %}</div></div>
-      <div class="navbar-auth">{% if username %}<a href="/u/{{ username }}" class="auth-user">{{ username }}</a><a href="/logout">Logout</a>{% else %}<a href="/feed">Feed</a><a href="/login">Login</a><a href="/register" class="auth-reg">Register</a>{% endif %}</div>
     </div>
 
     <div class="bg-overlay"></div>
@@ -1229,8 +1231,6 @@
             <button id="restart-btn" class="restart-btn">Start Over</button>
           </div>
         </div>
-      </section>
-
       </section>
 
       <!-- Recently Viewed Section -->

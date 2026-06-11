@@ -327,7 +327,18 @@
   </head>
   <body>
     <div class="overlay">
-      <div class="artist-detail">
+      {% if username %}
+      <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+        <a href="/u/{{ username }}" style="color:var(--primary);text-decoration:none;font-size:0.88rem;font-weight:600;">{{ username }}</a>
+        <a href="/logout" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Logout</a>
+      </div>
+      {% else %}
+      <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+        <a href="/login" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Login</a>
+        <a href="/register" style="color:var(--primary);text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
+      </div>
+      {% endif %}
+      <div class="artist-detail" style="margin-top:3.5rem;">
         <h1>{{ artist["artist_name"] }}</h1>
 
         <!-- Artist video will be inserted here -->
@@ -546,7 +557,7 @@
               <p style="font-size:0.82rem;color:#888;margin-bottom:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(title)}</p>
               ${playlists.length
                 ? playlists.map(pl => `<button onclick="addToPlaylist('${pl.playlist_id}','${escA(pl.name)}','${videoId}','${escA(title)}',this.closest('div').parentElement.parentElement)" style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.25);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">🎵 ${escH(pl.name)} <span style="color:#888;font-size:0.78rem;">(${(pl.songs||[]).length} songs)</span></button>`).join('')
-                : '<p style="color:#888;font-size:0.85rem;">No playlists yet. <a href="/u/{{ artist.get(\'ID\',0) }}" style="color:#1db954;">Create one on your profile</a>.</p>'
+                : '<p style="color:#888;font-size:0.85rem;">No playlists yet. {% if username %}<a href="/u/{{ username }}" style="color:#1db954;">Create one on your profile</a>{% else %}<a href="/login" style="color:#1db954;">Login</a> to create playlists{% endif %}.</p>'
               }
               <p style="margin-top:0.8rem;font-size:0.78rem;color:#555;">Not logged in? <a href="/login" style="color:#1db954;">Login</a> first.</p>
             </div>`;
