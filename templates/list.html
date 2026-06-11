@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ lst.name }} by {{ lst.username }} — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 720px; margin: 0 auto; }
+    .back { display: inline-block; color: var(--primary); text-decoration: none; font-size: 0.88rem; margin-bottom: 1.5rem; }
+    .list-header { margin-bottom: 2rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .meta { color: #888; font-size: 0.88rem; }
+    .meta a { color: #5799ef; text-decoration: none; }
+    .item { background: var(--card); border-left: 3px solid var(--primary); border-radius: 6px; padding: 0.9rem 1.2rem; margin-bottom: 0.7rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: #fff; transition: background 0.2s; }
+    .item:hover { background: rgba(229,9,20,0.1); }
+    .item-title { font-weight: 600; }
+    .item-type { font-size: 0.75rem; color: #888; margin-top: 0.2rem; }
+    .badge { font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; }
+    .badge-movie { background: rgba(229,9,20,0.2); color: var(--primary); }
+    .badge-series { background: rgba(0,168,225,0.2); color: #00a8e1; }
+    .empty { color: #666; font-style: italic; padding: 2rem 0; }
+    .share-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #ccc; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 1.5rem; }
+    .share-btn:hover { border-color: var(--primary); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/u/{{ lst.username }}" class="back">← {{ lst.username }}'s profile</a>
+    <div class="list-header">
+      <h1>{{ lst.name }}</h1>
+      <p class="meta">by <a href="/u/{{ lst.username }}">{{ lst.username }}</a> &bull; {{ lst.items|length }} item{{ 's' if lst.items|length != 1 else '' }} &bull; created {{ lst.created_at[:10] }}</p>
+    </div>
+
+    {% if lst.items %}
+      {% for item in lst.items %}
+      <a class="item" href="/{{ item.content_type }}/{{ item.content_id }}">
+        <div>
+          <div class="item-title">{{ item.title }}</div>
+          <div class="item-type">Added {{ item.added_at[:10] }}</div>
+        </div>
+        <span class="badge badge-{{ item.content_type }}">{{ item.content_type|capitalize }}</span>
+      </a>
+      {% endfor %}
+    {% else %}
+      <p class="empty">This list is empty.</p>
+    {% endif %}
+
+    <button class="share-btn" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)})">Copy link</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Community Feed — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 680px; margin: 0 auto; }
+    .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 0.8rem; }
+    .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; }
+    h1 { font-size: 1.6rem; }
+    .auth-links a { color: var(--primary); text-decoration: none; font-size: 0.88rem; margin-left: 1rem; }
+    .feed-item { background: var(--card); border-left: 3px solid var(--primary); border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+    .feed-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.4rem; }
+    .feed-user { font-weight: 600; color: #fff; text-decoration: none; }
+    .feed-user:hover { color: var(--primary); }
+    .feed-time { color: #666; font-size: 0.78rem; }
+    .feed-movie a { color: #5799ef; text-decoration: none; font-size: 0.85rem; }
+    .feed-movie a:hover { text-decoration: underline; }
+    .feed-rating { color: #ffc107; font-size: 0.82rem; margin: 0.3rem 0; }
+    .feed-text { color: #ddd; font-size: 0.9rem; line-height: 1.5; margin-top: 0.4rem; }
+    .feed-likes { color: #888; font-size: 0.78rem; margin-top: 0.5rem; }
+    .empty { color: #666; text-align: center; padding: 3rem; font-style: italic; }
+    .hint { background: rgba(87,153,239,0.1); border: 1px solid rgba(87,153,239,0.3); color: #5799ef; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5rem; }
+    .hint a { color: #5799ef; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <a href="/" class="back">← Home</a>
+      <h1>Community Feed</h1>
+      <div class="auth-links">
+        {% if username %}
+          <a href="/u/{{ username }}">My Profile</a>
+          <a href="/logout">Logout</a>
+        {% else %}
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not username %}
+    <div class="hint">
+      <a href="/login">Sign in</a> or <a href="/register">register</a> to follow users and see their activity first in your feed.
+    </div>
+    {% endif %}
+
+    {% if comments %}
+      {% for c in comments %}
+      <div class="feed-item">
+        <div class="feed-meta">
+          <a href="/u/{{ c.username }}" class="feed-user">{{ c.username }}</a>
+          <span class="feed-time">{{ c.created_at[:10] if c.created_at else '' }}</span>
+        </div>
+        <div class="feed-movie">reviewed <a href="{{ c.content_url }}">{{ c.content_title }}</a></div>
+        <div class="feed-rating">{{ '★' * c.get('rating', 0) }}{{ '☆' * (5 - c.get('rating', 0)) }}</div>
+        <div class="feed-text">{{ c.get('text', '') }}</div>
+        <div class="feed-likes">👍 {{ c.get('likes', 0) }} likes</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">No activity yet. Be the first to review something!</p>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -40,7 +40,7 @@
 
     <div class="controls">
       <div class="control-group">
-        <label>Decade</label>
+        <label>Decade <span style="color:#888;font-size:0.75rem;text-transform:none;letter-spacing:0;">(series only)</span></label>
         <div class="pill-group" id="decade-pills">
           <span class="pill" data-val="1960">60s</span>
           <span class="pill" data-val="1970">70s</span>
@@ -112,12 +112,12 @@
             const isMovie = selectedContent === 'movies';
             const title = isMovie ? item['Movie Name'] : item['Title'];
             const genre = isMovie ? item['Genre'] : item['Genres'];
-            const year = isMovie ? item.get_Year || item['Year'] : item['Years'];
+            const year = isMovie ? '' : (item['Years'] ? ' &bull; ' + item['Years'].toString().slice(0,4) : '');
             const link = item['DetailLink'];
             return `<a class="result-row" href="${link}">
               <div>
                 <div class="res-title">${title || ''}</div>
-                <div class="res-meta">${genre || ''} &bull; ${year || 'N/A'}</div>
+                <div class="res-meta">${genre || ''}${year}</div>
               </div>
               <div class="res-rating">★ ${item['Rating']}</div>
             </a>`;

@@ -372,6 +372,9 @@
           <button class="btn" id="share-movie-btn" onclick="shareItem()">
             <span>Share</span>
           </button>
+          <button class="btn" onclick="openAddToList()">
+            <span>+ List</span>
+          </button>
         </div>
 
         <div class="saved-counter">
@@ -1057,12 +1060,28 @@
                               <span>👍</span>
                               <span class="likes-count">${comment.likes || 0}</span>
                           </button>
-
+                          <button class="like-btn" onclick="toggleReplyBox('${comment.comment_id}')">↩ Reply</button>
                           ${(comment.username || 'Anonymous') === currentUsername ? `
                               <button class="delete-btn" onclick="deleteComment('${comment.comment_id}')">
                                   Delete
                               </button>
                           ` : ''}
+                      </div>
+                      <div id="reply-box-${comment.comment_id}" style="display:none;margin-top:0.6rem;">
+                        <div style="display:flex;gap:0.5rem;">
+                          <input type="text" placeholder="Write a reply..." id="reply-input-${comment.comment_id}"
+                            style="flex:1;padding:0.4rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;font-size:0.85rem;" />
+                          <button onclick="submitReply('${comment.comment_id}')"
+                            style="padding:0.4rem 0.8rem;background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.82rem;">Post</button>
+                        </div>
+                        <div id="replies-${comment.comment_id}" style="margin-top:0.5rem;">
+                          ${(comment.replies||[]).map(r=>`
+                            <div style="background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;">
+                              <span style="font-weight:600;font-size:0.82rem;color:#ccc;">${escapeHtml(r.username)}</span>
+                              <span style="color:#888;font-size:0.75rem;margin-left:0.5rem;">${r.created_at?r.created_at.slice(0,10):''}</span>
+                              <div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${escapeHtml(r.text)}</div>
+                            </div>`).join('')}
+                        </div>
                       </div>
                   </div>
               `).join('');
@@ -1155,6 +1174,32 @@
                   }
               })
               .catch(error => console.error('Error deleting comment:', error));
+          }
+
+          function toggleReplyBox(commentId) {
+              const box = document.getElementById('reply-box-' + commentId);
+              box.style.display = box.style.display === 'none' ? 'block' : 'none';
+          }
+
+          function submitReply(commentId) {
+              const input = document.getElementById('reply-input-' + commentId);
+              const text = input.value.trim();
+              if (!text) return;
+              fetch(`/api/comments/${commentId}/reply`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text, username: currentUsername || 'Anonymous' })
+              })
+              .then(r => r.json())
+              .then(reply => {
+                  if (reply.error) { alert(reply.error); return; }
+                  input.value = '';
+                  const container = document.getElementById('replies-' + commentId);
+                  const div = document.createElement('div');
+                  div.style.cssText = 'background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;';
+                  div.innerHTML = `<span style="font-weight:600;font-size:0.82rem;color:#ccc;">${reply.username}</span><div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${reply.text}</div>`;
+                  container.appendChild(div);
+              });
           }
 
           function escapeHtml(unsafe) {
@@ -1637,6 +1682,58 @@
           if (e.key === "Escape") {
             overlay.remove();
             document.removeEventListener("keydown", escClose);
+          }
+        });
+      }
+    </script>
+    <script>
+      // Add to List
+      function openAddToList() {
+        fetch('/api/lists')
+          .then(r => r.json())
+          .then(lists => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
+            const noLists = lists.length === 0;
+            overlay.innerHTML = `
+              <div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+                  <h3 style="margin:0;color:#fff;">Add to List</h3>
+                  <button onclick="this.closest('div[style]').parentElement.remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">×</button>
+                </div>
+                ${noLists
+                  ? '<p style="color:#888;font-size:0.9rem;margin-bottom:1rem;">You have no lists yet. <a href="/u/" style="color:#5799ef;">Create one on your profile</a>.</p>'
+                  : lists.map(l => `
+                    <button onclick="addMovieToList('${l.list_id}','${l.name}',this.closest('div[style]').parentElement)" style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
+                      ${l.name} <span style="color:#888;font-size:0.78rem;">(${l.items.length} items)</span>
+                    </button>`).join('')
+                }
+                <p style="margin-top:0.8rem;font-size:0.78rem;color:#666;">Not logged in? <a href="/login" style="color:#5799ef;">Login</a> to use lists.</p>
+              </div>`;
+            document.body.appendChild(overlay);
+          })
+          .catch(() => { window.location.href = '/login'; });
+      }
+
+      function addMovieToList(listId, listName, overlay) {
+        fetch('/api/lists/' + listId + '/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content_type: 'movie',
+            content_id: {{ movie_id }},
+            title: {{ movie['Movie Name']|tojson }}
+          })
+        })
+        .then(r => r.json())
+        .then(d => {
+          overlay.remove();
+          if (d.success) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#2ed573;color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
+            toast.textContent = 'Added to "' + listName + '"';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
           }
         });
       }

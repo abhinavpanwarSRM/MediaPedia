@@ -2,3 +2,4 @@ Flask
 pandas
 pymongo
 python-dotenv
+flask-bcrypt

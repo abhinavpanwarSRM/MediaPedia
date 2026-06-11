@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>{{ username }} — Profile</title>
+  <title>{{ username }} — MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
@@ -10,43 +10,103 @@
     body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
     .container { max-width: 800px; margin: 0 auto; }
     .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
-    .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
-    h1 { font-size: clamp(1.6rem, 4vw, 2rem); margin-bottom: 1.5rem; }
-    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
-    .stat { background: rgba(255,255,255,0.04); padding: 1rem 1.5rem; border-radius: 8px; border-left: 3px solid var(--primary); }
-    .stat-val { font-size: 1.6rem; font-weight: 700; color: var(--primary); }
-    .stat-label { font-size: 0.82rem; color: var(--grey); }
-    h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; }
+    .profile-head { display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; flex-shrink: 0; }
+    .profile-info h1 { font-size: clamp(1.4rem, 4vw, 2rem); }
+    .follow-btn { padding: 0.45rem 1.2rem; border-radius: 20px; font-size: 0.88rem; font-weight: 600; cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff; transition: all 0.2s; }
+    .follow-btn:hover { background: rgba(229,9,20,0.35); }
+    .follow-btn.following { background: transparent; border-color: rgba(255,255,255,0.2); color: #888; }
+    .stats { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .stat { background: rgba(255,255,255,0.04); padding: 0.9rem 1.3rem; border-radius: 8px; border-left: 3px solid var(--primary); }
+    .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 0.8rem; color: var(--grey); }
+    .section-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; margin-top: 2rem; }
     .comment-card { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; border-left: 2px solid var(--primary); margin-bottom: 0.8rem; }
     .comment-meta { font-size: 0.8rem; color: var(--grey); margin-bottom: 0.4rem; }
     .comment-rating { color: #ffc107; font-size: 0.85rem; margin-bottom: 0.4rem; }
     .comment-text { font-size: 0.92rem; color: #ddd; line-height: 1.5; }
     .comment-likes { font-size: 0.78rem; color: var(--grey); margin-top: 0.5rem; }
-    .empty { color: var(--grey); font-style: italic; padding: 1rem 0; }
+    .list-card { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 0.9rem 1.2rem; border-left: 2px solid #5799ef; margin-bottom: 0.7rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: #fff; transition: background 0.2s; }
+    .list-card:hover { background: rgba(87,153,239,0.1); }
+    .list-name { font-weight: 600; }
+    .list-count { font-size: 0.8rem; color: #888; margin-top: 0.2rem; }
+    .new-list-form { display: flex; gap: 0.6rem; margin-bottom: 1rem; }
+    .new-list-form input { flex: 1; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-size: 0.9rem; }
+    .new-list-form input:focus { outline: none; border-color: #5799ef; }
+    .new-list-form button { padding: 0.55rem 1rem; background: rgba(87,153,239,0.2); border: 1px solid #5799ef; color: #5799ef; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+    .new-list-form button:hover { background: rgba(87,153,239,0.35); }
+    .empty { color: var(--grey); font-style: italic; padding: 0.5rem 0; }
   </style>
 </head>
 <body>
   <div class="container">
     <a href="/" class="back">← Back to Home</a>
-    <div class="avatar">{{ username[0]|upper }}</div>
-    <h1>{{ username }}</h1>
+
+    <div class="profile-head">
+      <div class="avatar">{{ username[0]|upper }}</div>
+      <div class="profile-info">
+        <h1>{{ username }}</h1>
+        {% if viewer and viewer != username %}
+        <button class="follow-btn {{ 'following' if is_following else '' }}"
+                id="follow-btn"
+                onclick="toggleFollow('{{ username }}')">
+          {{ 'Following' if is_following else 'Follow' }}
+        </button>
+        {% endif %}
+        {% if viewer == username %}
+        <a href="/logout" style="font-size:0.82rem;color:#888;text-decoration:none;margin-left:0.8rem;">Logout</a>
+        {% endif %}
+      </div>
+    </div>
 
     <div class="stats">
       <div class="stat">
         <div class="stat-val">{{ comments|length }}</div>
-        <div class="stat-label">Reviews Written</div>
+        <div class="stat-label">Reviews</div>
       </div>
       <div class="stat">
         <div class="stat-val">{{ total_likes }}</div>
-        <div class="stat-label">Total Likes Received</div>
+        <div class="stat-label">Likes Received</div>
       </div>
       <div class="stat">
         <div class="stat-val">{{ avg_rating }}</div>
-        <div class="stat-label">Average Rating Given</div>
+        <div class="stat-label">Avg Rating</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ followers }}</div>
+        <div class="stat-label">Followers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ following }}</div>
+        <div class="stat-label">Following</div>
       </div>
     </div>
 
-    <h2>Recent Reviews</h2>
+    <!-- User Lists -->
+    <div class="section-title">Lists</div>
+    {% if viewer == username %}
+    <div class="new-list-form">
+      <input type="text" id="new-list-name" placeholder="New list name..." maxlength="50" />
+      <button onclick="createList()">+ Create</button>
+    </div>
+    {% endif %}
+
+    <div id="lists-container">
+      {% for lst in user_lists %}
+      <a class="list-card" href="/list/{{ lst.list_id }}">
+        <div>
+          <div class="list-name">{{ lst.name }}</div>
+          <div class="list-count">{{ lst.items|length }} item{{ 's' if lst.items|length != 1 else '' }}</div>
+        </div>
+        <span style="color:#5799ef;font-size:1.1rem;">→</span>
+      </a>
+      {% else %}
+      <p class="empty">No lists yet.</p>
+      {% endfor %}
+    </div>
+
+    <!-- Reviews -->
+    <div class="section-title" style="margin-top:2rem;">Recent Reviews</div>
     {% for c in comments %}
     <div class="comment-card">
       <div class="comment-meta">{{ c.get('created_at','')[:10] }}</div>
@@ -58,5 +118,45 @@
     <p class="empty">No reviews yet.</p>
     {% endfor %}
   </div>
+
+  <script>
+    function toggleFollow(target) {
+      fetch('/api/follow/' + target, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          const btn = document.getElementById('follow-btn');
+          if (d.status === 'followed') {
+            btn.textContent = 'Following';
+            btn.classList.add('following');
+          } else {
+            btn.textContent = 'Follow';
+            btn.classList.remove('following');
+          }
+        });
+    }
+
+    function createList() {
+      const name = document.getElementById('new-list-name').value.trim();
+      if (!name) return;
+      fetch('/api/lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) { alert(d.error); return; }
+        document.getElementById('new-list-name').value = '';
+        const container = document.getElementById('lists-container');
+        const p = container.querySelector('.empty');
+        if (p) p.remove();
+        const a = document.createElement('a');
+        a.className = 'list-card';
+        a.href = '/list/' + d.list_id;
+        a.innerHTML = `<div><div class="list-name">${d.name}</div><div class="list-count">0 items</div></div><span style="color:#5799ef;font-size:1.1rem;">→</span>`;
+        container.prepend(a);
+      });
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.95); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 2.5rem 2rem; width: 100%; max-width: 380px; }
+    h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .sub { color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
+    label { display: block; color: #aaa; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem; }
+    input { width: 100%; padding: 0.65rem 0.9rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; font-size: 0.95rem; margin-bottom: 1.2rem; }
+    input:focus { outline: none; border-color: var(--primary); }
+    .btn { width: 100%; padding: 0.75rem; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 0.3rem; }
+    .btn:hover { background: #f40612; }
+    .error { background: rgba(255,71,87,0.12); border: 1px solid #ff4757; color: #ff4757; padding: 0.7rem 1rem; border-radius: 6px; font-size: 0.88rem; margin-bottom: 1.2rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #888; font-size: 0.88rem; }
+    .footer a { color: var(--primary); text-decoration: none; }
+    .back { display: inline-block; color: var(--primary); text-decoration: none; font-size: 0.85rem; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="/" class="back">← Back to MediaPedia</a>
+    <h1>Welcome back</h1>
+    <p class="sub">Sign in to your account</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="POST">
+      <label>Username</label>
+      <input type="text" name="username" autocomplete="username" required />
+      <label>Password</label>
+      <input type="password" name="password" autocomplete="current-password" required />
+      <button class="btn" type="submit">Sign In</button>
+    </form>
+    <div class="footer">Don't have an account? <a href="/register">Register</a></div>
+  </div>
+</body>
+</html>

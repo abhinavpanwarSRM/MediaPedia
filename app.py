@@ -1,15 +1,18 @@
 import json
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import pandas as pd
 import os
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
+from flask_bcrypt import Bcrypt
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "mediapedia-secret-2024")
+bcrypt = Bcrypt(app)
 
 MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
@@ -18,14 +21,40 @@ try:
     client = MongoClient(MONGO_URI)
     db = client[DB_NAME]
     comments_collection = db.comments
-    
-    # Create indexes for better performance
     comments_collection.create_index("id")
     comments_collection.create_index("created_at")
+    users_collection = db.users
+    users_collection.create_index("username", unique=True)
+    lists_collection = db.lists
+    lists_collection.create_index("username")
+    follows_collection = db.follows
+    follows_collection.create_index([("follower", 1), ("following", 1)], unique=True)
     print("✅ MongoDB connected successfully")
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
+    db = None
     comments_collection = None
+    users_collection = None
+    lists_collection = None
+    follows_collection = None
+
+# ===== TMDB Proxy (keeps token server-side) =====
+@app.route("/api/tmdb/popular")
+def tmdb_popular():
+    import urllib.request
+    token = os.getenv("TMDB_TOKEN", "")
+    if not token:
+        return jsonify({"error": "TMDB token not configured"}), 500
+    try:
+        req = urllib.request.Request(
+            "https://api.themoviedb.org/3/movie/popular",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            import json as _json
+            return jsonify(_json.loads(resp.read()))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ===== Comment Routes =====
 
@@ -68,11 +97,12 @@ def add_comment():
         
         # Create comment document
         comment = {
-            "comment_id": str(uuid.uuid4()),  # Generate unique ID
+            "comment_id": str(uuid.uuid4()),
             "id": data["id"],
-            "username": data["username"][:50],  # Limit length
-            "text": data["text"][:1000],  # Limit length
-            "rating": min(5, max(1, int(data.get("rating", 5)))),  # 1-5 stars
+            "content_type": data.get("content_type", "movie"),  # 'movie' or 'series'
+            "username": data["username"][:50],
+            "text": data["text"][:1000],
+            "rating": min(5, max(1, int(data.get("rating", 5)))),
             "created_at": datetime.utcnow(),
             "likes": 0,
             "replies": []
@@ -188,7 +218,7 @@ df = df.fillna("")
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("index.html", username=current_user())
 
 @app.route('/authors_choice')
 def authors_choice():
@@ -622,10 +652,7 @@ def era_movies():
         return jsonify(results.to_dict(orient='records'))
     else:
         results = df.copy()
-        if decade:
-            start_year = int(decade)
-            results['Year'] = pd.to_numeric(results['Year'], errors='coerce')
-            results = results[results['Year'].between(start_year, start_year + 9)]
+        # movies.csv has no Year column — decade filter skipped for movies
         if target_genres:
             results = results[results['Genre'].str.lower().apply(lambda g: any(t.lower() in g for t in target_genres))]
         results['Rating'] = pd.to_numeric(results['Rating'], errors='coerce').fillna(0)
@@ -671,9 +698,11 @@ def complete_vibe():
     })
 
 # ===== Seen It Votes =====
+seen_collection = None
 try:
-    seen_collection = db.seen_votes
-    seen_collection.create_index("content_id")
+    if db is not None:
+        seen_collection = db.seen_votes
+        seen_collection.create_index("content_id")
 except Exception:
     seen_collection = None
 
@@ -710,8 +739,16 @@ def user_profile(username):
             c['created_at'] = c['created_at'].isoformat()
     total_likes = sum(c.get('likes', 0) for c in user_comments)
     avg_rating = round(sum(c.get('rating', 0) for c in user_comments) / len(user_comments), 1) if user_comments else 0
+    followers = follows_collection.count_documents({'following': username}) if follows_collection else 0
+    following = follows_collection.count_documents({'follower': username}) if follows_collection else 0
+    viewer = current_user()
+    is_following = follows_collection.find_one({'follower': viewer, 'following': username}) is not None if (follows_collection and viewer) else False
+    user_lists = list(lists_collection.find({'username': username}, {'_id': 0})) if lists_collection else []
     return render_template('profile.html', username=username, comments=user_comments,
-                           total_likes=total_likes, avg_rating=avg_rating)
+                           total_likes=total_likes, avg_rating=avg_rating,
+                           followers=followers, following=following,
+                           is_following=is_following, viewer=viewer,
+                           user_lists=user_lists)
 
 # ===== Hot Takes Feed =====
 @app.route("/api/hot_takes")
@@ -782,6 +819,258 @@ def random_movies():
     for m in sample:
         m['DetailLink'] = f"/movie/{m['ID']}"
     return jsonify(sample)
+
+# ===== Global Search =====
+@app.route("/api/global_search")
+def global_search():
+    query = request.args.get("q", "").strip().lower()
+    if not query or len(query) < 2:
+        return jsonify([])
+    results = []
+    # Movies
+    movie_hits = df[df['Movie Name'].str.lower().str.contains(query, na=False)].head(5)
+    for _, m in movie_hits.iterrows():
+        results.append({'type': 'movie', 'id': int(m['ID']), 'title': m['Movie Name'],
+                        'sub': m.get('Genre', ''), 'url': f"/movie/{m['ID']}"})
+    # Series
+    series_hits = series_df[series_df['Title'].str.lower().str.contains(query, na=False)].head(5)
+    for _, s in series_hits.iterrows():
+        results.append({'type': 'series', 'id': int(s['ID']), 'title': s['Title'],
+                        'sub': s.get('Genres', ''), 'url': f"/series/{s['ID']}"})
+    # Artists
+    artist_hits = artists_df[artists_df['artist_name'].str.lower().str.contains(query, na=False)].head(3)
+    for _, a in artist_hits.iterrows():
+        results.append({'type': 'artist', 'id': int(a['ID']), 'title': a['artist_name'],
+                        'sub': a.get('artist_genre', ''), 'url': f"/artist/{a['ID']}"})
+    # Directors
+    dir_hits = df[df['Directors'].str.lower().str.contains(query, na=False)]
+    if not dir_hits.empty:
+        dirs = set()
+        for d_str in dir_hits['Directors'].dropna():
+            for d in str(d_str).strip("[]").replace("'", "").split(","):
+                d = d.strip()
+                if d and query in d.lower():
+                    dirs.add(d)
+        for d in list(dirs)[:2]:
+            results.append({'type': 'director', 'id': 0, 'title': d,
+                            'sub': 'Director', 'url': f"/director/{d}"})
+    return jsonify(results[:12])
+
+# ===== Auth helper =====
+def current_user():
+    return session.get('username')
+
+# ===== Register =====
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user():
+        return redirect('/')
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        if not username or not password:
+            return render_template('register.html', error='All fields required')
+        if len(username) < 3 or len(username) > 30:
+            return render_template('register.html', error='Username must be 3–30 characters')
+        if users_collection is None:
+            return render_template('register.html', error='Database unavailable')
+        if users_collection.find_one({'username': username}):
+            return render_template('register.html', error='Username already taken')
+        hashed = bcrypt.generate_password_hash(password).decode('utf-8')
+        users_collection.insert_one({
+            'username': username,
+            'password': hashed,
+            'created_at': datetime.utcnow(),
+            'bio': ''
+        })
+        session['username'] = username
+        return redirect('/')
+    return render_template('register.html', error=None)
+
+# ===== Login =====
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user():
+        return redirect('/')
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        if users_collection is None:
+            return render_template('login.html', error='Database unavailable')
+        user = users_collection.find_one({'username': username})
+        if not user or not bcrypt.check_password_hash(user['password'], password):
+            return render_template('login.html', error='Invalid username or password')
+        session['username'] = username
+        return redirect('/')
+    return render_template('login.html', error=None)
+
+# ===== Logout =====
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect('/')
+
+# ===== Activity Feed =====
+@app.route('/feed')
+def feed():
+    username = current_user()
+    if comments_collection is None:
+        return render_template('feed.html', comments=[], username=username)
+    # If logged in, show followed users' activity first, then global
+    if username and follows_collection is not None:
+        following = [f['following'] for f in follows_collection.find({'follower': username})]
+        if following:
+            priority = list(comments_collection.find(
+                {'username': {'$in': following}}, {'_id': 0}
+            ).sort('created_at', DESCENDING).limit(30))
+            others = list(comments_collection.find(
+                {'username': {'$nin': following + [username]}}, {'_id': 0}
+            ).sort('created_at', DESCENDING).limit(20))
+            comments = priority + others
+        else:
+            comments = list(comments_collection.find({}, {'_id': 0}).sort('created_at', DESCENDING).limit(50))
+    else:
+        comments = list(comments_collection.find({}, {'_id': 0}).sort('created_at', DESCENDING).limit(50))
+    for c in comments:
+        if 'created_at' in c:
+            c['created_at'] = c['created_at'].isoformat()
+        # Attach movie/series title
+        ctype = c.get('content_type', 'movie')
+        cid = c.get('id')
+        if ctype == 'movie':
+            row = df[df['ID'] == cid]
+            c['content_title'] = row.iloc[0]['Movie Name'] if not row.empty else 'Unknown'
+            c['content_url'] = f"/movie/{cid}"
+        else:
+            row = series_df[series_df['ID'] == cid]
+            c['content_title'] = row.iloc[0]['Title'] if not row.empty else 'Unknown'
+            c['content_url'] = f"/series/{cid}"
+    return render_template('feed.html', comments=comments, username=username)
+
+# ===== Follow / Unfollow =====
+@app.route('/api/follow/<target>', methods=['POST'])
+def follow_user(target):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if username == target:
+        return jsonify({'error': 'Cannot follow yourself'}), 400
+    if follows_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    existing = follows_collection.find_one({'follower': username, 'following': target})
+    if existing:
+        follows_collection.delete_one({'follower': username, 'following': target})
+        return jsonify({'status': 'unfollowed'})
+    follows_collection.insert_one({'follower': username, 'following': target, 'created_at': datetime.utcnow()})
+    return jsonify({'status': 'followed'})
+
+# ===== User Lists =====
+@app.route('/api/lists', methods=['GET'])
+def get_my_lists():
+    username = current_user()
+    if not username or lists_collection is None:
+        return jsonify([])
+    lists = list(lists_collection.find({'username': username}, {'_id': 0}))
+    return jsonify(lists)
+
+@app.route('/api/lists', methods=['POST'])
+def create_list():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if lists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'List name required'}), 400
+    list_id = str(uuid.uuid4())[:8]
+    lists_collection.insert_one({
+        'list_id': list_id,
+        'username': username,
+        'name': name,
+        'items': [],
+        'created_at': datetime.utcnow()
+    })
+    return jsonify({'list_id': list_id, 'name': name}), 201
+
+@app.route('/api/lists/<list_id>/add', methods=['POST'])
+def add_to_list(list_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if lists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json
+    item = {
+        'content_type': data.get('content_type', 'movie'),
+        'content_id': data.get('content_id'),
+        'title': data.get('title', ''),
+        'added_at': datetime.utcnow().isoformat()
+    }
+    result = lists_collection.update_one(
+        {'list_id': list_id, 'username': username},
+        {'$addToSet': {'items': item}}
+    )
+    if result.matched_count == 0:
+        return jsonify({'error': 'List not found'}), 404
+    return jsonify({'success': True})
+
+@app.route('/api/lists/<list_id>/remove', methods=['POST'])
+def remove_from_list(list_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if lists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json
+    lists_collection.update_one(
+        {'list_id': list_id, 'username': username},
+        {'$pull': {'items': {'content_id': data.get('content_id'), 'content_type': data.get('content_type')}}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/lists/<list_id>', methods=['DELETE'])
+def delete_list(list_id):
+    username = current_user()
+    if not username or lists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    lists_collection.delete_one({'list_id': list_id, 'username': username})
+    return jsonify({'success': True})
+
+@app.route('/list/<list_id>')
+def view_list(list_id):
+    if lists_collection is None:
+        return render_template('404.html'), 404
+    lst = lists_collection.find_one({'list_id': list_id}, {'_id': 0})
+    if not lst:
+        return render_template('404.html'), 404
+    lst['created_at'] = lst['created_at'].isoformat() if isinstance(lst.get('created_at'), datetime) else ''
+    return render_template('list.html', lst=lst, username=current_user())
+
+# ===== Threaded Replies =====
+@app.route('/api/comments/<comment_id>/reply', methods=['POST'])
+def reply_to_comment(comment_id):
+    if comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    username = current_user() or request.json.get('username', 'Anonymous')
+    text = request.json.get('text', '').strip()
+    if not text:
+        return jsonify({'error': 'Reply text required'}), 400
+    reply = {
+        'reply_id': str(uuid.uuid4()),
+        'username': username[:50],
+        'text': text[:500],
+        'created_at': datetime.utcnow().isoformat(),
+        'likes': 0
+    }
+    result = comments_collection.update_one(
+        {'comment_id': comment_id},
+        {'$push': {'replies': reply}}
+    )
+    if result.matched_count == 0:
+        return jsonify({'error': 'Comment not found'}), 404
+    return jsonify(reply), 201
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
