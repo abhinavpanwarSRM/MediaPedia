@@ -350,6 +350,21 @@
           <div id="playlist-container" class="video-container"></div>
         </div>
 
+        <!-- YouTube Search on Artist Page -->
+        <div class="playlist-section">
+          <h3>Search Songs &amp; Add to Your Playlist</h3>
+          <div style="display:flex;gap:0.6rem;margin-bottom:0.8rem;">
+            <input type="text" id="artist-yt-search"
+              placeholder="Search a song by {{ artist['artist_name'] }}..."
+              value="{{ artist['artist_name'] }}"
+              style="flex:1;padding:0.6rem 0.9rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#fff;font-size:0.9rem;"
+              onkeydown="if(event.key==='Enter')artistSearch()" />
+            <button onclick="artistSearch()"
+              style="padding:0.6rem 1.1rem;background:var(--primary);border:none;border-radius:6px;color:#000;font-weight:700;cursor:pointer;">Search</button>
+          </div>
+          <div id="artist-search-results" style="display:grid;gap:0.5rem;"></div>
+        </div>
+
         <!-- Related Artists Section -->
         <div class="related-artists">
           <h3>Similar Artists</h3>
@@ -469,6 +484,105 @@
 
       fetchArtistVideo();
       fetchBestSongsPlaylist();
+    </script>
+
+    <script>
+      const ARTIST_NAME = '{{ artist["artist_name"] }}';
+      const ARTIST_ID = {{ artist.get('ID', 0) }};
+      const ART_YT_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
+      let artKeyIdx = 0;
+
+      function artistSearch() {
+        const q = document.getElementById('artist-yt-search').value.trim();
+        if (!q) return;
+        const container = document.getElementById('artist-search-results');
+        container.innerHTML = '<div style="color:#888;font-size:0.85rem;padding:0.4rem;">Searching...</div>';
+        const key = ART_YT_KEYS[artKeyIdx % ART_YT_KEYS.length];
+        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=5&type=video`)
+          .then(r => r.json())
+          .then(data => {
+            if (!data.items || !data.items.length) { container.innerHTML = '<div style="color:#666;">No results.</div>'; return; }
+            container.innerHTML = data.items.map(item => {
+              const vid = item.id.videoId;
+              const title = item.snippet.title;
+              const thumb = item.snippet.thumbnails.default.url;
+              return `<div style="display:flex;align-items:center;gap:0.8rem;background:rgba(255,255,255,0.04);border-radius:6px;padding:0.6rem 0.8rem;">
+                <img src="${thumb}" style="width:52px;height:38px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+                <div style="flex:1;font-size:0.85rem;">${escH(title)}</div>
+                <button onclick="previewArtistSong('${vid}')" style="background:rgba(29,185,84,0.15);border:1px solid var(--primary);color:var(--primary);padding:0.3rem 0.6rem;border-radius:4px;font-size:0.78rem;cursor:pointer;white-space:nowrap;">▶ Play</button>
+                <button onclick="openAddToPlaylistModal('${vid}','${escA(title)}')" style="background:rgba(29,185,84,0.15);border:1px solid var(--primary);color:var(--primary);padding:0.3rem 0.6rem;border-radius:4px;font-size:0.78rem;cursor:pointer;white-space:nowrap;">+ Playlist</button>
+              </div>`;
+            }).join('');
+          })
+          .catch(() => { artKeyIdx++; if (artKeyIdx < 4) artistSearch(); });
+      }
+
+      function previewArtistSong(videoId) {
+        // Show inline player at top of artist page
+        let player = document.getElementById('inline-player');
+        if (!player) {
+          player = document.createElement('div');
+          player.id = 'inline-player';
+          player.style.cssText = 'margin:1rem 0;border-radius:8px;overflow:hidden;';
+          document.getElementById('video-container').after(player);
+        }
+        player.innerHTML = `<iframe width="100%" style="aspect-ratio:16/9;border:none;border-radius:8px;"
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        player.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+
+      function openAddToPlaylistModal(videoId, title) {
+        fetch('/api/playlists')
+          .then(r => r.json())
+          .then(playlists => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = `<div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h3 style="margin:0;color:#fff;font-size:1rem;">Add to Playlist</h3>
+                <button onclick="this.closest('div').parentElement.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">&times;</button>
+              </div>
+              <p style="font-size:0.82rem;color:#888;margin-bottom:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(title)}</p>
+              ${playlists.length
+                ? playlists.map(pl => `<button onclick="addToPlaylist('${pl.playlist_id}','${escA(pl.name)}','${videoId}','${escA(title)}',this.closest('div').parentElement.parentElement)" style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.25);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">🎵 ${escH(pl.name)} <span style="color:#888;font-size:0.78rem;">(${(pl.songs||[]).length} songs)</span></button>`).join('')
+                : '<p style="color:#888;font-size:0.85rem;">No playlists yet. <a href="/u/{{ artist.get(\'ID\',0) }}" style="color:#1db954;">Create one on your profile</a>.</p>'
+              }
+              <p style="margin-top:0.8rem;font-size:0.78rem;color:#555;">Not logged in? <a href="/login" style="color:#1db954;">Login</a> first.</p>
+            </div>`;
+            document.body.appendChild(overlay);
+          });
+      }
+
+      function addToPlaylist(playlistId, playlistName, videoId, title, overlay) {
+        fetch('/api/playlists/' + playlistId + '/songs', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            song_title: title,
+            artist_name: ARTIST_NAME,
+            artist_id: ARTIST_ID,
+            youtube_query: videoId
+          })
+        })
+        .then(r => r.json())
+        .then(d => {
+          overlay.remove();
+          if (!d.error) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1db954;color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.88rem;z-index:9999;';
+            toast.textContent = 'Added to "' + playlistName + '"';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+          }
+        });
+      }
+
+      function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+      function escA(s) { return String(s).replace(/'/g,"\\'"); }
+
+      // Auto-search on load
+      window.addEventListener('load', artistSearch);
     </script>
   </body>
 </html>

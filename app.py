@@ -29,6 +29,8 @@ try:
     lists_collection.create_index("username")
     follows_collection = db.follows
     follows_collection.create_index([("follower", 1), ("following", 1)], unique=True)
+    playlists_collection = db.playlists
+    playlists_collection.create_index("username")
     print("✅ MongoDB connected successfully")
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
@@ -37,6 +39,7 @@ except Exception as e:
     users_collection = None
     lists_collection = None
     follows_collection = None
+    playlists_collection = None
 
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
@@ -1071,6 +1074,174 @@ def reply_to_comment(comment_id):
     if result.matched_count == 0:
         return jsonify({'error': 'Comment not found'}), 404
     return jsonify(reply), 201
+
+# ===== Playlist Routes =====
+
+@app.route('/api/playlists', methods=['GET'])
+def get_playlists():
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify([])
+    playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
+    return jsonify(playlists)
+
+@app.route('/api/playlists', methods=['POST'])
+def create_playlist():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if playlists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Playlist name required'}), 400
+    playlist_id = str(uuid.uuid4())[:10]
+    doc = {
+        'playlist_id': playlist_id,
+        'username': username,
+        'name': name,
+        'songs': [],
+        'created_at': datetime.utcnow()
+    }
+    playlists_collection.insert_one(doc)
+    return jsonify({'playlist_id': playlist_id, 'name': name, 'songs': []}), 201
+
+@app.route('/api/playlists/<playlist_id>', methods=['GET'])
+def get_playlist(playlist_id):
+    if playlists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0})
+    if not pl:
+        return jsonify({'error': 'Not found'}), 404
+    if isinstance(pl.get('created_at'), datetime):
+        pl['created_at'] = pl['created_at'].isoformat()
+    return jsonify(pl)
+
+@app.route('/api/playlists/<playlist_id>/rename', methods=['POST'])
+def rename_playlist(playlist_id):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    name = request.json.get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$set': {'name': name}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/playlists/<playlist_id>', methods=['DELETE'])
+def delete_playlist(playlist_id):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    playlists_collection.delete_one({'playlist_id': playlist_id, 'username': username})
+    return jsonify({'success': True})
+
+@app.route('/api/playlists/<playlist_id>/songs', methods=['POST'])
+def add_song(playlist_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if playlists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json
+    song = {
+        'song_id': str(uuid.uuid4())[:8],
+        'song_title': data.get('song_title', '').strip(),
+        'artist_name': data.get('artist_name', '').strip(),
+        'artist_id': data.get('artist_id', 0),
+        'youtube_query': data.get('youtube_query', '').strip(),
+        'added_at': datetime.utcnow().isoformat()
+    }
+    if not song['song_title'] or not song['artist_name']:
+        return jsonify({'error': 'Song title and artist required'}), 400
+    result = playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$push': {'songs': song}}
+    )
+    if result.matched_count == 0:
+        return jsonify({'error': 'Playlist not found or unauthorized'}), 404
+    return jsonify(song), 201
+
+@app.route('/api/playlists/<playlist_id>/songs/<song_id>', methods=['DELETE'])
+def remove_song(playlist_id, song_id):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$pull': {'songs': {'song_id': song_id}}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/playlists/<playlist_id>/reorder', methods=['POST'])
+def reorder_songs(playlist_id):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    songs = request.json.get('songs', [])
+    playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$set': {'songs': songs}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/playlists/recommendations')
+def playlist_recommendations():
+    """Suggest artists based on genres in user's playlists"""
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify([])
+    playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
+    # Collect all artist names already in playlists
+    existing_artists = set()
+    genre_counts = {}
+    for pl in playlists:
+        for song in pl.get('songs', []):
+            aname = song.get('artist_name', '').lower()
+            existing_artists.add(aname)
+            # Look up genres from CSV
+            match = artists_df[artists_df['artist_name'].str.lower() == aname]
+            if not match.empty:
+                for g in str(match.iloc[0].get('artist_genre', '')).split(','):
+                    g = g.strip().lower()
+                    if g:
+                        genre_counts[g] = genre_counts.get(g, 0) + 1
+    if not genre_counts:
+        # No genre data — return random popular artists
+        sample = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
+        for a in sample:
+            a['DetailLink'] = f"/artist/{a['ID']}"
+        return jsonify(sample)
+    # Sort genres by frequency
+    top_genres = sorted(genre_counts, key=genre_counts.get, reverse=True)[:3]
+    # Find artists matching top genres, excluding ones already in playlist
+    mask = artists_df['artist_genre'].str.lower().apply(
+        lambda g: any(tg in g for tg in top_genres)
+    )
+    candidates = artists_df[mask]
+    candidates = candidates[~candidates['artist_name'].str.lower().isin(existing_artists)]
+    result = candidates.sample(n=min(8, len(candidates))).to_dict(orient='records') if not candidates.empty else []
+    for a in result:
+        a['DetailLink'] = f"/artist/{a['ID']}"
+    return jsonify(result)
+
+@app.route('/playlist/<playlist_id>')
+def view_playlist(playlist_id):
+    if playlists_collection is None:
+        return render_template('404.html'), 404
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0})
+    if not pl:
+        return render_template('404.html'), 404
+    if isinstance(pl.get('created_at'), datetime):
+        pl['created_at'] = pl['created_at'].isoformat()
+    api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
+    api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    return render_template('playlist.html', pl=pl, username=current_user(),
+                           api_key_1=api_key_1, api_key_2=api_key_2)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -943,19 +943,6 @@
     </style>
   </head>
   <body>
-    <!-- Auth + Community top bar -->
-    <div style="position:fixed;top:0;right:0;z-index:1100;display:flex;gap:0.5rem;padding:0.5rem 1rem;>
- <a href=/feed style=background:rgba(20,20,20,0.92);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:0.35rem 0.85rem;border-radius:20px;text-decoration:none;font-size:0.8rem;font-weight:600;>Feed</a>
- {% if username %}
- <a href=/u/{{ username }} style=background:rgba(229,9,20,0.15);border:1px solid rgba(229,9,20,0.4);color:#fff;padding:0.35rem 0.85rem;border-radius:20px;text-decoration:none;font-size:0.8rem;font-weight:600;>{{ username }}</a>
- <a href=/logout style=background:rgba(20,20,20,0.92);border:1px solid rgba(255,255,255,0.1);color:#888;padding:0.35rem 0.85rem;border-radius:20px;text-decoration:none;font-size:0.8rem;>Logout</a>
- {% else %}
- <a href=/login style=background:rgba(20,20,20,0.92);border:1px solid rgba(255,255,255,0.1);color:#ccc;padding:0.35rem 0.85rem;border-radius:20px;text-decoration:none;font-size:0.8rem;font-weight:600;>Login</a>
- <a href=/register style=background:rgba(229,9,20,0.9);border:none;color:#fff;padding:0.35rem 0.85rem;border-radius:20px;text-decoration:none;font-size:0.8rem;font-weight:600;>Register</a>
- {% endif %}
- </div>
-
-    <div
       id="preloader"
       style="
         position: fixed;
