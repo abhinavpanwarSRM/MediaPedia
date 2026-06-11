@@ -1192,6 +1192,37 @@
     </div>
 
     <div class="content-wrapper">
+      <!-- Feature Hub Navigation -->
+      <section style="background:rgba(20,20,20,0.9);padding:1.5rem 2rem;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.05);margin-bottom:2.5rem;">
+        <h2 style="margin-bottom:1.2rem;">Explore MediaPedia</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:0.8rem;">
+          <a href="/oscars" style="background:rgba(255,193,7,0.15);border:1px solid rgba(255,193,7,0.4);color:#ffc107;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,193,7,0.3)'" onmouseout="this.style.background='rgba(255,193,7,0.15)'">🏆 Oscars Room</a>
+          <a href="/era" style="background:rgba(87,153,239,0.15);border:1px solid rgba(87,153,239,0.4);color:#5799ef;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='rgba(87,153,239,0.3)'" onmouseout="this.style.background='rgba(87,153,239,0.15)'">🕰 Era Explorer</a>
+          <button onclick="showCompleteVibe()" style="background:rgba(29,185,84,0.15);border:1px solid rgba(29,185,84,0.4);color:#1db954;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='rgba(29,185,84,0.3)'" onmouseout="this.style.background='rgba(29,185,84,0.15)'">🎯 Complete the Vibe</button>
+          <button onclick="showHotTakes()" style="background:rgba(229,9,20,0.15);border:1px solid rgba(229,9,20,0.4);color:#e50914;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='rgba(229,9,20,0.3)'" onmouseout="this.style.background='rgba(229,9,20,0.15)'">🔥 Hot Takes</button>
+          <button onclick="showFranchises()" style="background:rgba(126,87,194,0.15);border:1px solid rgba(126,87,194,0.4);color:#9c6fe4;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;transition:all 0.2s;" onmouseover="this.style.background='rgba(126,87,194,0.3)'" onmouseout="this.style.background='rgba(126,87,194,0.15)'">🎬 Franchise Tracker</button>
+        </div>
+        <!-- Panels -->
+        <div id="vibe-panel" style="display:none;margin-top:1.5rem;"></div>
+        <div id="hottakes-panel" style="display:none;margin-top:1.5rem;"></div>
+        <div id="franchise-panel" style="display:none;margin-top:1.5rem;"></div>
+      </section>
+
+      <!-- Feature Hub Navigation -->
+      <section style="background:rgba(20,20,20,0.9);padding:1.5rem 2rem;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.05);margin-bottom:2.5rem;">
+        <h2 style="margin-bottom:1.2rem;">Explore MediaPedia</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:0.8rem;">
+          <a href="/oscars" style="background:rgba(255,193,7,0.15);border:1px solid rgba(255,193,7,0.4);color:#ffc107;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">&#127942; Oscars Room</a>
+          <a href="/era" style="background:rgba(87,153,239,0.15);border:1px solid rgba(87,153,239,0.4);color:#5799ef;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">&#128368; Era Explorer</a>
+          <button onclick="showCompleteVibe()" style="background:rgba(29,185,84,0.15);border:1px solid rgba(29,185,84,0.4);color:#1db954;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">&#127919; Complete the Vibe</button>
+          <button onclick="showHotTakes()" style="background:rgba(229,9,20,0.15);border:1px solid rgba(229,9,20,0.4);color:#e50914;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">&#128293; Hot Takes</button>
+          <button onclick="showFranchises()" style="background:rgba(126,87,194,0.15);border:1px solid rgba(126,87,194,0.4);color:#9c6fe4;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">&#127916; Franchise Tracker</button>
+        </div>
+        <div id="vibe-panel" style="display:none;margin-top:1.5rem;"></div>
+        <div id="hottakes-panel" style="display:none;margin-top:1.5rem;"></div>
+        <div id="franchise-panel" style="display:none;margin-top:1.5rem;"></div>
+      </section>
+
       <!-- Add this section below your filters sections -->
       <section id="recommendation-engine">
         <h2>Personalized Recommendations</h2>
@@ -3588,6 +3619,96 @@
 
       // Initialize the recommendation engine when DOM is loaded
       document.addEventListener("DOMContentLoaded", initRecommendationEngine);
+    </script>
+    <script>
+      // ===== Complete the Vibe =====
+      function showCompleteVibe() {
+        const panel = document.getElementById('vibe-panel');
+        document.getElementById('hottakes-panel').style.display = 'none';
+        document.getElementById('franchise-panel').style.display = 'none';
+        if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+        panel.innerHTML = '<p style="color:#999;font-size:0.9rem;">Enter a movie ID to complete its vibe across all media:</p>' +
+          '<div style="display:flex;gap:0.8rem;margin-top:0.8rem;flex-wrap:wrap;">' +
+          '<input id="vibe-input" type="number" placeholder="Movie ID (e.g. 7)" style="padding:0.6rem 1rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:#fff;font-size:0.9rem;width:180px;"/>' +
+          '<button onclick="fetchVibe()" style="background:#1db954;border:none;color:#fff;padding:0.6rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Find Matches</button>' +
+          '</div><div id="vibe-results" style="margin-top:1rem;"></div>';
+      }
+
+      function fetchVibe() {
+        const id = document.getElementById('vibe-input').value;
+        if (!id) return;
+        const r = document.getElementById('vibe-results');
+        r.innerHTML = '<div style="color:#999;">Loading...</div>';
+        fetch('/api/complete_vibe?movie_id=' + id)
+          .then(res => res.json())
+          .then(d => {
+            if (d.error) { r.innerHTML = '<p style="color:#ff4757;">' + d.error + '</p>'; return; }
+            const series = d.series[0] || null;
+            const artist = d.artist[0] || null;
+            const game = d.game[0] || null;
+            r.innerHTML = '<p style="color:#ccc;margin-bottom:0.8rem;">Matching the vibe of <strong style="color:#e50914;">' + d.movie.title + '</strong> (' + d.movie.genre + '):</p>' +
+              '<div style="display:grid;gap:0.8rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">' +
+              (series ? '<a href="/series/' + series.ID + '" style="background:rgba(0,168,225,0.1);border-left:3px solid #00a8e1;padding:0.8rem;border-radius:6px;text-decoration:none;color:#fff;"><div style="font-size:0.75rem;color:#00a8e1;margin-bottom:0.3rem;">SERIES</div><div style="font-weight:600;">' + series.Title + '</div><div style="font-size:0.8rem;color:#ccc;">' + series.Genres + ' &bull; &#9733; ' + series.Rating + '</div></a>' : '') +
+              (artist ? '<a href="/artist/' + artist.ID + '" style="background:rgba(29,185,84,0.1);border-left:3px solid #1db954;padding:0.8rem;border-radius:6px;text-decoration:none;color:#fff;"><div style="font-size:0.75rem;color:#1db954;margin-bottom:0.3rem;">ARTIST</div><div style="font-weight:600;">' + artist.artist_name + '</div><div style="font-size:0.8rem;color:#ccc;">' + artist.artist_genre + '</div></a>' : '') +
+              (game ? '<a href="/game/' + game.ID + '" style="background:rgba(126,87,194,0.1);border-left:3px solid #9c6fe4;padding:0.8rem;border-radius:6px;text-decoration:none;color:#fff;"><div style="font-size:0.75rem;color:#9c6fe4;margin-bottom:0.3rem;">GAME</div><div style="font-weight:600;">' + game.Name + '</div><div style="font-size:0.8rem;color:#ccc;">' + game.Genre + ' &bull; ' + game.Global_Sales + 'M sold</div></a>' : '') +
+              '</div>';
+          })
+          .catch(() => { r.innerHTML = '<p style="color:#ff4757;">Error loading vibe.</p>'; });
+      }
+
+      // ===== Hot Takes =====
+      function showHotTakes() {
+        const panel = document.getElementById('hottakes-panel');
+        document.getElementById('vibe-panel').style.display = 'none';
+        document.getElementById('franchise-panel').style.display = 'none';
+        if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+        panel.innerHTML = '<div style="color:#999;">Loading hot takes...</div>';
+        fetch('/api/hot_takes')
+          .then(r => r.json())
+          .then(data => {
+            if (!data.length) { panel.innerHTML = '<p style="color:#999;font-style:italic;">No hot takes yet. Start rating movies!</p>'; return; }
+            panel.innerHTML = '<p style="color:#ccc;margin-bottom:0.8rem;font-size:0.85rem;">Most controversial opinions on MediaPedia (1-star or 5-star with most likes):</p>' +
+              data.map(c => {
+                const stars = '&#9733;'.repeat(c.rating) + '&#9734;'.repeat(5 - c.rating);
+                const colour = c.rating === 5 ? '#2ed573' : '#ff4757';
+                return '<div style="background:rgba(255,255,255,0.04);border-left:2px solid ' + colour + ';border-radius:4px;padding:0.8rem 1rem;margin-bottom:0.6rem;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">' +
+                  '<span style="font-size:0.8rem;font-weight:600;"><a href="/u/' + encodeURIComponent(c.username) + '" style="color:#5799ef;text-decoration:none;">' + c.username + '</a></span>' +
+                  '<span style="color:' + colour + ';font-size:0.82rem;">' + stars + '</span>' +
+                  '</div>' +
+                  '<div style="color:#ddd;font-size:0.88rem;line-height:1.4;">' + c.text + '</div>' +
+                  '<div style="color:#888;font-size:0.75rem;margin-top:0.4rem;">&#128077; ' + (c.likes || 0) + ' likes</div>' +
+                  '</div>';
+              }).join('');
+          })
+          .catch(() => { panel.innerHTML = '<p style="color:#ff4757;">Error loading hot takes.</p>'; });
+      }
+
+      // ===== Franchise Tracker =====
+      function showFranchises() {
+        const panel = document.getElementById('franchise-panel');
+        document.getElementById('vibe-panel').style.display = 'none';
+        document.getElementById('hottakes-panel').style.display = 'none';
+        if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+        panel.style.display = 'block';
+        panel.innerHTML = '<div style="color:#999;">Loading franchises...</div>';
+        fetch('/api/franchises')
+          .then(r => r.json())
+          .then(data => {
+            if (!data.length) { panel.innerHTML = '<p style="color:#999;">No franchises found.</p>'; return; }
+            panel.innerHTML = '<p style="color:#ccc;margin-bottom:0.8rem;font-size:0.85rem;">Auto-detected film franchises:</p>' +
+              '<div style="display:grid;gap:0.6rem;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">' +
+              data.map(f =>
+                '<a href="/franchise/' + encodeURIComponent(f.name) + '" style="background:rgba(126,87,194,0.1);border-left:3px solid #9c6fe4;padding:0.8rem;border-radius:6px;text-decoration:none;color:#fff;">' +
+                '<div style="font-weight:600;">' + f.name + '</div>' +
+                '<div style="font-size:0.8rem;color:#ccc;margin-top:0.2rem;">' + f.count + ' film' + (f.count !== 1 ? 's' : '') + '</div>' +
+                '</a>'
+              ).join('') + '</div>';
+          })
+          .catch(() => { panel.innerHTML = '<p style="color:#ff4757;">Error loading franchises.</p>'; });
+      }
     </script>
   </body>
 </html>

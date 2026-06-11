@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ actor_name }} — Actor Universe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --series: #00a8e1; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); border-bottom: 2px solid rgba(229,9,20,0.3); padding-bottom: 1rem; margin-bottom: 2rem; }
+    h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; margin-top: 2rem; }
+    .grid { display: grid; gap: 0.8rem; }
+    .row { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text); transition: background 0.2s; }
+    .row.movie { border-left: 3px solid var(--primary); }
+    .row.series { border-left: 3px solid var(--series); }
+    .row:hover { background: rgba(255,255,255,0.08); }
+    .title { font-weight: 600; }
+    .meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
+    .rating { font-weight: 700; font-size: 1.1rem; white-space: nowrap; margin-left: 1rem; }
+    .rating.movie { color: var(--primary); }
+    .rating.series { color: var(--series); }
+    .empty { color: var(--grey); font-style: italic; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back">← Back to Home</a>
+    <h1>{{ actor_name }}</h1>
+
+    <h2>Movies ({{ movies|length }})</h2>
+    <div class="grid">
+      {% for m in movies %}
+      <a class="row movie" href="/movie/{{ m['ID'] }}">
+        <div>
+          <div class="title">{{ m['Movie Name'] }}</div>
+          <div class="meta">{{ m.get('Genre','') }} &bull; {{ m.get('Year','N/A') }}</div>
+        </div>
+        <div class="rating movie">★ {{ m['Rating'] }}</div>
+      </a>
+      {% else %}
+      <p class="empty">No movies found.</p>
+      {% endfor %}
+    </div>
+
+    <h2>Series ({{ series|length }})</h2>
+    <div class="grid">
+      {% for s in series %}
+      <a class="row series" href="/series/{{ s['ID'] }}">
+        <div>
+          <div class="title">{{ s['Title'] }}</div>
+          <div class="meta">{{ s.get('Genres','') }} &bull; {{ s.get('Years','N/A') }}</div>
+        </div>
+        <div class="rating series">★ {{ s['Rating'] }}</div>
+      </a>
+      {% else %}
+      <p class="empty">No series found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

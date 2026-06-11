@@ -383,13 +383,26 @@
         <!-- Trailer will be inserted here -->
         <div id="trailer-container" class="trailer-container"></div>
 
+        <!-- Seen It Widget -->
+        <div style="text-align:center;margin:1rem 0;">
+          <p style="color:#999;font-size:0.85rem;margin-bottom:0.5rem;">Have you seen this movie?</p>
+          <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button id="seen-yes-btn" onclick="voteSeenIt('yes')" style="background:rgba(46,213,115,0.2);color:#2ed573;border:1px solid #2ed573;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Yes ✓</button>
+            <button id="seen-no-btn" onclick="voteSeenIt('no')" style="background:rgba(255,71,87,0.2);color:#ff4757;border:1px solid #ff4757;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Not Yet</button>
+          </div>
+          <p id="seen-count" style="color:#888;font-size:0.78rem;margin-top:0.4rem;">Loading votes...</p>
+        </div>
+
         <div class="movie-info">
           <p><strong>Rating:</strong> <span>{{ movie["Rating"] }}</span></p>
           <p><strong>Genre:</strong> <span>{{ movie["Genre"] }}</span></p>
           <p>
-            <strong>Directors:</strong> <span>{{ movie["Directors"] }}</span>
+            <strong>Directors:</strong>
+            <span>{% for d in movie["Directors"].strip("[]").replace("'","").split(",") %}<a href="/director/{{ d.strip() }}" style="color:#e50914;text-decoration:none;">{{ d.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
           </p>
-          <p><strong>Stars:</strong> <span>{{ movie["Stars"] }}</span></p>
+          <p><strong>Stars:</strong>
+            <span>{% for s in movie["Stars"].strip("[]").replace("'","").split(",") %}<a href="/actor/{{ s.strip() }}" style="color:#5799ef;text-decoration:none;">{{ s.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+          </p>
           <p>
             <strong>Release Year:</strong>
             <span>{{ movie.get("Year", "N/A") }}</span>
@@ -1626,6 +1639,36 @@
             document.removeEventListener("keydown", escClose);
           }
         });
+      }
+    </script>
+    <script>
+      // Seen It voting
+      const seenMovieId = {{ movie_id }};
+      const seenVoted = localStorage.getItem('seen_' + seenMovieId);
+
+      fetch('/api/seen/' + seenMovieId)
+        .then(r => r.json())
+        .then(d => updateSeenCount(d.yes, d.no));
+
+      function voteSeenIt(choice) {
+        if (localStorage.getItem('seen_' + seenMovieId)) return;
+        fetch('/api/seen/' + seenMovieId + '/vote', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({vote: choice})
+        })
+        .then(r => r.json())
+        .then(d => {
+          localStorage.setItem('seen_' + seenMovieId, choice);
+          updateSeenCount(d.yes, d.no);
+        });
+      }
+
+      function updateSeenCount(yes, no) {
+        const total = yes + no;
+        const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
+        document.getElementById('seen-count').textContent =
+          total > 0 ? pct + '% of MediaPedia users have seen this (' + total + ' votes)' : 'Be the first to vote';
       }
     </script>
   </body>

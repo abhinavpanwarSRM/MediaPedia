@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ director_name }} — Director's Signature</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); border-bottom: 2px solid rgba(229,9,20,0.3); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+    .stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat { background: rgba(255,255,255,0.05); padding: 1rem 1.5rem; border-radius: 8px; border-left: 3px solid var(--primary); }
+    .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 0.85rem; color: var(--grey); margin-top: 0.2rem; }
+    .signatures { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .sig-tag { background: rgba(229,9,20,0.15); border: 1px solid rgba(229,9,20,0.4); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; }
+    .movie-grid { display: grid; gap: 0.8rem; }
+    .movie-row { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--primary); transition: background 0.2s; text-decoration: none; color: var(--text); }
+    .movie-row:hover { background: rgba(229,9,20,0.1); }
+    .movie-title { font-weight: 600; font-size: 1rem; }
+    .movie-meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
+    .movie-rating { font-size: 1.1rem; font-weight: 700; color: var(--primary); white-space: nowrap; margin-left: 1rem; }
+    h2 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--grey); text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back">← Back to Home</a>
+    <h1>{{ director_name }}</h1>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val">{{ total }}</div>
+        <div class="stat-label">Films in Database</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ avg_rating }}</div>
+        <div class="stat-label">Average Rating</div>
+      </div>
+    </div>
+
+    {% if signature_genres %}
+    <div style="margin-bottom:1.5rem;">
+      <h2>Signature Genres</h2>
+      <div class="signatures">
+        {% for g in signature_genres %}
+        <span class="sig-tag">{{ g }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <h2>Filmography</h2>
+    <div class="movie-grid">
+      {% for m in movies %}
+      <a class="movie-row" href="/movie/{{ m['ID'] }}">
+        <div>
+          <div class="movie-title">{{ m['Movie Name'] }}</div>
+          <div class="movie-meta">{{ m.get('Genre','') }} &bull; {{ m.get('Year','N/A') }}</div>
+        </div>
+        <div class="movie-rating">★ {{ m['Rating'] }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

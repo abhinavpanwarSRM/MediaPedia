@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Era Explorer — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin-bottom: 0.5rem; }
+    .subtitle { color: var(--grey); margin-bottom: 2rem; font-size: 0.95rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; background: var(--card); padding: 1.5rem; border-radius: 8px; }
+    .control-group { flex: 1; min-width: 200px; }
+    label { display: block; color: var(--grey); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+    .pill-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .pill { padding: 0.4rem 1rem; border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; cursor: pointer; font-size: 0.85rem; background: rgba(255,255,255,0.04); color: var(--text); transition: all 0.2s; }
+    .pill:hover { border-color: var(--primary); }
+    .pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .search-btn { grid-column: 1/-1; background: var(--primary); color: #fff; border: none; padding: 0.8rem 2rem; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s; margin-top: 0.5rem; }
+    .search-btn:hover { background: #f40612; }
+    .results { display: grid; gap: 0.8rem; }
+    .result-row { background: rgba(255,255,255,0.04); border-left: 3px solid var(--primary); border-radius: 6px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text); transition: background 0.2s; }
+    .result-row:hover { background: rgba(229,9,20,0.1); }
+    .res-title { font-weight: 600; }
+    .res-meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
+    .res-rating { font-weight: 700; color: var(--primary); font-size: 1.1rem; white-space: nowrap; margin-left: 1rem; }
+    .spinner { width: 30px; height: 30px; border: 3px solid rgba(229,9,20,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 2rem auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { color: var(--grey); text-align: center; padding: 2rem; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back">← Back to Home</a>
+    <h1>Era Explorer</h1>
+    <p class="subtitle">Pick a decade and a mood — discover what defined that era.</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>Decade</label>
+        <div class="pill-group" id="decade-pills">
+          <span class="pill" data-val="1960">60s</span>
+          <span class="pill" data-val="1970">70s</span>
+          <span class="pill" data-val="1980">80s</span>
+          <span class="pill" data-val="1990">90s</span>
+          <span class="pill" data-val="2000">2000s</span>
+          <span class="pill" data-val="2010">2010s</span>
+          <span class="pill" data-val="2020">2020s</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Mood</label>
+        <div class="pill-group" id="mood-pills">
+          <span class="pill" data-val="happy">Happy</span>
+          <span class="pill" data-val="thrilling">Thrilling</span>
+          <span class="pill" data-val="emotional">Emotional</span>
+          <span class="pill" data-val="scary">Scary</span>
+          <span class="pill" data-val="inspiring">Inspiring</span>
+          <span class="pill" data-val="adventurous">Adventurous</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Content</label>
+        <div class="pill-group" id="content-pills">
+          <span class="pill active" data-val="movies">Movies</span>
+          <span class="pill" data-val="series">Series</span>
+        </div>
+      </div>
+      <button class="search-btn" onclick="explore()">Explore This Era</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <script>
+    let selectedDecade = '', selectedMood = '', selectedContent = 'movies';
+
+    document.querySelectorAll('#decade-pills .pill').forEach(p => {
+      p.addEventListener('click', () => {
+        document.querySelectorAll('#decade-pills .pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        selectedDecade = p.dataset.val;
+      });
+    });
+    document.querySelectorAll('#mood-pills .pill').forEach(p => {
+      p.addEventListener('click', () => {
+        document.querySelectorAll('#mood-pills .pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        selectedMood = p.dataset.val;
+      });
+    });
+    document.querySelectorAll('#content-pills .pill').forEach(p => {
+      p.addEventListener('click', () => {
+        document.querySelectorAll('#content-pills .pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        selectedContent = p.dataset.val;
+      });
+    });
+
+    function explore() {
+      const container = document.getElementById('results');
+      container.innerHTML = '<div class="spinner"></div>';
+      const params = new URLSearchParams({ decade: selectedDecade, mood: selectedMood, content: selectedContent });
+      fetch('/api/era?' + params)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.length) { container.innerHTML = '<p class="empty">No results found. Try a different combination.</p>'; return; }
+          container.innerHTML = data.map(item => {
+            const isMovie = selectedContent === 'movies';
+            const title = isMovie ? item['Movie Name'] : item['Title'];
+            const genre = isMovie ? item['Genre'] : item['Genres'];
+            const year = isMovie ? item.get_Year || item['Year'] : item['Years'];
+            const link = item['DetailLink'];
+            return `<a class="result-row" href="${link}">
+              <div>
+                <div class="res-title">${title || ''}</div>
+                <div class="res-meta">${genre || ''} &bull; ${year || 'N/A'}</div>
+              </div>
+              <div class="res-rating">★ ${item['Rating']}</div>
+            </a>`;
+          }).join('');
+        })
+        .catch(() => { container.innerHTML = '<p class="empty">Error loading results.</p>'; });
+    }
+  </script>
+</body>
+</html>

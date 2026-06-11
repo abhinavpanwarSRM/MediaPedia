@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ username }} — Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    .avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2rem); margin-bottom: 1.5rem; }
+    .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .stat { background: rgba(255,255,255,0.04); padding: 1rem 1.5rem; border-radius: 8px; border-left: 3px solid var(--primary); }
+    .stat-val { font-size: 1.6rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 0.82rem; color: var(--grey); }
+    h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; }
+    .comment-card { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; border-left: 2px solid var(--primary); margin-bottom: 0.8rem; }
+    .comment-meta { font-size: 0.8rem; color: var(--grey); margin-bottom: 0.4rem; }
+    .comment-rating { color: #ffc107; font-size: 0.85rem; margin-bottom: 0.4rem; }
+    .comment-text { font-size: 0.92rem; color: #ddd; line-height: 1.5; }
+    .comment-likes { font-size: 0.78rem; color: var(--grey); margin-top: 0.5rem; }
+    .empty { color: var(--grey); font-style: italic; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back">← Back to Home</a>
+    <div class="avatar">{{ username[0]|upper }}</div>
+    <h1>{{ username }}</h1>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val">{{ comments|length }}</div>
+        <div class="stat-label">Reviews Written</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ total_likes }}</div>
+        <div class="stat-label">Total Likes Received</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ avg_rating }}</div>
+        <div class="stat-label">Average Rating Given</div>
+      </div>
+    </div>
+
+    <h2>Recent Reviews</h2>
+    {% for c in comments %}
+    <div class="comment-card">
+      <div class="comment-meta">{{ c.get('created_at','')[:10] }}</div>
+      <div class="comment-rating">{{ '★' * c.get('rating',0) }}{{ '☆' * (5 - c.get('rating',0)) }}</div>
+      <div class="comment-text">{{ c.get('text','') }}</div>
+      <div class="comment-likes">👍 {{ c.get('likes',0) }} likes</div>
+    </div>
+    {% else %}
+    <p class="empty">No reviews yet.</p>
+    {% endfor %}
+  </div>
+</body>
+</html>

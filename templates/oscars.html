@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>The Oscars Room — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary: #e50914; --gold: #ffc107; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 860px; margin: 0 auto; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin-bottom: 0.4rem; }
+    .subtitle { color: var(--grey); margin-bottom: 2rem; font-size: 0.95rem; }
+    .trophy { font-size: 1.5rem; margin-right: 0.5rem; }
+    .entry { background: var(--card); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1.2rem; border-left: 4px solid var(--gold); }
+    .year { font-size: 1.6rem; font-weight: 700; color: var(--gold); min-width: 60px; }
+    .info { flex: 1; }
+    .title-link { font-size: 1.05rem; font-weight: 600; color: var(--text); text-decoration: none; }
+    .title-link:hover { color: var(--gold); }
+    .director { font-size: 0.85rem; color: var(--grey); margin-top: 0.2rem; }
+    .seen-section { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 80px; }
+    .seen-bar { display: flex; gap: 0.4rem; }
+    .seen-btn { border: none; border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.2s; }
+    .seen-yes { background: rgba(46,213,115,0.2); color: #2ed573; border: 1px solid #2ed573; }
+    .seen-yes:hover { background: rgba(46,213,115,0.4); }
+    .seen-no { background: rgba(255,71,87,0.2); color: #ff4757; border: 1px solid #ff4757; }
+    .seen-no:hover { background: rgba(255,71,87,0.4); }
+    .seen-count { font-size: 0.75rem; color: var(--grey); text-align: center; }
+    .no-link { font-size: 1.05rem; font-weight: 600; color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back">← Back to Home</a>
+    <h1><span class="trophy">🏆</span>The Oscars Room</h1>
+    <p class="subtitle">Best Picture winners — year by year. Have you seen them?</p>
+
+    {% for w in winners %}
+    <div class="entry" id="entry-{{ w.year }}">
+      <div class="year">{{ w.year }}</div>
+      <div class="info">
+        {% if w.movie_id %}
+        <a class="title-link" href="/movie/{{ w.movie_id }}">{{ w.title }}</a>
+        {% else %}
+        <span class="no-link">{{ w.title }}</span>
+        {% endif %}
+        <div class="director">Dir. {{ w.director }}</div>
+      </div>
+      <div class="seen-section" data-id="{{ w.movie_id or w.year }}">
+        <div class="seen-bar">
+          <button class="seen-btn seen-yes" onclick="vote({{ w.movie_id or w.year }}, 'yes', this)">Seen it ✓</button>
+          <button class="seen-btn seen-no" onclick="vote({{ w.movie_id or w.year }}, 'no', this)">Not yet</button>
+        </div>
+        <div class="seen-count" id="count-{{ w.movie_id or w.year }}">Loading...</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    const voted = JSON.parse(localStorage.getItem('oscars_voted') || '{}');
+
+    document.querySelectorAll('.seen-section').forEach(sec => {
+      const id = sec.dataset.id;
+      fetch(`/api/seen/${id}`)
+        .then(r => r.json())
+        .then(d => updateCount(id, d.yes, d.no));
+    });
+
+    function vote(id, choice, btn) {
+      if (voted[id]) return;
+      fetch(`/api/seen/${id}/vote`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({vote: choice})
+      })
+      .then(r => r.json())
+      .then(d => {
+        voted[id] = choice;
+        localStorage.setItem('oscars_voted', JSON.stringify(voted));
+        updateCount(id, d.yes, d.no);
+        btn.style.opacity = '1';
+        btn.style.fontWeight = '800';
+      });
+    }
+
+    function updateCount(id, yes, no) {
+      const total = yes + no;
+      const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
+      const el = document.getElementById(`count-${id}`);
+      if (el) el.textContent = total > 0 ? `${pct}% seen it (${total} votes)` : 'Be the first to vote';
+    }
+  </script>
+</body>
+</html>
