@@ -402,8 +402,8 @@
 
     socket.on('song_added', (d) => {
       if (d.insert_next) {
-        // insert after current index in local queue
-        queue.splice(curIdx + 1, 0, d.song);
+        queue.splice(d.insert_at, 0, d.song);
+        if (d.insert_at <= curIdx) curIdx++;
       } else {
         queue.push(d.song);
       }
@@ -576,6 +576,7 @@
         <div class="sr-t">${esc(title)}</div>
         <div class="sr-c">${esc(ch)}</div>
       </div>
+      <button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">▶ Next</button>
       <button class="sr-add" onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
     </div>`;
   }
@@ -591,6 +592,25 @@
     if (m) return m[1].trim();
     const clean = ch.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').replace(/Official$/i,'').trim();
     return clean || ch;
+  }
+
+  function addSongNext(vid, title, ch) {
+    if (!socket || !partyId) return;
+    const song = {
+      song_id: Math.random().toString(36).slice(2, 10),
+      song_title: title,
+      artist_name: extractArtist(title, ch),
+      youtube_query: vid,
+      added_by: ME
+    };
+    socket.emit('party_add_song_next', { party_id: partyId, username: ME, song });
+    const insertAt = curIdx + 1;
+    queue.splice(insertAt, 0, song);
+    if (curIdx === -1) { curIdx = 0; playCurrent(); }
+    renderQueue();
+    showToast('"' + title.substring(0, 30) + '" plays next!');
+    document.getElementById('sr-list').innerHTML = '';
+    document.getElementById('search-inp').value = '';
   }
 
   function addSong(vid, title, ch) {

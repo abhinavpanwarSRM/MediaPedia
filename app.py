@@ -1892,6 +1892,29 @@ def on_party_add_song(data):
         emit('sync_change_song', {'index': idx, 'by': username}, to=party_id)
     emit('song_added', {'song': song, 'by': username}, to=party_id)
 
+@socketio.on('party_add_song_next')
+def on_party_add_song_next(data):
+    party_id = data.get('party_id')
+    song = data.get('song')
+    username = data.get('username')
+    if not song or not party_id or party_collection is None:
+        return
+    song['added_by'] = username
+    song['song_id'] = song.get('song_id') or str(uuid.uuid4())[:8]
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'queue': 1, 'current_index': 1})
+    if not party:
+        return
+    cur = party.get('current_index', -1)
+    queue = party.get('queue', [])
+    insert_at = cur + 1  # right after current song
+    queue.insert(insert_at, song)
+    party_collection.update_one({'party_id': party_id}, {'$set': {'queue': queue}})
+    if cur == -1:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'current_index': 0, 'state': 'playing', 'position': 0}})
+        emit('sync_change_song', {'index': 0, 'by': username}, to=party_id)
+    emit('song_added', {'song': song, 'by': username, 'insert_next': True, 'insert_at': insert_at}, to=party_id)
+
 @socketio.on('party_remove_song')
 def on_party_remove_song(data):
     party_id = data.get('party_id')
