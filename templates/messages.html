@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Messages — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --primary:#e50914; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --muted:#888; --blue:#5799ef; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:#fff; font-family:'Segoe UI',sans-serif; min-height:100vh; }
+    .topnav { display:flex; justify-content:space-between; align-items:center;
+              padding:0.9rem 1.5rem; border-bottom:1px solid var(--border);
+              position:sticky; top:0; background:rgba(20,20,20,0.97);
+              backdrop-filter:blur(8px); z-index:100; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+    .topnav a:hover { color:#fff; }
+    .brand { color:var(--primary) !important; font-weight:700; font-size:1rem; }
+    .nav-right { display:flex; gap:1.2rem; align-items:center; }
+    .nav-user { color:var(--primary) !important; font-weight:600; }
+
+    .page { max-width:680px; margin:0 auto; padding:2rem 1rem; }
+    h1 { font-size:1.5rem; font-weight:800; margin-bottom:1.5rem; }
+
+    .new-msg-bar { display:flex; gap:0.6rem; margin-bottom:1.5rem; }
+    .new-msg-bar input { flex:1; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.07);
+                         border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
+    .new-msg-bar input:focus { outline:none; border-color:var(--primary); }
+    .new-msg-bar button { padding:0.6rem 1.1rem; background:var(--primary); border:none;
+                          border-radius:8px; color:#fff; font-weight:700; cursor:pointer; font-size:0.88rem; }
+    .new-msg-bar button:hover { background:#c0000e; }
+
+    .conv-list { display:flex; flex-direction:column; gap:0.5rem; }
+    .conv-item { display:flex; align-items:center; gap:0.9rem; background:var(--card);
+                 border:1px solid var(--border); border-radius:10px; padding:0.9rem 1.1rem;
+                 text-decoration:none; color:#fff; transition:all 0.2s; cursor:pointer; }
+    .conv-item:hover { border-color:rgba(229,9,20,0.4); background:rgba(229,9,20,0.05); }
+    .conv-item.unread { border-color:rgba(229,9,20,0.5); background:rgba(229,9,20,0.07); }
+    .conv-av { width:44px; height:44px; border-radius:50%; flex-shrink:0;
+               background:linear-gradient(135deg,var(--primary),#ff6b6b);
+               display:flex; align-items:center; justify-content:center;
+               font-weight:700; font-size:1.1rem; text-decoration:none; color:#fff; position:relative; }
+    .unread-dot { position:absolute; top:1px; right:1px; width:10px; height:10px;
+                  background:var(--primary); border-radius:50%; border:2px solid var(--bg); }
+    .conv-body { flex:1; min-width:0; }
+    .conv-name { font-weight:600; font-size:0.92rem; }
+    .conv-preview { font-size:0.78rem; color:var(--muted); margin-top:0.2rem;
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .conv-item.unread .conv-preview { color:#ccc; font-weight:500; }
+    .conv-time { font-size:0.72rem; color:var(--muted); flex-shrink:0; }
+    .unread-count { background:var(--primary); color:#fff; font-size:0.68rem; font-weight:700;
+                    border-radius:10px; padding:0.1rem 0.45rem; flex-shrink:0; }
+
+    .empty { color:var(--muted); text-align:center; padding:3rem; font-style:italic; font-size:0.9rem; }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <div class="nav-right">
+      <a href="/u/{{ username }}" class="nav-user">{{ username }}</a>
+      <a href="/feed">Feed</a>
+      <a href="/messages" style="color:#fff;font-weight:600;">✉ Messages</a>
+      <a href="/logout">Logout</a>
+    </div>
+  </nav>
+
+  <div class="page">
+    <h1>✉ Messages</h1>
+
+    <div class="new-msg-bar">
+      <input type="text" id="new-conv-user" placeholder="Start a conversation — enter username..." />
+      <button onclick="startConv()">Open</button>
+    </div>
+
+    <div class="conv-list" id="conv-list">
+      {% if conversations %}
+        {% for conv in conversations %}
+        <a class="conv-item {{ 'unread' if conv.unread_count else '' }}" href="/messages/{{ conv.other_user }}">
+          <div class="conv-av">
+            {{ conv.other_user[0]|upper }}
+            {% if conv.unread_count %}<div class="unread-dot"></div>{% endif %}
+          </div>
+          <div class="conv-body">
+            <div class="conv-name">{{ conv.other_user }}</div>
+            <div class="conv-preview">
+              {% if conv.last_message %}
+                {{ ('You: ' if conv.last_message.sender == username else '') + conv.last_message.text[:60] }}
+              {% else %}No messages yet{% endif %}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.3rem;flex-shrink:0;">
+            <div class="conv-time">{{ conv.last_message.created_at[:10] if conv.last_message else '' }}</div>
+            {% if conv.unread_count %}<div class="unread-count">{{ conv.unread_count }}</div>{% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <div class="empty">No conversations yet.<br>Search for a user above to start chatting.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    function startConv() {
+      const u = document.getElementById('new-conv-user').value.trim();
+      if (!u) return;
+      window.location.href = '/messages/' + encodeURIComponent(u);
+    }
+    document.getElementById('new-conv-user').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startConv();
+    });
+  </script>
+</body>
+</html>

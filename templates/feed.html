@@ -55,6 +55,9 @@
       <div class="auth-links">
         {% if username %}
           <a href="/u/{{ username }}">My Profile</a>
+          <a href="/messages" style="position:relative;">
+            ✉ Messages<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-10px;background:#e50914;color:#fff;font-size:0.6rem;font-weight:700;border-radius:10px;padding:0.1rem 0.35rem;"></span>
+          </a>
           <a href="/logout">Logout</a>
         {% else %}
           <a href="/login">Login</a>
@@ -133,6 +136,15 @@
         else { btn.textContent = 'Follow'; btn.disabled = false; btn.style.opacity = '1'; }
       });
   }
+  {% if username %}
+  (function checkUnread() {
+    fetch('/api/messages/unread_count').then(r=>r.json()).then(d=>{
+      const b = document.getElementById('msg-badge');
+      if(b){if(d.count>0){b.textContent=d.count;b.style.display='inline';}else{b.style.display='none';}}
+    }).catch(()=>{});
+    setTimeout(checkUnread, 15000);
+  })();
+  {% endif %}
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>

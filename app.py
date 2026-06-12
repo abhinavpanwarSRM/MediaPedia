@@ -35,6 +35,9 @@ try:
     follows_collection.create_index([("follower", 1), ("following", 1)], unique=True)
     playlists_collection = db.playlists
     playlists_collection.create_index("username")
+    messages_collection = db.messages
+    messages_collection.create_index([("participants", 1)])
+    messages_collection.create_index([("created_at", -1)])
     print("âœ… MongoDB connected successfully")
 except Exception as e:
     print(f"âŒ MongoDB connection failed: {e}")
@@ -44,6 +47,7 @@ except Exception as e:
     lists_collection = None
     follows_collection = None
     playlists_collection = None
+    messages_collection = None
 
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
@@ -1471,6 +1475,153 @@ def view_playlist(playlist_id):
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
     return render_template('playlist.html', pl=pl, username=current_user(),
                            api_key_1=api_key_1, api_key_2=api_key_2)
+
+# ===== Messaging =====
+@app.route('/messages')
+def inbox():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    if messages_collection is None:
+        return render_template('messages.html', conversations=[], username=username)
+
+    # Find all conversations involving this user
+    raw = list(messages_collection.find(
+        {'participants': username}, {'_id': 0}
+    ).sort('updated_at', -1))
+
+    seen = {}
+    for conv in raw:
+        other = next((p for p in conv['participants'] if p != username), None)
+        if not other or other in seen:
+            continue
+        last_msg = conv['messages'][-1] if conv.get('messages') else None
+        unread = sum(1 for m in conv.get('messages', [])
+                     if m['sender'] != username and not m.get('read'))
+        seen[other] = {'other_user': other, 'last_message': last_msg, 'unread_count': unread}
+
+    return render_template('messages.html', conversations=list(seen.values()), username=username)
+
+
+@app.route('/messages/<other_user>')
+def conversation(other_user):
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    if username == other_user:
+        return redirect('/messages')
+
+    # Mark messages from other_user as read
+    if messages_collection is not None:
+        key = sorted([username, other_user])
+        messages_collection.update_one(
+            {'participants': key},
+            {'$set': {'messages.$[elem].read': True}},
+            array_filters=[{'elem.sender': other_user, 'elem.read': False}]
+        )
+        conv = messages_collection.find_one({'participants': key}, {'_id': 0})
+        msgs = conv.get('messages', []) if conv else []
+    else:
+        msgs = []
+
+    return render_template('conversation.html', username=username,
+                           other_user=other_user, messages=msgs)
+
+
+@app.route('/api/messages/send', methods=['POST'])
+def send_message():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if messages_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+
+    data = request.json or {}
+    to = data.get('to', '').strip()
+    text = data.get('text', '').strip()[:1000]
+
+    if not to or not text:
+        return jsonify({'error': 'Recipient and message required'}), 400
+    if to == username:
+        return jsonify({'error': 'Cannot message yourself'}), 400
+
+    # Verify recipient exists
+    if users_collection is not None:
+        if not users_collection.find_one({'username': to}):
+            return jsonify({'error': 'User not found'}), 404
+
+    msg = {
+        'msg_id': str(uuid.uuid4())[:12],
+        'sender': username,
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'read': False
+    }
+
+    key = sorted([username, to])
+    messages_collection.update_one(
+        {'participants': key},
+        {
+            '$push': {'messages': msg},
+            '$set': {'updated_at': datetime.now(timezone.utc)},
+            '$setOnInsert': {'participants': key}
+        },
+        upsert=True
+    )
+    return jsonify(msg), 201
+
+
+@app.route('/api/messages/poll')
+def poll_messages():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if messages_collection is None:
+        return jsonify({'messages': []})
+
+    other = request.args.get('with', '').strip()
+    after_id = request.args.get('after', '').strip()
+
+    if not other:
+        return jsonify({'messages': []})
+
+    key = sorted([username, other])
+    conv = messages_collection.find_one({'participants': key}, {'_id': 0, 'messages': 1})
+    if not conv:
+        return jsonify({'messages': []})
+
+    msgs = conv.get('messages', [])
+    if after_id:
+        # Return only messages after the given msg_id
+        ids = [m['msg_id'] for m in msgs]
+        if after_id in ids:
+            msgs = msgs[ids.index(after_id) + 1:]
+        else:
+            msgs = []
+
+    # Mark polled messages as read
+    messages_collection.update_one(
+        {'participants': key},
+        {'$set': {'messages.$[elem].read': True}},
+        array_filters=[{'elem.sender': other, 'elem.read': False}]
+    )
+
+    return jsonify({'messages': msgs})
+
+
+@app.route('/api/messages/unread_count')
+def unread_count():
+    username = current_user()
+    if not username or messages_collection is None:
+        return jsonify({'count': 0})
+    convs = list(messages_collection.find({'participants': username}, {'_id': 0, 'messages': 1}))
+    count = sum(
+        1 for conv in convs
+        for m in conv.get('messages', [])
+        if m['sender'] != username and not m.get('read')
+    )
+    return jsonify({'count': count})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
