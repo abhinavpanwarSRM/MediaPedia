@@ -7,479 +7,781 @@
   <style>
     :root { --primary: #1db954; --bg: #141414; --card: rgba(20,20,20,0.95); --red: #e50914; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif;
+           padding: 2rem 1rem 6rem; min-height: 100vh; }
     .container { max-width: 860px; margin: 0 auto; }
-    .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; display: inline-block; margin-bottom: 1.5rem; }
+    .back { color: var(--primary); text-decoration: none; font-size: 0.88rem;
+            display: inline-block; margin-bottom: 1.5rem; }
 
-    /* Header */
-    .pl-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-    .pl-cover { width: 90px; height: 90px; border-radius: 8px; background: linear-gradient(135deg, #1db954, #0d7a38); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; flex-shrink: 0; }
+    /* ── Header ── */
+    .pl-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .pl-cover { width: 90px; height: 90px; border-radius: 8px;
+                background: linear-gradient(135deg, #1db954, #0d7a38);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 2.5rem; flex-shrink: 0; }
     .pl-info { flex: 1; }
     .pl-name { font-size: 1.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
-    .pl-name input { font-size: 1.6rem; font-weight: 700; background: transparent; border: none; border-bottom: 2px solid var(--primary); color: #fff; padding: 0.1rem 0.3rem; display: none; width: 100%; }
+    .pl-name input { font-size: 1.5rem; font-weight: 700; background: transparent; border: none;
+                     border-bottom: 2px solid var(--primary); color: #fff; padding: 0.1rem 0.3rem;
+                     display: none; width: 100%; }
     .pl-meta { color: #888; font-size: 0.85rem; margin-top: 0.3rem; }
-    .edit-name-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .pl-meta a { color: var(--primary); text-decoration: none; }
+    .edit-name-btn { background: none; border: none; color: #888; cursor: pointer;
+                     font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
     .edit-name-btn:hover { color: var(--primary); }
 
-    /* Action buttons */
-    .pl-actions { display: flex; gap: 0.6rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    .btn-play-all { background: var(--primary); color: #000; border: none; padding: 0.6rem 1.4rem; border-radius: 20px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+    /* ── Action bar ── */
+    .pl-actions { display: flex; gap: 0.6rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+    .btn-play-all { background: var(--primary); color: #000; border: none;
+                    padding: 0.6rem 1.4rem; border-radius: 20px; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
     .btn-play-all:hover { background: #1ed760; }
-    .btn-shuffle { background: rgba(29,185,84,0.15); border: 1px solid var(--primary); color: var(--primary); padding: 0.6rem 1.2rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .btn-shuffle { background: rgba(29,185,84,0.15); border: 1px solid var(--primary); color: var(--primary);
+                   padding: 0.6rem 1.2rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
     .btn-shuffle:hover { background: rgba(29,185,84,0.3); }
-    .btn-delete-pl { background: rgba(255,71,87,0.1); border: 1px solid #ff4757; color: #ff4757; padding: 0.6rem 1.2rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; margin-left: auto; }
-    .btn-delete-pl:hover { background: rgba(255,71,87,0.25); }
+    .btn-shuffle.active { background: rgba(29,185,84,0.4); }
+    .btn-repeat { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+                  color: #aaa; padding: 0.6rem 1.1rem; border-radius: 20px; font-size: 0.88rem; cursor: pointer; }
+    .btn-repeat:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-repeat.active { border-color: var(--primary); color: var(--primary); background: rgba(29,185,84,0.15); }
+    .btn-del-pl { background: rgba(255,71,87,0.1); border: 1px solid #ff4757; color: #ff4757;
+                  padding: 0.6rem 1.2rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; margin-left: auto; }
+    .btn-del-pl:hover { background: rgba(255,71,87,0.25); }
+    .btn-share { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+                 color: #ccc; padding: 0.6rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
+    .btn-share:hover { color: #fff; border-color: #fff; }
 
-    /* Search bar */
-    .search-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
-    .search-section h3 { font-size: 0.95rem; color: #aaa; margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    /* ── Search ── */
+    .search-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+                      border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; }
+    .search-section h3 { font-size: 0.88rem; color: #aaa; margin-bottom: 0.8rem;
+                         text-transform: uppercase; letter-spacing: 0.5px; }
     .search-row { display: flex; gap: 0.6rem; }
-    .search-row input { flex: 1; padding: 0.6rem 0.9rem; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 0.92rem; }
+    .search-row input { flex: 1; padding: 0.6rem 0.9rem; background: rgba(255,255,255,0.07);
+                        border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #fff; font-size: 0.92rem; }
     .search-row input:focus { outline: none; border-color: var(--primary); }
-    .search-row button { padding: 0.6rem 1.1rem; background: var(--primary); border: none; border-radius: 6px; color: #000; font-weight: 700; cursor: pointer; font-size: 0.88rem; white-space: nowrap; }
+    .search-row button { padding: 0.6rem 1.1rem; background: var(--primary); border: none;
+                         border-radius: 6px; color: #000; font-weight: 700; cursor: pointer;
+                         font-size: 0.88rem; white-space: nowrap; }
     .search-row button:hover { background: #1ed760; }
-    .search-results { margin-top: 0.8rem; display: grid; gap: 0.5rem; }
-    .search-result-item { display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 0.6rem 0.8rem; cursor: pointer; transition: background 0.15s; }
-    .search-result-item:hover { background: rgba(29,185,84,0.12); }
-    .search-thumb { width: 52px; height: 38px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #222; }
-    .search-result-title { font-size: 0.88rem; flex: 1; line-height: 1.3; }
-    .add-btn { background: rgba(29,185,84,0.2); border: 1px solid var(--primary); color: var(--primary); padding: 0.3rem 0.7rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .search-results { margin-top: 0.8rem; display: grid; gap: 0.4rem; }
+    .sr-item { display: flex; align-items: center; gap: 0.8rem; background: rgba(255,255,255,0.04);
+               border-radius: 6px; padding: 0.55rem 0.8rem; transition: background 0.15s; }
+    .sr-item:hover { background: rgba(29,185,84,0.1); }
+    .sr-thumb { width: 52px; height: 38px; object-fit: cover; border-radius: 4px;
+                flex-shrink: 0; background: #222; cursor: pointer; }
+    .sr-info { flex: 1; min-width: 0; cursor: pointer; }
+    .sr-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sr-ch { font-size: 0.75rem; color: #888; }
+    .add-btn { background: rgba(29,185,84,0.2); border: 1px solid var(--primary); color: var(--primary);
+               padding: 0.3rem 0.7rem; border-radius: 4px; font-size: 0.78rem;
+               font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
     .add-btn:hover { background: rgba(29,185,84,0.4); }
 
-    /* Now Playing */
-    #now-playing { margin-bottom: 1.5rem; display: none; }
-    #now-playing iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 8px; }
+    /* ── Songs list ── */
+    .songs-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+                     border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
+    .songs-hdr { display: flex; align-items: center; padding: 0.75rem 1rem;
+                 border-bottom: 1px solid rgba(255,255,255,0.06);
+                 color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .songs-hdr .col-num  { width: 36px; flex-shrink: 0; }
+    .songs-hdr .col-info { flex: 1; }
+    .songs-hdr .col-dur  { width: 52px; text-align: right; flex-shrink: 0; }
+    .songs-hdr .col-act  { width: 60px; flex-shrink: 0; }
 
-    /* Song list */
-    .songs-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem; }
-    .songs-header { display: flex; align-items: center; padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); color: #888; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .songs-header span:nth-child(1) { width: 32px; }
-    .songs-header span:nth-child(2) { flex: 1; }
-    .songs-header span:nth-child(3) { width: 100px; text-align: right; }
-    .song-row { display: flex; align-items: center; padding: 0.7rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: grab; transition: background 0.15s; position: relative; }
+    .song-row { display: flex; align-items: center; padding: 0.65rem 1rem;
+                border-bottom: 1px solid rgba(255,255,255,0.04);
+                transition: background 0.15s; position: relative; }
     .song-row:last-child { border-bottom: none; }
     .song-row:hover { background: rgba(255,255,255,0.04); }
     .song-row.playing { background: rgba(29,185,84,0.08); }
-    .song-row.dragging { opacity: 0.4; }
+    .song-row.dragging { opacity: 0.35; }
     .song-row.drag-over { border-top: 2px solid var(--primary); }
-    .song-num { width: 32px; color: #888; font-size: 0.82rem; flex-shrink: 0; }
-    .song-row.playing .song-num { color: var(--primary); }
-    .song-info { flex: 1; min-width: 0; }
-    .song-title { font-size: 0.92rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .col-num { width: 36px; flex-shrink: 0; color: #888; font-size: 0.82rem; cursor: grab; }
+    .col-num:active { cursor: grabbing; }
+    .song-row.playing .col-num { color: var(--primary); }
+    /* playing bars animation */
+    .playing-bars { display: none; gap: 2px; align-items: flex-end; height: 14px; }
+    .song-row.playing .playing-bars { display: flex; }
+    .song-row.playing .num-text { display: none; }
+    .bar { width: 3px; background: var(--primary); border-radius: 1px; animation: bar-bounce 0.6s ease-in-out infinite alternate; }
+    .bar:nth-child(2) { animation-delay: 0.15s; }
+    .bar:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bar-bounce { from { height: 4px; } to { height: 14px; } }
+
+    .col-info { flex: 1; min-width: 0; }
+    .song-title { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
     .song-row.playing .song-title { color: var(--primary); }
-    .song-artist { font-size: 0.78rem; color: #888; margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-artist { font-size: 0.75rem; color: #888; margin-top: 0.1rem;
+                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .song-artist a { color: #888; text-decoration: none; }
     .song-artist a:hover { color: var(--primary); }
-    .song-actions { width: 100px; display: flex; justify-content: flex-end; gap: 0.4rem; opacity: 0; transition: opacity 0.15s; }
-    .song-row:hover .song-actions { opacity: 1; }
-    .song-play-btn { background: var(--primary); border: none; color: #000; width: 28px; height: 28px; border-radius: 50%; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-    .song-del-btn { background: none; border: none; color: #ff4757; cursor: pointer; font-size: 0.9rem; padding: 0.2rem; }
+
+    .col-dur { width: 52px; text-align: right; flex-shrink: 0; color: #666; font-size: 0.78rem; }
+    .col-act { width: 60px; flex-shrink: 0; display: flex; justify-content: flex-end;
+               gap: 0.3rem; opacity: 0; transition: opacity 0.15s; }
+    .song-row:hover .col-act { opacity: 1; }
+    .song-row.playing .col-act { opacity: 1; }
+    .sp-btn { background: var(--primary); border: none; color: #000; width: 26px; height: 26px;
+              border-radius: 50%; font-size: 0.7rem; cursor: pointer; display: flex;
+              align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+    .sd-btn { background: none; border: none; color: #ff4757; cursor: pointer;
+              font-size: 0.9rem; padding: 0.2rem; }
+
     .empty-songs { padding: 2.5rem; text-align: center; color: #555; font-style: italic; }
 
-    /* Recommendations */
-    .rec-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1.2rem; }
-    .rec-section h3 { font-size: 0.95rem; color: #aaa; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.8rem; }
-    .rec-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 0.9rem; text-align: center; text-decoration: none; color: #fff; transition: background 0.2s; border: 1px solid transparent; }
-    .rec-card:hover { background: rgba(29,185,84,0.1); border-color: rgba(29,185,84,0.3); }
-    .rec-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #1db954, #0d7a38); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; margin: 0 auto 0.6rem; }
-    .rec-name { font-size: 0.85rem; font-weight: 600; }
-    .rec-genre { font-size: 0.72rem; color: #888; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* ── Mini player bar (bottom) ── */
+    #player-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(18,18,18,0.97); border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 0.7rem 1.2rem; z-index: 500; display: none;
+      flex-direction: column; gap: 0.4rem;
+    }
+    #player-bar.visible { display: flex; }
+    .pb-row1 { display: flex; align-items: center; gap: 1rem; }
+    .pb-title { flex: 1; min-width: 0; }
+    .pb-title .t { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pb-title .a { font-size: 0.75rem; color: #888; }
+    .pb-controls { display: flex; align-items: center; gap: 0.7rem; flex-shrink: 0; }
+    .pb-btn { background: none; border: none; color: #ccc; cursor: pointer; font-size: 1.1rem; padding: 0.2rem; }
+    .pb-btn:hover { color: #fff; }
+    .pb-play { background: var(--primary); color: #000; border: none; width: 34px; height: 34px;
+               border-radius: 50%; font-size: 0.9rem; cursor: pointer; display: flex;
+               align-items: center; justify-content: center; font-weight: 700; }
+    .pb-play:hover { background: #1ed760; }
+    /* progress bar */
+    .pb-progress { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; color: #888; }
+    .pb-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px;
+              cursor: pointer; position: relative; }
+    .pb-fill { height: 100%; background: var(--primary); border-radius: 2px;
+               width: 0%; transition: width 0.5s linear; pointer-events: none; }
+    .pb-bar:hover .pb-fill { background: #1ed760; }
+    /* volume */
+    .pb-vol { display: flex; align-items: center; gap: 0.4rem; }
+    .pb-vol input { width: 60px; accent-color: var(--primary); cursor: pointer; }
 
-    /* Toast */
-    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--primary); color: #000; padding: 0.6rem 1.4rem; border-radius: 20px; font-weight: 600; font-size: 0.88rem; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    /* ── Recommendations ── */
+    .rec-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+                   border-radius: 10px; padding: 1.2rem; }
+    .rec-section h3 { font-size: 0.88rem; color: #aaa; margin-bottom: 1rem;
+                      text-transform: uppercase; letter-spacing: 0.5px; }
+    .rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.7rem; }
+    .rec-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 0.8rem;
+                text-align: center; text-decoration: none; color: #fff;
+                transition: background 0.2s; border: 1px solid transparent; }
+    .rec-card:hover { background: rgba(29,185,84,0.1); border-color: rgba(29,185,84,0.3); }
+    .rec-av { width: 44px; height: 44px; border-radius: 50%;
+              background: linear-gradient(135deg, #1db954, #0d7a38);
+              display: flex; align-items: center; justify-content: center;
+              font-size: 1.2rem; margin: 0 auto 0.5rem; }
+    .rec-name { font-size: 0.82rem; font-weight: 600; }
+    .rec-genre { font-size: 0.7rem; color: #888; margin-top: 0.15rem;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%);
+             background: var(--primary); color: #000; padding: 0.55rem 1.3rem;
+             border-radius: 20px; font-weight: 600; font-size: 0.85rem;
+             z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <a href="javascript:history.back()" class="back">← Back</a>
+<div class="container">
+  <a href="javascript:history.back()" class="back">&#8592; Back</a>
 
-    <!-- Header -->
-    <div class="pl-header">
-      <div class="pl-cover">🎵</div>
-      <div class="pl-info">
-        <div class="pl-name">
-          <span id="pl-name-text">{{ pl.name }}</span>
-          {% if username == pl.username %}
-          <input type="text" id="pl-name-input" value="{{ pl.name }}" onblur="saveName()" onkeydown="if(event.key==='Enter')saveName()" />
-          <button class="edit-name-btn" onclick="toggleEditName()">✎</button>
-          {% endif %}
-        </div>
-        <div class="pl-meta">
-          by <a href="/u/{{ pl.username }}" style="color:var(--primary);text-decoration:none;">{{ pl.username }}</a>
-          &bull; <span id="song-count">{{ pl.songs|length }}</span> song{{ 's' if pl.songs|length != 1 else '' }}
-          &bull; {{ pl.created_at[:10] }}
-        </div>
-      </div>
-    </div>
-
-    <!-- Actions -->
-    {% if pl.songs %}
-    <div class="pl-actions">
-      <button class="btn-play-all" onclick="playAll()">▶ Play All</button>
-      <button class="btn-shuffle" onclick="playShuffle()">⇌ Shuffle</button>
-      {% if username == pl.username %}
-      <button class="btn-delete-pl" onclick="deletePlaylist()">Delete Playlist</button>
-      {% endif %}
-    </div>
-    {% elif username == pl.username %}
-    <div class="pl-actions">
-      <button class="btn-delete-pl" onclick="deletePlaylist()">Delete Playlist</button>
-    </div>
-    {% endif %}
-
-    <!-- Now Playing -->
-    <div id="now-playing"></div>
-
-    <!-- Search & Add -->
-    {% if username == pl.username %}
-    <div class="search-section">
-      <h3>Add Songs</h3>
-      <div class="search-row">
-        <input type="text" id="yt-search" placeholder="Search for a song, e.g. Coldplay Yellow..." onkeydown="if(event.key==='Enter')searchYT()" />
-        <button onclick="searchYT()">Search</button>
-      </div>
-      <div id="search-results" class="search-results"></div>
-    </div>
-    {% endif %}
-
-    <!-- Songs List -->
-    <div class="songs-section">
-      <div class="songs-header">
-        <span>#</span>
-        <span>Title / Artist</span>
-        <span></span>
-      </div>
-      <div id="songs-list">
-        {% if pl.songs %}
-          {% for song in pl.songs %}
-          <div class="song-row" data-song-id="{{ song.song_id }}" data-query="{{ song.youtube_query }}"
-               draggable="{{ 'true' if username == pl.username else 'false' }}">
-            <div class="song-num">{{ loop.index }}</div>
-            <div class="song-info">
-              <div class="song-title">{{ song.song_title }}</div>
-              <div class="song-artist"><a href="/artist/{{ song.artist_id }}">{{ song.artist_name }}</a></div>
-            </div>
-            <div class="song-actions">
-              <button class="song-play-btn" onclick="playSong('{{ song.youtube_query }}', this.closest('.song-row'))">▶</button>
-              {% if username == pl.username %}
-              <button class="song-del-btn" onclick="deleteSong('{{ song.song_id }}', this.closest('.song-row'))">✕</button>
-              {% endif %}
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="empty-songs">No songs yet. Search above to add some.</div>
+  <!-- Header -->
+  <div class="pl-header">
+    <div class="pl-cover">&#127925;</div>
+    <div class="pl-info">
+      <div class="pl-name">
+        <span id="pl-name-text">{{ pl.name }}</span>
+        {% if username == pl.username %}
+        <input type="text" id="pl-name-input" value="{{ pl.name }}"
+               onblur="saveName()" onkeydown="if(event.key==='Enter')saveName()" />
+        <button class="edit-name-btn" onclick="toggleEditName()" title="Rename">&#9998;</button>
         {% endif %}
       </div>
-    </div>
-
-    <!-- Artist Recommendations -->
-    <div class="rec-section">
-      <h3>🎧 Recommended Artists — Based on Your Playlist</h3>
-      <div id="rec-grid" class="rec-grid">
-        <div style="color:#555;font-style:italic;font-size:0.88rem;">Loading recommendations...</div>
+      <div class="pl-meta">
+        by <a href="/u/{{ pl.username }}">{{ pl.username }}</a>
+        &bull; <span id="song-count">{{ pl.songs|length }}</span> song{{ 's' if pl.songs|length != 1 else '' }}
+        &bull; {{ pl.created_at[:10] }}
       </div>
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- Action bar -->
+  <div class="pl-actions">
+    <button class="btn-play-all" onclick="playAll()">&#9654; Play All</button>
+    <button class="btn-shuffle" id="btn-shuffle" onclick="toggleShuffle()">&#8652; Shuffle</button>
+    <button class="btn-repeat"  id="btn-repeat"  onclick="toggleRepeat()">&#8634; Repeat</button>
+    <button class="btn-share" onclick="copyLink()">&#128279; Share</button>
+    {% if username == pl.username %}
+    <button class="btn-del-pl" onclick="deletePlaylist()">&#128465; Delete</button>
+    {% endif %}
+  </div>
 
-  <script>
-    const PLAYLIST_ID = '{{ pl.playlist_id }}';
-    const IS_OWNER = {{ 'true' if username == pl.username else 'false' }};
-    const YT_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
-    let ytKeyIdx = 0;
-    let currentPlayingRow = null;
-    let songQueue = [];
-    let queueIndex = 0;
+  <!-- Search & Add (owner only) -->
+  {% if username == pl.username %}
+  <div class="search-section">
+    <h3>Add Songs</h3>
+    <div class="search-row">
+      <input type="text" id="yt-search"
+             placeholder="Search a song or paste a YouTube URL..."
+             onkeydown="if(event.key==='Enter')searchYT()" />
+      <button onclick="searchYT()">Search</button>
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+  {% endif %}
 
-    // ===== Toast =====
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    // ===== Edit playlist name =====
-    function toggleEditName() {
-      const text = document.getElementById('pl-name-text');
-      const input = document.getElementById('pl-name-input');
-      text.style.display = 'none';
-      input.style.display = 'block';
-      input.focus();
-      input.select();
-    }
-
-    function saveName() {
-      const input = document.getElementById('pl-name-input');
-      const text = document.getElementById('pl-name-text');
-      const name = input.value.trim();
-      if (!name) { input.style.display='none'; text.style.display=''; return; }
-      fetch('/api/playlists/' + PLAYLIST_ID + '/rename', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name})
-      }).then(() => {
-        text.textContent = name;
-        document.title = name + ' — MediaPedia';
-        input.style.display = 'none';
-        text.style.display = '';
-        showToast('Renamed to "' + name + '"');
-      });
-    }
-
-    // ===== Delete playlist =====
-    function deletePlaylist() {
-      if (!confirm('Delete this playlist permanently?')) return;
-      fetch('/api/playlists/' + PLAYLIST_ID, {method: 'DELETE'})
-        .then(() => window.location.href = '/u/{{ pl.username }}');
-    }
-
-    // ===== YouTube search =====
-    function searchYT() {
-      const q = document.getElementById('yt-search').value.trim();
-      if (!q) return;
-      const container = document.getElementById('search-results');
-      container.innerHTML = '<div style="color:#666;font-size:0.85rem;padding:0.4rem;">Searching...</div>';
-      const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
-      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=6&type=video&videoCategoryId=10`)
-        .then(r => r.json())
-        .then(data => {
-          if (!data.items || !data.items.length) {
-            container.innerHTML = '<div style="color:#666;font-size:0.85rem;">No results found.</div>';
-            return;
-          }
-          container.innerHTML = data.items.map(item => {
-            const vid = item.id.videoId;
-            const title = item.snippet.title;
-            const thumb = item.snippet.thumbnails.default.url;
-            const channel = item.snippet.channelTitle;
-            return `<div class="search-result-item" onclick="previewSong('${vid}')">
-              <img class="search-thumb" src="${thumb}" alt="" />
-              <div class="search-result-title">
-                <div style="font-weight:500;">${escHtml(title)}</div>
-                <div style="font-size:0.75rem;color:#888;">${escHtml(channel)}</div>
-              </div>
-              <button class="add-btn" onclick="event.stopPropagation();addSongFromSearch('${vid}','${escAttr(title)}','${escAttr(channel)}')">+ Add</button>
-            </div>`;
-          }).join('');
-        })
-        .catch(() => { ytKeyIdx++; if (ytKeyIdx < YT_KEYS.length * 2) searchYT(); });
-    }
-
-    function previewSong(videoId) {
-      const np = document.getElementById('now-playing');
-      np.style.display = 'block';
-      np.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-      np.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-    }
-
-    function addSongFromSearch(videoId, title, artist) {
-      if (!IS_OWNER) { window.location.href = '/login'; return; }
-      const query = videoId; // store video ID as query for direct playback
-      fetch('/api/playlists/' + PLAYLIST_ID + '/songs', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          song_title: title,
-          artist_name: artist,
-          artist_id: 0,
-          youtube_query: videoId
-        })
-      })
-      .then(r => r.json())
-      .then(song => {
-        if (song.error) { showToast(song.error); return; }
-        appendSongRow(song);
-        updateSongCount(1);
-        showToast('"' + title.substring(0,30) + '" added');
-        loadRecommendations();
-      });
-    }
-
-    function appendSongRow(song) {
-      const list = document.getElementById('songs-list');
-      const empty = list.querySelector('.empty-songs');
-      if (empty) empty.remove();
-      const count = list.querySelectorAll('.song-row').length + 1;
-      const div = document.createElement('div');
-      div.className = 'song-row';
-      div.dataset.songId = song.song_id;
-      div.dataset.query = song.youtube_query;
-      div.draggable = IS_OWNER;
-      div.innerHTML = `
-        <div class="song-num">${count}</div>
-        <div class="song-info">
-          <div class="song-title">${escHtml(song.song_title)}</div>
-          <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a></div>
+  <!-- Songs list -->
+  <div class="songs-section">
+    <div class="songs-hdr">
+      <div class="col-num">#</div>
+      <div class="col-info">Title</div>
+      <div class="col-dur">Time</div>
+      <div class="col-act"></div>
+    </div>
+    <div id="songs-list">
+      {% if pl.songs %}
+        {% for song in pl.songs %}
+        <div class="song-row"
+             data-song-id="{{ song.song_id }}"
+             data-query="{{ song.youtube_query }}"
+             data-title="{{ song.song_title | e }}"
+             data-artist="{{ song.artist_name | e }}"
+             draggable="{{ 'true' if username == pl.username else 'false' }}">
+          <div class="col-num">
+            <span class="num-text">{{ loop.index }}</span>
+            <span class="playing-bars">
+              <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </span>
+          </div>
+          <div class="col-info">
+            <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">
+              {{ song.song_title }}
+            </div>
+            <div class="song-artist">
+              <a href="/artist/{{ song.artist_id }}">{{ song.artist_name }}</a>
+            </div>
+          </div>
+          <div class="col-dur" id="dur-{{ song.song_id }}">—</div>
+          <div class="col-act">
+            <button class="sp-btn" onclick="playSongRow(this.closest('.song-row'))" title="Play">&#9654;</button>
+            {% if username == pl.username %}
+            <button class="sd-btn" onclick="deleteSong('{{ song.song_id }}',this.closest('.song-row'))" title="Remove">&#10005;</button>
+            {% endif %}
+          </div>
         </div>
-        <div class="song-actions">
-          <button class="song-play-btn" onclick="playSong('${song.youtube_query}', this.closest('.song-row'))">▶</button>
-          ${IS_OWNER ? `<button class="song-del-btn" onclick="deleteSong('${song.song_id}', this.closest('.song-row'))">✕</button>` : ''}
-        </div>`;
-      list.appendChild(div);
-      if (IS_OWNER) attachDragEvents(div);
-    }
+        {% endfor %}
+      {% else %}
+        <div class="empty-songs" id="empty-msg">No songs yet. Use the search above to add some.</div>
+      {% endif %}
+    </div>
+  </div>
 
-    // ===== Playback =====
-    function playSong(query, row) {
-      if (currentPlayingRow) currentPlayingRow.classList.remove('playing');
-      currentPlayingRow = row;
-      row.classList.add('playing');
-      const np = document.getElementById('now-playing');
-      np.style.display = 'block';
-      // query is a videoId directly (from search) or a search string (legacy)
-      const isVideoId = /^[a-zA-Z0-9_-]{11}$/.test(query);
-      if (isVideoId) {
-        np.innerHTML = `<iframe src="https://www.youtube.com/embed/${query}?autoplay=1&rel=0&modestbranding=1"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-        np.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-      } else {
-        // Legacy: search by query string
-        const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
-        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${key}&maxResults=1&type=video`)
-          .then(r => r.json())
-          .then(data => {
-            if (data.items && data.items.length) {
-              const vid = data.items[0].id.videoId;
-              np.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-              np.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-            }
-          });
+  <!-- Recommendations -->
+  <div class="rec-section">
+    <h3>&#127911; Recommended Artists</h3>
+    <div id="rec-grid" class="rec-grid">
+      <div style="color:#555;font-style:italic;font-size:0.85rem;">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Mini player bar -->
+<div id="player-bar">
+  <div class="pb-row1">
+    <div class="pb-title">
+      <div class="t" id="pb-title">—</div>
+      <div class="a" id="pb-artist"></div>
+    </div>
+    <div class="pb-controls">
+      <button class="pb-btn" onclick="playPrev()" title="Previous (&#8592;)">&#9664;&#9664;</button>
+      <button class="pb-play" id="pb-play-btn" onclick="togglePause()" title="Play/Pause (Space)">&#9654;</button>
+      <button class="pb-btn" onclick="playNext()" title="Next (&#8594;)">&#9654;&#9654;</button>
+    </div>
+    <div class="pb-vol">
+      <span style="font-size:0.9rem;color:#888;">&#128266;</span>
+      <input type="range" id="vol-slider" min="0" max="100" value="100"
+             oninput="setVolume(this.value)" title="Volume" />
+    </div>
+  </div>
+  <div class="pb-progress">
+    <span id="pb-elapsed">0:00</span>
+    <div class="pb-bar" id="pb-bar" onclick="seekTo(event)">
+      <div class="pb-fill" id="pb-fill"></div>
+    </div>
+    <span id="pb-duration">0:00</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- YouTube IFrame API -->
+<div id="yt-player-div" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;"></div>
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+  const PLAYLIST_ID = '{{ pl.playlist_id }}';
+  const IS_OWNER    = {{ 'true' if username == pl.username else 'false' }};
+  const YT_KEYS     = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
+  let ytKeyIdx = 0;
+
+  // ── Player state ──────────────────────────────────────────────────────────
+  let ytPlayer      = null;
+  let playerReady   = false;
+  let songQueue     = [];   // array of song-row elements in play order
+  let queueIndex    = -1;
+  let shuffleOn     = false;
+  let repeatMode    = 0;    // 0=off, 1=all, 2=one
+  let isPaused      = false;
+  let progressTimer = null;
+  let currentRow    = null;
+
+  // ── YouTube IFrame API ────────────────────────────────────────────────────
+  function onYouTubeIframeAPIReady() {
+    ytPlayer = new YT.Player('yt-player-div', {
+      height: '1', width: '1',
+      playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
+      events: {
+        onReady:       () => { playerReady = true; },
+        onStateChange: onPlayerStateChange,
+        onError:       onPlayerError
       }
-    }
+    });
+  }
 
-    function playAll() {
-      const rows = document.querySelectorAll('.song-row');
-      if (!rows.length) return;
-      songQueue = Array.from(rows);
-      queueIndex = 0;
-      playSong(songQueue[0].dataset.query, songQueue[0]);
+  function onPlayerStateChange(e) {
+    if (e.data === YT.PlayerState.PLAYING) {
+      isPaused = false;
+      document.getElementById('pb-play-btn').innerHTML = '&#9646;&#9646;';
+      startProgressTimer();
+      // fetch duration once playing starts and update col-dur
+      setTimeout(() => {
+        const dur = ytPlayer.getDuration();
+        document.getElementById('pb-duration').textContent = fmtTime(dur);
+        if (currentRow) {
+          const durEl = document.getElementById('dur-' + currentRow.dataset.songId);
+          if (durEl) durEl.textContent = fmtTime(dur);
+        }
+      }, 800);
     }
-
-    function playShuffle() {
-      const rows = Array.from(document.querySelectorAll('.song-row'));
-      if (!rows.length) return;
-      songQueue = rows.sort(() => Math.random() - 0.5);
-      queueIndex = 0;
-      playSong(songQueue[0].dataset.query, songQueue[0]);
+    if (e.data === YT.PlayerState.PAUSED) {
+      isPaused = true;
+      document.getElementById('pb-play-btn').innerHTML = '&#9654;';
+      clearInterval(progressTimer);
     }
+    if (e.data === YT.PlayerState.ENDED) {
+      clearInterval(progressTimer);
+      document.getElementById('pb-fill').style.width = '100%';
+      handleSongEnd();
+    }
+  }
 
-    // ===== Delete song =====
-    function deleteSong(songId, row) {
-      fetch(`/api/playlists/${PLAYLIST_ID}/songs/${songId}`, {method: 'DELETE'})
+  function onPlayerError(e) {
+    // video unavailable — skip to next
+    setTimeout(playNext, 800);
+  }
+
+  function handleSongEnd() {
+    if (repeatMode === 2) {          // repeat one
+      playQueueIndex(queueIndex);
+    } else if (queueIndex < songQueue.length - 1) {
+      playQueueIndex(queueIndex + 1);
+    } else if (repeatMode === 1) {   // repeat all — wrap around
+      playQueueIndex(0);
+    }
+    // else: end of queue, do nothing
+  }
+
+  // ── Play controls ─────────────────────────────────────────────────────────
+  function buildQueue(startRow) {
+    const rows = Array.from(document.querySelectorAll('.song-row'));
+    if (shuffleOn) {
+      const others = rows.filter(r => r !== startRow);
+      for (let i = others.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [others[i], others[j]] = [others[j], others[i]];
+      }
+      songQueue = [startRow, ...others];
+    } else {
+      const idx = rows.indexOf(startRow);
+      songQueue = [...rows.slice(idx), ...rows.slice(0, idx)];
+    }
+    queueIndex = 0;
+  }
+
+  function playSongRow(row) {
+    buildQueue(row);
+    playQueueIndex(0);
+  }
+
+  function playQueueIndex(idx) {
+    if (idx < 0 || idx >= songQueue.length) return;
+    queueIndex = idx;
+    const row = songQueue[idx];
+    const query = row.dataset.query;
+    highlightRow(row);
+    updatePlayerBar(row.dataset.title, row.dataset.artist);
+    showPlayerBar();
+
+    const isVideoId = /^[a-zA-Z0-9_-]{11}$/.test(query);
+    if (isVideoId) {
+      loadVideo(query);
+    } else {
+      const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${key}&maxResults=1&type=video`)
         .then(r => r.json())
         .then(d => {
-          if (d.success) {
+          if (d.items && d.items.length) loadVideo(d.items[0].id.videoId);
+          else setTimeout(playNext, 500);
+        })
+        .catch(() => { ytKeyIdx++; setTimeout(playNext, 500); });
+    }
+  }
+
+  function loadVideo(videoId) {
+    if (!playerReady) { setTimeout(() => loadVideo(videoId), 300); return; }
+    document.getElementById('pb-fill').style.width = '0%';
+    document.getElementById('pb-elapsed').textContent = '0:00';
+    ytPlayer.loadVideoById(videoId);
+  }
+
+  function playAll() {
+    const rows = document.querySelectorAll('.song-row');
+    if (!rows.length) return;
+    buildQueue(rows[0]);
+    playQueueIndex(0);
+  }
+
+  function toggleShuffle() {
+    shuffleOn = !shuffleOn;
+    document.getElementById('btn-shuffle').classList.toggle('active', shuffleOn);
+    showToast(shuffleOn ? 'Shuffle on' : 'Shuffle off');
+    if (currentRow) buildQueue(currentRow);   // rebuild queue from current
+  }
+
+  function toggleRepeat() {
+    repeatMode = (repeatMode + 1) % 3;
+    const btn = document.getElementById('btn-repeat');
+    const labels = ['&#8634; Repeat', '&#8634; Repeat All', '&#8634; Repeat 1'];
+    btn.innerHTML = labels[repeatMode];
+    btn.classList.toggle('active', repeatMode > 0);
+    showToast(['Repeat off', 'Repeat all', 'Repeat one'][repeatMode]);
+  }
+
+  function playNext() {
+    if (!songQueue.length) return;
+    if (queueIndex < songQueue.length - 1) playQueueIndex(queueIndex + 1);
+    else if (repeatMode === 1) playQueueIndex(0);
+  }
+
+  function playPrev() {
+    if (!songQueue.length) return;
+    // if more than 3s in, restart; else go to prev
+    const elapsed = playerReady ? (ytPlayer.getCurrentTime() || 0) : 0;
+    if (elapsed > 3) { ytPlayer.seekTo(0); return; }
+    if (queueIndex > 0) playQueueIndex(queueIndex - 1);
+    else if (repeatMode === 1) playQueueIndex(songQueue.length - 1);
+  }
+
+  function togglePause() {
+    if (!playerReady) return;
+    if (isPaused) ytPlayer.playVideo();
+    else ytPlayer.pauseVideo();
+  }
+
+  function setVolume(v) {
+    if (playerReady) ytPlayer.setVolume(parseInt(v));
+  }
+
+  function seekTo(e) {
+    if (!playerReady) return;
+    const bar = document.getElementById('pb-bar');
+    const pct = e.offsetX / bar.offsetWidth;
+    const dur = ytPlayer.getDuration();
+    ytPlayer.seekTo(pct * dur, true);
+  }
+
+  // ── Progress timer ────────────────────────────────────────────────────────
+  function startProgressTimer() {
+    clearInterval(progressTimer);
+    progressTimer = setInterval(() => {
+      if (!playerReady) return;
+      const cur = ytPlayer.getCurrentTime() || 0;
+      const dur = ytPlayer.getDuration() || 1;
+      document.getElementById('pb-fill').style.width = (cur / dur * 100) + '%';
+      document.getElementById('pb-elapsed').textContent = fmtTime(cur);
+    }, 500);
+  }
+
+  function fmtTime(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  // ── Player bar UI ─────────────────────────────────────────────────────────
+  function showPlayerBar() { document.getElementById('player-bar').classList.add('visible'); }
+
+  function updatePlayerBar(title, artist) {
+    document.getElementById('pb-title').textContent  = title  || '—';
+    document.getElementById('pb-artist').textContent = artist || '';
+  }
+
+  function highlightRow(row) {
+    if (currentRow) currentRow.classList.remove('playing');
+    currentRow = row;
+    row.classList.add('playing');
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.code === 'Space')       { e.preventDefault(); togglePause(); }
+    if (e.code === 'ArrowRight')  { e.preventDefault(); playNext(); }
+    if (e.code === 'ArrowLeft')   { e.preventDefault(); playPrev(); }
+    if (e.code === 'KeyS')        toggleShuffle();
+    if (e.code === 'KeyR')        toggleRepeat();
+  });
+
+  // ── Rename ────────────────────────────────────────────────────────────────
+  function toggleEditName() {
+    const txt = document.getElementById('pl-name-text');
+    const inp = document.getElementById('pl-name-input');
+    txt.style.display = 'none'; inp.style.display = 'block';
+    inp.focus(); inp.select();
+  }
+  function saveName() {
+    const txt = document.getElementById('pl-name-text');
+    const inp = document.getElementById('pl-name-input');
+    const name = inp.value.trim();
+    if (!name) { inp.style.display = 'none'; txt.style.display = ''; return; }
+    fetch('/api/playlists/' + PLAYLIST_ID + '/rename', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name})
+    }).then(() => {
+      txt.textContent = name; document.title = name + ' — MediaPedia';
+      inp.style.display = 'none'; txt.style.display = '';
+      showToast('Renamed to "' + name + '"');
+    });
+  }
+
+  // ── Delete playlist ───────────────────────────────────────────────────────
+  function deletePlaylist() {
+    if (!confirm('Delete this playlist permanently?')) return;
+    fetch('/api/playlists/' + PLAYLIST_ID, {method:'DELETE'})
+      .then(() => window.location.href = '/u/{{ pl.username }}');
+  }
+
+  // ── Copy link ─────────────────────────────────────────────────────────────
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => showToast('Link copied!'))
+      .catch(() => prompt('Copy:', window.location.href));
+  }
+
+  // ── YouTube search ────────────────────────────────────────────────────────
+  function searchYT() {
+    const q = document.getElementById('yt-search').value.trim();
+    if (!q) return;
+    const container = document.getElementById('search-results');
+    container.innerHTML = '<div style="color:#666;font-size:0.85rem;padding:0.4rem;">Searching...</div>';
+
+    // YouTube URL paste — extract video ID directly
+    const ytIdMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytIdMatch) {
+      const vid = ytIdMatch[1];
+      container.innerHTML = `<div class="sr-item">
+        <img class="sr-thumb" src="https://img.youtube.com/vi/${vid}/default.jpg" />
+        <div class="sr-info"><div class="sr-title">YouTube Video</div><div class="sr-ch">${escHtml(q)}</div></div>
+        <button class="add-btn" onclick="addSongFromSearch('${vid}','YouTube Video','Unknown')">+ Add</button>
+      </div>`;
+      return;
+    }
+
+    const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
+    fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=6&type=video&videoCategoryId=10`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error && data.error.code === 403) { ytKeyIdx++; searchYT(); return; }
+        if (!data.items || !data.items.length) {
+          container.innerHTML = '<div style="color:#666;font-size:0.85rem;">No results.</div>'; return;
+        }
+        container.innerHTML = data.items.map(item => {
+          const vid = item.id.videoId;
+          const title = item.snippet.title;
+          const thumb = item.snippet.thumbnails.default.url;
+          const ch = item.snippet.channelTitle;
+          return `<div class="sr-item">
+            <img class="sr-thumb" src="${thumb}" onclick="previewInBar('${vid}')" />
+            <div class="sr-info" onclick="previewInBar('${vid}','${escAttr(title)}','${escAttr(ch)}')">
+              <div class="sr-title">${escHtml(title)}</div>
+              <div class="sr-ch">${escHtml(ch)}</div>
+            </div>
+            <button class="add-btn" onclick="addSongFromSearch('${vid}','${escAttr(title)}','${escAttr(ch)}')">+ Add</button>
+          </div>`;
+        }).join('');
+      })
+      .catch(() => { ytKeyIdx++; if (ytKeyIdx < YT_KEYS.length * 2) searchYT(); });
+  }
+
+  function previewInBar(videoId, title, artist) {
+    updatePlayerBar(title || 'Preview', artist || '');
+    showPlayerBar();
+    loadVideo(videoId);
+  }
+
+  function addSongFromSearch(videoId, title, artist) {
+    fetch('/api/playlists/' + PLAYLIST_ID + '/songs', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ song_title: title, artist_name: artist, artist_id: 0, youtube_query: videoId })
+    })
+    .then(r => r.json())
+    .then(song => {
+      if (song.error) { showToast(song.error); return; }
+      appendSongRow(song);
+      updateSongCount(1);
+      showToast('"' + escHtml(title.substring(0,30)) + '" added');
+      loadRecommendations();
+      // auto-play the newly added song if nothing is currently playing
+      if (!currentRow) {
+        const newRow = document.querySelector(`.song-row[data-song-id="${song.song_id}"]`);
+        if (newRow) playSongRow(newRow);
+      }
+    });
+  }
+
+  function appendSongRow(song) {
+    const list = document.getElementById('songs-list');
+    const empty = list.querySelector('#empty-msg'); if (empty) empty.remove();
+    const n = list.querySelectorAll('.song-row').length + 1;
+    const div = document.createElement('div');
+    div.className = 'song-row';
+    div.dataset.songId  = song.song_id;
+    div.dataset.query   = song.youtube_query;
+    div.dataset.title   = song.song_title;
+    div.dataset.artist  = song.artist_name;
+    div.draggable       = IS_OWNER;
+    div.innerHTML = `
+      <div class="col-num">
+        <span class="num-text">${n}</span>
+        <span class="playing-bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>
+      </div>
+      <div class="col-info">
+        <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
+        <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a></div>
+      </div>
+      <div class="col-dur" id="dur-${song.song_id}">—</div>
+      <div class="col-act">
+        <button class="sp-btn" onclick="playSongRow(this.closest('.song-row'))">&#9654;</button>
+        ${IS_OWNER ? `<button class="sd-btn" onclick="deleteSong('${song.song_id}',this.closest('.song-row'))">&#10005;</button>` : ''}
+      </div>`;
+    list.appendChild(div);
+    if (IS_OWNER) attachDrag(div);
+  }
+
+  // ── Delete song ───────────────────────────────────────────────────────────
+  function deleteSong(songId, row) {
+    fetch(`/api/playlists/${PLAYLIST_ID}/songs/${songId}`, {method:'DELETE'})
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          if (currentRow === row) {
+            const next = row.nextElementSibling;
             row.remove();
+            renumber();
             updateSongCount(-1);
-            renumberRows();
             loadRecommendations();
-            showToast('Song removed');
+            showToast('Removed');
+            if (next && next.classList.contains('song-row')) playSongRow(next);
+          } else {
+            row.remove(); renumber(); updateSongCount(-1);
+            loadRecommendations(); showToast('Removed');
           }
-        });
-    }
-
-    function updateSongCount(delta) {
-      const el = document.getElementById('song-count');
-      el.textContent = parseInt(el.textContent || '0') + delta;
-    }
-
-    function renumberRows() {
-      document.querySelectorAll('.song-row').forEach((r, i) => {
-        r.querySelector('.song-num').textContent = i + 1;
-      });
-    }
-
-    // ===== Drag to reorder =====
-    let dragSrc = null;
-
-    function attachDragEvents(row) {
-      row.addEventListener('dragstart', e => {
-        dragSrc = row;
-        row.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      row.addEventListener('dragend', () => {
-        row.classList.remove('dragging');
-        document.querySelectorAll('.song-row').forEach(r => r.classList.remove('drag-over'));
-        saveOrder();
-      });
-      row.addEventListener('dragover', e => {
-        e.preventDefault();
-        document.querySelectorAll('.song-row').forEach(r => r.classList.remove('drag-over'));
-        if (row !== dragSrc) row.classList.add('drag-over');
-      });
-      row.addEventListener('drop', e => {
-        e.preventDefault();
-        if (dragSrc && dragSrc !== row) {
-          const list = document.getElementById('songs-list');
-          const rows = Array.from(list.querySelectorAll('.song-row'));
-          const srcIdx = rows.indexOf(dragSrc);
-          const tgtIdx = rows.indexOf(row);
-          if (srcIdx < tgtIdx) row.after(dragSrc);
-          else row.before(dragSrc);
-          renumberRows();
         }
       });
-    }
+  }
 
-    function saveOrder() {
-      const rows = Array.from(document.querySelectorAll('.song-row'));
-      const songs = rows.map(r => ({
-        song_id: r.dataset.songId,
-        youtube_query: r.dataset.query,
-        song_title: r.querySelector('.song-title').textContent,
-        artist_name: r.querySelector('.song-artist').textContent.trim(),
-        artist_id: r.querySelector('.song-artist a')?.href.split('/').pop() || 0,
-        added_at: ''
-      }));
-      fetch('/api/playlists/' + PLAYLIST_ID + '/reorder', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({songs})
+  function updateSongCount(d) {
+    const el = document.getElementById('song-count');
+    el.textContent = Math.max(0, parseInt(el.textContent || 0) + d);
+  }
+  function renumber() {
+    document.querySelectorAll('.song-row').forEach((r, i) =>
+      r.querySelector('.num-text').textContent = i + 1);
+  }
+
+  // ── Drag-to-reorder ───────────────────────────────────────────────────────
+  let dragSrc = null;
+  function attachDrag(row) {
+    row.addEventListener('dragstart', e => {
+      dragSrc = row; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.song-row').forEach(r => r.classList.remove('drag-over'));
+      renumber(); saveOrder();
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.song-row').forEach(r => r.classList.remove('drag-over'));
+      if (row !== dragSrc) row.classList.add('drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrc && dragSrc !== row) {
+        const rows = Array.from(document.querySelectorAll('.song-row'));
+        rows.indexOf(dragSrc) < rows.indexOf(row) ? row.after(dragSrc) : row.before(dragSrc);
+      }
+    });
+  }
+  function saveOrder() {
+    const songs = Array.from(document.querySelectorAll('.song-row')).map(r => ({
+      song_id: r.dataset.songId, youtube_query: r.dataset.query,
+      song_title: r.dataset.title, artist_name: r.dataset.artist, artist_id: 0, added_at: ''
+    }));
+    fetch('/api/playlists/' + PLAYLIST_ID + '/reorder', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({songs})
+    });
+  }
+  if (IS_OWNER) document.querySelectorAll('.song-row').forEach(attachDrag);
+
+  // ── Recommendations ───────────────────────────────────────────────────────
+  function loadRecommendations() {
+    fetch('/api/playlists/recommendations')
+      .then(r => r.json())
+      .then(artists => {
+        const g = document.getElementById('rec-grid');
+        if (!artists.length) {
+          g.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.85rem;">Add songs to get recommendations.</div>';
+          return;
+        }
+        g.innerHTML = artists.map(a =>
+          `<a class="rec-card" href="/artist/${a.ID}">
+            <div class="rec-av">&#127908;</div>
+            <div class="rec-name">${escHtml(a.artist_name)}</div>
+            <div class="rec-genre">${escHtml((a.artist_genre||'').split(',')[0].trim())}</div>
+          </a>`
+        ).join('');
       });
-    }
+  }
+  loadRecommendations();
 
-    // Init drag on existing rows
-    if (IS_OWNER) {
-      document.querySelectorAll('.song-row').forEach(attachDragEvents);
-    }
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
 
-    // ===== Artist Recommendations =====
-    function loadRecommendations() {
-      fetch('/api/playlists/recommendations')
-        .then(r => r.json())
-        .then(artists => {
-          const grid = document.getElementById('rec-grid');
-          if (!artists.length) {
-            grid.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.88rem;">Add songs to get artist recommendations.</div>';
-            return;
-          }
-          grid.innerHTML = artists.map(a =>
-            `<a class="rec-card" href="/artist/${a.ID}">
-              <div class="rec-avatar">🎤</div>
-              <div class="rec-name">${escHtml(a.artist_name)}</div>
-              <div class="rec-genre">${escHtml((a.artist_genre||'').split(',')[0].trim())}</div>
-            </a>`
-          ).join('');
-        });
-    }
-
-    loadRecommendations();
-
-    // ===== Helpers =====
-    function escHtml(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function escAttr(s) {
-      return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    }
-  </script>
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+</script>
 </body>
 </html>
