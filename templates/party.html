@@ -286,13 +286,13 @@
 
 <script>
   const ME      = '{{ username }}';
-  const YT_KEYS = ['{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}','{{ api_key_4 }}','{{ api_key_5 }}'].filter(k => k && !k.startsWith('{{'));
+  const YT_KEYS = ['{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}','{{ api_key_4 }}','{{ api_key_5 }}'].filter(Boolean);
   {% if party is defined and party %}
   const INIT_PARTY = {{ party | tojson }};
   {% else %}
   const INIT_PARTY = null;
   {% endif %}
-
+{% raw %}
   let ytKeyIdx    = 0;
   let socket      = null;
   let partyId     = null;
@@ -344,7 +344,6 @@
     if (e.data === YT.PlayerState.ENDED) {
       clearInterval(progTimer);
       document.getElementById('prog-fill').style.width = '100%';
-      // Only host auto-advances to avoid duplicate events
       if (ME === partyHost) nextSong();
     }
   }
@@ -365,7 +364,6 @@
     return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   }
 
-  // ── Load video (resolves search query or uses direct video ID) ─────────────
   function resolveAndPlay(song, startSec, paused) {
     const q = song.youtube_query || '';
     const tMatch = q.match(/#t=(\d+)$/);
@@ -401,7 +399,6 @@
       socket.emit('join_party', { party_id: pid, username: ME });
     });
 
-    // Full state (on join or explicit sync request)
     socket.on('party_state', (party) => {
       if (!ytReady) { pendingSync = party; return; }
       applyState(party);
@@ -417,22 +414,14 @@
       renderMembers(d.members || []);
     });
 
-    // ── Playback sync events ───────────────────────────────────────────────
     socket.on('sync_play', (d) => {
-      // Seek to authoritative position then play
-      if (ytReady) {
-        ytPlayer.seekTo(d.position, true);
-        ytPlayer.playVideo();
-      }
+      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.playVideo(); }
       document.getElementById('play-btn').innerHTML = '⏸';
       if (d.by !== ME) sysChat(d.by + ' pressed play');
     });
 
     socket.on('sync_pause', (d) => {
-      if (ytReady) {
-        ytPlayer.seekTo(d.position, true);
-        ytPlayer.pauseVideo();
-      }
+      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.pauseVideo(); }
       document.getElementById('play-btn').innerHTML = '▶';
       if (d.by !== ME) sysChat(d.by + ' paused');
     });
@@ -443,7 +432,6 @@
 
     socket.on('sync_change_song', (d) => {
       curIdx = d.index;
-      // Use server-provided position so all devices start at same timestamp
       playCurrent(d.position || 0, d.paused || false);
       if (d.by !== ME) sysChat(d.by + ' changed the song');
     });
@@ -467,10 +455,7 @@
       if (d.by !== ME) sysChat(d.by + ' removed a song');
     });
 
-    socket.on('chat_message', (d) => {
-      appendChat(d.username, d.text);
-    });
-
+    socket.on('chat_message', (d) => { appendChat(d.username, d.text); });
     socket.on('error', (d) => { showToast(d.msg); });
   }
 
@@ -480,18 +465,16 @@
     queue     = party.queue || [];
     curIdx    = party.current_index ?? -1;
 
-    document.getElementById('room-name').textContent     = party.name || 'Party';
+    document.getElementById('room-name').textContent      = party.name || 'Party';
     document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
-    document.getElementById('btn-end').textContent       = ME === partyHost ? 'End Party' : 'Leave';
+    document.getElementById('btn-end').textContent        = ME === partyHost ? 'End Party' : 'Leave';
 
     renderMembers(party.members || []);
     renderQueue();
 
     if (curIdx >= 0 && queue[curIdx]) {
-      const s      = queue[curIdx];
-      const paused = party.state !== 'playing';
-      updateNowPlayingUI(s);
-      resolveAndPlay(s, party.position || 0, paused);
+      updateNowPlayingUI(queue[curIdx]);
+      resolveAndPlay(queue[curIdx], party.position || 0, party.state !== 'playing');
     }
   }
 
@@ -501,22 +484,17 @@
     document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
   }
 
-  // ── Playback controls ──────────────────────────────────────────────────────
   function togglePlay() {
     if (!socket || curIdx < 0) return;
     const pos     = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
     const playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
-    if (playing) {
-      socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
-    } else {
-      socket.emit('party_play',  { party_id: partyId, username: ME, position: pos });
-    }
+    if (playing) socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
+    else         socket.emit('party_play',  { party_id: partyId, username: ME, position: pos });
   }
 
   function nextSong() {
-    if (socket && curIdx < queue.length - 1) {
+    if (socket && curIdx < queue.length - 1)
       socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
-    }
   }
 
   function prevSong() {
@@ -525,16 +503,14 @@
       socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
       return;
     }
-    if (curIdx > 0) {
+    if (curIdx > 0)
       socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
-    }
   }
 
   function playCurrent(startSec, paused) {
     if (curIdx < 0 || curIdx >= queue.length) return;
-    const s = queue[curIdx];
-    updateNowPlayingUI(s);
-    resolveAndPlay(s, startSec || 0, paused || false);
+    updateNowPlayingUI(queue[curIdx]);
+    resolveAndPlay(queue[curIdx], startSec || 0, paused || false);
     renderQueue();
   }
 
@@ -551,7 +527,6 @@
 
   function setVol(v) { if (ytReady) ytPlayer.setVolume(parseInt(v)); }
 
-  // ── Queue ──────────────────────────────────────────────────────────────────
   function renderQueue() {
     const el = document.getElementById('queue-list');
     document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
@@ -576,129 +551,101 @@
     if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
   }
 
-  // ── Members ────────────────────────────────────────────────────────────────
   function renderMembers(members) {
     document.getElementById('member-chips').innerHTML = members.map(u =>
       `<div class="chip ${u === partyHost ? 'host' : ''}" title="${esc(u)}">${u[0].toUpperCase()}</div>`
     ).join('');
   }
 
-  // ── Song search ────────────────────────────────────────────────────────────
   let ytKeySearchIdx = 0;
   function searchSongs() {
     const q = document.getElementById('search-inp').value.trim();
     if (!q) return;
     const container = document.getElementById('sr-list');
     container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching…</div>';
-
     const ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) {
-      container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
-      return;
-    }
+    if (ytMatch) { container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', ''); return; }
     const key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
     fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=6&type=video&videoCategoryId=10`)
       .then(r => r.json())
       .then(d => {
         if (d.error && d.error.code === 403) { ytKeySearchIdx++; searchSongs(); return; }
-        if (!d.items || !d.items.length) {
-          container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
-          return;
-        }
+        if (!d.items || !d.items.length) { container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>'; return; }
         container.innerHTML = d.items.map(item =>
-          srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle,
-                item.snippet.thumbnails.default.url)
+          srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url)
         ).join('');
       })
       .catch(() => { ytKeySearchIdx++; });
   }
 
   function srRow(vid, title, ch, thumb) {
-    const imgSrc = (thumb && thumb.startsWith('http')) ? thumb
-                   : `https://img.youtube.com/vi/${vid}/default.jpg`;
+    const imgSrc = (thumb && thumb.startsWith('http')) ? thumb : `https://img.youtube.com/vi/${vid}/default.jpg`;
     return `<div class="sr-row">
       <img class="sr-thumb" src="${imgSrc}" />
-      <div class="sr-info">
-        <div class="sr-t">${esc(title)}</div>
-        <div class="sr-c">${esc(ch)}</div>
-      </div>
-      <button class="sr-add" style="margin-right:0.3rem"
-              onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">&#9654; Next</button>
-      <button class="sr-add"
-              onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
+      <div class="sr-info"><div class="sr-t">${esc(title)}</div><div class="sr-c">${esc(ch)}</div></div>
+      <button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">&#9654; Next</button>
+      <button class="sr-add" onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
     </div>`;
   }
 
   function extractArtist(title, ch) {
     const m = title.match(/^([^\-–|()\.\[\]]+?)\s*[-–]\s*.+/);
     if (m) return m[1].trim();
-    return ch.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').replace(/Official$/i, '').trim() || ch;
+    return ch.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').replace(/Official$/i,'').trim() || ch;
   }
 
   function addSongNext(vid, title, ch) {
     if (!socket || !partyId) return;
-    const song = {
-      song_id: Math.random().toString(36).slice(2, 10),
-      song_title: title, artist_name: extractArtist(title, ch),
-      youtube_query: vid, added_by: ME
-    };
-    socket.emit('party_add_song_next', { party_id: partyId, username: ME, song });
-    showToast('"' + title.substring(0, 30) + '" plays next!');
+    socket.emit('party_add_song_next', { party_id: partyId, username: ME,
+      song: { song_id: Math.random().toString(36).slice(2,10), song_title: title,
+              artist_name: extractArtist(title, ch), youtube_query: vid, added_by: ME } });
+    showToast('"' + title.substring(0,30) + '" plays next!');
     document.getElementById('sr-list').innerHTML = '';
     document.getElementById('search-inp').value = '';
   }
 
   function addSong(vid, title, ch) {
     if (!socket || !partyId) return;
-    const song = {
-      song_id: Math.random().toString(36).slice(2, 10),
-      song_title: title, artist_name: extractArtist(title, ch),
-      youtube_query: vid, added_by: ME
-    };
-    socket.emit('party_add_song', { party_id: partyId, username: ME, song });
-    showToast('"' + title.substring(0, 30) + '" added!');
+    socket.emit('party_add_song', { party_id: partyId, username: ME,
+      song: { song_id: Math.random().toString(36).slice(2,10), song_title: title,
+              artist_name: extractArtist(title, ch), youtube_query: vid, added_by: ME } });
+    showToast('"' + title.substring(0,30) + '" added!');
     document.getElementById('sr-list').innerHTML = '';
     document.getElementById('search-inp').value = '';
   }
 
-  // ── Chat ───────────────────────────────────────────────────────────────────
   function sendChat() {
-    const inp  = document.getElementById('chat-inp');
-    const text = inp.value.trim();
-    if (!text) return;
+    const inp = document.getElementById('chat-inp');
+    const text = inp.value.trim(); if (!text) return;
     socket.emit('party_chat', { party_id: partyId, username: ME, text });
     inp.value = '';
   }
 
   function appendChat(user, text) {
-    const el  = document.getElementById('chat-msgs');
+    const el = document.getElementById('chat-msgs');
     const div = document.createElement('div');
     div.className = 'chat-msg';
     div.innerHTML = `<div class="cm-user">${esc(user)}</div><div class="cm-text">${esc(text)}</div>`;
-    el.appendChild(div);
-    el.scrollTop = el.scrollHeight;
+    el.appendChild(div); el.scrollTop = el.scrollHeight;
   }
 
   function sysChat(text) {
-    const el  = document.getElementById('chat-msgs');
+    const el = document.getElementById('chat-msgs');
     const div = document.createElement('div');
     div.className = 'chat-msg system';
     div.innerHTML = `<div class="cm-text">${esc(text)}</div>`;
-    el.appendChild(div);
-    el.scrollTop = el.scrollHeight;
+    el.appendChild(div); el.scrollTop = el.scrollHeight;
   }
 
-  // ── Party create / join ────────────────────────────────────────────────────
   function createParty() {
     const name = document.getElementById('party-name').value.trim();
-    fetch('/api/party/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || ME + "'s Party" })
-    }).then(r => r.json()).then(d => {
-      if (d.error) { showToast(d.error); return; }
-      history.replaceState({}, '', '/party/' + d.party_id);
-      enterRoom(d.party_id);
-    });
+    fetch('/api/party/create', { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: name || ME + "'s Party" }) })
+      .then(r => r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        history.replaceState({}, '', '/party/' + d.party_id);
+        enterRoom(d.party_id);
+      });
   }
 
   function joinParty() {
@@ -732,17 +679,15 @@
       .catch(() => prompt('Share this link:', window.location.origin + '/party/' + partyId));
   }
 
-  // ── Toast ──────────────────────────────────────────────────────────────────
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
 
-  function esc(s)  { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function escA(s) { return String(s || '').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+  function esc(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function escA(s) { return String(s||'').replace(/'/g,"\'").replace(/"/g,'&quot;'); }
 
-  // ── Auto-join if landing on /party/<id> ───────────────────────────────────
   if (INIT_PARTY) {
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('room').classList.add('active');
@@ -750,7 +695,6 @@
     connectSocket(INIT_PARTY.party_id);
   }
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     const tag = document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -758,6 +702,10 @@
     if (e.code === 'ArrowRight') nextSong();
     if (e.code === 'ArrowLeft')  prevSong();
   });
+{% endraw %}
 </script>
+
+
+
 </body>
 </html>
