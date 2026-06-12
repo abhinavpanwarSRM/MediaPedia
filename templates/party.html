@@ -284,25 +284,25 @@
 
 <script>
   // Pass data from Flask/Jinja to JavaScript
-  const ME = {{ username | tojson }};
-  const YT_KEYS = [{{ api_key_1 | tojson }}, {{ api_key_2 | tojson }}, {{ api_key_3 | tojson }}, {{ api_key_4 | tojson }}, {{ api_key_5 | tojson }}].filter(k => k);
-  const INIT_PARTY = {% if party is defined and party %}{{ party | tojson }}{% else %}null{% endif %};
+  var ME = {{ username | tojson }};
+  var YT_KEYS = [{{ api_key_1 | tojson }}, {{ api_key_2 | tojson }}, {{ api_key_3 | tojson }}, {{ api_key_4 | tojson }}, {{ api_key_5 | tojson }}].filter(function(k) { return k; });
+  var INIT_PARTY = {% if party is defined and party %}{{ party | tojson }}{% else %}null{% endif %};
 
-  let ytKeyIdx = 0;
-  let socket = null;
-  let partyId = null;
-  let partyHost = null;
-  let queue = [];
-  let curIdx = -1;
-  let progTimer = null;
-  let pendingSync = null;
-  let pauseAtSec = null;
+  var ytKeyIdx = 0;
+  var socket = null;
+  var partyId = null;
+  var partyHost = null;
+  var queue = [];
+  var curIdx = -1;
+  var progTimer = null;
+  var pendingSync = null;
+  var pauseAtSec = null;
 
   // YouTube Player
-  let ytPlayer = null;
-  let ytReady = false;
+  var ytPlayer = null;
+  var ytReady = false;
 
-  function onYouTubeIframeAPIReady() {
+  window.onYouTubeIframeAPIReady = function() {
     ytPlayer = new YT.Player('yt-div', {
       height: '1',
       width: '1',
@@ -321,12 +321,12 @@
         }
       }
     });
-  }
+  };
 
   function onYTState(e) {
     if (e.data === YT.PlayerState.PLAYING) {
       if (pauseAtSec !== null) {
-        const sec = pauseAtSec;
+        var sec = pauseAtSec;
         pauseAtSec = null;
         ytPlayer.seekTo(sec, true);
         ytPlayer.pauseVideo();
@@ -335,7 +335,7 @@
       document.getElementById('play-btn').innerHTML = '⏸';
       startProg();
       setTimeout(function() {
-        const dur = ytPlayer.getDuration();
+        var dur = ytPlayer.getDuration();
         document.getElementById('duration').textContent = fmt(dur);
       }, 800);
     }
@@ -354,8 +354,8 @@
     clearInterval(progTimer);
     progTimer = setInterval(function() {
       if (!ytReady) return;
-      const cur = ytPlayer.getCurrentTime() || 0;
-      const dur = ytPlayer.getDuration() || 1;
+      var cur = ytPlayer.getCurrentTime() || 0;
+      var dur = ytPlayer.getDuration() || 1;
       document.getElementById('prog-fill').style.width = (cur / dur * 100) + '%';
       document.getElementById('elapsed').textContent = fmt(cur);
     }, 500);
@@ -367,15 +367,15 @@
   }
 
   function resolveAndPlay(song, startSec, paused) {
-    const q = song.youtube_query || '';
-    const tMatch = q.match(/#t=(\d+)$/);
-    const clean = q.replace(/#t=\d+$/, '');
-    const sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
+    var q = song.youtube_query || '';
+    var tMatch = q.match(/#t=(\\d+)$/);
+    var clean = q.replace(/#t=\\d+$/, '');
+    var sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
     pauseAtSec = paused ? sec : null;
     if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
       _loadVideo(clean, sec);
     } else {
-      const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
+      var key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
       fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(clean) + '&key=' + key + '&maxResults=1&type=video')
         .then(function(r) { return r.json(); })
         .then(function(d) {
@@ -470,7 +470,7 @@
     });
 
     socket.on('song_removed', function(d) {
-      const removedIdx = queue.findIndex(function(s) { return s.song_id === d.song_id; });
+      var removedIdx = queue.findIndex(function(s) { return s.song_id === d.song_id; });
       queue = queue.filter(function(s) { return s.song_id !== d.song_id; });
       if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
       renderQueue();
@@ -490,7 +490,7 @@
     partyId = party.party_id;
     partyHost = party.host;
     queue = party.queue || [];
-    curIdx = party.current_index !== undefined && party.current_index !== null ? party.current_index : -1;
+    curIdx = (party.current_index !== undefined && party.current_index !== null) ? party.current_index : -1;
 
     document.getElementById('room-name').textContent = party.name || 'Party';
     document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
@@ -513,8 +513,8 @@
 
   function togglePlay() {
     if (!socket || curIdx < 0) return;
-    const pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
-    const playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+    var pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
+    var playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
     if (playing) {
       socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
     } else {
@@ -552,8 +552,8 @@
 
   function seekBar(e) {
     if (!ytReady || !socket) return;
-    const pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
-    const pos = pct * (ytPlayer.getDuration() || 0);
+    var pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
+    var pos = pct * (ytPlayer.getDuration() || 0);
     socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
   }
 
@@ -562,7 +562,7 @@
   }
 
   function renderQueue() {
-    const el = document.getElementById('queue-list');
+    var el = document.getElementById('queue-list');
     document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
     if (!queue.length) {
       el.innerHTML = '<div class="q-empty">No songs yet. Add one below!</div>';
@@ -784,6 +784,7 @@
     return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   }
 
+  // Initialize if party data is provided
   if (INIT_PARTY) {
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('room').classList.add('active');
