@@ -31,11 +31,11 @@
     <a href="/u/{{ lst.username }}" class="back">← {{ lst.username }}'s profile</a>
     <div class="list-header">
       <h1>{{ lst.name }}</h1>
-      <p class="meta">by <a href="/u/{{ lst.username }}">{{ lst.username }}</a> &bull; {{ lst.items|length }} item{{ 's' if lst.items|length != 1 else '' }} &bull; created {{ lst.created_at[:10] }}</p>
+      <p class="meta">by <a href="/u/{{ lst.username }}">{{ lst.username }}</a> &bull; {{ lst['items']|length }} item{{ 's' if lst['items']|length != 1 else '' }} &bull; created {{ lst.created_at[:10] }}</p>
     </div>
 
-    {% if lst.items %}
-      {% for item in lst.items %}
+    {% if lst['items'] %}
+      {% for item in lst['items'] %}
       <a class="item" href="/{{ item.content_type }}/{{ item.content_id }}">
         <div>
           <div class="item-title">{{ item.title }}</div>

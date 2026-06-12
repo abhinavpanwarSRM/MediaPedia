@@ -14,6 +14,8 @@ load_dotenv()
 app = Flask(__name__)
 import secrets as _secrets
 app.secret_key = os.getenv("SECRET_KEY") or _secrets.token_hex(32)
+from datetime import timedelta
+app.permanent_session_lifetime = timedelta(days=30)
 bcrypt = Bcrypt(app)
 
 MONGO_URI = os.getenv("MONGO_URI", "")
