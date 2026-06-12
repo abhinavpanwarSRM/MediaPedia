@@ -1256,7 +1256,7 @@
           placeholder="Search movies, series, artists, directors..."
           autocomplete="off"
           oninput="globalSearch(this.value)"
-          onblur="setTimeout(()=>document.getElementById('search-dropdown').style.display='none',200)" />
+          onblur="setTimeout(()=>{ if(!document.querySelector('#search-dropdown:hover'))document.getElementById('search-dropdown').style.display='none'; },200)" />
         <div id="search-dropdown" style="position:absolute;width:100%;top:100%;left:0;display:none;background:rgba(18,18,18,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:0 0 6px 6px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;"></div>
       </div>
 
