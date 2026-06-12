@@ -31,12 +31,12 @@
     .divider { color: var(--muted); font-size: 0.85rem; margin: 0.8rem 0; }
 
     /* ── Room layout ── */
-    #room { display: none; height: 100vh; display: none;
-            grid-template-columns: 1fr 320px; grid-template-rows: auto 1fr auto; }
+    #room { display: none; height: 100vh;
+            grid-template-columns: 1fr 320px; grid-template-rows: auto 1fr; }
     #room.active { display: grid; }
 
     /* Top bar */
-    .room-top { grid-column: 1/-1; display: flex; align-items: center; gap: 1rem;
+    .room-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem;
                 padding: 0.8rem 1.2rem; background: rgba(10,10,10,0.9);
                 border-bottom: 1px solid var(--border); }
     .room-name { font-weight: 700; font-size: 1rem; }
@@ -44,29 +44,32 @@
                   padding: 0.2rem 0.6rem; border-radius: 6px; cursor: pointer; }
     .party-code:hover { color: #fff; }
     .member-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; }
-    .chip { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,var(--g),#0d7a38);
+    .chip { width: 30px; height: 30px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--g), #0d7a38);
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; font-weight: 700; title: attr(data-user); }
-    .chip.host { background: linear-gradient(135deg,#ffc107,#ff8c00); }
+            font-size: 0.75rem; font-weight: 700; }
+    .chip.host { background: linear-gradient(135deg, #ffc107, #ff8c00); }
     .btn-end { margin-left: auto; padding: 0.4rem 0.9rem; background: rgba(229,9,20,0.15);
                border: 1px solid var(--red); border-radius: 6px; color: var(--red);
                font-size: 0.82rem; cursor: pointer; }
     .btn-end:hover { background: rgba(229,9,20,0.3); }
 
     /* Main player area */
-    .room-main { padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+    .room-main { padding: 1.5rem; overflow-y: auto; display: flex;
+                 flex-direction: column; gap: 1rem; }
 
     /* Now playing */
     .now-playing { background: var(--card); border: 1px solid rgba(29,185,84,0.2);
                    border-radius: 12px; padding: 1.4rem; text-align: center; }
     .np-label { font-size: 0.72rem; color: var(--g); text-transform: uppercase;
                 letter-spacing: 0.6px; margin-bottom: 0.6rem; }
-    .np-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .np-title  { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.2rem; }
     .np-artist { color: var(--muted); font-size: 0.88rem; margin-bottom: 1rem; }
-    .np-by { font-size: 0.72rem; color: #555; margin-bottom: 1rem; }
+    .np-by     { font-size: 0.72rem; color: #555; margin-bottom: 1rem; }
 
     /* Controls */
-    .controls { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem; }
+    .controls { display: flex; align-items: center; justify-content: center;
+                gap: 1rem; margin-bottom: 1rem; }
     .ctrl-btn { background: none; border: none; color: #ccc; cursor: pointer;
                 font-size: 1.3rem; padding: 0.3rem; transition: color 0.15s; }
     .ctrl-btn:hover { color: #fff; }
@@ -76,54 +79,71 @@
     .play-btn:hover { background: #1ed760; }
 
     /* Progress */
-    .progress-wrap { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; color: var(--muted); }
-    .prog-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px;
-                cursor: pointer; }
-    .prog-fill { height: 100%; background: var(--g); border-radius: 2px; width: 0%; transition: width 0.5s linear; }
+    .progress-wrap { display: flex; align-items: center; gap: 0.6rem;
+                     font-size: 0.72rem; color: var(--muted); }
+    .prog-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.15);
+                 border-radius: 2px; cursor: pointer; }
+    .prog-fill { height: 100%; background: var(--g); border-radius: 2px;
+                 width: 0%; transition: width 0.5s linear; }
     .prog-bar:hover .prog-fill { background: #1ed760; }
-    .vol-wrap { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; justify-content: center; }
+    .vol-wrap  { display: flex; align-items: center; gap: 0.4rem;
+                 margin-top: 0.7rem; justify-content: center; }
     .vol-wrap input { width: 80px; accent-color: var(--g); cursor: pointer; }
 
     /* Queue */
-    .queue-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .queue-section { background: var(--card); border: 1px solid var(--border);
+                     border-radius: 12px; overflow: hidden; }
     .qs-head { display: flex; align-items: center; justify-content: space-between;
                padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
-    .qs-head h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .qs-head h3 { font-size: 0.82rem; text-transform: uppercase;
+                  letter-spacing: 0.5px; color: var(--muted); }
     #queue-list { max-height: 320px; overflow-y: auto;
                   scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
     .q-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem;
-             border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; }
+             border-bottom: 1px solid rgba(255,255,255,0.03);
+             transition: background 0.15s; cursor: pointer; }
     .q-row:last-child { border-bottom: none; }
     .q-row:hover { background: rgba(255,255,255,0.04); }
     .q-row.q-active { background: rgba(29,185,84,0.1); border-left: 2px solid var(--g); }
     .q-row.q-active .q-title { color: var(--g); }
-    .q-num { width: 22px; font-size: 0.75rem; color: var(--muted); flex-shrink: 0; text-align: center; }
+    .q-num  { width: 22px; font-size: 0.75rem; color: var(--muted);
+              flex-shrink: 0; text-align: center; }
     .q-info { flex: 1; min-width: 0; }
-    .q-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .q-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .q-del { background: none; border: none; color: #444; cursor: pointer; font-size: 0.8rem;
-             padding: 0.3rem 0.4rem; border-radius: 4px; flex-shrink: 0; line-height: 1; }
+    .q-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap;
+               overflow: hidden; text-overflow: ellipsis; }
+    .q-sub  { font-size: 0.72rem; color: var(--muted); white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+    .q-del  { background: none; border: none; color: #444; cursor: pointer;
+              font-size: 0.8rem; padding: 0.3rem 0.4rem; border-radius: 4px;
+              flex-shrink: 0; line-height: 1; }
     .q-del:hover { color: var(--red); background: rgba(229,9,20,0.1); }
-    .q-empty { padding: 2rem 1rem; text-align: center; color: #444; font-style: italic; font-size: 0.85rem; }
+    .q-empty { padding: 2rem 1rem; text-align: center; color: #444;
+               font-style: italic; font-size: 0.85rem; }
 
     /* Add song */
-    .add-song-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
-    .add-song-section h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px;
-                            color: var(--muted); margin-bottom: 0.7rem; }
+    .add-song-section { background: var(--card); border: 1px solid var(--border);
+                        border-radius: 12px; padding: 1rem; }
+    .add-song-section h3 { font-size: 0.82rem; text-transform: uppercase;
+                           letter-spacing: 0.5px; color: var(--muted); margin-bottom: 0.7rem; }
     .add-row { display: flex; gap: 0.5rem; }
     .add-row input { flex: 1; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.07);
-                     border: 1px solid var(--border); border-radius: 6px; color: #fff; font-size: 0.88rem; }
+                     border: 1px solid var(--border); border-radius: 6px;
+                     color: #fff; font-size: 0.88rem; }
     .add-row input:focus { outline: none; border-color: var(--g); }
     .add-row button { padding: 0.55rem 1rem; background: var(--g); border: none;
-                      border-radius: 6px; color: #000; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+                      border-radius: 6px; color: #000; font-weight: 700;
+                      font-size: 0.85rem; cursor: pointer; }
     .add-row button:hover { background: #1ed760; }
-    .sr-list { margin-top: 0.6rem; display: grid; gap: 0.3rem; max-height: 240px; overflow-y: auto; }
-    .sr-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem;
-              background: rgba(255,255,255,0.03); border-radius: 6px; }
+    .sr-list { margin-top: 0.6rem; display: grid; gap: 0.3rem;
+               max-height: 240px; overflow-y: auto; }
+    .sr-row  { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem;
+               background: rgba(255,255,255,0.03); border-radius: 6px; }
     .sr-row:hover { background: rgba(29,185,84,0.08); }
-    .sr-thumb { width: 44px; height: 32px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
-    .sr-info { flex: 1; min-width: 0; cursor: pointer; }
-    .sr-t { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sr-thumb { width: 44px; height: 32px; object-fit: cover;
+                border-radius: 3px; flex-shrink: 0; }
+    .sr-info  { flex: 1; min-width: 0; }
+    .sr-t { font-size: 0.82rem; font-weight: 500; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; }
     .sr-c { font-size: 0.7rem; color: var(--muted); }
     .sr-add { background: rgba(29,185,84,0.2); border: 1px solid var(--g); color: var(--g);
               padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem;
@@ -131,41 +151,42 @@
     .sr-add:hover { background: rgba(29,185,84,0.4); }
 
     /* Right sidebar — chat */
-    .room-side { border-left: 1px solid var(--border); display: flex; flex-direction: column;
-                 background: rgba(10,10,10,0.6); }
+    .room-side { border-left: 1px solid var(--border); display: flex;
+                 flex-direction: column; background: rgba(10,10,10,0.6);
+                 overflow: hidden; }
     .side-head { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
-                 font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-    .chat-msgs { flex: 1; overflow-y: auto; padding: 0.6rem 0.8rem; display: flex;
-                 flex-direction: column; gap: 0.5rem;
+                 font-size: 0.82rem; text-transform: uppercase;
+                 letter-spacing: 0.5px; color: var(--muted); flex-shrink: 0; }
+    .chat-msgs { flex: 1; overflow-y: auto; padding: 0.6rem 0.8rem;
+                 display: flex; flex-direction: column; gap: 0.5rem;
                  scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
     .chat-msg { background: var(--card); border-radius: 8px; padding: 0.5rem 0.7rem; }
-    .chat-msg .cm-user { font-size: 0.72rem; font-weight: 700; color: var(--g); margin-bottom: 0.2rem; }
+    .chat-msg .cm-user { font-size: 0.72rem; font-weight: 700;
+                         color: var(--g); margin-bottom: 0.2rem; }
     .chat-msg .cm-text { font-size: 0.85rem; line-height: 1.4; word-break: break-word; }
     .chat-msg.system { background: transparent; }
     .chat-msg.system .cm-text { color: #444; font-style: italic; font-size: 0.78rem; }
     .chat-input-row { display: flex; gap: 0.4rem; padding: 0.7rem 0.8rem;
-                      border-top: 1px solid var(--border); }
-    .chat-input-row input { flex: 1; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.07);
-                             border: 1px solid var(--border); border-radius: 6px; color: #fff;
-                             font-size: 0.85rem; }
+                      border-top: 1px solid var(--border); flex-shrink: 0; }
+    .chat-input-row input { flex: 1; padding: 0.5rem 0.7rem;
+                             background: rgba(255,255,255,0.07);
+                             border: 1px solid var(--border); border-radius: 6px;
+                             color: #fff; font-size: 0.85rem; }
     .chat-input-row input:focus { outline: none; border-color: var(--g); }
     .chat-input-row button { padding: 0.5rem 0.8rem; background: var(--g); border: none;
-                              border-radius: 6px; color: #000; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
-
-    /* Player bar (bottom of main) */
-    .room-player { grid-column: 1; background: rgba(10,10,10,0.95);
-                   border-top: 1px solid var(--border); padding: 0.6rem 1.2rem; }
+                              border-radius: 6px; color: #000; font-weight: 700;
+                              cursor: pointer; font-size: 0.85rem; }
 
     /* Toast */
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-             background: var(--g); color: #000; padding: 0.5rem 1.2rem; border-radius: 20px;
-             font-weight: 700; font-size: 0.85rem; z-index: 9999; opacity: 0;
-             transition: opacity 0.3s; pointer-events: none; }
+             background: var(--g); color: #000; padding: 0.5rem 1.2rem;
+             border-radius: 20px; font-weight: 700; font-size: 0.85rem;
+             z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     .toast.show { opacity: 1; }
 
     @media (max-width: 680px) {
-      #room.active { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto auto; }
-      .room-side { max-height: 260px; border-left: none; border-top: 1px solid var(--border); }
+      #room.active { grid-template-columns: 1fr; grid-template-rows: auto 1fr 260px; }
+      .room-side { border-left: none; border-top: 1px solid var(--border); }
     }
   </style>
 </head>
@@ -261,8 +282,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const ME       = '{{ username }}';
-  const YT_KEYS  = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
+  const ME      = '{{ username }}';
+  const YT_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
   {% if party is defined and party %}
   const INIT_PARTY = {{ party | tojson }};
   {% else %}
@@ -276,11 +297,12 @@
   let queue       = [];
   let curIdx      = -1;
   let progTimer   = null;
-  let pendingSync = null;  // party state waiting for YT to be ready
-  let pauseAtSec  = null;  // if set, pause+seek to this position on next PLAYING event
+  let pendingSync = null;
+  let pauseAtSec  = null;
 
-  // ── YouTube Player ────────────────────────────────────────────────────────
+  // ── YouTube Player ─────────────────────────────────────────────────────────
   let ytPlayer = null, ytReady = false;
+
   function onYouTubeIframeAPIReady() {
     ytPlayer = new YT.Player('yt-div', {
       height: '1', width: '1',
@@ -298,13 +320,12 @@
 
   function onYTState(e) {
     if (e.data === YT.PlayerState.PLAYING) {
-      // If we joined mid-song and need to pause at a specific position
       if (pauseAtSec !== null) {
         const sec = pauseAtSec;
         pauseAtSec = null;
         ytPlayer.seekTo(sec, true);
         ytPlayer.pauseVideo();
-        return;  // don't update UI to playing — pauseVideo() will fire PAUSED
+        return;
       }
       document.getElementById('play-btn').innerHTML = '⏸';
       startProg();
@@ -320,15 +341,9 @@
     if (e.data === YT.PlayerState.ENDED) {
       clearInterval(progTimer);
       document.getElementById('prog-fill').style.width = '100%';
-      nextSong();
+      // Only host auto-advances to avoid duplicate events
+      if (ME === partyHost) nextSong();
     }
-  }
-
-  function loadAndPlay(videoId, startSec) {
-    if (!ytReady) { setTimeout(() => loadAndPlay(videoId, startSec), 300); return; }
-    document.getElementById('prog-fill').style.width = '0%';
-    document.getElementById('elapsed').textContent = '0:00';
-    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
   }
 
   function startProg() {
@@ -347,15 +362,12 @@
     return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   }
 
-  // ── Resolve YT video ID ───────────────────────────────────────────────────
-  // paused=true means we're joining a paused/playing-but-we-need-to-seek session.
-  // We set pauseAtSec so onYTState handles the pause reliably via the PLAYING event.
+  // ── Load video (resolves search query or uses direct video ID) ─────────────
   function resolveAndPlay(song, startSec, paused) {
     const q = song.youtube_query || '';
     const tMatch = q.match(/#t=(\d+)$/);
-    const clean = q.replace(/#t=\d+$/, '');
-    const sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
-    // Set pauseAtSec BEFORE loading so onYTState sees it on the first PLAYING event
+    const clean  = q.replace(/#t=\d+$/, '');
+    const sec    = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
     pauseAtSec = paused ? sec : null;
     if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
       _loadVideo(clean, sec);
@@ -365,9 +377,9 @@
         .then(r => r.json())
         .then(d => {
           if (d.items && d.items.length) _loadVideo(d.items[0].id.videoId, sec);
-          else { pauseAtSec = null; setTimeout(nextSong, 500); }
+          else { pauseAtSec = null; if (ME === partyHost) setTimeout(nextSong, 500); }
         })
-        .catch(() => { pauseAtSec = null; ytKeyIdx++; setTimeout(nextSong, 500); });
+        .catch(() => { pauseAtSec = null; ytKeyIdx++; if (ME === partyHost) setTimeout(nextSong, 500); });
     }
   }
 
@@ -375,12 +387,10 @@
     if (!ytReady) { setTimeout(() => _loadVideo(videoId, startSec), 300); return; }
     document.getElementById('prog-fill').style.width = '0%';
     document.getElementById('elapsed').textContent = '0:00';
-    // Always load from startSec — for playing state YT seeks there automatically;
-    // for paused state onYTState will seek+pause on the first PLAYING event.
     ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
   }
 
-  // ── Socket ────────────────────────────────────────────────────────────────
+  // ── Socket ─────────────────────────────────────────────────────────────────
   function connectSocket(pid) {
     socket = io();
 
@@ -388,32 +398,38 @@
       socket.emit('join_party', { party_id: pid, username: ME });
     });
 
-    // Full state from server (join / sync response)
+    // Full state (on join or explicit sync request)
     socket.on('party_state', (party) => {
       if (!ytReady) { pendingSync = party; return; }
       applyState(party);
     });
 
     socket.on('member_joined', (d) => {
-      if (d.username === ME) return;  // don't show self-join
-      sysChat(d.username + ' joined the party 🎉');
+      if (d.username !== ME) sysChat(d.username + ' joined the party 🎉');
       renderMembers(d.members || []);
     });
 
     socket.on('member_left', (d) => {
-      if (d.username === ME) return;
-      sysChat(d.username + ' left the party');
+      if (d.username !== ME) sysChat(d.username + ' left the party');
       renderMembers(d.members || []);
     });
 
+    // ── Playback sync events ───────────────────────────────────────────────
     socket.on('sync_play', (d) => {
-      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.playVideo(); }
+      // Seek to authoritative position then play
+      if (ytReady) {
+        ytPlayer.seekTo(d.position, true);
+        ytPlayer.playVideo();
+      }
       document.getElementById('play-btn').innerHTML = '⏸';
       if (d.by !== ME) sysChat(d.by + ' pressed play');
     });
 
     socket.on('sync_pause', (d) => {
-      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.pauseVideo(); }
+      if (ytReady) {
+        ytPlayer.seekTo(d.position, true);
+        ytPlayer.pauseVideo();
+      }
       document.getElementById('play-btn').innerHTML = '▶';
       if (d.by !== ME) sysChat(d.by + ' paused');
     });
@@ -424,7 +440,8 @@
 
     socket.on('sync_change_song', (d) => {
       curIdx = d.index;
-      playCurrent();
+      // Use server-provided position so all devices start at same timestamp
+      playCurrent(d.position || 0, d.paused || false);
       if (d.by !== ME) sysChat(d.by + ' changed the song');
     });
 
@@ -436,12 +453,13 @@
         queue.push(d.song);
       }
       renderQueue();
-      if (curIdx === -1) { curIdx = queue.length - 1; playCurrent(); }
       if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
     });
 
     socket.on('song_removed', (d) => {
+      const removedIdx = queue.findIndex(s => s.song_id === d.song_id);
       queue = queue.filter(s => s.song_id !== d.song_id);
+      if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
       renderQueue();
       if (d.by !== ME) sysChat(d.by + ' removed a song');
     });
@@ -450,7 +468,7 @@
       appendChat(d.username, d.text);
     });
 
-    socket.on('error', (d) => { toast(d.msg); });
+    socket.on('error', (d) => { showToast(d.msg); });
   }
 
   function applyState(party) {
@@ -459,33 +477,36 @@
     queue     = party.queue || [];
     curIdx    = party.current_index ?? -1;
 
-    document.getElementById('room-name').textContent = party.name || 'Party';
+    document.getElementById('room-name').textContent     = party.name || 'Party';
     document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
-    document.getElementById('btn-end').textContent = ME === partyHost ? 'End Party' : 'Leave';
+    document.getElementById('btn-end').textContent       = ME === partyHost ? 'End Party' : 'Leave';
 
     renderMembers(party.members || []);
     renderQueue();
 
     if (curIdx >= 0 && queue[curIdx]) {
-      const s = queue[curIdx];
-      document.getElementById('np-title').textContent  = s.song_title || '—';
-      document.getElementById('np-artist').textContent = s.artist_name || '';
-      document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
-      const paused = party.state === 'paused';
-      // party.position is the live-computed position from the server
+      const s      = queue[curIdx];
+      const paused = party.state !== 'playing';
+      updateNowPlayingUI(s);
       resolveAndPlay(s, party.position || 0, paused);
     }
   }
 
-  // ── Playback controls ─────────────────────────────────────────────────────
+  function updateNowPlayingUI(s) {
+    document.getElementById('np-title').textContent  = s.song_title || '—';
+    document.getElementById('np-artist').textContent = s.artist_name || '';
+    document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
+  }
+
+  // ── Playback controls ──────────────────────────────────────────────────────
   function togglePlay() {
     if (!socket || curIdx < 0) return;
-    const pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
+    const pos     = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
     const playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
     if (playing) {
       socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
     } else {
-      socket.emit('party_play', { party_id: partyId, username: ME, position: pos });
+      socket.emit('party_play',  { party_id: partyId, username: ME, position: pos });
     }
   }
 
@@ -506,14 +527,11 @@
     }
   }
 
-  function playCurrent(startSec) {
+  function playCurrent(startSec, paused) {
     if (curIdx < 0 || curIdx >= queue.length) return;
     const s = queue[curIdx];
-    pauseAtSec = null;  // normal play, don't intercept with pause
-    document.getElementById('np-title').textContent  = s.song_title || '—';
-    document.getElementById('np-artist').textContent = s.artist_name || '';
-    document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
-    resolveAndPlay(s, startSec || 0, false);
+    updateNowPlayingUI(s);
+    resolveAndPlay(s, startSec || 0, paused || false);
     renderQueue();
   }
 
@@ -530,7 +548,7 @@
 
   function setVol(v) { if (ytReady) ytPlayer.setVolume(parseInt(v)); }
 
-  // ── Queue rendering ───────────────────────────────────────────────────────
+  // ── Queue ──────────────────────────────────────────────────────────────────
   function renderQueue() {
     const el = document.getElementById('queue-list');
     document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
@@ -547,7 +565,6 @@
         <button class="q-del" onclick="event.stopPropagation();removeSong('${s.song_id}')" title="Remove">✕</button>
       </div>`;
     }).join('');
-    // scroll active into view
     const activeEl = el.querySelector('.q-active');
     if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
   }
@@ -556,14 +573,14 @@
     if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
   }
 
-  // ── Members ───────────────────────────────────────────────────────────────
+  // ── Members ────────────────────────────────────────────────────────────────
   function renderMembers(members) {
     document.getElementById('member-chips').innerHTML = members.map(u =>
       `<div class="chip ${u === partyHost ? 'host' : ''}" title="${esc(u)}">${u[0].toUpperCase()}</div>`
     ).join('');
   }
 
-  // ── Song search ───────────────────────────────────────────────────────────
+  // ── Song search ────────────────────────────────────────────────────────────
   let ytKeySearchIdx = 0;
   function searchSongs() {
     const q = document.getElementById('search-inp').value.trim();
@@ -573,8 +590,7 @@
 
     const ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (ytMatch) {
-      const vid = ytMatch[1];
-      container.innerHTML = srRow(vid, 'YouTube Video', '', q);
+      container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
       return;
     }
     const key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
@@ -582,56 +598,46 @@
       .then(r => r.json())
       .then(d => {
         if (d.error && d.error.code === 403) { ytKeySearchIdx++; searchSongs(); return; }
-        if (!d.items || !d.items.length) { container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>'; return; }
+        if (!d.items || !d.items.length) {
+          container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
+          return;
+        }
         container.innerHTML = d.items.map(item =>
-          srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url)
+          srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle,
+                item.snippet.thumbnails.default.url)
         ).join('');
       })
       .catch(() => { ytKeySearchIdx++; });
   }
 
   function srRow(vid, title, ch, thumb) {
-    const isUrl = thumb && (thumb.startsWith('http') && !thumb.includes('youtu'));
-    const imgSrc = isUrl ? thumb : `https://img.youtube.com/vi/${vid}/default.jpg`;
+    const imgSrc = (thumb && thumb.startsWith('http')) ? thumb
+                   : `https://img.youtube.com/vi/${vid}/default.jpg`;
     return `<div class="sr-row">
       <img class="sr-thumb" src="${imgSrc}" />
-      <div class="sr-info" onclick="previewSong('${vid}','${escA(title)}','${escA(ch)}')">
+      <div class="sr-info">
         <div class="sr-t">${esc(title)}</div>
         <div class="sr-c">${esc(ch)}</div>
       </div>
-      <button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">&#9654; Next</button>
-      <button class="sr-add" onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
+      <button class="sr-add" style="margin-right:0.3rem"
+              onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">&#9654; Next</button>
+      <button class="sr-add"
+              onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
     </div>`;
   }
 
-  function previewSong(vid, title, ch) {
-    document.getElementById('np-title').textContent  = title;
-    document.getElementById('np-artist').textContent = ch;
-    loadAndPlay(vid, 0);
-  }
-
-  function loadAndPlay(videoId, startSec) {
-    if (!ytReady) { setTimeout(() => loadAndPlay(videoId, startSec), 300); return; }
-    document.getElementById('prog-fill').style.width = '0%';
-    document.getElementById('elapsed').textContent = '0:00';
-    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
-  }
-
   function extractArtist(title, ch) {
-    let m = title.match(/^([^\-–|()\.\[\]]+?)\s*[-–]\s*.+/);
+    const m = title.match(/^([^\-–|()\.\[\]]+?)\s*[-–]\s*.+/);
     if (m) return m[1].trim();
-    const clean = ch.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').replace(/Official$/i,'').trim();
-    return clean || ch;
+    return ch.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').replace(/Official$/i, '').trim() || ch;
   }
 
   function addSongNext(vid, title, ch) {
     if (!socket || !partyId) return;
     const song = {
       song_id: Math.random().toString(36).slice(2, 10),
-      song_title: title,
-      artist_name: extractArtist(title, ch),
-      youtube_query: vid,
-      added_by: ME
+      song_title: title, artist_name: extractArtist(title, ch),
+      youtube_query: vid, added_by: ME
     };
     socket.emit('party_add_song_next', { party_id: partyId, username: ME, song });
     showToast('"' + title.substring(0, 30) + '" plays next!');
@@ -643,10 +649,8 @@
     if (!socket || !partyId) return;
     const song = {
       song_id: Math.random().toString(36).slice(2, 10),
-      song_title: title,
-      artist_name: extractArtist(title, ch),
-      youtube_query: vid,
-      added_by: ME
+      song_title: title, artist_name: extractArtist(title, ch),
+      youtube_query: vid, added_by: ME
     };
     socket.emit('party_add_song', { party_id: partyId, username: ME, song });
     showToast('"' + title.substring(0, 30) + '" added!');
@@ -654,16 +658,17 @@
     document.getElementById('search-inp').value = '';
   }
 
-  // ── Chat ──────────────────────────────────────────────────────────────────
+  // ── Chat ───────────────────────────────────────────────────────────────────
   function sendChat() {
-    const inp = document.getElementById('chat-inp');
-    const text = inp.value.trim(); if (!text) return;
+    const inp  = document.getElementById('chat-inp');
+    const text = inp.value.trim();
+    if (!text) return;
     socket.emit('party_chat', { party_id: partyId, username: ME, text });
     inp.value = '';
   }
 
   function appendChat(user, text) {
-    const el = document.getElementById('chat-msgs');
+    const el  = document.getElementById('chat-msgs');
     const div = document.createElement('div');
     div.className = 'chat-msg';
     div.innerHTML = `<div class="cm-user">${esc(user)}</div><div class="cm-text">${esc(text)}</div>`;
@@ -672,7 +677,7 @@
   }
 
   function sysChat(text) {
-    const el = document.getElementById('chat-msgs');
+    const el  = document.getElementById('chat-msgs');
     const div = document.createElement('div');
     div.className = 'chat-msg system';
     div.innerHTML = `<div class="cm-text">${esc(text)}</div>`;
@@ -680,11 +685,11 @@
     el.scrollTop = el.scrollHeight;
   }
 
-  // ── Party create / join ───────────────────────────────────────────────────
+  // ── Party create / join ────────────────────────────────────────────────────
   function createParty() {
     const name = document.getElementById('party-name').value.trim();
     fetch('/api/party/create', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name || ME + "'s Party" })
     }).then(r => r.json()).then(d => {
       if (d.error) { showToast(d.error); return; }
@@ -724,18 +729,17 @@
       .catch(() => prompt('Share this link:', window.location.origin + '/party/' + partyId));
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
+  // ── Toast ──────────────────────────────────────────────────────────────────
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
-  const toast = showToast;
 
-  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function escA(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+  function esc(s)  { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function escA(s) { return String(s || '').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
-  // ── Auto-join if landing on /party/<id> ──────────────────────────────────
+  // ── Auto-join if landing on /party/<id> ───────────────────────────────────
   if (INIT_PARTY) {
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('room').classList.add('active');
@@ -747,9 +751,9 @@
   document.addEventListener('keydown', e => {
     const tag = document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'Space')      { e.preventDefault(); togglePlay(); }
     if (e.code === 'ArrowRight') nextSong();
-    if (e.code === 'ArrowLeft') prevSong();
+    if (e.code === 'ArrowLeft')  prevSong();
   });
 </script>
 </body>

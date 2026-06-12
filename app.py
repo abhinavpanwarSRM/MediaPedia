@@ -1893,7 +1893,7 @@ def on_party_change_song(data):
         party_collection.update_one({'party_id': party_id},
             {'$set': {'current_index': index, 'state': 'playing', 'position': 0,
                       'played_at': now, 'updated_at': now}})
-    emit('sync_change_song', {'index': index, 'by': username}, to=party_id)
+    emit('sync_change_song', {'index': index, 'by': username, 'position': 0, 'paused': False}, to=party_id)
 
 @socketio.on('party_add_song')
 def on_party_add_song(data):
