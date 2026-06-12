@@ -1,6 +1,7 @@
 import json
 import math
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask_socketio import SocketIO, join_room, leave_room, emit
 import pandas as pd
 import os
 from pymongo import MongoClient, DESCENDING
@@ -17,6 +18,7 @@ app.secret_key = os.getenv("SECRET_KEY") or _secrets.token_hex(32)
 from datetime import timedelta
 app.permanent_session_lifetime = timedelta(days=30)
 bcrypt = Bcrypt(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
@@ -1719,5 +1721,213 @@ def unread_count():
     return jsonify({'count': count})
 
 
+# ===== Party Collection =====
+party_collection = None
+try:
+    if db is not None:
+        party_collection = db.parties
+        party_collection.create_index('party_id', unique=True)
+except Exception:
+    party_collection = None
+
+# ===== Party HTTP Routes =====
+@app.route('/party')
+def party_lobby():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('party.html', username=username,
+                           api_key_1=os.getenv('YOUTUBE_API_KEY_1', ''),
+                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''))
+
+@app.route('/party/<party_id>')
+def party_room(party_id):
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    if party_collection is None:
+        return render_template('404.html'), 404
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        return render_template('404.html'), 404
+    return render_template('party.html', username=username, party=party,
+                           api_key_1=os.getenv('YOUTUBE_API_KEY_1', ''),
+                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''))
+
+@app.route('/api/party/create', methods=['POST'])
+def create_party():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if party_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    party_id = str(uuid.uuid4())[:8]
+    # only mutuals can join — get mutual list
+    mutuals = []
+    if follows_collection is not None:
+        following = {f['following'] for f in follows_collection.find({'follower': username})}
+        followers = {f['follower'] for f in follows_collection.find({'following': username})}
+        mutuals = list(following & followers)
+    party = {
+        'party_id': party_id,
+        'name': data.get('name', f"{username}'s Party")[:60],
+        'host': username,
+        'members': [username],
+        'invited': mutuals,
+        'queue': [],
+        'current_index': -1,
+        'state': 'stopped',   # playing | paused | stopped
+        'position': 0.0,
+        'updated_at': datetime.now(timezone.utc).isoformat()
+    }
+    party_collection.insert_one(party)
+    return jsonify({'party_id': party_id}), 201
+
+@app.route('/api/party/<party_id>', methods=['GET'])
+def get_party(party_id):
+    if party_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify(party)
+
+@app.route('/api/party/<party_id>/end', methods=['POST'])
+def end_party(party_id):
+    username = current_user()
+    if not username or party_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    party_collection.delete_one({'party_id': party_id, 'host': username})
+    return jsonify({'success': True})
+
+# ===== SocketIO Party Events =====
+@socketio.on('join_party')
+def on_join_party(data):
+    party_id = data.get('party_id')
+    username = data.get('username')
+    if not party_id or not username or party_collection is None:
+        return
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        emit('error', {'msg': 'Party not found'})
+        return
+    # allow host, invited mutuals, or existing members
+    allowed = set(party.get('invited', [])) | set(party.get('members', [])) | {party['host']}
+    if username not in allowed:
+        emit('error', {'msg': 'Not invited to this party'})
+        return
+    join_room(party_id)
+    party_collection.update_one({'party_id': party_id}, {'$addToSet': {'members': username}})
+    updated = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    emit('party_state', updated, to=party_id)
+    emit('member_joined', {'username': username}, to=party_id)
+
+@socketio.on('leave_party')
+def on_leave_party(data):
+    party_id = data.get('party_id')
+    username = data.get('username')
+    if not party_id or not username:
+        return
+    leave_room(party_id)
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id}, {'$pull': {'members': username}})
+    emit('member_left', {'username': username}, to=party_id)
+
+@socketio.on('party_play')
+def on_party_play(data):
+    party_id = data.get('party_id')
+    position = float(data.get('position', 0))
+    username = data.get('username')
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'state': 'playing', 'position': position,
+                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+    emit('sync_play', {'position': position, 'by': username}, to=party_id)
+
+@socketio.on('party_pause')
+def on_party_pause(data):
+    party_id = data.get('party_id')
+    position = float(data.get('position', 0))
+    username = data.get('username')
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'state': 'paused', 'position': position,
+                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+    emit('sync_pause', {'position': position, 'by': username}, to=party_id)
+
+@socketio.on('party_seek')
+def on_party_seek(data):
+    party_id = data.get('party_id')
+    position = float(data.get('position', 0))
+    username = data.get('username')
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'position': position,
+                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+    emit('sync_seek', {'position': position, 'by': username}, to=party_id)
+
+@socketio.on('party_change_song')
+def on_party_change_song(data):
+    party_id = data.get('party_id')
+    index = int(data.get('index', 0))
+    username = data.get('username')
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'current_index': index, 'state': 'playing', 'position': 0,
+                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+    emit('sync_change_song', {'index': index, 'by': username}, to=party_id)
+
+@socketio.on('party_add_song')
+def on_party_add_song(data):
+    party_id = data.get('party_id')
+    song = data.get('song')   # {song_id, song_title, artist_name, youtube_query}
+    username = data.get('username')
+    if not song or not party_id or party_collection is None:
+        return
+    song['added_by'] = username
+    song['song_id'] = song.get('song_id') or str(uuid.uuid4())[:8]
+    party_collection.update_one({'party_id': party_id}, {'$push': {'queue': song}})
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'queue': 1, 'current_index': 1})
+    # auto-start if nothing playing
+    if party and party.get('current_index', -1) == -1:
+        idx = len(party['queue']) - 1
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'current_index': idx, 'state': 'playing', 'position': 0}})
+        emit('sync_change_song', {'index': idx, 'by': username}, to=party_id)
+    emit('song_added', {'song': song, 'by': username}, to=party_id)
+
+@socketio.on('party_remove_song')
+def on_party_remove_song(data):
+    party_id = data.get('party_id')
+    song_id = data.get('song_id')
+    username = data.get('username')
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$pull': {'queue': {'song_id': song_id}}})
+    emit('song_removed', {'song_id': song_id, 'by': username}, to=party_id)
+
+@socketio.on('party_chat')
+def on_party_chat(data):
+    party_id = data.get('party_id')
+    username = data.get('username')
+    text = (data.get('text') or '').strip()[:300]
+    if not text or not party_id:
+        return
+    msg = {'username': username, 'text': text,
+           'ts': datetime.now(timezone.utc).isoformat()}
+    emit('chat_message', msg, to=party_id)
+
+@socketio.on('request_sync')
+def on_request_sync(data):
+    """New joiner asks for current state; host/first member responds."""
+    party_id = data.get('party_id')
+    if party_collection is None:
+        return
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if party:
+        emit('party_state', party, to=party_id)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=False)

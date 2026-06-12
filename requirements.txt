@@ -3,3 +3,5 @@ pandas
 pymongo
 python-dotenv
 flask-bcrypt
+flask-socketio
+eventlet

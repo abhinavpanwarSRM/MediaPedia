@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🎉 Party Room</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root { --g: #1db954; --bg: #141414; --card: rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.08); --muted: #888; --red: #e50914; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif;
+           min-height: 100vh; }
+
+    /* ── Lobby ── */
+    #lobby { max-width: 480px; margin: 6rem auto; padding: 0 1rem; text-align: center; }
+    #lobby h1 { font-size: 2rem; margin-bottom: 0.4rem; }
+    #lobby p  { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .inp { width: 100%; padding: 0.7rem 1rem; background: rgba(255,255,255,0.07);
+           border: 1px solid var(--border); border-radius: 8px; color: #fff;
+           font-size: 0.95rem; margin-bottom: 0.8rem; }
+    .inp:focus { outline: none; border-color: var(--g); }
+    .btn-g { width: 100%; padding: 0.75rem; background: var(--g); border: none;
+             border-radius: 8px; color: #000; font-weight: 700; font-size: 1rem;
+             cursor: pointer; margin-bottom: 0.6rem; }
+    .btn-g:hover { background: #1ed760; }
+    .btn-outline { width: 100%; padding: 0.75rem; background: transparent;
+                   border: 1px solid var(--g); border-radius: 8px; color: var(--g);
+                   font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+    .btn-outline:hover { background: rgba(29,185,84,0.1); }
+    .divider { color: var(--muted); font-size: 0.85rem; margin: 0.8rem 0; }
+
+    /* ── Room layout ── */
+    #room { display: none; height: 100vh; display: none;
+            grid-template-columns: 1fr 320px; grid-template-rows: auto 1fr auto; }
+    #room.active { display: grid; }
+
+    /* Top bar */
+    .room-top { grid-column: 1/-1; display: flex; align-items: center; gap: 1rem;
+                padding: 0.8rem 1.2rem; background: rgba(10,10,10,0.9);
+                border-bottom: 1px solid var(--border); }
+    .room-name { font-weight: 700; font-size: 1rem; }
+    .party-code { font-size: 0.75rem; color: var(--muted); background: rgba(255,255,255,0.06);
+                  padding: 0.2rem 0.6rem; border-radius: 6px; cursor: pointer; }
+    .party-code:hover { color: #fff; }
+    .member-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; }
+    .chip { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,var(--g),#0d7a38);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; title: attr(data-user); }
+    .chip.host { background: linear-gradient(135deg,#ffc107,#ff8c00); }
+    .btn-end { margin-left: auto; padding: 0.4rem 0.9rem; background: rgba(229,9,20,0.15);
+               border: 1px solid var(--red); border-radius: 6px; color: var(--red);
+               font-size: 0.82rem; cursor: pointer; }
+    .btn-end:hover { background: rgba(229,9,20,0.3); }
+
+    /* Main player area */
+    .room-main { padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+
+    /* Now playing */
+    .now-playing { background: var(--card); border: 1px solid rgba(29,185,84,0.2);
+                   border-radius: 12px; padding: 1.4rem; text-align: center; }
+    .np-label { font-size: 0.72rem; color: var(--g); text-transform: uppercase;
+                letter-spacing: 0.6px; margin-bottom: 0.6rem; }
+    .np-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .np-artist { color: var(--muted); font-size: 0.88rem; margin-bottom: 1rem; }
+    .np-by { font-size: 0.72rem; color: #555; margin-bottom: 1rem; }
+
+    /* Controls */
+    .controls { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem; }
+    .ctrl-btn { background: none; border: none; color: #ccc; cursor: pointer;
+                font-size: 1.3rem; padding: 0.3rem; transition: color 0.15s; }
+    .ctrl-btn:hover { color: #fff; }
+    .play-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--g);
+                border: none; color: #000; font-size: 1.1rem; cursor: pointer;
+                display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .play-btn:hover { background: #1ed760; }
+
+    /* Progress */
+    .progress-wrap { display: flex; align-items: center; gap: 0.6rem; font-size: 0.72rem; color: var(--muted); }
+    .prog-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px;
+                cursor: pointer; }
+    .prog-fill { height: 100%; background: var(--g); border-radius: 2px; width: 0%; transition: width 0.5s linear; }
+    .prog-bar:hover .prog-fill { background: #1ed760; }
+    .vol-wrap { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; justify-content: center; }
+    .vol-wrap input { width: 80px; accent-color: var(--g); cursor: pointer; }
+
+    /* Queue */
+    .queue-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .qs-head { display: flex; align-items: center; justify-content: space-between;
+               padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
+    .qs-head h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .q-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem;
+             border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; }
+    .q-row:hover { background: rgba(255,255,255,0.04); }
+    .q-row.q-active { background: rgba(29,185,84,0.08); }
+    .q-row.q-active .q-title { color: var(--g); }
+    .q-num { width: 20px; font-size: 0.75rem; color: var(--muted); flex-shrink: 0; text-align: right; }
+    .q-info { flex: 1; min-width: 0; }
+    .q-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .q-artist { font-size: 0.72rem; color: var(--muted); }
+    .q-by { font-size: 0.65rem; color: #444; }
+    .q-del { background: none; border: none; color: #555; cursor: pointer; font-size: 0.85rem; padding: 0.2rem; }
+    .q-del:hover { color: var(--red); }
+    .q-empty { padding: 1.5rem; text-align: center; color: #444; font-style: italic; font-size: 0.85rem; }
+
+    /* Add song */
+    .add-song-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+    .add-song-section h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px;
+                            color: var(--muted); margin-bottom: 0.7rem; }
+    .add-row { display: flex; gap: 0.5rem; }
+    .add-row input { flex: 1; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.07);
+                     border: 1px solid var(--border); border-radius: 6px; color: #fff; font-size: 0.88rem; }
+    .add-row input:focus { outline: none; border-color: var(--g); }
+    .add-row button { padding: 0.55rem 1rem; background: var(--g); border: none;
+                      border-radius: 6px; color: #000; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
+    .add-row button:hover { background: #1ed760; }
+    .sr-list { margin-top: 0.6rem; display: grid; gap: 0.3rem; max-height: 240px; overflow-y: auto; }
+    .sr-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem;
+              background: rgba(255,255,255,0.03); border-radius: 6px; }
+    .sr-row:hover { background: rgba(29,185,84,0.08); }
+    .sr-thumb { width: 44px; height: 32px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+    .sr-info { flex: 1; min-width: 0; cursor: pointer; }
+    .sr-t { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sr-c { font-size: 0.7rem; color: var(--muted); }
+    .sr-add { background: rgba(29,185,84,0.2); border: 1px solid var(--g); color: var(--g);
+              padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem;
+              font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .sr-add:hover { background: rgba(29,185,84,0.4); }
+
+    /* Right sidebar — chat */
+    .room-side { border-left: 1px solid var(--border); display: flex; flex-direction: column;
+                 background: rgba(10,10,10,0.6); }
+    .side-head { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
+                 font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .chat-msgs { flex: 1; overflow-y: auto; padding: 0.6rem 0.8rem; display: flex;
+                 flex-direction: column; gap: 0.5rem;
+                 scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
+    .chat-msg { background: var(--card); border-radius: 8px; padding: 0.5rem 0.7rem; }
+    .chat-msg .cm-user { font-size: 0.72rem; font-weight: 700; color: var(--g); margin-bottom: 0.2rem; }
+    .chat-msg .cm-text { font-size: 0.85rem; line-height: 1.4; word-break: break-word; }
+    .chat-msg.system { background: transparent; }
+    .chat-msg.system .cm-text { color: #444; font-style: italic; font-size: 0.78rem; }
+    .chat-input-row { display: flex; gap: 0.4rem; padding: 0.7rem 0.8rem;
+                      border-top: 1px solid var(--border); }
+    .chat-input-row input { flex: 1; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.07);
+                             border: 1px solid var(--border); border-radius: 6px; color: #fff;
+                             font-size: 0.85rem; }
+    .chat-input-row input:focus { outline: none; border-color: var(--g); }
+    .chat-input-row button { padding: 0.5rem 0.8rem; background: var(--g); border: none;
+                              border-radius: 6px; color: #000; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+
+    /* Player bar (bottom of main) */
+    .room-player { grid-column: 1; background: rgba(10,10,10,0.95);
+                   border-top: 1px solid var(--border); padding: 0.6rem 1.2rem; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+             background: var(--g); color: #000; padding: 0.5rem 1.2rem; border-radius: 20px;
+             font-weight: 700; font-size: 0.85rem; z-index: 9999; opacity: 0;
+             transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+
+    @media (max-width: 680px) {
+      #room.active { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto auto; }
+      .room-side { max-height: 260px; border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ LOBBY ═══════════════════ -->
+<div id="lobby">
+  <h1>🎉 Party Room</h1>
+  <p>Listen to music in sync with your mutuals. Everyone can play, pause, add songs.</p>
+  <input class="inp" id="party-name" placeholder="Party name (optional)" maxlength="60" />
+  <button class="btn-g" onclick="createParty()">🎵 Create New Party</button>
+  <div class="divider">— or join existing —</div>
+  <input class="inp" id="join-code" placeholder="Enter party code..." maxlength="8"
+         onkeydown="if(event.key==='Enter')joinParty()" />
+  <button class="btn-outline" onclick="joinParty()">Join Party</button>
+</div>
+
+<!-- ═══════════════════ ROOM ═══════════════════ -->
+<div id="room">
+
+  <!-- Top bar -->
+  <div class="room-top">
+    <span class="room-name" id="room-name">Party</span>
+    <span class="party-code" id="party-code-chip" onclick="copyCode()" title="Click to copy">— —</span>
+    <div class="member-chips" id="member-chips"></div>
+    <button class="btn-end" id="btn-end" onclick="leaveOrEnd()">Leave</button>
+  </div>
+
+  <!-- Main area -->
+  <div class="room-main">
+
+    <!-- Now playing card -->
+    <div class="now-playing">
+      <div class="np-label">▶ Now Playing</div>
+      <div class="np-title" id="np-title">—</div>
+      <div class="np-artist" id="np-artist"></div>
+      <div class="np-by" id="np-by"></div>
+      <div class="controls">
+        <button class="ctrl-btn" onclick="prevSong()" title="Previous">⏮</button>
+        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+        <button class="ctrl-btn" onclick="nextSong()" title="Next">⏭</button>
+      </div>
+      <div class="progress-wrap">
+        <span id="elapsed">0:00</span>
+        <div class="prog-bar" id="prog-bar" onclick="seekBar(event)">
+          <div class="prog-fill" id="prog-fill"></div>
+        </div>
+        <span id="duration">0:00</span>
+      </div>
+      <div class="vol-wrap">
+        <span style="font-size:0.9rem;color:var(--muted)">🔊</span>
+        <input type="range" id="vol" min="0" max="100" value="100" oninput="setVol(this.value)" />
+      </div>
+    </div>
+
+    <!-- Queue -->
+    <div class="queue-section">
+      <div class="qs-head">
+        <h3>Queue <span id="q-count" style="color:var(--g)"></span></h3>
+      </div>
+      <div id="queue-list"><div class="q-empty">No songs yet. Add one below!</div></div>
+    </div>
+
+    <!-- Add song -->
+    <div class="add-song-section">
+      <h3>➕ Add Song</h3>
+      <div class="add-row">
+        <input id="search-inp" placeholder="Search or paste YouTube URL…"
+               onkeydown="if(event.key==='Enter')searchSongs()" />
+        <button onclick="searchSongs()">Search</button>
+      </div>
+      <div id="sr-list" class="sr-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Chat sidebar -->
+  <div class="room-side">
+    <div class="side-head">💬 Party Chat</div>
+    <div class="chat-msgs" id="chat-msgs"></div>
+    <div class="chat-input-row">
+      <input id="chat-inp" placeholder="Say something…" maxlength="300"
+             onkeydown="if(event.key==='Enter')sendChat()" />
+      <button onclick="sendChat()">Send</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Hidden YT player -->
+<div id="yt-div" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;"></div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<div class="toast" id="toast"></div>
+
+<script>
+  const ME       = '{{ username }}';
+  const YT_KEYS  = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
+  {% if party is defined and party %}
+  const INIT_PARTY = {{ party | tojson }};
+  {% else %}
+  const INIT_PARTY = null;
+  {% endif %}
+
+  let ytKeyIdx   = 0;
+  let socket     = null;
+  let partyId    = null;
+  let partyHost  = null;
+  let queue      = [];
+  let curIdx     = -1;
+  let progTimer  = null;
+  let iAmPlaying = false;   // are WE driving playback right now?
+
+  // ── YouTube Player ────────────────────────────────────────────────────────
+  let ytPlayer = null, ytReady = false;
+  function onYouTubeIframeAPIReady() {
+    ytPlayer = new YT.Player('yt-div', {
+      height: '1', width: '1',
+      playerVars: { autoplay: 0, controls: 0, rel: 0, origin: window.location.origin },
+      events: {
+        onReady: () => { ytReady = true; },
+        onStateChange: onYTState,
+        onError: () => { setTimeout(nextSong, 800); }
+      }
+    });
+  }
+
+  function onYTState(e) {
+    if (e.data === YT.PlayerState.PLAYING) {
+      document.getElementById('play-btn').innerHTML = '⏸';
+      startProg();
+      setTimeout(() => {
+        const dur = ytPlayer.getDuration();
+        document.getElementById('duration').textContent = fmt(dur);
+      }, 800);
+    }
+    if (e.data === YT.PlayerState.PAUSED) {
+      document.getElementById('play-btn').innerHTML = '▶';
+      clearInterval(progTimer);
+    }
+    if (e.data === YT.PlayerState.ENDED) {
+      clearInterval(progTimer);
+      document.getElementById('prog-fill').style.width = '100%';
+      nextSong();
+    }
+  }
+
+  function loadAndPlay(videoId, startSec) {
+    if (!ytReady) { setTimeout(() => loadAndPlay(videoId, startSec), 300); return; }
+    document.getElementById('prog-fill').style.width = '0%';
+    document.getElementById('elapsed').textContent = '0:00';
+    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
+  }
+
+  function startProg() {
+    clearInterval(progTimer);
+    progTimer = setInterval(() => {
+      if (!ytReady) return;
+      const cur = ytPlayer.getCurrentTime() || 0;
+      const dur = ytPlayer.getDuration() || 1;
+      document.getElementById('prog-fill').style.width = (cur / dur * 100) + '%';
+      document.getElementById('elapsed').textContent = fmt(cur);
+    }, 500);
+  }
+
+  function fmt(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  // ── Resolve YT video ID ───────────────────────────────────────────────────
+  function resolveAndPlay(song, startSec) {
+    const q = song.youtube_query || '';
+    const tMatch = q.match(/#t=(\d+)$/);
+    const clean = q.replace(/#t=\d+$/, '');
+    const sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
+    if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
+      loadAndPlay(clean, sec);
+    } else {
+      const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(clean)}&key=${key}&maxResults=1&type=video`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.items && d.items.length) loadAndPlay(d.items[0].id.videoId, sec);
+          else setTimeout(nextSong, 500);
+        })
+        .catch(() => { ytKeyIdx++; setTimeout(nextSong, 500); });
+    }
+  }
+
+  // ── Socket ────────────────────────────────────────────────────────────────
+  function connectSocket(pid) {
+    socket = io();
+
+    socket.on('connect', () => {
+      socket.emit('join_party', { party_id: pid, username: ME });
+    });
+
+    socket.on('party_state', (party) => {
+      applyState(party);
+    });
+
+    socket.on('member_joined', (d) => {
+      sysChat(d.username + ' joined the party 🎉');
+      // send current state to new joiner
+      socket.emit('request_sync', { party_id: pid });
+    });
+
+    socket.on('member_left', (d) => {
+      sysChat(d.username + ' left the party');
+    });
+
+    socket.on('sync_play', (d) => {
+      if (d.by === ME) return;
+      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.playVideo(); }
+      document.getElementById('play-btn').innerHTML = '⏸';
+      sysChat(d.by + ' pressed play');
+    });
+
+    socket.on('sync_pause', (d) => {
+      if (d.by === ME) return;
+      if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.pauseVideo(); }
+      document.getElementById('play-btn').innerHTML = '▶';
+      sysChat(d.by + ' paused');
+    });
+
+    socket.on('sync_seek', (d) => {
+      if (d.by === ME) return;
+      if (ytReady) ytPlayer.seekTo(d.position, true);
+    });
+
+    socket.on('sync_change_song', (d) => {
+      if (d.by === ME) return;
+      curIdx = d.index;
+      playCurrent();
+      sysChat(d.by + ' changed the song');
+    });
+
+    socket.on('song_added', (d) => {
+      queue.push(d.song);
+      renderQueue();
+      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"');
+    });
+
+    socket.on('song_removed', (d) => {
+      queue = queue.filter(s => s.song_id !== d.song_id);
+      renderQueue();
+      if (d.by !== ME) sysChat(d.by + ' removed a song');
+    });
+
+    socket.on('chat_message', (d) => {
+      appendChat(d.username, d.text);
+    });
+
+    socket.on('error', (d) => { toast(d.msg); });
+  }
+
+  function applyState(party) {
+    partyId   = party.party_id;
+    partyHost = party.host;
+    queue     = party.queue || [];
+    curIdx    = party.current_index ?? -1;
+
+    document.getElementById('room-name').textContent = party.name || 'Party';
+    document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
+    document.getElementById('btn-end').textContent = ME === partyHost ? 'End Party' : 'Leave';
+
+    renderMembers(party.members || []);
+    renderQueue();
+
+    if (curIdx >= 0 && queue[curIdx]) {
+      const s = queue[curIdx];
+      document.getElementById('np-title').textContent  = s.song_title || '—';
+      document.getElementById('np-artist').textContent = s.artist_name || '';
+      document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
+      resolveAndPlay(s, party.position || 0);
+      if (party.state === 'paused' && ytReady) {
+        setTimeout(() => ytPlayer.pauseVideo(), 1200);
+      }
+    }
+  }
+
+  // ── Playback controls ─────────────────────────────────────────────────────
+  function togglePlay() {
+    if (!ytReady || curIdx < 0) return;
+    const state = ytPlayer.getPlayerState();
+    const pos   = ytPlayer.getCurrentTime() || 0;
+    if (state === YT.PlayerState.PLAYING) {
+      ytPlayer.pauseVideo();
+      socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
+    } else {
+      ytPlayer.playVideo();
+      socket.emit('party_play',  { party_id: partyId, username: ME, position: pos });
+    }
+  }
+
+  function nextSong() {
+    if (curIdx < queue.length - 1) {
+      curIdx++;
+      playCurrent();
+      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
+    }
+  }
+
+  function prevSong() {
+    if (ytReady && (ytPlayer.getCurrentTime() || 0) > 3) {
+      ytPlayer.seekTo(0, true);
+      socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
+      return;
+    }
+    if (curIdx > 0) {
+      curIdx--;
+      playCurrent();
+      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
+    }
+  }
+
+  function playCurrent() {
+    if (curIdx < 0 || curIdx >= queue.length) return;
+    const s = queue[curIdx];
+    document.getElementById('np-title').textContent  = s.song_title || '—';
+    document.getElementById('np-artist').textContent = s.artist_name || '';
+    document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
+    resolveAndPlay(s, 0);
+    renderQueue();
+  }
+
+  function playFromQueue(idx) {
+    curIdx = idx;
+    playCurrent();
+    socket.emit('party_change_song', { party_id: partyId, username: ME, index: idx });
+  }
+
+  function seekBar(e) {
+    if (!ytReady) return;
+    const pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
+    const pos = pct * (ytPlayer.getDuration() || 0);
+    ytPlayer.seekTo(pos, true);
+    socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
+  }
+
+  function setVol(v) { if (ytReady) ytPlayer.setVolume(parseInt(v)); }
+
+  // ── Queue rendering ───────────────────────────────────────────────────────
+  function renderQueue() {
+    const el = document.getElementById('queue-list');
+    document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
+    if (!queue.length) { el.innerHTML = '<div class="q-empty">No songs yet. Add one below!</div>'; return; }
+    el.innerHTML = queue.map((s, i) => `
+      <div class="q-row ${i === curIdx ? 'q-active' : ''}" onclick="playFromQueue(${i})">
+        <div class="q-num">${i === curIdx ? '▶' : (i + 1)}</div>
+        <div class="q-info">
+          <div class="q-title">${esc(s.song_title)}</div>
+          <div class="q-artist">${esc(s.artist_name)}</div>
+          <div class="q-by">${s.added_by ? 'by ' + esc(s.added_by) : ''}</div>
+        </div>
+        <button class="q-del" onclick="event.stopPropagation();removeSong('${s.song_id}')">✕</button>
+      </div>`).join('');
+  }
+
+  function removeSong(songId) {
+    socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
+    queue = queue.filter(s => s.song_id !== songId);
+    renderQueue();
+  }
+
+  // ── Members ───────────────────────────────────────────────────────────────
+  function renderMembers(members) {
+    document.getElementById('member-chips').innerHTML = members.map(u =>
+      `<div class="chip ${u === partyHost ? 'host' : ''}" title="${esc(u)}">${u[0].toUpperCase()}</div>`
+    ).join('');
+  }
+
+  // ── Song search ───────────────────────────────────────────────────────────
+  let ytKeySearchIdx = 0;
+  function searchSongs() {
+    const q = document.getElementById('search-inp').value.trim();
+    if (!q) return;
+    const container = document.getElementById('sr-list');
+    container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching…</div>';
+
+    const ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) {
+      const vid = ytMatch[1];
+      container.innerHTML = srRow(vid, 'YouTube Video', '', q);
+      return;
+    }
+    const key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
+    fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=6&type=video&videoCategoryId=10`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.error && d.error.code === 403) { ytKeySearchIdx++; searchSongs(); return; }
+        if (!d.items || !d.items.length) { container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>'; return; }
+        container.innerHTML = d.items.map(item =>
+          srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url)
+        ).join('');
+      })
+      .catch(() => { ytKeySearchIdx++; });
+  }
+
+  function srRow(vid, title, ch, thumb) {
+    const isUrl = thumb && (thumb.startsWith('http') && !thumb.includes('youtu'));
+    const imgSrc = isUrl ? thumb : `https://img.youtube.com/vi/${vid}/default.jpg`;
+    return `<div class="sr-row">
+      <img class="sr-thumb" src="${imgSrc}" />
+      <div class="sr-info" onclick="previewSong('${vid}','${escA(title)}','${escA(ch)}')">
+        <div class="sr-t">${esc(title)}</div>
+        <div class="sr-c">${esc(ch)}</div>
+      </div>
+      <button class="sr-add" onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
+    </div>`;
+  }
+
+  function previewSong(vid, title, ch) {
+    document.getElementById('np-title').textContent  = title;
+    document.getElementById('np-artist').textContent = ch;
+    loadAndPlay(vid, 0);
+  }
+
+  function extractArtist(title, ch) {
+    let m = title.match(/^([^\-–|()\[\]]+?)\s*[-–]\s*.+/);
+    if (m) return m[1].trim();
+    const clean = ch.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').replace(/Official$/i,'').trim();
+    return clean || ch;
+  }
+
+  function addSong(vid, title, ch) {
+    if (!socket || !partyId) return;
+    const song = {
+      song_id: Math.random().toString(36).slice(2, 10),
+      song_title: title,
+      artist_name: extractArtist(title, ch),
+      youtube_query: vid,
+      added_by: ME
+    };
+    socket.emit('party_add_song', { party_id: partyId, username: ME, song });
+    queue.push(song);
+    if (curIdx === -1) { curIdx = queue.length - 1; playCurrent(); }
+    renderQueue();
+    showToast('"' + title.substring(0,30) + '" added!');
+    document.getElementById('sr-list').innerHTML = '';
+    document.getElementById('search-inp').value = '';
+  }
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  function sendChat() {
+    const inp = document.getElementById('chat-inp');
+    const text = inp.value.trim(); if (!text) return;
+    socket.emit('party_chat', { party_id: partyId, username: ME, text });
+    inp.value = '';
+  }
+
+  function appendChat(user, text) {
+    const el = document.getElementById('chat-msgs');
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<div class="cm-user">${esc(user)}</div><div class="cm-text">${esc(text)}</div>`;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function sysChat(text) {
+    const el = document.getElementById('chat-msgs');
+    const div = document.createElement('div');
+    div.className = 'chat-msg system';
+    div.innerHTML = `<div class="cm-text">${esc(text)}</div>`;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ── Party create / join ───────────────────────────────────────────────────
+  function createParty() {
+    const name = document.getElementById('party-name').value.trim();
+    fetch('/api/party/create', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: name || ME + "'s Party" })
+    }).then(r => r.json()).then(d => {
+      if (d.error) { showToast(d.error); return; }
+      history.replaceState({}, '', '/party/' + d.party_id);
+      enterRoom(d.party_id);
+    });
+  }
+
+  function joinParty() {
+    const code = document.getElementById('join-code').value.trim();
+    if (!code) return;
+    enterRoom(code);
+  }
+
+  function enterRoom(pid) {
+    partyId = pid;
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('room').classList.add('active');
+    connectSocket(pid);
+  }
+
+  function leaveOrEnd() {
+    if (!socket) return;
+    if (ME === partyHost) {
+      if (!confirm('End the party for everyone?')) return;
+      fetch('/api/party/' + partyId + '/end', { method: 'POST' });
+      sysChat('Host ended the party.');
+    }
+    socket.emit('leave_party', { party_id: partyId, username: ME });
+    socket.disconnect();
+    window.location.href = '/';
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(window.location.origin + '/party/' + partyId)
+      .then(() => showToast('Party link copied!'))
+      .catch(() => prompt('Share this link:', window.location.origin + '/party/' + partyId));
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+  // alias used in older calls
+  const toast = showToast;
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function escA(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+  // ── Auto-join if landing on /party/<id> ──────────────────────────────────
+  if (INIT_PARTY) {
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('room').classList.add('active');
+    partyId = INIT_PARTY.party_id;
+    connectSocket(INIT_PARTY.party_id);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowRight') nextSong();
+    if (e.code === 'ArrowLeft') prevSong();
+  });
+</script>
+</body>
+</html>
