@@ -42,7 +42,18 @@
 </head>
 <body>
   <div class="container">
-    <a href="/" class="back">← Back to Home</a>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem;">
+      <a href="/" class="back" style="margin-bottom:0;">&#8592; Back to Home</a>
+      <div style="display:flex;gap:1rem;font-size:0.85rem;">
+        {% if viewer %}
+          <a href="/u/{{ viewer }}" style="color:#e50914;text-decoration:none;font-weight:600;">{{ viewer }}</a>
+          <a href="/logout" style="color:#888;text-decoration:none;">Logout</a>
+        {% else %}
+          <a href="/login" style="color:#aaa;text-decoration:none;">Login</a>
+          <a href="/register" style="color:#e50914;text-decoration:none;font-weight:600;">Register</a>
+        {% endif %}
+      </div>
+    </div>
 
     <div class="profile-head">
       <div class="avatar">{{ username[0]|upper }}</div>
@@ -98,7 +109,7 @@
       <a class="list-card" href="/list/{{ lst.list_id }}">
         <div>
           <div class="list-name">{{ lst.name }}</div>
-          <div class="list-count">{{ lst.items|length }} item{{ 's' if lst.items|length != 1 else '' }}</div>
+          <div class="list-count">{{ lst['items']|length }} item{{ 's' if lst['items']|length != 1 else '' }}</div>
         </div>
         <span style="color:#5799ef;font-size:1.1rem;">→</span>
       </a>
@@ -123,7 +134,7 @@
     <div class="section-title" style="margin-top:2rem;">Recent Reviews</div>
     {% for c in comments %}
     <div class="comment-card">
-      <div class="comment-meta">{{ c.get('created_at','')[:10] }}</div>
+      <div class="comment-meta">{{ c.get('created_at','')[:10] }}{% if c.get('content_type') and c.get('id') %} &bull; <a href="/{{ c['content_type'] }}/{{ c['id'] }}" style="color:#5799ef;text-decoration:none;font-size:0.78rem;">view {{ c.get('content_type','movie') }}</a>{% endif %}</div>
       <div class="comment-rating">{{ '★' * c.get('rating',0) }}{{ '☆' * (5 - c.get('rating',0)) }}</div>
       <div class="comment-text">{{ c.get('text','') }}</div>
       <div class="comment-likes">👍 {{ c.get('likes',0) }} likes</div>
@@ -133,41 +144,32 @@
     {% endfor %}
   </div>
 
-  <script>
+    <script>
     function toggleFollow(target) {
       fetch('/api/follow/' + target, { method: 'POST' })
-        .then(r => r.json())
+        .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
         .then(d => {
+          if (!d) return;
           const btn = document.getElementById('follow-btn');
-          if (d.status === 'followed') {
-            btn.textContent = 'Following';
-            btn.classList.add('following');
-          } else {
-            btn.textContent = 'Follow';
-            btn.classList.remove('following');
-          }
+          if (d.status === 'followed') { btn.textContent = 'Following'; btn.classList.add('following'); }
+          else { btn.textContent = 'Follow'; btn.classList.remove('following'); }
         });
     }
 
     function createList() {
       const name = document.getElementById('new-list-name').value.trim();
       if (!name) return;
-      fetch('/api/lists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      })
-      .then(r => r.json())
+      fetch('/api/lists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+      .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
       .then(d => {
+        if (!d) return;
         if (d.error) { alert(d.error); return; }
         document.getElementById('new-list-name').value = '';
         const container = document.getElementById('lists-container');
-        const p = container.querySelector('.empty');
-        if (p) p.remove();
+        const p = container.querySelector('.empty'); if (p) p.remove();
         const a = document.createElement('a');
-        a.className = 'list-card';
-        a.href = '/list/' + d.list_id;
-        a.innerHTML = `<div><div class="list-name">${d.name}</div><div class="list-count">0 items</div></div><span style="color:#5799ef;font-size:1.1rem;">→</span>`;
+        a.className = 'list-card'; a.href = '/list/' + d.list_id;
+        a.innerHTML = '<div><div class="list-name">' + d.name + '</div><div class="list-count">0 items</div></div><span style="color:#5799ef;font-size:1.1rem;">&#8594;</span>';
         container.prepend(a);
       });
     }
@@ -175,22 +177,17 @@
     function createPlaylist() {
       const name = document.getElementById('new-playlist-name').value.trim();
       if (!name) return;
-      fetch('/api/playlists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      })
-      .then(r => r.json())
+      fetch('/api/playlists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+      .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
       .then(d => {
+        if (!d) return;
         if (d.error) { alert(d.error); return; }
         document.getElementById('new-playlist-name').value = '';
         const container = document.getElementById('playlists-container');
-        const p = container.querySelector('.empty');
-        if (p) p.remove();
+        const p = container.querySelector('.empty'); if (p) p.remove();
         const a = document.createElement('a');
-        a.className = 'pl-card';
-        a.href = '/playlist/' + d.playlist_id;
-        a.innerHTML = `<div><div class="list-name">🎵 ${d.name}</div><div class="list-count">0 songs</div></div><span style="color:#1db954;font-size:1.1rem;">→</span>`;
+        a.className = 'pl-card'; a.href = '/playlist/' + d.playlist_id;
+        a.innerHTML = '<div><div class="list-name">&#127925; ' + d.name + '</div><div class="list-count">0 songs</div></div><span style="color:#1db954;font-size:1.1rem;">&#8594;</span>';
         container.prepend(a);
       });
     }
@@ -201,23 +198,15 @@
       .then(r => r.json())
       .then(playlists => {
         const container = document.getElementById('playlists-container');
-        if (!playlists.length) {
-          container.innerHTML = '<p class="empty">No playlists yet.</p>';
-          return;
-        }
+        if (!playlists.length) { container.innerHTML = '<p class="empty">No playlists yet.</p>'; return; }
         container.innerHTML = playlists.map(pl =>
-          `<a class="pl-card" href="/playlist/${pl.playlist_id}">
-            <div>
-              <div class="list-name">🎵 ${pl.name}</div>
-              <div class="list-count">${(pl.songs||[]).length} song${(pl.songs||[]).length !== 1 ? 's' : ''}</div>
-            </div>
-            <span style="color:#1db954;font-size:1.1rem;">→</span>
-          </a>`
+          '<a class="pl-card" href="/playlist/' + pl.playlist_id + '">' +
+          '<div><div class="list-name">&#127925; ' + pl.name + '</div>' +
+          '<div class="list-count">' + (pl.songs||[]).length + ' song' + ((pl.songs||[]).length !== 1 ? 's' : '') + '</div></div>' +
+          '<span style="color:#1db954;font-size:1.1rem;">&#8594;</span></a>'
         ).join('');
       })
-      .catch(() => {
-        document.getElementById('playlists-container').innerHTML = '<p class="empty">Could not load playlists.</p>';
-      });
+      .catch(() => { document.getElementById('playlists-container').innerHTML = '<p class="empty">Could not load playlists.</p>'; });
   </script>
 </body>
 </html>
