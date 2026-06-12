@@ -710,7 +710,7 @@
       container.innerHTML = `<div class="sr-item">
         <img class="sr-thumb" src="https://img.youtube.com/vi/${vid}/default.jpg" />
         <div class="sr-info"><div class="sr-title">YouTube Video</div><div class="sr-ch">${escHtml(q)}</div></div>
-        <button class="add-btn" onclick="addSongFromSearch('${vid}','YouTube Video','Unknown')">+ Add</button>
+        <button class="add-btn" onclick="addSongFromSearch('${vid}','YouTube Video','')">+ Add</button>
       </div>`;
       return;
     }
@@ -741,13 +741,43 @@
       .catch(() => { ytKeyIdx++; if (ytKeyIdx < YT_KEYS.length * 2) searchYT(); });
   }
 
+  // ── Extract artist name from YouTube video title ─────────────────────────
+  function extractArtist(title, channelTitle) {
+    // 1. "Artist - Song" or "Artist – Song" (most common)
+    let m = title.match(/^([^\-–|()\[\]]+?)\s*[-–]\s*.+/);
+    if (m) return m[1].trim();
+
+    // 2. "Song by Artist"
+    m = title.match(/\bby\s+([^(\[\-–|]+)/i);
+    if (m) return m[1].trim();
+
+    // 3. "Song | Artist"
+    m = title.match(/\|\s*([^|\-–()\[\]]+)$/);
+    if (m) return m[1].trim();
+
+    // 4. "Song (Artist official video)" — artist inside parens before official/video/audio/lyric
+    m = title.match(/\(([^)]+?)\s*(?:official|video|audio|lyric|music|hd|4k)/i);
+    if (m) return m[1].trim();
+
+    // 5. Strip common channel suffixes and use channel title
+    // e.g. "ArtistVEVO", "Artist - Topic", "ArtistOfficial"
+    const clean = channelTitle
+      .replace(/\s*-\s*Topic$/i, '')
+      .replace(/VEVO$/i, '')
+      .replace(/Official$/i, '')
+      .replace(/Music$/i, '')
+      .trim();
+    return clean || channelTitle;
+  }
+
   function previewInBar(videoId, title, artist) {
     updatePlayerBar(title || 'Preview', artist || '');
     showPlayerBar();
     loadVideo(videoId);
   }
 
-  function addSongFromSearch(videoId, title, artist) {
+  function addSongFromSearch(videoId, title, channelTitle) {
+    const artist = extractArtist(title, channelTitle);
     fetch('/api/playlists/' + PLAYLIST_ID + '/songs', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ song_title: title, artist_name: artist, artist_id: 0, youtube_query: videoId })
@@ -757,7 +787,7 @@
       if (song.error) { showToast(song.error); return; }
       appendSongRow(song);
       updateSongCount(1);
-      showToast('"' + escHtml(title.substring(0,30)) + '" added');
+    showToast('"' + escHtml(title.substring(0,30)) + '" added — artist: ' + escHtml(artist));
       loadRecommendations();
       // auto-play the newly added song if nothing is currently playing
       if (!currentRow) {
