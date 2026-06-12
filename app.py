@@ -1091,6 +1091,32 @@ def delete_list(list_id):
     lists_collection.delete_one({'list_id': list_id, 'username': username})
     return jsonify({'success': True})
 
+@app.route('/api/lists/<list_id>/rename', methods=['POST'])
+def rename_list(list_id):
+    username = current_user()
+    if not username or lists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    name = (request.json or {}).get('name', '').strip()
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    lists_collection.update_one(
+        {'list_id': list_id, 'username': username},
+        {'$set': {'name': name}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/lists/<list_id>/reorder', methods=['POST'])
+def reorder_list(list_id):
+    username = current_user()
+    if not username or lists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    items = (request.json or {}).get('items', [])
+    lists_collection.update_one(
+        {'list_id': list_id, 'username': username},
+        {'$set': {'items': items}}
+    )
+    return jsonify({'success': True})
+
 @app.route('/list/<list_id>')
 def view_list(list_id):
     if lists_collection is None:

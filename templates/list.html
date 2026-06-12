@@ -10,45 +10,235 @@
     body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
     .container { max-width: 720px; margin: 0 auto; }
     .back { display: inline-block; color: var(--primary); text-decoration: none; font-size: 0.88rem; margin-bottom: 1.5rem; }
-    .list-header { margin-bottom: 2rem; }
-    h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
-    .meta { color: #888; font-size: 0.88rem; }
+    .list-header { margin-bottom: 1.5rem; }
+
+    /* Title row */
+    .title-row { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+    .title-row h1 { font-size: 1.8rem; }
+    .title-row input { font-size: 1.5rem; font-weight: 700; background: transparent; border: none;
+      border-bottom: 2px solid var(--primary); color: #fff; padding: 0.1rem 0.3rem; display: none; min-width: 200px; }
+    .edit-name-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 0.8rem;
+      padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .edit-name-btn:hover { color: var(--primary); }
+
+    .meta { color: #888; font-size: 0.88rem; margin-bottom: 1rem; }
     .meta a { color: #5799ef; text-decoration: none; }
-    .item { background: var(--card); border-left: 3px solid var(--primary); border-radius: 6px; padding: 0.9rem 1.2rem; margin-bottom: 0.7rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: #fff; transition: background 0.2s; }
-    .item:hover { background: rgba(229,9,20,0.1); }
-    .item-title { font-weight: 600; }
+
+    /* Owner action bar */
+    .owner-bar { display: flex; gap: 0.6rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .btn-del { background: rgba(255,71,87,0.12); border: 1px solid #ff4757; color: #ff4757;
+      padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .btn-del:hover { background: rgba(255,71,87,0.25); }
+    .btn-share { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      color: #ccc; padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    .btn-share:hover { border-color: #fff; color: #fff; }
+
+    /* Items */
+    .item-row { background: var(--card); border-left: 3px solid var(--primary); border-radius: 6px;
+      padding: 0.85rem 1rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.8rem;
+      transition: background 0.15s; position: relative; }
+    .item-row.dragging { opacity: 0.4; }
+    .item-row.drag-over { border-top: 2px solid #e50914; }
+    .drag-handle { color: #555; cursor: grab; font-size: 1.1rem; flex-shrink: 0; user-select: none; }
+    .drag-handle:active { cursor: grabbing; }
+    .item-link { flex: 1; text-decoration: none; color: #fff; min-width: 0; }
+    .item-link:hover .item-title { color: var(--primary); }
+    .item-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-type { font-size: 0.75rem; color: #888; margin-top: 0.2rem; }
-    .badge { font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; }
+    .badge { font-size: 0.72rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; flex-shrink: 0; }
     .badge-movie { background: rgba(229,9,20,0.2); color: var(--primary); }
     .badge-series { background: rgba(0,168,225,0.2); color: #00a8e1; }
+    .remove-btn { background: none; border: none; color: #ff4757; cursor: pointer; font-size: 1rem;
+      padding: 0.2rem 0.4rem; opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+    .item-row:hover .remove-btn { opacity: 1; }
     .empty { color: #666; font-style: italic; padding: 2rem 0; }
-    .share-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #ccc; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-top: 1.5rem; }
-    .share-btn:hover { border-color: var(--primary); color: #fff; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      padding: 0.6rem 1.4rem; border-radius: 20px; font-weight: 600; font-size: 0.88rem;
+      z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <a href="/u/{{ lst.username }}" class="back">← {{ lst.username }}'s profile</a>
-    <div class="list-header">
-      <h1>{{ lst.name }}</h1>
-      <p class="meta">by <a href="/u/{{ lst.username }}">{{ lst.username }}</a> &bull; {{ lst['items']|length }} item{{ 's' if lst['items']|length != 1 else '' }} &bull; created {{ lst.created_at[:10] }}</p>
-    </div>
+<div class="container">
+  <a href="/u/{{ lst.username }}" class="back">&#8592; {{ lst.username }}'s profile</a>
 
+  <div class="list-header">
+    <div class="title-row">
+      <h1 id="list-name-text">{{ lst.name }}</h1>
+      {% if username == lst.username %}
+      <input type="text" id="list-name-input" value="{{ lst.name }}"
+             onblur="saveName()" onkeydown="if(event.key==='Enter')saveName()" />
+      <button class="edit-name-btn" onclick="toggleEdit()" title="Rename">&#9998;</button>
+      {% endif %}
+    </div>
+    <p class="meta">
+      by <a href="/u/{{ lst.username }}">{{ lst.username }}</a>
+      &bull; <span id="item-count">{{ lst['items']|length }}</span> item{{ 's' if lst['items']|length != 1 else '' }}
+      &bull; created {{ lst.created_at[:10] }}
+    </p>
+  </div>
+
+  {% if username == lst.username %}
+  <div class="owner-bar">
+    <button class="btn-del" onclick="deleteList()">&#128465; Delete List</button>
+    <button class="btn-share" onclick="copyLink()">&#128279; Copy Link</button>
+  </div>
+  {% else %}
+  <div style="margin-bottom:1.2rem;">
+    <button class="btn-share" onclick="copyLink()">&#128279; Copy Link</button>
+  </div>
+  {% endif %}
+
+  <div id="items-container">
     {% if lst['items'] %}
       {% for item in lst['items'] %}
-      <a class="item" href="/{{ item.content_type }}/{{ item.content_id }}">
-        <div>
+      <div class="item-row"
+           data-content-type="{{ item.content_type }}"
+           data-content-id="{{ item.content_id }}"
+           {% if username == lst.username %}draggable="true"{% endif %}>
+        {% if username == lst.username %}
+        <span class="drag-handle" title="Drag to reorder">&#8597;</span>
+        {% endif %}
+        <a class="item-link" href="/{{ item.content_type }}/{{ item.content_id }}">
           <div class="item-title">{{ item.title }}</div>
-          <div class="item-type">Added {{ item.added_at[:10] }}</div>
-        </div>
+          <div class="item-type">Added {{ item.added_at[:10] if item.added_at else '' }}</div>
+        </a>
         <span class="badge badge-{{ item.content_type }}">{{ item.content_type|capitalize }}</span>
-      </a>
+        {% if username == lst.username %}
+        <button class="remove-btn" onclick="removeItem('{{ item.content_type }}','{{ item.content_id }}',this.closest('.item-row'))" title="Remove">&#10005;</button>
+        {% endif %}
+      </div>
       {% endfor %}
     {% else %}
-      <p class="empty">This list is empty.</p>
+      <p class="empty" id="empty-msg">This list is empty.</p>
     {% endif %}
-
-    <button class="share-btn" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',2000)})">Copy link</button>
   </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const LIST_ID = '{{ lst.list_id }}';
+  const IS_OWNER = {{ 'true' if username == lst.username else 'false' }};
+
+  function showToast(msg, ok) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = ok === false ? '#ff4757' : '#2ed573';
+    t.style.color = '#000';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── Rename ──────────────────────────────────────────────────────────────────
+  function toggleEdit() {
+    const text = document.getElementById('list-name-text');
+    const input = document.getElementById('list-name-input');
+    text.style.display = 'none';
+    input.style.display = 'block';
+    input.focus(); input.select();
+  }
+
+  function saveName() {
+    const text = document.getElementById('list-name-text');
+    const input = document.getElementById('list-name-input');
+    const name = input.value.trim();
+    if (!name) { input.style.display = 'none'; text.style.display = ''; return; }
+    fetch('/api/lists/' + LIST_ID + '/rename', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name})
+    }).then(r => r.json()).then(d => {
+      if (d.success) {
+        text.textContent = name;
+        document.title = name + ' by {{ lst.username }} — MediaPedia';
+        showToast('Renamed to "' + name + '"');
+      }
+      input.style.display = 'none'; text.style.display = '';
+    });
+  }
+
+  // ── Delete list ─────────────────────────────────────────────────────────────
+  function deleteList() {
+    if (!confirm('Delete this list permanently?')) return;
+    fetch('/api/lists/' + LIST_ID, {method: 'DELETE'})
+      .then(() => window.location.href = '/u/{{ lst.username }}');
+  }
+
+  // ── Remove item ─────────────────────────────────────────────────────────────
+  function removeItem(contentType, contentId, row) {
+    fetch('/api/lists/' + LIST_ID + '/remove', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content_type: contentType, content_id: contentId})
+    }).then(r => r.json()).then(d => {
+      if (d.success || !d.error) {
+        row.remove();
+        const cnt = document.getElementById('item-count');
+        const n = parseInt(cnt.textContent) - 1;
+        cnt.textContent = n;
+        if (n === 0) {
+          document.getElementById('items-container').innerHTML = '<p class="empty" id="empty-msg">This list is empty.</p>';
+        }
+        showToast('Removed');
+      }
+    });
+  }
+
+  // ── Copy link ───────────────────────────────────────────────────────────────
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href)
+      .then(() => showToast('Link copied!'))
+      .catch(() => prompt('Copy this link:', window.location.href));
+  }
+
+  // ── Drag-to-reorder ─────────────────────────────────────────────────────────
+  if (IS_OWNER) {
+    let dragSrc = null;
+
+    function attachDrag(row) {
+      row.addEventListener('dragstart', e => {
+        dragSrc = row; row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+        saveOrder();
+      });
+      row.addEventListener('dragover', e => {
+        e.preventDefault();
+        document.querySelectorAll('.item-row').forEach(r => r.classList.remove('drag-over'));
+        if (row !== dragSrc) row.classList.add('drag-over');
+      });
+      row.addEventListener('drop', e => {
+        e.preventDefault();
+        if (dragSrc && dragSrc !== row) {
+          const rows = Array.from(document.querySelectorAll('.item-row'));
+          if (rows.indexOf(dragSrc) < rows.indexOf(row)) row.after(dragSrc);
+          else row.before(dragSrc);
+        }
+      });
+    }
+
+    document.querySelectorAll('.item-row').forEach(attachDrag);
+
+    function saveOrder() {
+      const items = Array.from(document.querySelectorAll('.item-row')).map(r => ({
+        content_type: r.dataset.contentType,
+        content_id: r.dataset.contentId,
+        title: r.querySelector('.item-title').textContent.trim(),
+        added_at: r.querySelector('.item-type').textContent.replace('Added ', '').trim()
+      }));
+      fetch('/api/lists/' + LIST_ID + '/reorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({items})
+      });
+    }
+  }
+</script>
 </body>
 </html>
