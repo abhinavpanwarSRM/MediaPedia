@@ -170,6 +170,10 @@
                    border-radius: 10px; padding: 1.2rem; }
     .rec-section h3 { font-size: 0.88rem; color: #aaa; margin-bottom: 1rem;
                       text-transform: uppercase; letter-spacing: 0.5px; }
+    #rec-in-playlist-wrap { margin-bottom: 1.2rem; padding-bottom: 1.2rem;
+                             border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .rec-section h3 + h3 { margin-top: 1.2rem; padding-top: 1.2rem;
+                            border-top: 1px solid rgba(255,255,255,0.06); }
     .rec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.7rem; }
     .rec-card { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 0.8rem;
                 text-align: center; text-decoration: none; color: #fff;
@@ -289,7 +293,13 @@
 
   <!-- Recommendations -->
   <div class="rec-section">
-    <h3>&#127911; Recommended Artists</h3>
+    <div id="rec-in-playlist-wrap">
+      <h3>&#127911; Artists in this Playlist</h3>
+      <div id="rec-in-playlist" class="rec-grid" style="margin-bottom:1.2rem;">
+        <div style="color:#555;font-style:italic;font-size:0.85rem;">Loading...</div>
+      </div>
+    </div>
+    <h3>&#10024; You Might Also Like</h3>
     <div id="rec-grid" class="rec-grid">
       <div style="color:#555;font-style:italic;font-size:0.85rem;">Loading...</div>
     </div>
@@ -807,23 +817,53 @@
   }
 
   // ── Recommendations ───────────────────────────────────────────────────────
+  function artistCard(a) {
+    const genre = escHtml((a.artist_genre || '').split(',')[0].trim());
+    if (a.in_csv && a.ID) {
+      return `<a class="rec-card" href="/artist/${a.ID}">
+        <div class="rec-av">&#127908;</div>
+        <div class="rec-name">${escHtml(a.artist_name)}</div>
+        <div class="rec-genre">${genre || 'Artist'}</div>
+      </a>`;
+    }
+    // not in CSV — show as non-clickable tile
+    return `<div class="rec-card" style="cursor:default;opacity:0.65;">
+      <div class="rec-av" style="background:linear-gradient(135deg,#555,#333);">&#127908;</div>
+      <div class="rec-name">${escHtml(a.artist_name)}</div>
+      <div class="rec-genre">Not in library</div>
+    </div>`;
+  }
+
   function loadRecommendations() {
-    fetch('/api/playlists/recommendations')
+    fetch('/api/playlists/recommendations?playlist_id=' + PLAYLIST_ID)
       .then(r => r.json())
-      .then(artists => {
-        const g = document.getElementById('rec-grid');
-        if (!artists.length) {
-          g.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.85rem;">Add songs to get recommendations.</div>';
-          return;
+      .then(data => {
+        // Artists in this playlist
+        const inEl   = document.getElementById('rec-in-playlist');
+        const wrap   = document.getElementById('rec-in-playlist-wrap');
+        const inList = data.in_playlist || [];
+        if (!inList.length) {
+          wrap.style.display = 'none';
+        } else {
+          wrap.style.display = '';
+          inEl.innerHTML = inList.map(a => artistCard(a)).join('');
         }
-        g.innerHTML = artists.map(a =>
-          `<a class="rec-card" href="/artist/${a.ID}">
-            <div class="rec-av">&#127908;</div>
-            <div class="rec-name">${escHtml(a.artist_name)}</div>
-            <div class="rec-genre">${escHtml((a.artist_genre||'').split(',')[0].trim())}</div>
-          </a>`
-        ).join('');
-      });
+        // Suggested artists
+        const sugEl  = document.getElementById('rec-grid');
+        const sugList = data.suggested || [];
+        if (!sugList.length) {
+          sugEl.innerHTML = '<div style="color:#555;font-style:italic;font-size:0.85rem;">Add songs to get suggestions.</div>';
+        } else {
+          sugEl.innerHTML = sugList.map(a =>
+            `<a class="rec-card" href="/artist/${a.ID}">
+              <div class="rec-av">&#127908;</div>
+              <div class="rec-name">${escHtml(a.artist_name)}</div>
+              <div class="rec-genre">${escHtml((a.artist_genre||'').split(',')[0].trim())}</div>
+            </a>`
+          ).join('');
+        }
+      })
+      .catch(() => {});
   }
   loadRecommendations();
 

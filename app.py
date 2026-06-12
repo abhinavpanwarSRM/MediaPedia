@@ -1295,43 +1295,75 @@ def create_playlist():
 
 @app.route('/api/playlists/recommendations')
 def playlist_recommendations():
-    """Suggest artists based on genres in user's playlists"""
+    playlist_id = request.args.get('playlist_id', '')
     username = current_user()
-    if not username or playlists_collection is None:
-        return jsonify([])
-    playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
-    # Collect all artist names already in playlists
-    existing_artists = set()
+    songs = []
+    if playlist_id and playlists_collection is not None:
+        pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'songs': 1})
+        if pl:
+            songs = pl.get('songs', [])
+    elif username and playlists_collection is not None:
+        for pl in playlists_collection.find({'username': username}, {'_id': 0, 'songs': 1}):
+            songs.extend(pl.get('songs', []))
+    seen_ids = set()
+    in_playlist = []
+    existing_names = set()
     genre_counts = {}
-    for pl in playlists:
-        for song in pl.get('songs', []):
-            aname = song.get('artist_name', '').lower()
-            existing_artists.add(aname)
-            # Look up genres from CSV
-            match = artists_df[artists_df['artist_name'].str.lower() == aname]
-            if not match.empty:
-                for g in str(match.iloc[0].get('artist_genre', '')).split(','):
-                    g = g.strip().lower()
-                    if g:
-                        genre_counts[g] = genre_counts.get(g, 0) + 1
-    if not genre_counts:
-        # No genre data â€” return random popular artists
-        sample = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
-        for a in sample:
-            a['DetailLink'] = f"/artist/{a['ID']}"
-        return jsonify(sample)
-    # Sort genres by frequency
-    top_genres = sorted(genre_counts, key=genre_counts.get, reverse=True)[:3]
-    # Find artists matching top genres, excluding ones already in playlist
-    mask = artists_df['artist_genre'].str.lower().apply(
-        lambda g: any(tg in g for tg in top_genres)
-    )
-    candidates = artists_df[mask]
-    candidates = candidates[~candidates['artist_name'].str.lower().isin(existing_artists)]
-    result = candidates.sample(n=min(8, len(candidates))).to_dict(orient='records') if not candidates.empty else []
-    for a in result:
-        a['DetailLink'] = f"/artist/{a['ID']}"
-    return jsonify(result)
+    for song in songs:
+        aname = song.get('artist_name', '').strip()
+        aid = song.get('artist_id', 0)
+        if not aname:
+            continue
+        existing_names.add(aname.lower())
+        row = None
+        if aid and aid != 0:
+            r = artists_df[artists_df['ID'] == aid]
+            if not r.empty:
+                row = r.iloc[0]
+        if row is None:
+            r = artists_df[artists_df['artist_name'].str.lower() == aname.lower()]
+            if r.empty:
+                r = artists_df[artists_df['artist_name'].str.lower().str.contains(aname.lower(), na=False)]
+            if not r.empty:
+                row = r.iloc[0]
+        if row is not None:
+            rid = int(row['ID'])
+            if rid not in seen_ids:
+                seen_ids.add(rid)
+                entry = row.to_dict()
+                entry['in_csv'] = True
+                in_playlist.append(entry)
+            for g in str(row.get('artist_genre', '')).split(','):
+                g = g.strip().lower()
+                if g:
+                    genre_counts[g] = genre_counts.get(g, 0) + 1
+        else:
+            key = aname.lower()
+            if key not in {a.get('artist_name', '').lower() for a in in_playlist}:
+                in_playlist.append({'artist_name': aname, 'artist_genre': '', 'ID': 0, 'in_csv': False})
+    seen_n = set()
+    deduped = []
+    for a in in_playlist:
+        n = a.get('artist_name', '').lower()
+        if n not in seen_n:
+            seen_n.add(n)
+            deduped.append(a)
+    in_playlist = deduped
+    suggested = []
+    if genre_counts:
+        top_genres = sorted(genre_counts, key=genre_counts.get, reverse=True)[:3]
+        mask = artists_df['artist_genre'].str.lower().apply(
+            lambda g: any(tg in g for tg in top_genres)
+        )
+        candidates = artists_df[mask]
+        candidates = candidates[~candidates['artist_name'].str.lower().isin(existing_names)]
+        candidates = candidates[~candidates['ID'].isin(seen_ids)]
+        if not candidates.empty:
+            suggested = candidates.sample(n=min(8, len(candidates))).to_dict(orient='records')
+    else:
+        s = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
+        suggested = [a for a in s if a.get('artist_name', '').lower() not in existing_names]
+    return jsonify({'in_playlist': in_playlist, 'suggested': suggested})
 
 @app.route('/api/playlists/<playlist_id>', methods=['GET'])
 def get_playlist(playlist_id):
@@ -1374,11 +1406,20 @@ def add_song(playlist_id):
     if playlists_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json
+    artist_name = data.get('artist_name', '').strip()
+    # Auto-resolve artist_id from CSV by name match
+    artist_id = data.get('artist_id', 0)
+    if artist_name:
+        match = artists_df[artists_df['artist_name'].str.lower() == artist_name.lower()]
+        if match.empty:
+            match = artists_df[artists_df['artist_name'].str.lower().str.contains(artist_name.lower(), na=False)]
+        if not match.empty:
+            artist_id = int(match.iloc[0]['ID'])
     song = {
         'song_id': str(uuid.uuid4())[:8],
         'song_title': data.get('song_title', '').strip(),
-        'artist_name': data.get('artist_name', '').strip(),
-        'artist_id': data.get('artist_id', 0),
+        'artist_name': artist_name,
+        'artist_id': artist_id,
         'youtube_query': data.get('youtube_query', '').strip(),
         'added_at': datetime.now(timezone.utc).isoformat()
     }
