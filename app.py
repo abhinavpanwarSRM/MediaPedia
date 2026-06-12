@@ -780,6 +780,16 @@ def user_profile(username):
     for c in user_comments:
         if 'created_at' in c:
             c['created_at'] = c['created_at'].isoformat()
+        ctype = c.get('content_type', 'movie')
+        cid = c.get('id')
+        if ctype == 'movie':
+            row = df[df['ID'] == cid]
+            c['content_title'] = row.iloc[0]['Movie Name'] if not row.empty else ''
+            c['content_url'] = f"/movie/{cid}"
+        else:
+            row = series_df[series_df['ID'] == cid]
+            c['content_title'] = row.iloc[0]['Title'] if not row.empty else ''
+            c['content_url'] = f"/series/{cid}"
     
     total_likes = sum(c.get('likes', 0) for c in user_comments)
     avg_rating = round(sum(c.get('rating', 0) for c in user_comments) / len(user_comments), 1) if user_comments else 0
@@ -794,12 +804,18 @@ def user_profile(username):
         is_following = follows_collection.find_one({'follower': viewer, 'following': username}) is not None
     
     user_lists = list(lists_collection.find({'username': username}, {'_id': 0})) if lists_exists else []
-    
+
+    bio = ''
+    if users_collection is not None:
+        user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'bio': 1})
+        if user_doc:
+            bio = user_doc.get('bio', '')
+
     return render_template('profile.html', username=username, comments=user_comments,
                            total_likes=total_likes, avg_rating=avg_rating,
                            followers=followers, following=following,
                            is_following=is_following, viewer=viewer,
-                           user_lists=user_lists)
+                           user_lists=user_lists, bio=bio)
 
 # ===== Hot Takes Feed =====
 @app.route("/api/hot_takes")
@@ -1150,6 +1166,18 @@ def reply_to_comment(comment_id):
     if result.matched_count == 0:
         return jsonify({'error': 'Comment not found'}), 404
     return jsonify(reply), 201
+
+# ===== Bio Update =====
+@app.route('/api/profile/bio', methods=['POST'])
+def update_bio():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bio = (request.json or {}).get('bio', '').strip()[:200]
+    users_collection.update_one({'username': username}, {'$set': {'bio': bio}})
+    return jsonify({'success': True})
 
 # ===== Playlist Routes =====
 

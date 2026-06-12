@@ -24,8 +24,9 @@
     .pl-name input { font-size: 1.5rem; font-weight: 700; background: transparent; border: none;
                      border-bottom: 2px solid var(--primary); color: #fff; padding: 0.1rem 0.3rem;
                      display: none; width: 100%; }
-    .pl-meta { color: #888; font-size: 0.85rem; margin-top: 0.3rem; }
+    .pl-meta { color: #888; font-size: 0.85rem; margin-top: 0.3rem; line-height: 1.8; }
     .pl-meta a { color: var(--primary); text-decoration: none; }
+    .pl-total-dur { display: inline-block; margin-left: 0.3rem; }
     .edit-name-btn { background: none; border: none; color: #888; cursor: pointer;
                      font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
     .edit-name-btn:hover { color: var(--primary); }
@@ -49,6 +50,10 @@
     .btn-share { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
                  color: #ccc; padding: 0.6rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
     .btn-share:hover { color: #fff; border-color: #fff; }
+    /* queue sync indicator */
+    .queue-badge { display: inline-block; background: rgba(29,185,84,0.2); color: var(--primary);
+                   font-size: 0.7rem; padding: 0.1rem 0.45rem; border-radius: 10px;
+                   margin-left: 0.4rem; vertical-align: middle; }
 
     /* ── Search ── */
     .search-section { background: var(--card); border: 1px solid rgba(255,255,255,0.07);
@@ -205,6 +210,7 @@
       <div class="pl-meta">
         by <a href="/u/{{ pl.username }}">{{ pl.username }}</a>
         &bull; <span id="song-count">{{ pl.songs|length }}</span> song{{ 's' if pl.songs|length != 1 else '' }}
+        &bull; <span id="pl-total-dur" class="pl-total-dur"></span>
         &bull; {{ pl.created_at[:10] }}
       </div>
     </div>
@@ -358,20 +364,22 @@
       isPaused = false;
       document.getElementById('pb-play-btn').innerHTML = '&#9646;&#9646;';
       startProgressTimer();
-      // fetch duration once playing starts and update col-dur
       setTimeout(() => {
         const dur = ytPlayer.getDuration();
         document.getElementById('pb-duration').textContent = fmtTime(dur);
         if (currentRow) {
           const durEl = document.getElementById('dur-' + currentRow.dataset.songId);
           if (durEl) durEl.textContent = fmtTime(dur);
+          updateTotalDuration();
         }
+        updateMediaSession();
       }, 800);
     }
     if (e.data === YT.PlayerState.PAUSED) {
       isPaused = true;
       document.getElementById('pb-play-btn').innerHTML = '&#9654;';
       clearInterval(progressTimer);
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
     }
     if (e.data === YT.PlayerState.ENDED) {
       clearInterval(progressTimer);
@@ -535,6 +543,22 @@
     currentRow = row;
     row.classList.add('playing');
     row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.title = (row.dataset.title || 'Now Playing') + ' — MediaPedia';
+  }
+
+  // ── Media Session API (OS/lock-screen controls) ───────────────────────────
+  function updateMediaSession() {
+    if (!('mediaSession' in navigator) || !currentRow) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:  currentRow.dataset.title  || 'Unknown',
+      artist: currentRow.dataset.artist || 'Unknown',
+      album:  '{{ pl.name }}'
+    });
+    navigator.mediaSession.playbackState = 'playing';
+    navigator.mediaSession.setActionHandler('play',           () => { ytPlayer.playVideo(); });
+    navigator.mediaSession.setActionHandler('pause',          () => { ytPlayer.pauseVideo(); });
+    navigator.mediaSession.setActionHandler('previoustrack',  () => playPrev());
+    navigator.mediaSession.setActionHandler('nexttrack',      () => playNext());
   }
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -616,7 +640,7 @@
           const thumb = item.snippet.thumbnails.default.url;
           const ch = item.snippet.channelTitle;
           return `<div class="sr-item">
-            <img class="sr-thumb" src="${thumb}" onclick="previewInBar('${vid}')" />
+            <img class="sr-thumb" src="${thumb}" onclick="previewInBar('${vid}','${escAttr(title)}','${escAttr(ch)}')" />
             <div class="sr-info" onclick="previewInBar('${vid}','${escAttr(title)}','${escAttr(ch)}')">
               <div class="sr-title">${escHtml(title)}</div>
               <div class="sr-ch">${escHtml(ch)}</div>
@@ -689,17 +713,27 @@
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          if (currentRow === row) {
-            const next = row.nextElementSibling;
-            row.remove();
-            renumber();
-            updateSongCount(-1);
-            loadRecommendations();
-            showToast('Removed');
-            if (next && next.classList.contains('song-row')) playSongRow(next);
-          } else {
-            row.remove(); renumber(); updateSongCount(-1);
-            loadRecommendations(); showToast('Removed');
+          const wasPlaying = currentRow === row;
+          // find next actual song-row before removal
+          let nextRow = row.nextElementSibling;
+          while (nextRow && !nextRow.classList.contains('song-row')) nextRow = nextRow.nextElementSibling;
+          if (!nextRow) {
+            nextRow = row.previousElementSibling;
+            while (nextRow && !nextRow.classList.contains('song-row')) nextRow = nextRow.previousElementSibling;
+          }
+          if (wasPlaying) currentRow = null;
+          row.remove();
+          renumber();
+          updateSongCount(-1);
+          updateTotalDuration();
+          loadRecommendations();
+          showToast('Removed');
+          if (wasPlaying && nextRow) playSongRow(nextRow);
+          else if (wasPlaying) {
+            // queue exhausted
+            songQueue = []; queueIndex = -1;
+            document.getElementById('player-bar').classList.remove('visible');
+            document.title = '{{ pl.name }} — MediaPedia';
           }
         }
       });
@@ -739,15 +773,38 @@
     });
   }
   function saveOrder() {
-    const songs = Array.from(document.querySelectorAll('.song-row')).map(r => ({
+    const rows = Array.from(document.querySelectorAll('.song-row'));
+    const songs = rows.map(r => ({
       song_id: r.dataset.songId, youtube_query: r.dataset.query,
       song_title: r.dataset.title, artist_name: r.dataset.artist, artist_id: 0, added_at: ''
     }));
     fetch('/api/playlists/' + PLAYLIST_ID + '/reorder', {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({songs})
     });
+    // sync queue to new DOM order if playing
+    if (currentRow && songQueue.length) {
+      const newIdx = rows.indexOf(currentRow);
+      if (!shuffleOn) {
+        songQueue = [...rows.slice(newIdx), ...rows.slice(0, newIdx)];
+        queueIndex = 0;
+      }
+    }
   }
   if (IS_OWNER) document.querySelectorAll('.song-row').forEach(attachDrag);
+
+  // ── Total duration ────────────────────────────────────────────────────────
+  function updateTotalDuration() {
+    let total = 0;
+    document.querySelectorAll('.col-dur').forEach(el => {
+      const t = el.textContent.trim();
+      if (t && t !== '—') {
+        const parts = t.split(':');
+        total += parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      }
+    });
+    const el = document.getElementById('pl-total-dur');
+    if (el && total > 0) el.textContent = fmtTime(total) + ' total';
+  }
 
   // ── Recommendations ───────────────────────────────────────────────────────
   function loadRecommendations() {
