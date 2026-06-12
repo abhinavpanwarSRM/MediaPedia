@@ -280,7 +280,7 @@
   function onYouTubeIframeAPIReady() {
     ytPlayer = new YT.Player('yt-div', {
       height: '1', width: '1',
-      playerVars: { autoplay: 0, controls: 0, rel: 0, origin: window.location.origin },
+      playerVars: { autoplay: 0, controls: 0, rel: 0 },
       events: {
         onReady: () => { ytReady = true; },
         onStateChange: onYTState,
@@ -401,9 +401,14 @@
     });
 
     socket.on('song_added', (d) => {
-      queue.push(d.song);
+      if (d.insert_next) {
+        // insert after current index in local queue
+        queue.splice(curIdx + 1, 0, d.song);
+      } else {
+        queue.push(d.song);
+      }
       renderQueue();
-      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"');
+      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
     });
 
     socket.on('song_removed', (d) => {

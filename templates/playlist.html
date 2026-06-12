@@ -476,7 +476,7 @@
   function onYouTubeIframeAPIReady() {
     ytPlayer = new YT.Player('yt-player-div', {
       height: '1', width: '1',
-      playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
+      playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1 },
       events: {
         onReady:       () => { playerReady = true; },
         onStateChange: onPlayerStateChange,

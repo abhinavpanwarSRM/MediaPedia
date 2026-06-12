@@ -1812,11 +1812,6 @@ def on_join_party(data):
     if not party:
         emit('error', {'msg': 'Party not found'})
         return
-    # allow host, invited mutuals, or existing members
-    allowed = set(party.get('invited', [])) | set(party.get('members', [])) | {party['host']}
-    if username not in allowed:
-        emit('error', {'msg': 'Not invited to this party'})
-        return
     join_room(party_id)
     party_collection.update_one({'party_id': party_id}, {'$addToSet': {'members': username}})
     updated = party_collection.find_one({'party_id': party_id}, {'_id': 0})
