@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🎉 Party Room</title>
+  <title>Party Room</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -297,6 +297,7 @@
   var progTimer = null;
   var pendingSync = null;
   var pauseAtSec = null;
+  var searchTimeout = null;
 
   // YouTube Player
   var ytPlayer = null;
@@ -368,8 +369,8 @@
 
   function resolveAndPlay(song, startSec, paused) {
     var q = song.youtube_query || '';
-    var tMatch = q.match(/#t=(\\d+)$/);
-    var clean = q.replace(/#t=\\d+$/, '');
+    var tMatch = q.match(/#t=(\d+)$/);
+    var clean = q.replace(/#t=\d+$/, '');
     var sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
     pauseAtSec = paused ? sec : null;
     if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
@@ -388,7 +389,7 @@
         })
         .catch(function() {
           pauseAtSec = null;
-          ytKeyIdx++;
+          ytKeyIdx = (ytKeyIdx + 1) % YT_KEYS.length;
           if (ME === partyHost) setTimeout(nextSong, 500);
         });
     }
@@ -599,38 +600,60 @@
   }
 
   var ytKeySearchIdx = 0;
+  var isSearching = false;
 
   function searchSongs() {
     var q = document.getElementById('search-inp').value.trim();
     if (!q) return;
-    var container = document.getElementById('sr-list');
-    container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching...</div>';
-    var ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) {
-      container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
-      return;
-    }
-    var key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
-    fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(q) + '&key=' + key + '&maxResults=6&type=video&videoCategoryId=10')
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.error && d.error.code === 403) {
-          ytKeySearchIdx++;
-          searchSongs();
-          return;
-        }
-        if (!d.items || !d.items.length) {
-          container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
-          return;
-        }
-        var html = '';
-        for (var i = 0; i < d.items.length; i++) {
-          var item = d.items[i];
-          html += srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url);
-        }
-        container.innerHTML = html;
-      })
-      .catch(function() { ytKeySearchIdx++; });
+    
+    // Debounce search
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    searchTimeout = setTimeout(function() {
+      if (isSearching) return;
+      isSearching = true;
+      
+      var container = document.getElementById('sr-list');
+      container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching...</div>';
+      
+      var ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (ytMatch) {
+        container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
+        isSearching = false;
+        return;
+      }
+      
+      var key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
+      fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(q) + '&key=' + key + '&maxResults=6&type=video&videoCategoryId=10')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          isSearching = false;
+          if (d.error) {
+            if (d.error.code === 403 || d.error.code === 429) {
+              ytKeySearchIdx = (ytKeySearchIdx + 1) % YT_KEYS.length;
+              container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;padding:0.4rem;">Rate limited, trying another API key...</div>';
+              setTimeout(searchSongs, 1000);
+              return;
+            }
+            container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">API Error: ' + d.error.message + '</div>';
+            return;
+          }
+          if (!d.items || !d.items.length) {
+            container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
+            return;
+          }
+          var html = '';
+          for (var i = 0; i < d.items.length; i++) {
+            var item = d.items[i];
+            html += srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url);
+          }
+          container.innerHTML = html;
+        })
+        .catch(function(err) {
+          isSearching = false;
+          container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">Search failed. Please try again.</div>';
+        });
+    }, 500);
   }
 
   function srRow(vid, title, ch, thumb) {

@@ -12,12 +12,26 @@
     .topnav { display:flex; justify-content:space-between; align-items:center;
               padding:0.9rem 1.5rem; border-bottom:1px solid var(--border);
               position:sticky; top:0; background:rgba(20,20,20,0.97);
-              backdrop-filter:blur(8px); z-index:100; }
-    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+              backdrop-filter:blur(8px); z-index:100; gap:0.8rem; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
-    .brand { color:var(--primary) !important; font-weight:700; font-size:1rem; }
-    .nav-right { display:flex; gap:1.2rem; align-items:center; }
+    .brand { color:var(--primary) !important; font-weight:700; font-size:1rem; flex-shrink:0; }
+    .nav-right { display:flex; gap:1rem; align-items:center; flex-wrap:nowrap; overflow:hidden; }
     .nav-user { color:var(--primary) !important; font-weight:600; }
+    .nav-burger { display:none; flex-direction:column; gap:4px; background:none;
+                  border:none; cursor:pointer; padding:4px; flex-shrink:0; }
+    .nav-burger span { display:block; width:22px; height:2px; background:#fff; border-radius:2px; }
+    .nav-drawer { display:none; flex-direction:column; background:rgba(20,20,20,0.98);
+                  border-bottom:1px solid var(--border); position:sticky; top:57px; z-index:99; }
+    .nav-drawer.open { display:flex; }
+    .nav-drawer a { padding:0.75rem 1.5rem; color:var(--muted); text-decoration:none;
+                    font-size:0.9rem; border-bottom:1px solid var(--border); }
+    .nav-drawer a:last-child { border-bottom:none; }
+    .nav-drawer a:hover { color:#fff; background:rgba(255,255,255,0.04); }
+    @media (max-width:600px) {
+      .nav-right  { display:none; }
+      .nav-burger { display:flex; }
+    }
 
     .page { max-width:680px; margin:0 auto; padding:2rem 1rem; }
     h1 { font-size:1.5rem; font-weight:800; margin-bottom:1.5rem; }
@@ -68,10 +82,21 @@
     <div class="nav-right">
       <a href="/u/{{ username }}" class="nav-user">{{ username }}</a>
       <a href="/feed">Feed</a>
-      <a href="/messages" style="color:#fff;font-weight:600;">✉ Messages</a>
+      <a href="/party" style="color:#1db954;font-weight:600;">Party</a>
+      <a href="/messages" style="color:#fff;font-weight:600;">Messages</a>
       <a href="/logout">Logout</a>
     </div>
+    <button class="nav-burger" onclick="toggleDrawer()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+  <div class="nav-drawer" id="nav-drawer">
+    <a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>
+    <a href="/feed">Feed</a>
+    <a href="/party" style="color:#1db954;font-weight:600;">Party</a>
+    <a href="/messages" style="color:#fff;font-weight:600;">Messages</a>
+    <a href="/logout">Logout</a>
+  </div>
 
   <div class="page">
     <h1 class="page-title">✉ Messages</h1>
@@ -110,6 +135,17 @@
   </div>
 
   <script>
+    function toggleDrawer() {
+      document.getElementById('nav-drawer').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      const drawer = document.getElementById('nav-drawer');
+      if (drawer.classList.contains('open') &&
+          !drawer.contains(e.target) &&
+          !e.target.closest('.nav-burger')) {
+        drawer.classList.remove('open');
+      }
+    });
     function startConv() {
       const u = document.getElementById('new-conv-user').value.trim();
       if (!u) return;
