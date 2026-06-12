@@ -407,33 +407,28 @@
     });
 
     socket.on('sync_play', (d) => {
-      if (d.by === ME) return;
       if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.playVideo(); }
       document.getElementById('play-btn').innerHTML = '⏸';
-      sysChat(d.by + ' pressed play');
+      if (d.by !== ME) sysChat(d.by + ' pressed play');
     });
 
     socket.on('sync_pause', (d) => {
-      if (d.by === ME) return;
       if (ytReady) { ytPlayer.seekTo(d.position, true); ytPlayer.pauseVideo(); }
       document.getElementById('play-btn').innerHTML = '▶';
-      sysChat(d.by + ' paused');
+      if (d.by !== ME) sysChat(d.by + ' paused');
     });
 
     socket.on('sync_seek', (d) => {
-      if (d.by === ME) return;
       if (ytReady) ytPlayer.seekTo(d.position, true);
     });
 
     socket.on('sync_change_song', (d) => {
-      if (d.by === ME) return;
       curIdx = d.index;
       playCurrent();
-      sysChat(d.by + ' changed the song');
+      if (d.by !== ME) sysChat(d.by + ' changed the song');
     });
 
     socket.on('song_added', (d) => {
-      if (d.by === ME) return;  // adder already updated locally
       if (d.insert_next) {
         queue.splice(d.insert_at, 0, d.song);
         if (d.insert_at <= curIdx) curIdx++;
@@ -441,14 +436,14 @@
         queue.push(d.song);
       }
       renderQueue();
-      sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
+      if (curIdx === -1) { curIdx = queue.length - 1; playCurrent(); }
+      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
     });
 
     socket.on('song_removed', (d) => {
-      if (d.by === ME) return;  // remover already updated locally
       queue = queue.filter(s => s.song_id !== d.song_id);
       renderQueue();
-      sysChat(d.by + ' removed a song');
+      if (d.by !== ME) sysChat(d.by + ' removed a song');
     });
 
     socket.on('chat_message', (d) => {
@@ -484,36 +479,30 @@
 
   // ── Playback controls ─────────────────────────────────────────────────────
   function togglePlay() {
-    if (!ytReady || curIdx < 0) return;
-    const state = ytPlayer.getPlayerState();
-    const pos   = ytPlayer.getCurrentTime() || 0;
-    if (state === YT.PlayerState.PLAYING) {
-      ytPlayer.pauseVideo();
+    if (!socket || curIdx < 0) return;
+    const pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
+    const playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+    if (playing) {
       socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
     } else {
-      ytPlayer.playVideo();
-      socket.emit('party_play',  { party_id: partyId, username: ME, position: pos });
+      socket.emit('party_play', { party_id: partyId, username: ME, position: pos });
     }
   }
 
   function nextSong() {
-    if (curIdx < queue.length - 1) {
-      curIdx++;
-      playCurrent();
-      if (socket) socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
+    if (socket && curIdx < queue.length - 1) {
+      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
     }
   }
 
   function prevSong() {
+    if (!socket) return;
     if (ytReady && (ytPlayer.getCurrentTime() || 0) > 3) {
-      ytPlayer.seekTo(0, true);
       socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
       return;
     }
     if (curIdx > 0) {
-      curIdx--;
-      playCurrent();
-      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
+      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
     }
   }
 
@@ -529,16 +518,13 @@
   }
 
   function playFromQueue(idx) {
-    curIdx = idx;
-    playCurrent();
-    socket.emit('party_change_song', { party_id: partyId, username: ME, index: idx });
+    if (socket) socket.emit('party_change_song', { party_id: partyId, username: ME, index: idx });
   }
 
   function seekBar(e) {
-    if (!ytReady) return;
+    if (!ytReady || !socket) return;
     const pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
     const pos = pct * (ytPlayer.getDuration() || 0);
-    ytPlayer.seekTo(pos, true);
     socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
   }
 
@@ -567,9 +553,7 @@
   }
 
   function removeSong(songId) {
-    socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
-    queue = queue.filter(s => s.song_id !== songId);
-    renderQueue();
+    if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
   }
 
   // ── Members ───────────────────────────────────────────────────────────────
@@ -650,10 +634,6 @@
       added_by: ME
     };
     socket.emit('party_add_song_next', { party_id: partyId, username: ME, song });
-    const insertAt = curIdx + 1;
-    queue.splice(insertAt, 0, song);
-    if (curIdx === -1) { curIdx = 0; playCurrent(); }
-    renderQueue();
     showToast('"' + title.substring(0, 30) + '" plays next!');
     document.getElementById('sr-list').innerHTML = '';
     document.getElementById('search-inp').value = '';
@@ -669,10 +649,7 @@
       added_by: ME
     };
     socket.emit('party_add_song', { party_id: partyId, username: ME, song });
-    queue.push(song);
-    if (curIdx === -1) { curIdx = queue.length - 1; playCurrent(); }
-    renderQueue();
-    showToast('"' + title.substring(0,30) + '" added!');
+    showToast('"' + title.substring(0, 30) + '" added!');
     document.getElementById('sr-list').innerHTML = '';
     document.getElementById('search-inp').value = '';
   }
