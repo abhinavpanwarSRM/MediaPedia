@@ -1744,7 +1744,10 @@ def party_lobby():
         return redirect('/login')
     return render_template('party.html', username=username,
                            api_key_1=os.getenv('YOUTUBE_API_KEY_1', ''),
-                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''))
+                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''),
+                           api_key_3=os.getenv('YOUTUBE_API_KEY_3', ''),
+                           api_key_4=os.getenv('YOUTUBE_API_KEY_4', ''),
+                           api_key_5=os.getenv('YOUTUBE_API_KEY_5', ''))
 
 @app.route('/party/<party_id>')
 def party_room(party_id):
@@ -1758,7 +1761,10 @@ def party_room(party_id):
         return render_template('404.html'), 404
     return render_template('party.html', username=username, party=party,
                            api_key_1=os.getenv('YOUTUBE_API_KEY_1', ''),
-                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''))
+                           api_key_2=os.getenv('YOUTUBE_API_KEY_2', ''),
+                           api_key_3=os.getenv('YOUTUBE_API_KEY_3', ''),
+                           api_key_4=os.getenv('YOUTUBE_API_KEY_4', ''),
+                           api_key_5=os.getenv('YOUTUBE_API_KEY_5', ''))
 
 @app.route('/api/party/create', methods=['POST'])
 def create_party():
