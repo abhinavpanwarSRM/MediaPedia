@@ -269,15 +269,15 @@
   const INIT_PARTY = null;
   {% endif %}
 
-  let ytKeyIdx   = 0;
-  let socket     = null;
-  let partyId    = null;
-  let partyHost  = null;
-  let queue      = [];
-  let curIdx     = -1;
-  let progTimer  = null;
-  // Pending sync to apply once YT player is ready
-  let pendingSync = null;
+  let ytKeyIdx    = 0;
+  let socket      = null;
+  let partyId     = null;
+  let partyHost   = null;
+  let queue       = [];
+  let curIdx      = -1;
+  let progTimer   = null;
+  let pendingSync = null;  // party state waiting for YT to be ready
+  let pauseAtSec  = null;  // if set, pause+seek to this position on next PLAYING event
 
   // ── YouTube Player ────────────────────────────────────────────────────────
   let ytPlayer = null, ytReady = false;
@@ -298,6 +298,14 @@
 
   function onYTState(e) {
     if (e.data === YT.PlayerState.PLAYING) {
+      // If we joined mid-song and need to pause at a specific position
+      if (pauseAtSec !== null) {
+        const sec = pauseAtSec;
+        pauseAtSec = null;
+        ytPlayer.seekTo(sec, true);
+        ytPlayer.pauseVideo();
+        return;  // don't update UI to playing — pauseVideo() will fire PAUSED
+      }
       document.getElementById('play-btn').innerHTML = '⏸';
       startProg();
       setTimeout(() => {
@@ -340,34 +348,36 @@
   }
 
   // ── Resolve YT video ID ───────────────────────────────────────────────────
+  // paused=true means we're joining a paused/playing-but-we-need-to-seek session.
+  // We set pauseAtSec so onYTState handles the pause reliably via the PLAYING event.
   function resolveAndPlay(song, startSec, paused) {
     const q = song.youtube_query || '';
     const tMatch = q.match(/#t=(\d+)$/);
     const clean = q.replace(/#t=\d+$/, '');
     const sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
+    // Set pauseAtSec BEFORE loading so onYTState sees it on the first PLAYING event
+    pauseAtSec = paused ? sec : null;
     if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
-      loadAndPlayMayPause(clean, sec, paused);
+      _loadVideo(clean, sec);
     } else {
       const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(clean)}&key=${key}&maxResults=1&type=video`)
         .then(r => r.json())
         .then(d => {
-          if (d.items && d.items.length) loadAndPlayMayPause(d.items[0].id.videoId, sec, paused);
-          else setTimeout(nextSong, 500);
+          if (d.items && d.items.length) _loadVideo(d.items[0].id.videoId, sec);
+          else { pauseAtSec = null; setTimeout(nextSong, 500); }
         })
-        .catch(() => { ytKeyIdx++; setTimeout(nextSong, 500); });
+        .catch(() => { pauseAtSec = null; ytKeyIdx++; setTimeout(nextSong, 500); });
     }
   }
 
-  function loadAndPlayMayPause(videoId, startSec, paused) {
-    if (!ytReady) { setTimeout(() => loadAndPlayMayPause(videoId, startSec, paused), 300); return; }
+  function _loadVideo(videoId, startSec) {
+    if (!ytReady) { setTimeout(() => _loadVideo(videoId, startSec), 300); return; }
     document.getElementById('prog-fill').style.width = '0%';
     document.getElementById('elapsed').textContent = '0:00';
+    // Always load from startSec — for playing state YT seeks there automatically;
+    // for paused state onYTState will seek+pause on the first PLAYING event.
     ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
-    if (paused) {
-      // YT needs a moment to load before we can pause
-      setTimeout(() => { if (ytReady) ytPlayer.pauseVideo(); }, 1400);
-    }
   }
 
   // ── Socket ────────────────────────────────────────────────────────────────
@@ -510,6 +520,7 @@
   function playCurrent(startSec) {
     if (curIdx < 0 || curIdx >= queue.length) return;
     const s = queue[curIdx];
+    pauseAtSec = null;  // normal play, don't intercept with pause
     document.getElementById('np-title').textContent  = s.song_title || '—';
     document.getElementById('np-artist').textContent = s.artist_name || '';
     document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
