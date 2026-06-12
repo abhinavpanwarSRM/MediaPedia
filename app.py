@@ -1,5 +1,13 @@
 import json
 import math
+import atexit
+import logging
+import requests as http_requests
+from markupsafe import escape as _esc
+import atexit
+import logging
+import requests as http_requests
+from markupsafe import escape as _esc
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import pandas as pd
@@ -12,6 +20,9 @@ from flask_bcrypt import Bcrypt
 
 load_dotenv()
 
+logging.basicConfig(level=logging.ERROR)
+log = logging.getLogger(__name__)
+
 app = Flask(__name__)
 import secrets as _secrets
 app.secret_key = os.getenv("SECRET_KEY") or _secrets.token_hex(32)
@@ -23,8 +34,9 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
 
+client = None
 try:
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     db = client[DB_NAME]
     comments_collection = db.comments
     comments_collection.create_index("id")
@@ -40,9 +52,9 @@ try:
     messages_collection = db.messages
     messages_collection.create_index([("participants", 1)])
     messages_collection.create_index([("created_at", -1)])
-    print("âœ… MongoDB connected successfully")
+    print("MongoDB connected successfully")
 except Exception as e:
-    print(f"âŒ MongoDB connection failed: {e}")
+    log.error("MongoDB connection failed: %s", e)
     db = None
     comments_collection = None
     users_collection = None
@@ -51,23 +63,40 @@ except Exception as e:
     playlists_collection = None
     messages_collection = None
 
+def _close_mongo():
+    if client is not None:
+        try:
+            client.close()
+        except Exception as exc:
+            log.error("Error closing MongoDB client: %s", exc)
+
+atexit.register(_close_mongo)
+
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
 def tmdb_popular():
-    import urllib.request
     token = os.getenv("TMDB_TOKEN", "")
     if not token:
         return jsonify({"error": "TMDB token not configured"}), 500
     try:
-        req = urllib.request.Request(
+        resp = http_requests.get(
             "https://api.themoviedb.org/3/movie/popular",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            timeout=5
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            import json as _json
-            return jsonify(_json.loads(resp.read()))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except http_requests.RequestException as e:
+        log.error("TMDB proxy error: %s", e)
+        return jsonify({"error": "Failed to fetch TMDB data"}), 500
+
+# ===== Safe float helper (guards NaN/Inf injection) =====
+def _safe_float(value, default):
+    try:
+        v = float(value)
+        return v if math.isfinite(v) else default
+    except (ValueError, TypeError):
+        return default
 
 # ===== Comment Routes =====
 
@@ -276,17 +305,9 @@ def search():
     actor = request.args.get("actor", "").lower()
     director = request.args.get("director", "").lower()
 
-    try:
-        min_rating = float(request.args.get("min_rating", 0) or 0)
-        if math.isnan(min_rating): min_rating = 0
-    except (ValueError, TypeError):
-        min_rating = 0
+    min_rating = _safe_float(request.args.get("min_rating", 0) or 0, 0)
 
-    try:
-        max_rating = float(request.args.get("max_rating", 10) or 10)
-        if math.isnan(max_rating): max_rating = 10
-    except (ValueError, TypeError):
-        max_rating = 10
+    max_rating = _safe_float(request.args.get("max_rating", 10) or 10, 10)
 
     results = df.copy()
 
@@ -370,16 +391,8 @@ def search_series():
     genre = request.args.get("genre", "").strip().lower()
     actor = request.args.get("actor", "").strip().lower()
     year = request.args.get("year", "").strip()
-    try:
-        min_rating = float(request.args.get("min_rating", 0) or 0)
-        if math.isnan(min_rating): min_rating = 0
-    except (ValueError, TypeError):
-        min_rating = 0
-    try:
-        max_rating = float(request.args.get("max_rating", 10) or 10)
-        if math.isnan(max_rating): max_rating = 10
-    except (ValueError, TypeError):
-        max_rating = 10
+    min_rating = _safe_float(request.args.get("min_rating", 0) or 0, 0)
+    max_rating = _safe_float(request.args.get("max_rating", 10) or 10, 10)
 
     results = series_df.copy()
 
@@ -538,16 +551,8 @@ def search_games():
     year = request.args.get("year", "").strip()
     genre = request.args.get("genre", "").strip()
     publisher = request.args.get("publisher", "").strip()
-    try:
-        min_sales = float(request.args.get("min_sales", 0) or 0)
-        if math.isnan(min_sales): min_sales = 0
-    except (ValueError, TypeError):
-        min_sales = 0
-    try:
-        max_sales = float(request.args.get("max_sales", 100) or 100)
-        if math.isnan(max_sales): max_sales = 100
-    except (ValueError, TypeError):
-        max_sales = 100
+    min_sales = _safe_float(request.args.get("min_sales", 0) or 0, 0)
+    max_sales = _safe_float(request.args.get("max_sales", 100) or 100, 100)
 
     results = games_df.copy()
 
@@ -598,6 +603,7 @@ def recommend_games():
 # ===== Director Page =====
 @app.route("/director/<path:director_name>")
 def director_page(director_name):
+    director_name = str(_esc(director_name))
     name_lower = director_name.lower()
     movies = df[df['Directors'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
     if not movies:
@@ -618,6 +624,7 @@ def director_page(director_name):
 # ===== Actor Page =====
 @app.route("/actor/<path:actor_name>")
 def actor_page(actor_name):
+    actor_name = str(_esc(actor_name))
     name_lower = actor_name.lower()
     movies = df[df['Stars'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
     series = series_df[series_df['Actors'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
@@ -631,6 +638,7 @@ def actor_page(actor_name):
 # ===== Franchise Tracker =====
 @app.route("/franchise/<path:franchise_name>")
 def franchise_page(franchise_name):
+    franchise_name = str(_esc(franchise_name))
     name_lower = franchise_name.lower()
     franchise_movies = df[df['Movie Name'].str.lower().str.contains(name_lower, na=False)]\
         .sort_values('Rating', ascending=False).to_dict(orient='records')
@@ -744,7 +752,8 @@ try:
     if db is not None:
         seen_collection = db.seen_votes
         seen_collection.create_index("content_id")
-except Exception:
+except Exception as e:
+    log.error("Failed to init seen_votes collection: %s", e)
     seen_collection = None
 
 @app.route("/api/seen/<int:content_id>", methods=["GET"])
@@ -899,23 +908,19 @@ def global_search():
     query = request.args.get("q", "").strip().lower()
     if not query or len(query) < 2:
         return jsonify([])
-    results = []
-    # Movies
-    movie_hits = df[df['Movie Name'].str.lower().str.contains(query, na=False)].head(5)
-    for _, m in movie_hits.iterrows():
-        results.append({'type': 'movie', 'id': int(m['ID']), 'title': m['Movie Name'],
-                        'sub': m.get('Genre', ''), 'url': f"/movie/{m['ID']}"})
-    # Series
-    series_hits = series_df[series_df['Title'].str.lower().str.contains(query, na=False)].head(5)
-    for _, s in series_hits.iterrows():
-        results.append({'type': 'series', 'id': int(s['ID']), 'title': s['Title'],
-                        'sub': s.get('Genres', ''), 'url': f"/series/{s['ID']}"})
-    # Artists
-    artist_hits = artists_df[artists_df['artist_name'].str.lower().str.contains(query, na=False)].head(3)
-    for _, a in artist_hits.iterrows():
-        results.append({'type': 'artist', 'id': int(a['ID']), 'title': a['artist_name'],
-                        'sub': a.get('artist_genre', ''), 'url': f"/artist/{a['ID']}"})
-    # Directors
+    results = [
+        {'type': 'movie', 'id': int(m['ID']), 'title': m['Movie Name'],
+         'sub': m.get('Genre', ''), 'url': f"/movie/{m['ID']}"}
+        for _, m in df[df['Movie Name'].str.lower().str.contains(query, na=False)].head(5).iterrows()
+    ] + [
+        {'type': 'series', 'id': int(s['ID']), 'title': s['Title'],
+         'sub': s.get('Genres', ''), 'url': f"/series/{s['ID']}"}
+        for _, s in series_df[series_df['Title'].str.lower().str.contains(query, na=False)].head(5).iterrows()
+    ] + [
+        {'type': 'artist', 'id': int(a['ID']), 'title': a['artist_name'],
+         'sub': a.get('artist_genre', ''), 'url': f"/artist/{a['ID']}"}
+        for _, a in artists_df[artists_df['artist_name'].str.lower().str.contains(query, na=False)].head(3).iterrows()
+    ]
     dir_hits = df[df['Directors'].str.lower().str.contains(query, na=False)]
     if not dir_hits.empty:
         dirs = set()
@@ -924,18 +929,16 @@ def global_search():
                 d = d.strip()
                 if d and query in d.lower():
                     dirs.add(d)
-        for d in list(dirs)[:2]:
-            results.append({'type': 'director', 'id': 0, 'title': d,
-                            'sub': 'Director', 'url': f"/director/{d}"})
-    # Users
+        results += [{'type': 'director', 'id': 0, 'title': d,
+                     'sub': 'Director', 'url': f"/director/{d}"} for d in list(dirs)[:2]]
     if users_collection is not None:
         user_hits = list(users_collection.find(
             {'username': {'$regex': query, '$options': 'i'}},
             {'_id': 0, 'username': 1, 'bio': 1}
         ).limit(3))
-        for u in user_hits:
-            results.append({'type': 'user', 'id': 0, 'title': u['username'],
-                            'sub': u.get('bio', '') or 'MediaPedia user', 'url': f"/u/{u['username']}"})
+        results += [{'type': 'user', 'id': 0, 'title': u['username'],
+                     'sub': u.get('bio', '') or 'MediaPedia user', 'url': f"/u/{u['username']}"}
+                    for u in user_hits]
     return jsonify(results[:15])
 
 # ===== Auth helper =====
@@ -1510,11 +1513,13 @@ def remove_song(playlist_id, song_id):
     return jsonify({'success': True})
 
 # ===== Liked Songs =====
+liked_collection = None
 try:
     if db is not None:
         liked_collection = db.liked_songs
         liked_collection.create_index([('username', 1), ('song_id', 1)], unique=True)
-except Exception:
+except Exception as e:
+    log.error("Failed to init liked_songs collection: %s", e)
     liked_collection = None
 
 @app.route('/api/liked_songs', methods=['GET'])
@@ -1727,7 +1732,8 @@ try:
     if db is not None:
         party_collection = db.parties
         party_collection.create_index('party_id', unique=True)
-except Exception:
+except Exception as e:
+    log.error("Failed to init parties collection: %s", e)
     party_collection = None
 
 # ===== Party HTTP Routes =====
@@ -1844,8 +1850,8 @@ def _live_position(party):
             played_at = datetime.fromisoformat(party['played_at'])
             elapsed = (datetime.now(timezone.utc) - played_at).total_seconds()
             pos = pos + max(0, elapsed)
-        except Exception:
-            pass
+        except (ValueError, OSError) as e:
+            log.error("_live_position parse error: %s", e)
     return pos
 
 @socketio.on('party_play')
@@ -1974,4 +1980,5 @@ def on_request_sync(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    _debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    socketio.run(app, host="0.0.0.0", port=5000, debug=_debug)

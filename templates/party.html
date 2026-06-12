@@ -4,7 +4,9 @@
   <title>🎉 Party Room</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+          integrity="sha384-2huFQcm5tFGgFQSomOJCwQQkDEZqIrDqxrKxm4E+F9JHnAGZhL6LCjYjyZRxH7w"
+          crossorigin="anonymous"></script>
   <style>
     :root { --g: #1db954; --bg: #141414; --card: rgba(255,255,255,0.04);
             --border: rgba(255,255,255,0.08); --muted: #888; --red: #e50914; }
@@ -278,6 +280,7 @@
 
 <!-- Hidden YT player -->
 <div id="yt-div" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;"></div>
+<!-- YouTube IFrame API does not support SRI (dynamic script); loaded from first-party google domain -->
 <script src="https://www.youtube.com/iframe_api"></script>
 <div class="toast" id="toast"></div>
 
