@@ -385,11 +385,13 @@
     });
 
     socket.on('member_joined', (d) => {
+      if (d.username === ME) return;  // don't show self-join
       sysChat(d.username + ' joined the party 🎉');
       renderMembers(d.members || []);
     });
 
     socket.on('member_left', (d) => {
+      if (d.username === ME) return;
       sysChat(d.username + ' left the party');
       renderMembers(d.members || []);
     });
@@ -421,6 +423,7 @@
     });
 
     socket.on('song_added', (d) => {
+      if (d.by === ME) return;  // adder already updated locally
       if (d.insert_next) {
         queue.splice(d.insert_at, 0, d.song);
         if (d.insert_at <= curIdx) curIdx++;
@@ -428,13 +431,14 @@
         queue.push(d.song);
       }
       renderQueue();
-      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
+      sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
     });
 
     socket.on('song_removed', (d) => {
+      if (d.by === ME) return;  // remover already updated locally
       queue = queue.filter(s => s.song_id !== d.song_id);
       renderQueue();
-      if (d.by !== ME) sysChat(d.by + ' removed a song');
+      sysChat(d.by + ' removed a song');
     });
 
     socket.on('chat_message', (d) => {
@@ -486,7 +490,7 @@
     if (curIdx < queue.length - 1) {
       curIdx++;
       playCurrent();
-      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
+      if (socket) socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx });
     }
   }
 
@@ -703,7 +707,8 @@
 
   function joinParty() {
     const code = document.getElementById('join-code').value.trim();
-    if (!code) return;
+    if (!code) { showToast('Enter a party code first'); return; }
+    if (!/^[a-zA-Z0-9]{4,8}$/.test(code)) { showToast('Invalid party code'); return; }
     enterRoom(code);
   }
 
@@ -722,8 +727,7 @@
       sysChat('Host ended the party.');
     }
     socket.emit('leave_party', { party_id: partyId, username: ME });
-    socket.disconnect();
-    window.location.href = '/';
+    setTimeout(() => { socket.disconnect(); window.location.href = '/'; }, 300);
   }
 
   function copyCode() {
