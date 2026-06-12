@@ -925,7 +925,16 @@ def global_search():
         for d in list(dirs)[:2]:
             results.append({'type': 'director', 'id': 0, 'title': d,
                             'sub': 'Director', 'url': f"/director/{d}"})
-    return jsonify(results[:12])
+    # Users
+    if users_collection is not None:
+        user_hits = list(users_collection.find(
+            {'username': {'$regex': query, '$options': 'i'}},
+            {'_id': 0, 'username': 1, 'bio': 1}
+        ).limit(3))
+        for u in user_hits:
+            results.append({'type': 'user', 'id': 0, 'title': u['username'],
+                            'sub': u.get('bio', '') or 'MediaPedia user', 'url': f"/u/{u['username']}"})
+    return jsonify(results[:15])
 
 # ===== Auth helper =====
 def current_user():
@@ -1402,6 +1411,44 @@ def delete_playlist(playlist_id):
     playlists_collection.delete_one({'playlist_id': playlist_id, 'username': username})
     return jsonify({'success': True})
 
+@app.route('/api/playlists/<playlist_id>/collaborators', methods=['GET'])
+def get_collaborators(playlist_id):
+    if playlists_collection is None:
+        return jsonify([]), 500
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'collaborators': 1})
+    return jsonify(pl.get('collaborators', []) if pl else [])
+
+@app.route('/api/playlists/<playlist_id>/collaborators', methods=['POST'])
+def add_collaborator(playlist_id):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    target = (request.json or {}).get('username', '').strip()
+    if not target:
+        return jsonify({'error': 'Username required'}), 400
+    if target == username:
+        return jsonify({'error': 'Cannot add yourself'}), 400
+    if users_collection is not None and not users_collection.find_one({'username': target}):
+        return jsonify({'error': 'User not found'}), 404
+    result = playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$addToSet': {'collaborators': target}}
+    )
+    if result.matched_count == 0:
+        return jsonify({'error': 'Playlist not found or not owner'}), 404
+    return jsonify({'success': True})
+
+@app.route('/api/playlists/<playlist_id>/collaborators/<target>', methods=['DELETE'])
+def remove_collaborator(playlist_id, target):
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    playlists_collection.update_one(
+        {'playlist_id': playlist_id, 'username': username},
+        {'$pull': {'collaborators': target}}
+    )
+    return jsonify({'success': True})
+
 @app.route('/api/playlists/<playlist_id>/songs', methods=['POST'])
 def add_song(playlist_id):
     username = current_user()
@@ -1409,9 +1456,13 @@ def add_song(playlist_id):
         return jsonify({'error': 'Not logged in'}), 401
     if playlists_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'username': 1, 'collaborators': 1})
+    if not pl:
+        return jsonify({'error': 'Playlist not found'}), 404
+    if pl['username'] != username and username not in pl.get('collaborators', []):
+        return jsonify({'error': 'Not authorized'}), 403
     data = request.json
     artist_name = data.get('artist_name', '').strip()
-    # Auto-resolve artist_id from CSV by name match
     artist_id = data.get('artist_id', 0)
     if artist_name:
         match = artists_df[artists_df['artist_name'].str.lower() == artist_name.lower()]
@@ -1425,16 +1476,12 @@ def add_song(playlist_id):
         'artist_name': artist_name,
         'artist_id': artist_id,
         'youtube_query': data.get('youtube_query', '').strip(),
+        'added_by': username,
         'added_at': datetime.now(timezone.utc).isoformat()
     }
     if not song['song_title'] or not song['artist_name']:
         return jsonify({'error': 'Song title and artist required'}), 400
-    result = playlists_collection.update_one(
-        {'playlist_id': playlist_id, 'username': username},
-        {'$push': {'songs': song}}
-    )
-    if result.matched_count == 0:
-        return jsonify({'error': 'Playlist not found or unauthorized'}), 404
+    playlists_collection.update_one({'playlist_id': playlist_id}, {'$push': {'songs': song}})
     return jsonify(song), 201
 
 @app.route('/api/playlists/<playlist_id>/songs/<song_id>', methods=['DELETE'])
@@ -1442,11 +1489,60 @@ def remove_song(playlist_id, song_id):
     username = current_user()
     if not username or playlists_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'username': 1, 'collaborators': 1, 'songs': 1})
+    if not pl:
+        return jsonify({'error': 'Not found'}), 404
+    is_owner = pl['username'] == username
+    is_collab = username in pl.get('collaborators', [])
+    if not is_owner and not is_collab:
+        return jsonify({'error': 'Not authorized'}), 403
+    # Collaborators can only remove their own songs
+    if not is_owner:
+        song = next((s for s in pl.get('songs', []) if s['song_id'] == song_id), None)
+        if song and song.get('added_by') != username:
+            return jsonify({'error': 'Can only remove your own songs'}), 403
     playlists_collection.update_one(
-        {'playlist_id': playlist_id, 'username': username},
+        {'playlist_id': playlist_id},
         {'$pull': {'songs': {'song_id': song_id}}}
     )
     return jsonify({'success': True})
+
+# ===== Liked Songs =====
+try:
+    if db is not None:
+        liked_collection = db.liked_songs
+        liked_collection.create_index([('username', 1), ('song_id', 1)], unique=True)
+except Exception:
+    liked_collection = None
+
+@app.route('/api/liked_songs', methods=['GET'])
+def get_liked_songs():
+    username = current_user()
+    if not username or liked_collection is None:
+        return jsonify([])
+    liked = list(liked_collection.find({'username': username}, {'_id': 0, 'song_id': 1}))
+    return jsonify([l['song_id'] for l in liked])
+
+@app.route('/api/liked_songs/<song_id>', methods=['POST'])
+def toggle_liked_song(song_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if liked_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    existing = liked_collection.find_one({'username': username, 'song_id': song_id})
+    if existing:
+        liked_collection.delete_one({'username': username, 'song_id': song_id})
+        return jsonify({'liked': False})
+    data = request.json or {}
+    liked_collection.insert_one({
+        'username': username, 'song_id': song_id,
+        'song_title': data.get('song_title', ''),
+        'artist_name': data.get('artist_name', ''),
+        'youtube_query': data.get('youtube_query', ''),
+        'added_at': datetime.now(timezone.utc).isoformat()
+    })
+    return jsonify({'liked': True})
 
 @app.route('/api/playlists/<playlist_id>/reorder', methods=['POST'])
 def reorder_songs(playlist_id):

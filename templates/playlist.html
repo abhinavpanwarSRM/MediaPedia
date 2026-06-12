@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --primary: #1db954; --bg: #141414; --card: rgba(20,20,20,0.95); --red: #e50914; }
+    :root { --primary: #1db954; --bg: #141414; --card: rgba(20,20,20,0.95); --red: #e50914; --blue: #5799ef; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif;
            padding: 2rem 1rem 6rem; min-height: 100vh; }
@@ -50,6 +50,26 @@
     .btn-share { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
                  color: #ccc; padding: 0.6rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
     .btn-share:hover { color: #fff; border-color: #fff; }
+    .collab-badge { display:inline-block; background:rgba(87,153,239,0.2); color:var(--blue);
+                    font-size:0.68rem; padding:0.1rem 0.45rem; border-radius:8px; margin-left:0.4rem;
+                    vertical-align:middle; font-weight:600; }
+    /* collab section */
+    .collab-section { background:var(--card); border:1px solid rgba(87,153,239,0.2);
+                      border-radius:10px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
+    .collab-section h3 { font-size:0.82rem; color:var(--blue); text-transform:uppercase;
+                         letter-spacing:0.5px; margin-bottom:0.8rem; }
+    .collab-row { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.5rem; }
+    .collab-row span { flex:1; font-size:0.88rem; }
+    .collab-rm { background:none; border:none; color:#ff4757; cursor:pointer; font-size:0.9rem; }
+    .collab-add-row { display:flex; gap:0.5rem; margin-top:0.6rem; }
+    .collab-add-row input { flex:1; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.07);
+                             border:1px solid rgba(87,153,239,0.3); border-radius:6px; color:#fff;
+                             font-size:0.88rem; }
+    .collab-add-row input:focus { outline:none; border-color:var(--blue); }
+    .collab-add-row button { padding:0.5rem 1rem; background:rgba(87,153,239,0.2);
+                              border:1px solid var(--blue); border-radius:6px; color:var(--blue);
+                              font-weight:600; font-size:0.85rem; cursor:pointer; }
+    .collab-add-row button:hover { background:rgba(87,153,239,0.35); }
     .btn-pip { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
                color: #ccc; padding: 0.6rem 1rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
     .btn-pip:hover, .btn-pip.active { border-color: var(--primary); color: var(--primary); background: rgba(29,185,84,0.15); }
@@ -172,6 +192,11 @@
               align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
     .sd-btn { background: none; border: none; color: #ff4757; cursor: pointer;
               font-size: 0.9rem; padding: 0.2rem; }
+    .sl-btn { background: none; border: none; color: #888; cursor: pointer;
+              font-size: 1rem; padding: 0.2rem; transition: color 0.15s; }
+    .sl-btn:hover { color: #ff4757; }
+    .sl-btn.liked { color: #ff4757; }
+    .added-by { font-size:0.68rem; color:#555; margin-top:0.1rem; }
 
     .empty-songs { padding: 2.5rem; text-align: center; color: #555; font-style: italic; }
 
@@ -266,6 +291,7 @@
     <button class="btn-shuffle" id="btn-shuffle" onclick="toggleShuffle()">&#8652; Shuffle</button>
     <button class="btn-repeat"  id="btn-repeat"  onclick="toggleRepeat()">&#8634; Repeat</button>
     <button class="btn-share" onclick="copyLink()">&#128279; Share</button>
+    <button class="btn-share" onclick="exportPlaylist()" title="Export as text">&#11015; Export</button>
     <button class="btn-pip" id="btn-pip" onclick="togglePip()">&#127909; Video</button>
     <button class="btn-sleep" id="btn-sleep" onclick="openSleepModal()">&#9200; Sleep</button>
     <button class="btn-shuffle" style="background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.15);color:#ccc;" onclick="openQueuePanel()">&#9776; Queue</button>
@@ -274,14 +300,29 @@
     {% endif %}
   </div>
 
-  <!-- Search & Add (owner only) -->
-  {% if username == pl.username %}
+  <!-- Collaborators section (owner sees management, collaborators see list) -->
+  <div class="collab-section" id="collab-section">
+    <h3>&#128101; Collaborators <span class="collab-badge" id="collab-count">0</span></h3>
+    <div id="collab-list"></div>
+    {% if username == pl.username %}
+    <div class="collab-add-row">
+      <input type="text" id="collab-input" placeholder="Add collaborator by username..."
+             onkeydown="if(event.key==='Enter')addCollaborator()" />
+      <button onclick="addCollaborator()">+ Add</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Search & Add (owner + collaborators) -->
+  {% if username == pl.username or username in pl.get('collaborators', []) %}
   <div class="search-section">
     <h3>Add Songs</h3>
     <div class="search-row">
       <input type="text" id="yt-search"
              placeholder="Search a song or paste a YouTube URL..."
              onkeydown="if(event.key==='Enter')searchYT()" />
+      <input type="number" id="yt-start" min="0" placeholder="Start sec"
+             style="width:90px;padding:0.6rem 0.7rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#fff;font-size:0.88rem;" title="Start playback at this second" />
       <button onclick="searchYT()">Search</button>
     </div>
     <div id="search-results" class="search-results"></div>
@@ -304,6 +345,7 @@
              data-query="{{ song.youtube_query }}"
              data-title="{{ song.song_title | e }}"
              data-artist="{{ song.artist_name | e }}"
+             data-added-by="{{ song.get('added_by', pl.username) }}"
              draggable="{{ 'true' if username == pl.username else 'false' }}">
           <div class="col-num">
             <span class="num-text">{{ loop.index }}</span>
@@ -322,7 +364,8 @@
           <div class="col-dur" id="dur-{{ song.song_id }}">—</div>
           <div class="col-act">
             <button class="sp-btn" onclick="playSongRow(this.closest('.song-row'))" title="Play">&#9654;</button>
-            {% if username == pl.username %}
+            <button class="sl-btn" data-song-id="{{ song.song_id }}" onclick="toggleLike(this)" title="Like">&#9825;</button>
+            {% if username == pl.username or (username and username == song.get('added_by', pl.username)) %}
             <button class="sd-btn" onclick="deleteSong('{{ song.song_id }}',this.closest('.song-row'))" title="Remove">&#10005;</button>
             {% endif %}
           </div>
@@ -412,8 +455,11 @@
 <script>
   const PLAYLIST_ID = '{{ pl.playlist_id }}';
   const IS_OWNER    = {{ 'true' if username == pl.username else 'false' }};
+  const VIEWER      = '{{ username or "" }}';
+  const PL_OWNER    = '{{ pl.username }}';
   const YT_KEYS     = ['{{ api_key_1 }}', '{{ api_key_2 }}'];
   let ytKeyIdx = 0;
+  let likedSongs = new Set();
 
   // ── Player state ──────────────────────────────────────────────────────────
   let ytPlayer      = null;
@@ -522,26 +568,31 @@
     updatePlayerBar(row.dataset.title, row.dataset.artist);
     showPlayerBar();
 
-    const isVideoId = /^[a-zA-Z0-9_-]{11}$/.test(query);
+    // parse optional start time from query (e.g. "abc123#t=90")
+    const tMatch = query.match(/#t=(\d+)$/);
+    const startSec = tMatch ? parseInt(tMatch[1]) : 0;
+    const cleanQuery = query.replace(/#t=\d+$/, '');
+
+    const isVideoId = /^[a-zA-Z0-9_-]{11}$/.test(cleanQuery);
     if (isVideoId) {
-      loadVideo(query);
+      loadVideo(cleanQuery, startSec);
     } else {
       const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
-      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${key}&maxResults=1&type=video`)
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(cleanQuery)}&key=${key}&maxResults=1&type=video`)
         .then(r => r.json())
         .then(d => {
-          if (d.items && d.items.length) loadVideo(d.items[0].id.videoId);
+          if (d.items && d.items.length) loadVideo(d.items[0].id.videoId, startSec);
           else setTimeout(playNext, 500);
         })
         .catch(() => { ytKeyIdx++; setTimeout(playNext, 500); });
     }
   }
 
-  function loadVideo(videoId) {
-    if (!playerReady) { setTimeout(() => loadVideo(videoId), 300); return; }
+  function loadVideo(videoId, startSec) {
+    if (!playerReady) { setTimeout(() => loadVideo(videoId, startSec), 300); return; }
     document.getElementById('pb-fill').style.width = '0%';
     document.getElementById('pb-elapsed').textContent = '0:00';
-    ytPlayer.loadVideoById(videoId);
+    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
     if (pipOn) showPipVideo(videoId);
   }
 
@@ -661,7 +712,89 @@
     if (e.code === 'KeyQ')        openQueuePanel();
   });
 
-  // ── Rename ────────────────────────────────────────────────────────────────
+  // ── Liked songs ──────────────────────────────────────────────────────────
+  function loadLikedSongs() {
+    if (!VIEWER) return;
+    fetch('/api/liked_songs').then(r => r.json()).then(ids => {
+      likedSongs = new Set(ids);
+      document.querySelectorAll('.sl-btn').forEach(btn => {
+        if (likedSongs.has(btn.dataset.songId)) {
+          btn.classList.add('liked'); btn.innerHTML = '&#9829;';
+        }
+      });
+    }).catch(() => {});
+  }
+  loadLikedSongs();
+
+  function toggleLike(btn) {
+    if (!VIEWER) { window.location.href = '/login'; return; }
+    const row = btn.closest('.song-row');
+    const songId = row.dataset.songId;
+    fetch('/api/liked_songs/' + songId, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ song_title: row.dataset.title, artist_name: row.dataset.artist, youtube_query: row.dataset.query })
+    }).then(r => r.json()).then(d => {
+      if (d.liked) { likedSongs.add(songId); btn.classList.add('liked'); btn.innerHTML = '&#9829;'; showToast('&#9829; Liked'); }
+      else { likedSongs.delete(songId); btn.classList.remove('liked'); btn.innerHTML = '&#9825;'; showToast('Removed from liked'); }
+    });
+  }
+
+  // ── Collaborators ─────────────────────────────────────────────────────────
+  function loadCollaborators() {
+    fetch('/api/playlists/' + PLAYLIST_ID + '/collaborators')
+      .then(r => r.json())
+      .then(collabs => {
+        document.getElementById('collab-count').textContent = collabs.length;
+        const list = document.getElementById('collab-list');
+        if (!collabs.length) {
+          list.innerHTML = '<div style="color:#555;font-size:0.82rem;font-style:italic;">No collaborators yet.</div>';
+          return;
+        }
+        list.innerHTML = collabs.map(u =>
+          '<div class="collab-row">' +
+          '<span>&#128100; <a href="/u/' + escHtml(u) + '" style="color:var(--blue);text-decoration:none;">' + escHtml(u) + '</a></span>' +
+          (IS_OWNER ? '<button class="collab-rm" onclick="removeCollaborator(\'' + escAttr(u) + '\')" title="Remove">&#10005;</button>' : '') +
+          '</div>'
+        ).join('');
+      }).catch(() => {});
+  }
+  loadCollaborators();
+
+  function addCollaborator() {
+    const inp = document.getElementById('collab-input');
+    const target = inp.value.trim(); if (!target) return;
+    fetch('/api/playlists/' + PLAYLIST_ID + '/collaborators', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: target})
+    }).then(r => r.json()).then(d => {
+      if (d.error) { showToast(d.error); return; }
+      inp.value = ''; loadCollaborators();
+      showToast(target + ' can now add songs');
+    });
+  }
+
+  function removeCollaborator(target) {
+    fetch('/api/playlists/' + PLAYLIST_ID + '/collaborators/' + encodeURIComponent(target), {method: 'DELETE'})
+      .then(() => { loadCollaborators(); showToast('Removed ' + target); });
+  }
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  function exportPlaylist() {
+    const rows = document.querySelectorAll('.song-row');
+    if (!rows.length) { showToast('Nothing to export'); return; }
+    let txt = '{{ pl.name }}\n' + '='.repeat(40) + '\n';
+    rows.forEach((r, i) => {
+      const q = r.dataset.query || '';
+      const ytUrl = /^[a-zA-Z0-9_-]{11}$/.test(q) ? 'https://youtu.be/' + q : '';
+      txt += (i+1) + '. ' + (r.dataset.title||'') + ' — ' + (r.dataset.artist||'') + (ytUrl ? '  ' + ytUrl : '') + '\n';
+    });
+    const a = document.createElement('a');
+    a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(txt);
+    a.download = '{{ pl.name }}'.replace(/[^a-z0-9]/gi, '_') + '.txt';
+    a.click();
+    showToast('Exported!');
+  }
   function toggleEditName() {
     const txt = document.getElementById('pl-name-text');
     const inp = document.getElementById('pl-name-input');
@@ -778,9 +911,12 @@
 
   function addSongFromSearch(videoId, title, channelTitle) {
     const artist = extractArtist(title, channelTitle);
+    const startEl = document.getElementById('yt-start');
+    const startSec = startEl ? (parseInt(startEl.value) || 0) : 0;
+    const query = startSec > 0 ? videoId + '#t=' + startSec : videoId;
     fetch('/api/playlists/' + PLAYLIST_ID + '/songs', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ song_title: title, artist_name: artist, artist_id: 0, youtube_query: videoId })
+      body: JSON.stringify({ song_title: title, artist_name: artist, artist_id: 0, youtube_query: query })
     })
     .then(r => r.json())
     .then(song => {
@@ -807,7 +943,12 @@
     div.dataset.query   = song.youtube_query;
     div.dataset.title   = song.song_title;
     div.dataset.artist  = song.artist_name;
+    div.dataset.addedBy = song.added_by || VIEWER;
     div.draggable       = IS_OWNER;
+    const isLiked = likedSongs.has(song.song_id);
+    const canDelete = IS_OWNER || (VIEWER && VIEWER === (song.added_by || VIEWER));
+    const addedByLabel = (song.added_by && song.added_by !== PL_OWNER)
+      ? ` <span style="font-size:0.68rem;color:#555;">by ${escHtml(song.added_by)}</span>` : '';
     div.innerHTML = `
       <div class="col-num">
         <span class="num-text">${n}</span>
@@ -815,12 +956,13 @@
       </div>
       <div class="col-info">
         <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
-        <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a></div>
+        <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a>${addedByLabel}</div>
       </div>
       <div class="col-dur" id="dur-${song.song_id}">—</div>
       <div class="col-act">
         <button class="sp-btn" onclick="playSongRow(this.closest('.song-row'))">&#9654;</button>
-        ${IS_OWNER ? `<button class="sd-btn" onclick="deleteSong('${song.song_id}',this.closest('.song-row'))">&#10005;</button>` : ''}
+        <button class="sl-btn ${isLiked ? 'liked' : ''}" data-song-id="${song.song_id}" onclick="toggleLike(this)">${isLiked ? '&#9829;' : '&#9825;'}</button>
+        ${canDelete ? `<button class="sd-btn" onclick="deleteSong('${song.song_id}',this.closest('.song-row'))">&#10005;</button>` : ''}
       </div>`;
     list.appendChild(div);
     if (IS_OWNER) attachDrag(div);
