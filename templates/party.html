@@ -1,969 +1,1858 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Party Room - MediaPedia</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <style>
-    :root { --g: #1db954; --bg: #141414; --card: rgba(255,255,255,0.04);
-            --border: rgba(255,255,255,0.08); --muted: #888; --red: #e50914; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif;
-           min-height: 100vh; }
+  <head>
+    <title>Party Room - MediaPedia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+      type="image/x-icon"
+    />
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+      :root {
+        --g: #1db954;
+        --bg: #0a0a0a;
+        --card: #1a1a1a;
+        --border: #2a2a2a;
+        --muted: #888;
+        --red: #e50914;
+        --yellow: #ffc107;
+        --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        --transition: all 0.2s ease;
+      }
 
-    /* ── Lobby ── */
-    #lobby { max-width: 480px; margin: 6rem auto; padding: 0 1rem; text-align: center; }
-    #lobby h1 { font-size: 2rem; margin-bottom: 0.4rem; }
-    #lobby p  { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
-    .inp { width: 100%; padding: 0.7rem 1rem; background: rgba(255,255,255,0.07);
-           border: 1px solid var(--border); border-radius: 8px; color: #fff;
-           font-size: 0.95rem; margin-bottom: 0.8rem; }
-    .inp:focus { outline: none; border-color: var(--g); }
-    .btn-g { width: 100%; padding: 0.75rem; background: var(--g); border: none;
-             border-radius: 8px; color: #000; font-weight: 700; font-size: 1rem;
-             cursor: pointer; margin-bottom: 0.6rem; }
-    .btn-g:hover { background: #1ed760; }
-    .btn-outline { width: 100%; padding: 0.75rem; background: transparent;
-                   border: 1px solid var(--g); border-radius: 8px; color: var(--g);
-                   font-weight: 600; font-size: 0.95rem; cursor: pointer; }
-    .btn-outline:hover { background: rgba(29,185,84,0.1); }
-    .divider { color: var(--muted); font-size: 0.85rem; margin: 0.8rem 0; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    /* ── Room layout ── */
-    #room { display: none; height: 100vh;
-            grid-template-columns: 1fr 320px; grid-template-rows: auto 1fr; }
-    #room.active { display: grid; }
+      body {
+        background: var(--bg);
+        color: #fff;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
 
-    /* Top bar */
-    .room-top { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem;
-                padding: 0.8rem 1.2rem; background: rgba(10,10,10,0.9);
-                border-bottom: 1px solid var(--border); }
-    .room-name { font-weight: 700; font-size: 1rem; }
-    .party-code { font-size: 0.75rem; color: var(--muted); background: rgba(255,255,255,0.06);
-                  padding: 0.2rem 0.6rem; border-radius: 6px; cursor: pointer; }
-    .party-code:hover { color: #fff; }
-    .member-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; }
-    .chip { width: 30px; height: 30px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--g), #0d7a38);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; font-weight: 700; cursor: pointer; position: relative; }
-    .chip.host { background: linear-gradient(135deg, #ffc107, #ff8c00); }
-    .chip:hover::after { content: attr(title); position: absolute; bottom: -25px;
-                         left: 50%; transform: translateX(-50%); background: #000;
-                         padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;
-                         white-space: nowrap; z-index: 100; }
-    .btn-invite { padding: 0.4rem 0.9rem; background: rgba(29,185,84,0.15);
-                  border: 1px solid var(--g); border-radius: 6px; color: var(--g);
-                  font-size: 0.82rem; cursor: pointer; margin-left: 0.5rem; }
-    .btn-invite:hover { background: rgba(29,185,84,0.3); }
-    .btn-end { padding: 0.4rem 0.9rem; background: rgba(229,9,20,0.15);
-               border: 1px solid var(--red); border-radius: 6px; color: var(--red);
-               font-size: 0.82rem; cursor: pointer; }
-    .btn-end:hover { background: rgba(229,9,20,0.3); }
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--border);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--g);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #1ed760;
+      }
 
-    /* Main player area */
-    .room-main { padding: 1.5rem; overflow-y: auto; display: flex;
-                 flex-direction: column; gap: 1rem; }
+      /* Lobby */
+      #lobby {
+        max-width: 480px;
+        margin: 10vh auto;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        background: var(--card);
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+      }
 
-    /* Now playing */
-    .now-playing { background: var(--card); border: 1px solid rgba(29,185,84,0.2);
-                   border-radius: 12px; padding: 1.4rem; text-align: center; }
-    .np-label { font-size: 0.72rem; color: var(--g); text-transform: uppercase;
-                letter-spacing: 0.6px; margin-bottom: 0.6rem; }
-    .np-title  { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.2rem; }
-    .np-artist { color: var(--muted); font-size: 0.88rem; margin-bottom: 1rem; }
-    .np-by     { font-size: 0.72rem; color: #555; margin-bottom: 1rem; }
+      #lobby h1 {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--g), #1ed760);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
 
-    /* Controls */
-    .controls { display: flex; align-items: center; justify-content: center;
-                gap: 1rem; margin-bottom: 1rem; }
-    .ctrl-btn { background: none; border: none; color: #ccc; cursor: pointer;
-                font-size: 1.3rem; padding: 0.3rem; transition: color 0.15s; }
-    .ctrl-btn:hover { color: #fff; }
-    .play-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--g);
-                border: none; color: #000; font-size: 1.1rem; cursor: pointer;
-                display: flex; align-items: center; justify-content: center; font-weight: 700; }
-    .play-btn:hover { background: #1ed760; }
+      #lobby p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 2rem;
+      }
 
-    /* Progress */
-    .progress-wrap { display: flex; align-items: center; gap: 0.6rem;
-                     font-size: 0.72rem; color: var(--muted); }
-    .prog-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.15);
-                 border-radius: 2px; cursor: pointer; }
-    .prog-fill { height: 100%; background: var(--g); border-radius: 2px;
-                 width: 0%; transition: width 0.5s linear; }
-    .prog-bar:hover .prog-fill { background: #1ed760; }
-    .vol-wrap  { display: flex; align-items: center; gap: 0.4rem;
-                 margin-top: 0.7rem; justify-content: center; }
-    .vol-wrap input { width: 80px; accent-color: var(--g); cursor: pointer; }
+      .inp {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.95rem;
+        margin-bottom: 0.8rem;
+        transition: var(--transition);
+      }
 
-    /* Queue */
-    .queue-section { background: var(--card); border: 1px solid var(--border);
-                     border-radius: 12px; overflow: hidden; }
-    .qs-head { display: flex; align-items: center; justify-content: space-between;
-               padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
-    .qs-head h3 { font-size: 0.82rem; text-transform: uppercase;
-                  letter-spacing: 0.5px; color: var(--muted); }
-    #queue-list { max-height: 320px; overflow-y: auto;
-                  scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
-    .q-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem;
-             border-bottom: 1px solid rgba(255,255,255,0.03);
-             transition: background 0.15s; cursor: pointer; }
-    .q-row:last-child { border-bottom: none; }
-    .q-row:hover { background: rgba(255,255,255,0.04); }
-    .q-row.q-active { background: rgba(29,185,84,0.1); border-left: 2px solid var(--g); }
-    .q-row.q-active .q-title { color: var(--g); }
-    .q-num  { width: 22px; font-size: 0.75rem; color: var(--muted);
-              flex-shrink: 0; text-align: center; }
-    .q-info { flex: 1; min-width: 0; }
-    .q-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap;
-               overflow: hidden; text-overflow: ellipsis; }
-    .q-sub  { font-size: 0.72rem; color: var(--muted); white-space: nowrap;
-              overflow: hidden; text-overflow: ellipsis; }
-    .q-del  { background: none; border: none; color: #444; cursor: pointer;
-              font-size: 0.8rem; padding: 0.3rem 0.4rem; border-radius: 4px;
-              flex-shrink: 0; line-height: 1; }
-    .q-del:hover { color: var(--red); background: rgba(229,9,20,0.1); }
-    .q-empty { padding: 2rem 1rem; text-align: center; color: #444;
-               font-style: italic; font-size: 0.85rem; }
+      .inp:focus {
+        outline: none;
+        border-color: var(--g);
+        background: rgba(255, 255, 255, 0.08);
+      }
 
-    /* Add song */
-    .add-song-section { background: var(--card); border: 1px solid var(--border);
-                        border-radius: 12px; padding: 1rem; }
-    .add-song-section h3 { font-size: 0.82rem; text-transform: uppercase;
-                           letter-spacing: 0.5px; color: var(--muted); margin-bottom: 0.7rem; }
-    .add-row { display: flex; gap: 0.5rem; }
-    .add-row input { flex: 1; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.07);
-                     border: 1px solid var(--border); border-radius: 6px;
-                     color: #fff; font-size: 0.88rem; }
-    .add-row input:focus { outline: none; border-color: var(--g); }
-    .add-row button { padding: 0.55rem 1rem; background: var(--g); border: none;
-                      border-radius: 6px; color: #000; font-weight: 700;
-                      font-size: 0.85rem; cursor: pointer; }
-    .add-row button:hover { background: #1ed760; }
-    .sr-list { margin-top: 0.6rem; display: grid; gap: 0.3rem;
-               max-height: 240px; overflow-y: auto; }
-    .sr-row  { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem;
-               background: rgba(255,255,255,0.03); border-radius: 6px; }
-    .sr-row:hover { background: rgba(29,185,84,0.08); }
-    .sr-thumb { width: 44px; height: 32px; object-fit: cover;
-                border-radius: 3px; flex-shrink: 0; }
-    .sr-info  { flex: 1; min-width: 0; }
-    .sr-t { font-size: 0.82rem; font-weight: 500; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis; }
-    .sr-c { font-size: 0.7rem; color: var(--muted); }
-    .sr-add { background: rgba(29,185,84,0.2); border: 1px solid var(--g); color: var(--g);
-              padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem;
-              font-weight: 600; cursor: pointer; white-space: nowrap; }
-    .sr-add:hover { background: rgba(29,185,84,0.4); }
+      .btn-g,
+      .btn-outline {
+        width: 100%;
+        padding: 0.8rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: var(--transition);
+      }
 
-    /* Right sidebar — chat */
-    .room-side { border-left: 1px solid var(--border); display: flex;
-                 flex-direction: column; background: rgba(10,10,10,0.6);
-                 overflow: hidden; }
-    .side-head { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border);
-                 font-size: 0.82rem; text-transform: uppercase;
-                 letter-spacing: 0.5px; color: var(--muted); flex-shrink: 0; }
-    .chat-msgs { flex: 1; overflow-y: auto; padding: 0.6rem 0.8rem;
-                 display: flex; flex-direction: column; gap: 0.5rem;
-                 scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
-    .chat-msg { background: var(--card); border-radius: 8px; padding: 0.5rem 0.7rem; }
-    .chat-msg .cm-user { font-size: 0.72rem; font-weight: 700;
-                         color: var(--g); margin-bottom: 0.2rem; }
-    .chat-msg .cm-text { font-size: 0.85rem; line-height: 1.4; word-break: break-word; }
-    .chat-msg.system { background: transparent; }
-    .chat-msg.system .cm-text { color: #444; font-style: italic; font-size: 0.78rem; }
-    .chat-input-row { display: flex; gap: 0.4rem; padding: 0.7rem 0.8rem;
-                      border-top: 1px solid var(--border); flex-shrink: 0; }
-    .chat-input-row input { flex: 1; padding: 0.5rem 0.7rem;
-                             background: rgba(255,255,255,0.07);
-                             border: 1px solid var(--border); border-radius: 6px;
-                             color: #fff; font-size: 0.85rem; }
-    .chat-input-row input:focus { outline: none; border-color: var(--g); }
-    .chat-input-row button { padding: 0.5rem 0.8rem; background: var(--g); border: none;
-                              border-radius: 6px; color: #000; font-weight: 700;
-                              cursor: pointer; font-size: 0.85rem; }
+      .btn-g {
+        background: var(--g);
+        border: none;
+        color: #000;
+        margin-bottom: 0.6rem;
+      }
 
-    /* Modal styles */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;
-             width: 100%; height: 100%; background: rgba(0,0,0,0.8);
-             backdrop-filter: blur(4px); }
-    .modal-content { background: var(--bg); border: 1px solid var(--border);
-                     border-radius: 16px; max-width: 400px; margin: 10% auto;
-                     padding: 1.5rem; position: relative; }
-    .modal-content h3 { margin-bottom: 1rem; color: var(--g); }
-    .modal-close { position: absolute; right: 1rem; top: 1rem;
-                   font-size: 1.5rem; cursor: pointer; color: var(--muted); }
-    .modal-close:hover { color: #fff; }
-    .invite-list { max-height: 300px; overflow-y: auto; margin: 1rem 0; }
-    .invite-item { display: flex; justify-content: space-between;
-                   align-items: center; padding: 0.6rem;
-                   border-bottom: 1px solid var(--border); }
-    .invite-item:last-child { border-bottom: none; }
-    .invite-item button { padding: 0.3rem 0.8rem; background: var(--g);
-                          border: none; border-radius: 4px; color: #000;
-                          font-weight: 600; cursor: pointer; font-size: 0.8rem; }
-    .invite-item button:hover { background: #1ed760; }
-    .copy-link-btn { width: 100%; padding: 0.6rem; background: rgba(29,185,84,0.2);
-                     border: 1px solid var(--g); border-radius: 8px;
-                     color: var(--g); font-weight: 600; cursor: pointer;
-                     margin-top: 0.5rem; }
-    .copy-link-btn:hover { background: rgba(29,185,84,0.4); }
-    .empty-mutuals { text-align: center; padding: 1rem; color: var(--muted);
-                     font-style: italic; }
+      .btn-g:hover {
+        background: #1ed760;
+        transform: translateY(-2px);
+      }
 
-    /* Toast */
-    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-             background: var(--g); color: #000; padding: 0.5rem 1.2rem;
-             border-radius: 20px; font-weight: 700; font-size: 0.85rem;
-             z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; }
+      .btn-outline {
+        background: transparent;
+        border: 1px solid var(--g);
+        color: var(--g);
+      }
 
-    @media (max-width: 680px) {
-      #room.active { grid-template-columns: 1fr; grid-template-rows: auto 1fr 260px; }
-      .room-side { border-left: none; border-top: 1px solid var(--border); }
-    }
-  </style>
-</head>
-<body>
+      .btn-outline:hover {
+        background: rgba(29, 185, 84, 0.1);
+        transform: translateY(-2px);
+      }
 
-<!-- ═══════════════════ LOBBY ═══════════════════ -->
-<div id="lobby">
-  <h1>🎉 Party Room</h1>
-  <p>Listen to music in sync with your mutuals. Everyone can play, pause, add songs.</p>
-  <input class="inp" id="party-name" placeholder="Party name (optional)" maxlength="60" />
-  <button class="btn-g" onclick="createParty()">🎵 Create New Party</button>
-  <div class="divider">— or join existing —</div>
-  <input class="inp" id="join-code" placeholder="Enter party code..." maxlength="8"
-         onkeydown="if(event.key==='Enter')joinParty()" />
-  <button class="btn-outline" onclick="joinParty()">Join Party</button>
-</div>
+      .divider {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin: 1.2rem 0;
+        position: relative;
+      }
 
-<!-- ═══════════════════ ROOM ═══════════════════ -->
-<div id="room">
+      .divider::before,
+      .divider::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: calc(50% - 30px);
+        height: 1px;
+        background: var(--border);
+      }
 
-  <!-- Top bar -->
-  <div class="room-top">
-    <span class="room-name" id="room-name">Party</span>
-    <span class="party-code" id="party-code-chip" onclick="copyCode()" title="Click to copy">— —</span>
-    <button class="btn-invite" id="btn-invite" onclick="showInviteModal()">👥 Invite</button>
-    <div class="member-chips" id="member-chips"></div>
-    <button class="btn-end" id="btn-end" onclick="leaveOrEnd()">Leave</button>
-  </div>
+      .divider::before {
+        left: 0;
+      }
+      .divider::after {
+        right: 0;
+      }
 
-  <!-- Main area -->
-  <div class="room-main">
+      /* Room layout */
+      #room {
+        display: none;
+        min-height: 100vh;
+        grid-template-columns: 1fr 320px;
+        grid-template-rows: auto 1fr;
+      }
 
-    <!-- Now playing card -->
-    <div class="now-playing">
-      <div class="np-label">▶ Now Playing</div>
-      <div class="np-title" id="np-title">—</div>
-      <div class="np-artist" id="np-artist"></div>
-      <div class="np-by" id="np-by"></div>
-      <div class="controls">
-        <button class="ctrl-btn" onclick="prevSong()" title="Previous">⏮</button>
-        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
-        <button class="ctrl-btn" onclick="nextSong()" title="Next">⏭</button>
-      </div>
-      <div class="progress-wrap">
-        <span id="elapsed">0:00</span>
-        <div class="prog-bar" id="prog-bar" onclick="seekBar(event)">
-          <div class="prog-fill" id="prog-fill"></div>
-        </div>
-        <span id="duration">0:00</span>
-      </div>
-      <div class="vol-wrap">
-        <span style="font-size:0.9rem;color:var(--muted)">🔊</span>
-        <input type="range" id="vol" min="0" max="100" value="100" oninput="setVol(this.value)" />
-      </div>
-    </div>
+      #room.active {
+        display: grid;
+      }
 
-    <!-- Queue -->
-    <div class="queue-section">
-      <div class="qs-head">
-        <h3>Queue <span id="q-count" style="color:var(--g)"></span></h3>
-      </div>
-      <div id="queue-list"><div class="q-empty">No songs yet. Add one below!</div></div>
-    </div>
+      /* Top bar */
+      .room-top {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.8rem 1.2rem;
+        background: rgba(10, 10, 10, 0.95);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        flex-wrap: wrap;
+      }
 
-    <!-- Add song -->
-    <div class="add-song-section">
-      <h3>➕ Add Song</h3>
-      <div class="add-row">
-        <input id="search-inp" placeholder="Search or paste YouTube URL…"
-               onkeydown="if(event.key==='Enter')searchSongs()" />
-        <button onclick="searchSongs()">Search</button>
-      </div>
-      <div id="sr-list" class="sr-list"></div>
-    </div>
+      .room-name {
+        font-weight: 700;
+        font-size: 1rem;
+        background: rgba(29, 185, 84, 0.1);
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        border-left: 2px solid var(--g);
+      }
 
-  </div>
+      .party-code {
+        font-size: 0.7rem;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.3rem 0.7rem;
+        border-radius: 20px;
+        cursor: pointer;
+        font-family: monospace;
+        transition: var(--transition);
+        letter-spacing: 0.5px;
+      }
 
-  <!-- Chat sidebar -->
-  <div class="room-side">
-    <div class="side-head">💬 Party Chat</div>
-    <div class="chat-msgs" id="chat-msgs"></div>
-    <div class="chat-input-row">
-      <input id="chat-inp" placeholder="Say something…" maxlength="300"
-             onkeydown="if(event.key==='Enter')sendChat()" />
-      <button onclick="sendChat()">Send</button>
-    </div>
-  </div>
+      .party-code:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+      }
 
-</div>
+      .member-chips {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        flex: 1;
+        min-width: 100px;
+      }
 
-<!-- Invite Modal -->
-<div id="inviteModal" class="modal">
-  <div class="modal-content">
-    <span class="modal-close" onclick="closeInviteModal()">&times;</span>
-    <h3>👥 Invite Mutual Followers</h3>
-    <div id="mutualFollowersList" class="invite-list">
-      <div class="empty-mutuals">Loading mutual followers...</div>
-    </div>
-    <button class="copy-link-btn" onclick="copyPartyLink()">🔗 Copy Party Link</button>
-  </div>
-</div>
+      .chip {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--g), #0d7a38);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        position: relative;
+        transition: transform 0.2s;
+      }
 
-<!-- Hidden YT player -->
-<div id="yt-div" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;"></div>
-<!-- YouTube IFrame API -->
-<script src="https://www.youtube.com/iframe_api"></script>
-<div class="toast" id="toast"></div>
+      .chip:hover {
+        transform: scale(1.1);
+      }
 
-<script>
-  // Pass data from Flask/Jinja to JavaScript
-  var ME = {{ username | tojson }};
-  var YT_KEYS = [{{ api_key_1 | tojson }}, {{ api_key_2 | tojson }}, {{ api_key_3 | tojson }}, {{ api_key_4 | tojson }}, {{ api_key_5 | tojson }}].filter(function(k) { return k; });
-  var INIT_PARTY = {% if party is defined and party %}{{ party | tojson }}{% else %}null{% endif %};
+      .chip.host {
+        background: linear-gradient(135deg, var(--yellow), #ff8c00);
+        position: relative;
+      }
 
-  var ytKeyIdx = 0;
-  var socket = null;
-  var partyId = null;
-  var partyHost = null;
-  var queue = [];
-  var curIdx = -1;
-  var progTimer = null;
-  var pendingSync = null;
-  var pauseAtSec = null;
-  var searchTimeout = null;
+      .chip.host::after {
+        content: "👑";
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        font-size: 10px;
+        background: var(--bg);
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-  // YouTube Player
-  var ytPlayer = null;
-  var ytReady = false;
+      .chip:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: -28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #000;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        z-index: 100;
+        font-weight: normal;
+      }
 
-  window.onYouTubeIframeAPIReady = function() {
-    ytPlayer = new YT.Player('yt-div', {
-      height: '1',
-      width: '1',
-      playerVars: { autoplay: 0, controls: 0, rel: 0 },
-      events: {
-        onReady: function() {
-          ytReady = true;
-          if (pendingSync) {
-            applyState(pendingSync);
-            pendingSync = null;
-          }
-        },
-        onStateChange: onYTState,
-        onError: function() {
-          setTimeout(nextSong, 800);
+      .btn-invite,
+      .btn-end {
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .btn-invite {
+        background: rgba(29, 185, 84, 0.15);
+        border: 1px solid var(--g);
+        color: var(--g);
+      }
+
+      .btn-invite:hover {
+        background: rgba(29, 185, 84, 0.3);
+        transform: translateY(-1px);
+      }
+
+      .btn-end {
+        background: rgba(229, 9, 20, 0.15);
+        border: 1px solid var(--red);
+        color: var(--red);
+      }
+
+      .btn-end:hover {
+        background: rgba(229, 9, 20, 0.3);
+        transform: translateY(-1px);
+      }
+
+      /* Main player area */
+      .room-main {
+        padding: 1.5rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-height: calc(100vh - 60px);
+      }
+
+      /* Now playing card */
+      .now-playing {
+        background: var(--card);
+        border: 1px solid rgba(29, 185, 84, 0.2);
+        border-radius: 20px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: var(--transition);
+      }
+
+      .now-playing:hover {
+        border-color: rgba(29, 185, 84, 0.4);
+        box-shadow: 0 4px 20px rgba(29, 185, 84, 0.1);
+      }
+
+      .np-label {
+        font-size: 0.7rem;
+        color: var(--g);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+      }
+
+      .np-title {
+        font-size: clamp(1rem, 4vw, 1.3rem);
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+        word-break: break-word;
+      }
+
+      .np-artist {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+      }
+
+      .np-by {
+        font-size: 0.7rem;
+        color: #555;
+        margin-bottom: 1.2rem;
+      }
+
+      /* Controls */
+      .controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1.2rem;
+        margin-bottom: 1.2rem;
+      }
+
+      .ctrl-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        color: #ccc;
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 0.6rem;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        transition: var(--transition);
+      }
+
+      .ctrl-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+        transform: scale(1.05);
+      }
+
+      .play-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--g);
+        border: none;
+        color: #000;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+      }
+
+      .play-btn:hover {
+        background: #1ed760;
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+      }
+
+      /* Progress */
+      .progress-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+
+      .prog-bar {
+        flex: 1;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .prog-fill {
+        height: 100%;
+        background: var(--g);
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.1s linear;
+        position: relative;
+      }
+
+      .prog-fill::after {
+        content: "";
+        position: absolute;
+        right: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background: var(--g);
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .prog-bar:hover .prog-fill::after {
+        opacity: 1;
+      }
+
+      .prog-bar:hover .prog-fill {
+        background: #1ed760;
+      }
+
+      .vol-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        justify-content: center;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--border);
+      }
+
+      .vol-wrap input {
+        width: 100px;
+        accent-color: var(--g);
+        cursor: pointer;
+      }
+
+      /* Queue section */
+      .queue-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .qs-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .qs-head h3 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      #queue-list {
+        max-height: 350px;
+        overflow-y: auto;
+      }
+
+      .q-row {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.8rem 1.2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        transition: var(--transition);
+        cursor: pointer;
+      }
+
+      .q-row:last-child {
+        border-bottom: none;
+      }
+
+      .q-row:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .q-row.q-active {
+        background: rgba(29, 185, 84, 0.1);
+        border-left: 3px solid var(--g);
+      }
+
+      .q-row.q-active .q-title {
+        color: var(--g);
+      }
+
+      .q-num {
+        width: 28px;
+        font-size: 0.8rem;
+        color: var(--muted);
+        flex-shrink: 0;
+        text-align: center;
+        font-weight: 600;
+      }
+
+      .q-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .q-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .q-sub {
+        font-size: 0.7rem;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .q-del {
+        background: none;
+        border: none;
+        color: #555;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 6px;
+        flex-shrink: 0;
+        transition: var(--transition);
+      }
+
+      .q-del:hover {
+        color: var(--red);
+        background: rgba(229, 9, 20, 0.1);
+        transform: scale(1.1);
+      }
+
+      .q-empty {
+        padding: 2rem;
+        text-align: center;
+        color: #555;
+        font-style: italic;
+        font-size: 0.85rem;
+      }
+
+      /* Add song section */
+      .add-song-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.2rem;
+      }
+
+      .add-song-section h3 {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+      }
+
+      .add-row {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .add-row input {
+        flex: 1;
+        min-width: 150px;
+        padding: 0.7rem 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: #fff;
+        font-size: 0.9rem;
+        transition: var(--transition);
+      }
+
+      .add-row input:focus {
+        outline: none;
+        border-color: var(--g);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .add-row button {
+        padding: 0.7rem 1.2rem;
+        background: var(--g);
+        border: none;
+        border-radius: 12px;
+        color: #000;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: var(--transition);
+        white-space: nowrap;
+      }
+
+      .add-row button:hover {
+        background: #1ed760;
+        transform: translateY(-1px);
+      }
+
+      .sr-list {
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.5rem;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+
+      .sr-row {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.6rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        transition: var(--transition);
+      }
+
+      .sr-row:hover {
+        background: rgba(29, 185, 84, 0.08);
+      }
+
+      .sr-thumb {
+        width: 48px;
+        height: 36px;
+        object-fit: cover;
+        border-radius: 6px;
+        flex-shrink: 0;
+      }
+
+      .sr-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .sr-t {
+        font-size: 0.85rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .sr-c {
+        font-size: 0.7rem;
+        color: var(--muted);
+      }
+
+      .sr-add {
+        background: rgba(29, 185, 84, 0.2);
+        border: 1px solid var(--g);
+        color: var(--g);
+        padding: 0.3rem 0.8rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: var(--transition);
+      }
+
+      .sr-add:hover {
+        background: rgba(29, 185, 84, 0.4);
+        transform: scale(1.02);
+      }
+
+      /* Chat sidebar */
+      .room-side {
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        background: rgba(10, 10, 10, 0.8);
+        overflow: hidden;
+      }
+
+      .side-head {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        flex-shrink: 0;
+        font-weight: 600;
+      }
+
+      .chat-msgs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .chat-msg {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 0.6rem 0.9rem;
+        animation: fadeIn 0.2s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
       }
-    });
-  };
 
-  function onYTState(e) {
-    if (e.data === YT.PlayerState.PLAYING) {
-      if (pauseAtSec !== null) {
-        var sec = pauseAtSec;
-        pauseAtSec = null;
-        ytPlayer.seekTo(sec, true);
-        ytPlayer.pauseVideo();
-        return;
+      .chat-msg .cm-user {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--g);
+        margin-bottom: 0.3rem;
       }
-      document.getElementById('play-btn').innerHTML = '⏸';
-      startProg();
-      setTimeout(function() {
-        var dur = ytPlayer.getDuration();
-        document.getElementById('duration').textContent = fmt(dur);
-      }, 800);
-    }
-    if (e.data === YT.PlayerState.PAUSED) {
-      document.getElementById('play-btn').innerHTML = '▶';
-      clearInterval(progTimer);
-    }
-    if (e.data === YT.PlayerState.ENDED) {
-      clearInterval(progTimer);
-      document.getElementById('prog-fill').style.width = '100%';
-      if (ME === partyHost) nextSong();
-    }
-  }
 
-  function startProg() {
-    clearInterval(progTimer);
-    progTimer = setInterval(function() {
-      if (!ytReady) return;
-      var cur = ytPlayer.getCurrentTime() || 0;
-      var dur = ytPlayer.getDuration() || 1;
-      document.getElementById('prog-fill').style.width = (cur / dur * 100) + '%';
-      document.getElementById('elapsed').textContent = fmt(cur);
-    }, 500);
-  }
+      .chat-msg .cm-text {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        word-break: break-word;
+      }
 
-  function fmt(s) {
-    s = Math.floor(s || 0);
-    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-  }
+      .chat-msg.system {
+        background: transparent;
+        text-align: center;
+      }
 
-  function resolveAndPlay(song, startSec, paused) {
-    var q = song.youtube_query || '';
-    var tMatch = q.match(/#t=(\d+)$/);
-    var clean = q.replace(/#t=\d+$/, '');
-    var sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
-    pauseAtSec = paused ? sec : null;
-    if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
-      _loadVideo(clean, sec);
-    } else {
-      var key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
-      fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(clean) + '&key=' + key + '&maxResults=1&type=video')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (d.items && d.items.length) {
-            _loadVideo(d.items[0].id.videoId, sec);
-          } else {
-            pauseAtSec = null;
-            if (ME === partyHost) setTimeout(nextSong, 500);
+      .chat-msg.system .cm-text {
+        color: #555;
+        font-style: italic;
+        font-size: 0.75rem;
+      }
+
+      .chat-input-row {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem;
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .chat-input-row input {
+        flex: 1;
+        padding: 0.6rem 0.9rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: #fff;
+        font-size: 0.85rem;
+        transition: var(--transition);
+      }
+
+      .chat-input-row input:focus {
+        outline: none;
+        border-color: var(--g);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .chat-input-row button {
+        padding: 0.6rem 1rem;
+        background: var(--g);
+        border: none;
+        border-radius: 10px;
+        color: #000;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: var(--transition);
+      }
+
+      .chat-input-row button:hover {
+        background: #1ed760;
+        transform: scale(1.02);
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(8px);
+        animation: fadeIn 0.2s ease;
+      }
+
+      .modal-content {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        max-width: 400px;
+        margin: 15% auto;
+        padding: 1.5rem;
+        position: relative;
+        animation: slideUp 0.3s ease;
+      }
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(50px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .modal-content h3 {
+        margin-bottom: 1.2rem;
+        color: var(--g);
+        font-size: 1.2rem;
+      }
+
+      .modal-close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--muted);
+        transition: var(--transition);
+      }
+
+      .modal-close:hover {
+        color: #fff;
+        transform: scale(1.1);
+      }
+
+      .invite-list {
+        max-height: 350px;
+        overflow-y: auto;
+        margin: 1rem 0;
+      }
+
+      .invite-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.7rem;
+        border-bottom: 1px solid var(--border);
+        transition: var(--transition);
+      }
+
+      .invite-item:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .invite-item:last-child {
+        border-bottom: none;
+      }
+
+      .invite-item button {
+        padding: 0.3rem 1rem;
+        background: var(--g);
+        border: none;
+        border-radius: 8px;
+        color: #000;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: var(--transition);
+      }
+
+      .invite-item button:hover {
+        background: #1ed760;
+        transform: scale(1.02);
+      }
+
+      .copy-link-btn {
+        width: 100%;
+        padding: 0.7rem;
+        background: rgba(29, 185, 84, 0.2);
+        border: 1px solid var(--g);
+        border-radius: 12px;
+        color: var(--g);
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 0.5rem;
+      }
+
+      .copy-link-btn:hover {
+        background: rgba(29, 185, 84, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .empty-mutuals {
+        text-align: center;
+        padding: 1.5rem;
+        color: var(--muted);
+        font-style: italic;
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--g);
+        color: #000;
+        padding: 0.6rem 1.5rem;
+        border-radius: 40px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        white-space: nowrap;
+        max-width: 90vw;
+        white-space: normal;
+        text-align: center;
+      }
+
+      .toast.show {
+        opacity: 1;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        #room.active {
+          grid-template-columns: 1fr;
+          grid-template-rows: auto 1fr auto;
+        }
+
+        .room-side {
+          border-left: none;
+          border-top: 1px solid var(--border);
+          max-height: 300px;
+        }
+
+        .room-main {
+          max-height: calc(100vh - 300px - 60px);
+        }
+
+        .room-top {
+          gap: 0.5rem;
+        }
+
+        .member-chips {
+          order: 1;
+          width: 100%;
+          justify-content: center;
+        }
+
+        .btn-invite,
+        .btn-end {
+          font-size: 0.75rem;
+          padding: 0.3rem 0.8rem;
+        }
+
+        .controls {
+          gap: 0.8rem;
+        }
+
+        .play-btn {
+          width: 48px;
+          height: 48px;
+          font-size: 1rem;
+        }
+
+        .ctrl-btn {
+          width: 36px;
+          height: 36px;
+          font-size: 1rem;
+        }
+
+        .modal-content {
+          margin: 30% auto;
+          width: 90%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .room-main {
+          padding: 1rem;
+        }
+
+        .now-playing {
+          padding: 1rem;
+        }
+
+        .q-row {
+          padding: 0.6rem 1rem;
+        }
+
+        .sr-row {
+          flex-wrap: wrap;
+        }
+
+        .sr-add {
+          padding: 0.25rem 0.6rem;
+          font-size: 0.7rem;
+        }
+
+        .add-row {
+          flex-direction: column;
+        }
+
+        .add-row button {
+          width: 100%;
+        }
+
+        .toast {
+          font-size: 0.75rem;
+          padding: 0.5rem 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════ LOBBY ═══════════════════ -->
+    <div id="lobby">
+      <h1>🎉 Party Room</h1>
+      <p>
+        Listen to music in sync with your mutuals. Everyone can play, pause, add
+        songs.
+      </p>
+      <input
+        class="inp"
+        id="party-name"
+        placeholder="Party name (optional)"
+        maxlength="60"
+      />
+      <button class="btn-g" onclick="createParty()">🎵 Create New Party</button>
+      <div class="divider">— or join existing —</div>
+      <input
+        class="inp"
+        id="join-code"
+        placeholder="Enter party code..."
+        maxlength="8"
+        onkeydown="if (event.key === 'Enter') joinParty();"
+      />
+      <button class="btn-outline" onclick="joinParty()">Join Party</button>
+    </div>
+
+    <!-- ═══════════════════ ROOM ═══════════════════ -->
+    <div id="room">
+      <!-- Top bar -->
+      <div class="room-top">
+        <span class="room-name" id="room-name">Party</span>
+        <span
+          class="party-code"
+          id="party-code-chip"
+          onclick="copyCode()"
+          title="Click to copy"
+          >— —</span
+        >
+        <button class="btn-invite" id="btn-invite" onclick="showInviteModal()">
+          👥 Invite
+        </button>
+        <div class="member-chips" id="member-chips"></div>
+        <button class="btn-end" id="btn-end" onclick="leaveOrEnd()">
+          Leave
+        </button>
+      </div>
+
+      <!-- Main area -->
+      <div class="room-main">
+        <!-- Now playing card -->
+        <div class="now-playing">
+          <div class="np-label">▶ Now Playing</div>
+          <div class="np-title" id="np-title">—</div>
+          <div class="np-artist" id="np-artist"></div>
+          <div class="np-by" id="np-by"></div>
+          <div class="controls">
+            <button class="ctrl-btn" onclick="prevSong()" title="Previous">
+              ⏮
+            </button>
+            <button class="play-btn" id="play-btn" onclick="togglePlay()">
+              ▶
+            </button>
+            <button class="ctrl-btn" onclick="nextSong()" title="Next">
+              ⏭
+            </button>
+          </div>
+          <div class="progress-wrap">
+            <span id="elapsed">0:00</span>
+            <div class="prog-bar" id="prog-bar" onclick="seekBar(event)">
+              <div class="prog-fill" id="prog-fill"></div>
+            </div>
+            <span id="duration">0:00</span>
+          </div>
+          <div class="vol-wrap">
+            <span style="font-size: 0.9rem; color: var(--muted)">🔊</span>
+            <input
+              type="range"
+              id="vol"
+              min="0"
+              max="100"
+              value="100"
+              oninput="setVol(this.value)"
+            />
+          </div>
+        </div>
+
+        <!-- Queue -->
+        <div class="queue-section">
+          <div class="qs-head">
+            <h3>Queue <span id="q-count" style="color: var(--g)"></span></h3>
+          </div>
+          <div id="queue-list">
+            <div class="q-empty">No songs yet. Add one below!</div>
+          </div>
+        </div>
+
+        <!-- Add song -->
+        <div class="add-song-section">
+          <h3>➕ Add Song</h3>
+          <div class="add-row">
+            <input
+              id="search-inp"
+              placeholder="Search or paste YouTube URL…"
+              onkeydown="if (event.key === 'Enter') searchSongs();"
+            />
+            <button onclick="searchSongs()">Search</button>
+          </div>
+          <div id="sr-list" class="sr-list"></div>
+        </div>
+      </div>
+
+      <!-- Chat sidebar -->
+      <div class="room-side">
+        <div class="side-head">💬 Party Chat</div>
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <input
+            id="chat-inp"
+            placeholder="Say something…"
+            maxlength="300"
+            onkeydown="if (event.key === 'Enter') sendChat();"
+          />
+          <button onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div id="inviteModal" class="modal">
+      <div class="modal-content">
+        <span class="modal-close" onclick="closeInviteModal()">&times;</span>
+        <h3>👥 Invite Mutual Followers</h3>
+        <div id="mutualFollowersList" class="invite-list">
+          <div class="empty-mutuals">Loading mutual followers...</div>
+        </div>
+        <button class="copy-link-btn" onclick="copyPartyLink()">
+          🔗 Copy Party Link
+        </button>
+      </div>
+    </div>
+
+    <!-- Hidden YT player -->
+    <div
+      id="yt-div"
+      style="
+        position: fixed;
+        left: -9999px;
+        top: -9999px;
+        width: 1px;
+        height: 1px;
+      "
+    ></div>
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <div class="toast" id="toast"></div>
+
+    <script>
+      // Pass data from Flask/Jinja to JavaScript
+      var ME = {{ username | tojson }};
+      var YT_KEYS = [{{ api_key_1 | tojson }}, {{ api_key_2 | tojson }}, {{ api_key_3 | tojson }}, {{ api_key_4 | tojson }}, {{ api_key_5 | tojson }}].filter(function(k) { return k; });
+      var INIT_PARTY = {% if party is defined and party %}{{ party | tojson }}{% else %}null{% endif %};
+
+      var ytKeyIdx = 0;
+      var socket = null;
+      var partyId = null;
+      var partyHost = null;
+      var queue = [];
+      var curIdx = -1;
+      var progTimer = null;
+      var pendingSync = null;
+      var pauseAtSec = null;
+      var searchTimeout = null;
+
+      // YouTube Player
+      var ytPlayer = null;
+      var ytReady = false;
+
+      window.onYouTubeIframeAPIReady = function() {
+        ytPlayer = new YT.Player('yt-div', {
+          height: '1',
+          width: '1',
+          playerVars: { autoplay: 0, controls: 0, rel: 0 },
+          events: {
+            onReady: function() {
+              ytReady = true;
+              if (pendingSync) {
+                applyState(pendingSync);
+                pendingSync = null;
+              }
+            },
+            onStateChange: onYTState,
+            onError: function() {
+              setTimeout(nextSong, 800);
+            }
           }
-        })
-        .catch(function() {
-          pauseAtSec = null;
-          ytKeyIdx = (ytKeyIdx + 1) % YT_KEYS.length;
-          if (ME === partyHost) setTimeout(nextSong, 500);
         });
-    }
-  }
+      };
 
-  function _loadVideo(videoId, startSec) {
-    if (!ytReady) {
-      setTimeout(function() { _loadVideo(videoId, startSec); }, 300);
-      return;
-    }
-    document.getElementById('prog-fill').style.width = '0%';
-    document.getElementById('elapsed').textContent = '0:00';
-    ytPlayer.loadVideoById({ videoId: videoId, startSeconds: startSec || 0 });
-  }
+      function onYTState(e) {
+        if (e.data === YT.PlayerState.PLAYING) {
+          if (pauseAtSec !== null) {
+            var sec = pauseAtSec;
+            pauseAtSec = null;
+            ytPlayer.seekTo(sec, true);
+            ytPlayer.pauseVideo();
+            return;
+          }
+          document.getElementById('play-btn').innerHTML = '⏸';
+          startProg();
+          setTimeout(function() {
+            var dur = ytPlayer.getDuration();
+            document.getElementById('duration').textContent = fmt(dur);
+          }, 800);
+        }
+        if (e.data === YT.PlayerState.PAUSED) {
+          document.getElementById('play-btn').innerHTML = '▶';
+          clearInterval(progTimer);
+        }
+        if (e.data === YT.PlayerState.ENDED) {
+          clearInterval(progTimer);
+          document.getElementById('prog-fill').style.width = '100%';
+          if (ME === partyHost) nextSong();
+        }
+      }
 
-  // ========== INVITE FUNCTIONS (NEW) ==========
-  
-  function showInviteModal() {
-    var modal = document.getElementById('inviteModal');
-    var listDiv = document.getElementById('mutualFollowersList');
-    listDiv.innerHTML = '<div class="empty-mutuals">Loading mutual followers...</div>';
-    modal.style.display = 'block';
-    
-    // Fetch mutual followers from backend
-    fetch('/api/mutual_followers')
-      .then(function(r) { return r.json(); })
-      .then(function(followers) {
-        if (followers.error) {
-          listDiv.innerHTML = '<div class="empty-mutuals">Error: ' + followers.error + '</div>';
+      function startProg() {
+        clearInterval(progTimer);
+        progTimer = setInterval(function() {
+          if (!ytReady) return;
+          var cur = ytPlayer.getCurrentTime() || 0;
+          var dur = ytPlayer.getDuration() || 1;
+          document.getElementById('prog-fill').style.width = (cur / dur * 100) + '%';
+          document.getElementById('elapsed').textContent = fmt(cur);
+        }, 500);
+      }
+
+      function fmt(s) {
+        s = Math.floor(s || 0);
+        return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      }
+
+      function resolveAndPlay(song, startSec, paused) {
+        var q = song.youtube_query || '';
+        var tMatch = q.match(/#t=(\d+)$/);
+        var clean = q.replace(/#t=\d+$/, '');
+        var sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
+        pauseAtSec = paused ? sec : null;
+        if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
+          _loadVideo(clean, sec);
+        } else {
+          var key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
+          fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(clean) + '&key=' + key + '&maxResults=1&type=video')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (d.items && d.items.length) {
+                _loadVideo(d.items[0].id.videoId, sec);
+              } else {
+                pauseAtSec = null;
+                if (ME === partyHost) setTimeout(nextSong, 500);
+              }
+            })
+            .catch(function() {
+              pauseAtSec = null;
+              ytKeyIdx = (ytKeyIdx + 1) % YT_KEYS.length;
+              if (ME === partyHost) setTimeout(nextSong, 500);
+            });
+        }
+      }
+
+      function _loadVideo(videoId, startSec) {
+        if (!ytReady) {
+          setTimeout(function() { _loadVideo(videoId, startSec); }, 300);
           return;
         }
-        if (!followers.length) {
-          listDiv.innerHTML = '<div class="empty-mutuals">No mutual followers found.<br>Follow each other first to invite!</div>';
+        document.getElementById('prog-fill').style.width = '0%';
+        document.getElementById('elapsed').textContent = '0:00';
+        ytPlayer.loadVideoById({ videoId: videoId, startSeconds: startSec || 0 });
+      }
+
+      // ========== INVITE FUNCTIONS (NEW) ==========
+
+      function showInviteModal() {
+        var modal = document.getElementById('inviteModal');
+        var listDiv = document.getElementById('mutualFollowersList');
+        listDiv.innerHTML = '<div class="empty-mutuals">Loading mutual followers...</div>';
+        modal.style.display = 'block';
+
+        // Fetch mutual followers from backend
+        fetch('/api/mutual_followers')
+          .then(function(r) { return r.json(); })
+          .then(function(followers) {
+            if (followers.error) {
+              listDiv.innerHTML = '<div class="empty-mutuals">Error: ' + followers.error + '</div>';
+              return;
+            }
+            if (!followers.length) {
+              listDiv.innerHTML = '<div class="empty-mutuals">No mutual followers found.<br>Follow each other first to invite!</div>';
+              return;
+            }
+            var html = '';
+            for (var i = 0; i < followers.length; i++) {
+              var f = followers[i];
+              html += '<div class="invite-item">' +
+                '<span><strong>' + esc(f.username) + '</strong><br><small style="color:#666">' + esc(f.bio || '') + '</small></span>' +
+                '<button onclick="inviteToParty(\'' + escA(f.username) + '\')">Invite</button>' +
+                '</div>';
+            }
+            listDiv.innerHTML = html;
+          })
+          .catch(function(err) {
+            listDiv.innerHTML = '<div class="empty-mutuals">Failed to load mutual followers</div>';
+            console.error(err);
+          });
+      }
+
+      function closeInviteModal() {
+        document.getElementById('inviteModal').style.display = 'none';
+      }
+
+      function inviteToParty(username) {
+        // Use HTTP endpoint for invite
+        fetch('/api/party/' + partyId + '/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error) {
+              showToast('Error: ' + data.error);
+            } else {
+              showToast('Invited ' + username + ' to the party!');
+              sysChat('You invited @' + username + ' to the party');
+              closeInviteModal();
+            }
+          })
+          .catch(function() {
+            showToast('Failed to send invite');
+          });
+      }
+
+      function copyPartyLink() {
+        var url = window.location.origin + '/party/' + partyId;
+        navigator.clipboard.writeText(url)
+          .then(function() {
+            showToast('Party link copied! Share it with your mutual followers');
+          })
+          .catch(function() {
+            prompt('Share this link with mutual followers:', url);
+          });
+      }
+
+      // ========== SOCKET.IO ==========
+
+      function connectSocket(pid) {
+        socket = io();
+
+        socket.on('connect', function() {
+          socket.emit('join_party', { party_id: pid, username: ME });
+        });
+
+        socket.on('party_state', function(party) {
+          if (!ytReady) {
+            pendingSync = party;
+            return;
+          }
+          applyState(party);
+        });
+
+        socket.on('member_joined', function(d) {
+          if (d.username !== ME) sysChat(d.username + ' joined the party');
+          renderMembers(d.members || []);
+        });
+
+        socket.on('member_left', function(d) {
+          if (d.username !== ME) sysChat(d.username + ' left the party');
+          renderMembers(d.members || []);
+        });
+
+        socket.on('sync_play', function(d) {
+          if (ytReady) {
+            ytPlayer.seekTo(d.position, true);
+            ytPlayer.playVideo();
+          }
+          document.getElementById('play-btn').innerHTML = '⏸';
+          if (d.by !== ME) sysChat(d.by + ' pressed play');
+        });
+
+        socket.on('sync_pause', function(d) {
+          if (ytReady) {
+            ytPlayer.seekTo(d.position, true);
+            ytPlayer.pauseVideo();
+          }
+          document.getElementById('play-btn').innerHTML = '▶';
+          if (d.by !== ME) sysChat(d.by + ' paused');
+        });
+
+        socket.on('sync_seek', function(d) {
+          if (ytReady) ytPlayer.seekTo(d.position, true);
+        });
+
+        socket.on('sync_change_song', function(d) {
+          curIdx = d.index;
+          playCurrent(d.position || 0, d.paused || false);
+          if (d.by !== ME) sysChat(d.by + ' changed the song');
+        });
+
+        socket.on('song_added', function(d) {
+          if (d.insert_next) {
+            queue.splice(d.insert_at, 0, d.song);
+            if (d.insert_at <= curIdx) curIdx++;
+          } else {
+            queue.push(d.song);
+          }
+          renderQueue();
+          if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
+        });
+
+        socket.on('song_removed', function(d) {
+          var removedIdx = queue.findIndex(function(s) { return s.song_id === d.song_id; });
+          queue = queue.filter(function(s) { return s.song_id !== d.song_id; });
+          if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
+          renderQueue();
+          if (d.by !== ME) sysChat(d.by + ' removed a song');
+        });
+
+        // Socket.IO invite event (receiving invites)
+        socket.on('party_invite', function(d) {
+          showToast(d.invited_by + ' invited you to join "' + d.party_name + '"');
+          if (confirm(d.invited_by + ' invited you to join their party!\n\nParty: ' + d.party_name + '\n\nJoin now?')) {
+            window.location.href = '/party/' + d.party_id;
+          }
+        });
+
+        socket.on('chat_message', function(d) {
+          appendChat(d.username, d.text);
+        });
+
+        socket.on('error', function(d) {
+          showToast(d.msg);
+        });
+      }
+
+      function applyState(party) {
+        partyId = party.party_id;
+        partyHost = party.host;
+        queue = party.queue || [];
+        curIdx = (party.current_index !== undefined && party.current_index !== null) ? party.current_index : -1;
+
+        document.getElementById('room-name').textContent = party.name || 'Party';
+        document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
+        document.getElementById('btn-end').textContent = ME === partyHost ? 'End Party' : 'Leave';
+
+        renderMembers(party.members || []);
+        renderQueue();
+
+        if (curIdx >= 0 && queue[curIdx]) {
+          updateNowPlayingUI(queue[curIdx]);
+          resolveAndPlay(queue[curIdx], party.position || 0, party.state !== 'playing');
+        }
+      }
+
+      function updateNowPlayingUI(s) {
+        document.getElementById('np-title').textContent = s.song_title || '—';
+        document.getElementById('np-artist').textContent = s.artist_name || '';
+        document.getElementById('np-by').textContent = s.added_by ? 'added by ' + s.added_by : '';
+      }
+
+      function togglePlay() {
+        if (!socket || curIdx < 0) return;
+        var pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
+        var playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+        if (playing) {
+          socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
+        } else {
+          socket.emit('party_play', { party_id: partyId, username: ME, position: pos });
+        }
+      }
+
+      function nextSong() {
+        if (socket && curIdx < queue.length - 1) {
+          socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
+        }
+      }
+
+      function prevSong() {
+        if (!socket) return;
+        if (ytReady && (ytPlayer.getCurrentTime() || 0) > 3) {
+          socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
+          return;
+        }
+        if (curIdx > 0) {
+          socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
+        }
+      }
+
+      function playCurrent(startSec, paused) {
+        if (curIdx < 0 || curIdx >= queue.length) return;
+        updateNowPlayingUI(queue[curIdx]);
+        resolveAndPlay(queue[curIdx], startSec || 0, paused || false);
+        renderQueue();
+      }
+
+      function playFromQueue(idx) {
+        if (socket) socket.emit('party_change_song', { party_id: partyId, username: ME, index: idx });
+      }
+
+      function seekBar(e) {
+        if (!ytReady || !socket) return;
+        var pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
+        var pos = pct * (ytPlayer.getDuration() || 0);
+        socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
+      }
+
+      function setVol(v) {
+        if (ytReady) ytPlayer.setVolume(parseInt(v));
+      }
+
+      function renderQueue() {
+        var el = document.getElementById('queue-list');
+        document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
+        if (!queue.length) {
+          el.innerHTML = '<div class="q-empty">No songs yet. Add one below!</div>';
           return;
         }
         var html = '';
-        for (var i = 0; i < followers.length; i++) {
-          var f = followers[i];
-          html += '<div class="invite-item">' +
-            '<span><strong>' + esc(f.username) + '</strong><br><small style="color:#666">' + esc(f.bio || '') + '</small></span>' +
-            '<button onclick="inviteToParty(\'' + escA(f.username) + '\')">Invite</button>' +
+        for (var i = 0; i < queue.length; i++) {
+          var s = queue[i];
+          var active = i === curIdx;
+          var artist = [s.artist_name, s.added_by ? 'by ' + s.added_by : ''].filter(function(v) { return v; }).join(' · ');
+          html += '<div class="q-row' + (active ? ' q-active' : '') + '" onclick="playFromQueue(' + i + ')">' +
+            '<div class="q-num">' + (active ? '▶' : (i + 1)) + '</div>' +
+            '<div class="q-info"><div class="q-title">' + esc(s.song_title) + '</div>' +
+            '<div class="q-sub">' + esc(artist) + '</div></div>' +
+            '<button class="q-del" onclick="event.stopPropagation();removeSong(\'' + s.song_id + '\')" title="Remove">✕</button>' +
             '</div>';
         }
-        listDiv.innerHTML = html;
-      })
-      .catch(function(err) {
-        listDiv.innerHTML = '<div class="empty-mutuals">Failed to load mutual followers</div>';
-        console.error(err);
-      });
-  }
-  
-  function closeInviteModal() {
-    document.getElementById('inviteModal').style.display = 'none';
-  }
-  
-  function inviteToParty(username) {
-    // Use HTTP endpoint for invite
-    fetch('/api/party/' + partyId + '/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username })
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (data.error) {
-          showToast('Error: ' + data.error);
-        } else {
-          showToast('Invited ' + username + ' to the party!');
-          sysChat('You invited @' + username + ' to the party');
-          closeInviteModal();
+        el.innerHTML = html;
+        var activeEl = el.querySelector('.q-active');
+        if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+      }
+
+      function removeSong(songId) {
+        if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
+      }
+
+      function renderMembers(members) {
+        var html = '';
+        for (var i = 0; i < members.length; i++) {
+          var u = members[i];
+          html += '<div class="chip ' + (u === partyHost ? 'host' : '') + '" title="' + esc(u) + '">' + u[0].toUpperCase() + '</div>';
         }
-      })
-      .catch(function() {
-        showToast('Failed to send invite');
-      });
-  }
-  
-  function copyPartyLink() {
-    var url = window.location.origin + '/party/' + partyId;
-    navigator.clipboard.writeText(url)
-      .then(function() { 
-        showToast('Party link copied! Share it with your mutual followers');
-      })
-      .catch(function() { 
-        prompt('Share this link with mutual followers:', url);
-      });
-  }
-
-  // ========== SOCKET.IO ==========
-  
-  function connectSocket(pid) {
-    socket = io();
-
-    socket.on('connect', function() {
-      socket.emit('join_party', { party_id: pid, username: ME });
-    });
-
-    socket.on('party_state', function(party) {
-      if (!ytReady) {
-        pendingSync = party;
-        return;
+        document.getElementById('member-chips').innerHTML = html;
       }
-      applyState(party);
-    });
 
-    socket.on('member_joined', function(d) {
-      if (d.username !== ME) sysChat(d.username + ' joined the party');
-      renderMembers(d.members || []);
-    });
+      var ytKeySearchIdx = 0;
+      var isSearching = false;
 
-    socket.on('member_left', function(d) {
-      if (d.username !== ME) sysChat(d.username + ' left the party');
-      renderMembers(d.members || []);
-    });
+      function searchSongs() {
+        var q = document.getElementById('search-inp').value.trim();
+        if (!q) return;
 
-    socket.on('sync_play', function(d) {
-      if (ytReady) {
-        ytPlayer.seekTo(d.position, true);
-        ytPlayer.playVideo();
+        if (searchTimeout) clearTimeout(searchTimeout);
+
+        searchTimeout = setTimeout(function() {
+          if (isSearching) return;
+          isSearching = true;
+
+          var container = document.getElementById('sr-list');
+          container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching...</div>';
+
+          var ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+          if (ytMatch) {
+            container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
+            isSearching = false;
+            return;
+          }
+
+          var key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
+          fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(q) + '&key=' + key + '&maxResults=6&type=video&videoCategoryId=10')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              isSearching = false;
+              if (d.error) {
+                if (d.error.code === 403 || d.error.code === 429) {
+                  ytKeySearchIdx = (ytKeySearchIdx + 1) % YT_KEYS.length;
+                  container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;padding:0.4rem;">Rate limited, trying another API key...</div>';
+                  setTimeout(searchSongs, 1000);
+                  return;
+                }
+                container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">API Error: ' + d.error.message + '</div>';
+                return;
+              }
+              if (!d.items || !d.items.length) {
+                container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
+                return;
+              }
+              var html = '';
+              for (var i = 0; i < d.items.length; i++) {
+                var item = d.items[i];
+                html += srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url);
+              }
+              container.innerHTML = html;
+            })
+            .catch(function(err) {
+              isSearching = false;
+              container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">Search failed. Please try again.</div>';
+            });
+        }, 500);
       }
-      document.getElementById('play-btn').innerHTML = '⏸';
-      if (d.by !== ME) sysChat(d.by + ' pressed play');
-    });
 
-    socket.on('sync_pause', function(d) {
-      if (ytReady) {
-        ytPlayer.seekTo(d.position, true);
-        ytPlayer.pauseVideo();
+      function srRow(vid, title, ch, thumb) {
+        var imgSrc = (thumb && thumb.startsWith('http')) ? thumb : 'https://img.youtube.com/vi/' + vid + '/default.jpg';
+        return '<div class="sr-row">' +
+          '<img class="sr-thumb" src="' + imgSrc + '" />' +
+          '<div class="sr-info"><div class="sr-t">' + esc(title) + '</div><div class="sr-c">' + esc(ch) + '</div></div>' +
+          '<button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext(\'' + vid + '\',\'' + escA(title) + '\',\'' + escA(ch) + '\')">▶ Next</button>' +
+          '<button class="sr-add" onclick="addSong(\'' + vid + '\',\'' + escA(title) + '\',\'' + escA(ch) + '\')">+ Add</button>' +
+          '</div>';
       }
-      document.getElementById('play-btn').innerHTML = '▶';
-      if (d.by !== ME) sysChat(d.by + ' paused');
-    });
 
-    socket.on('sync_seek', function(d) {
-      if (ytReady) ytPlayer.seekTo(d.position, true);
-    });
-
-    socket.on('sync_change_song', function(d) {
-      curIdx = d.index;
-      playCurrent(d.position || 0, d.paused || false);
-      if (d.by !== ME) sysChat(d.by + ' changed the song');
-    });
-
-    socket.on('song_added', function(d) {
-      if (d.insert_next) {
-        queue.splice(d.insert_at, 0, d.song);
-        if (d.insert_at <= curIdx) curIdx++;
-      } else {
-        queue.push(d.song);
+      function extractArtist(title, ch) {
+        var m = title.match(/^([^\-–|()\.\[\]]+?)\s*[\-–]\s*.+/);
+        if (m) return m[1].trim();
+        return ch.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').replace(/Official$/i, '').trim() || ch;
       }
-      renderQueue();
-      if (d.by !== ME) sysChat(d.by + ' added "' + d.song.song_title + '"' + (d.insert_next ? ' — playing next' : ''));
-    });
 
-    socket.on('song_removed', function(d) {
-      var removedIdx = queue.findIndex(function(s) { return s.song_id === d.song_id; });
-      queue = queue.filter(function(s) { return s.song_id !== d.song_id; });
-      if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
-      renderQueue();
-      if (d.by !== ME) sysChat(d.by + ' removed a song');
-    });
-    
-    // Socket.IO invite event (receiving invites)
-    socket.on('party_invite', function(d) {
-      showToast(d.invited_by + ' invited you to join "' + d.party_name + '"');
-      if (confirm(d.invited_by + ' invited you to join their party!\n\nParty: ' + d.party_name + '\n\nJoin now?')) {
-        window.location.href = '/party/' + d.party_id;
+      function addSongNext(vid, title, ch) {
+        if (!socket || !partyId) return;
+        socket.emit('party_add_song_next', {
+          party_id: partyId,
+          username: ME,
+          song: {
+            song_id: Math.random().toString(36).slice(2, 10),
+            song_title: title,
+            artist_name: extractArtist(title, ch),
+            youtube_query: vid,
+            added_by: ME
+          }
+        });
+        showToast('"' + title.substring(0, 30) + '" plays next!');
+        document.getElementById('sr-list').innerHTML = '';
+        document.getElementById('search-inp').value = '';
       }
-    });
 
-    socket.on('chat_message', function(d) {
-      appendChat(d.username, d.text);
-    });
-
-    socket.on('error', function(d) {
-      showToast(d.msg);
-    });
-  }
-
-  function applyState(party) {
-    partyId = party.party_id;
-    partyHost = party.host;
-    queue = party.queue || [];
-    curIdx = (party.current_index !== undefined && party.current_index !== null) ? party.current_index : -1;
-
-    document.getElementById('room-name').textContent = party.name || 'Party';
-    document.getElementById('party-code-chip').textContent = '# ' + party.party_id;
-    document.getElementById('btn-end').textContent = ME === partyHost ? 'End Party' : 'Leave';
-
-    renderMembers(party.members || []);
-    renderQueue();
-
-    if (curIdx >= 0 && queue[curIdx]) {
-      updateNowPlayingUI(queue[curIdx]);
-      resolveAndPlay(queue[curIdx], party.position || 0, party.state !== 'playing');
-    }
-  }
-
-  function updateNowPlayingUI(s) {
-    document.getElementById('np-title').textContent = s.song_title || '—';
-    document.getElementById('np-artist').textContent = s.artist_name || '';
-    document.getElementById('np-by').textContent = s.added_by ? 'added by ' + s.added_by : '';
-  }
-
-  function togglePlay() {
-    if (!socket || curIdx < 0) return;
-    var pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
-    var playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
-    if (playing) {
-      socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
-    } else {
-      socket.emit('party_play', { party_id: partyId, username: ME, position: pos });
-    }
-  }
-
-  function nextSong() {
-    if (socket && curIdx < queue.length - 1) {
-      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
-    }
-  }
-
-  function prevSong() {
-    if (!socket) return;
-    if (ytReady && (ytPlayer.getCurrentTime() || 0) > 3) {
-      socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
-      return;
-    }
-    if (curIdx > 0) {
-      socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
-    }
-  }
-
-  function playCurrent(startSec, paused) {
-    if (curIdx < 0 || curIdx >= queue.length) return;
-    updateNowPlayingUI(queue[curIdx]);
-    resolveAndPlay(queue[curIdx], startSec || 0, paused || false);
-    renderQueue();
-  }
-
-  function playFromQueue(idx) {
-    if (socket) socket.emit('party_change_song', { party_id: partyId, username: ME, index: idx });
-  }
-
-  function seekBar(e) {
-    if (!ytReady || !socket) return;
-    var pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
-    var pos = pct * (ytPlayer.getDuration() || 0);
-    socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
-  }
-
-  function setVol(v) {
-    if (ytReady) ytPlayer.setVolume(parseInt(v));
-  }
-
-  function renderQueue() {
-    var el = document.getElementById('queue-list');
-    document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
-    if (!queue.length) {
-      el.innerHTML = '<div class="q-empty">No songs yet. Add one below!</div>';
-      return;
-    }
-    var html = '';
-    for (var i = 0; i < queue.length; i++) {
-      var s = queue[i];
-      var active = i === curIdx;
-      var artist = [s.artist_name, s.added_by ? 'by ' + s.added_by : ''].filter(function(v) { return v; }).join(' · ');
-      html += '<div class="q-row' + (active ? ' q-active' : '') + '" onclick="playFromQueue(' + i + ')">' +
-        '<div class="q-num">' + (active ? '▶' : (i + 1)) + '</div>' +
-        '<div class="q-info"><div class="q-title">' + esc(s.song_title) + '</div>' +
-        '<div class="q-sub">' + esc(artist) + '</div></div>' +
-        '<button class="q-del" onclick="event.stopPropagation();removeSong(\'' + s.song_id + '\')" title="Remove">✕</button>' +
-        '</div>';
-    }
-    el.innerHTML = html;
-    var activeEl = el.querySelector('.q-active');
-    if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
-  }
-
-  function removeSong(songId) {
-    if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
-  }
-
-  function renderMembers(members) {
-    var html = '';
-    for (var i = 0; i < members.length; i++) {
-      var u = members[i];
-      html += '<div class="chip ' + (u === partyHost ? 'host' : '') + '" title="' + esc(u) + '">' + u[0].toUpperCase() + '</div>';
-    }
-    document.getElementById('member-chips').innerHTML = html;
-  }
-
-  var ytKeySearchIdx = 0;
-  var isSearching = false;
-
-  function searchSongs() {
-    var q = document.getElementById('search-inp').value.trim();
-    if (!q) return;
-    
-    if (searchTimeout) clearTimeout(searchTimeout);
-    
-    searchTimeout = setTimeout(function() {
-      if (isSearching) return;
-      isSearching = true;
-      
-      var container = document.getElementById('sr-list');
-      container.innerHTML = '<div style="color:#555;font-size:0.82rem;padding:0.4rem;">Searching...</div>';
-      
-      var ytMatch = q.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-      if (ytMatch) {
-        container.innerHTML = srRow(ytMatch[1], 'YouTube Video', '', '');
-        isSearching = false;
-        return;
+      function addSong(vid, title, ch) {
+        if (!socket || !partyId) return;
+        socket.emit('party_add_song', {
+          party_id: partyId,
+          username: ME,
+          song: {
+            song_id: Math.random().toString(36).slice(2, 10),
+            song_title: title,
+            artist_name: extractArtist(title, ch),
+            youtube_query: vid,
+            added_by: ME
+          }
+        });
+        showToast('"' + title.substring(0, 30) + '" added!');
+        document.getElementById('sr-list').innerHTML = '';
+        document.getElementById('search-inp').value = '';
       }
-      
-      var key = YT_KEYS[ytKeySearchIdx % YT_KEYS.length];
-      fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&q=' + encodeURIComponent(q) + '&key=' + key + '&maxResults=6&type=video&videoCategoryId=10')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          isSearching = false;
-          if (d.error) {
-            if (d.error.code === 403 || d.error.code === 429) {
-              ytKeySearchIdx = (ytKeySearchIdx + 1) % YT_KEYS.length;
-              container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;padding:0.4rem;">Rate limited, trying another API key...</div>';
-              setTimeout(searchSongs, 1000);
+
+      function sendChat() {
+        var inp = document.getElementById('chat-inp');
+        var text = inp.value.trim();
+        if (!text) return;
+        socket.emit('party_chat', { party_id: partyId, username: ME, text: text });
+        inp.value = '';
+      }
+
+      function appendChat(user, text) {
+        var el = document.getElementById('chat-msgs');
+        var div = document.createElement('div');
+        div.className = 'chat-msg';
+        div.innerHTML = '<div class="cm-user">' + esc(user) + '</div><div class="cm-text">' + esc(text) + '</div>';
+        el.appendChild(div);
+        el.scrollTop = el.scrollHeight;
+      }
+
+      function sysChat(text) {
+        var el = document.getElementById('chat-msgs');
+        var div = document.createElement('div');
+        div.className = 'chat-msg system';
+        div.innerHTML = '<div class="cm-text">' + esc(text) + '</div>';
+        el.appendChild(div);
+        el.scrollTop = el.scrollHeight;
+      }
+
+      function createParty() {
+        var name = document.getElementById('party-name').value.trim();
+        fetch('/api/party/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name || ME + "'s Party" })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.error) {
+              showToast(d.error);
               return;
             }
-            container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">API Error: ' + d.error.message + '</div>';
-            return;
-          }
-          if (!d.items || !d.items.length) {
-            container.innerHTML = '<div style="color:#555;font-size:0.82rem;">No results.</div>';
-            return;
-          }
-          var html = '';
-          for (var i = 0; i < d.items.length; i++) {
-            var item = d.items[i];
-            html += srRow(item.id.videoId, item.snippet.title, item.snippet.channelTitle, item.snippet.thumbnails.default.url);
-          }
-          container.innerHTML = html;
-        })
-        .catch(function(err) {
-          isSearching = false;
-          container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">Search failed. Please try again.</div>';
-        });
-    }, 500);
-  }
-
-  function srRow(vid, title, ch, thumb) {
-    var imgSrc = (thumb && thumb.startsWith('http')) ? thumb : 'https://img.youtube.com/vi/' + vid + '/default.jpg';
-    return '<div class="sr-row">' +
-      '<img class="sr-thumb" src="' + imgSrc + '" />' +
-      '<div class="sr-info"><div class="sr-t">' + esc(title) + '</div><div class="sr-c">' + esc(ch) + '</div></div>' +
-      '<button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext(\'' + vid + '\',\'' + escA(title) + '\',\'' + escA(ch) + '\')">▶ Next</button>' +
-      '<button class="sr-add" onclick="addSong(\'' + vid + '\',\'' + escA(title) + '\',\'' + escA(ch) + '\')">+ Add</button>' +
-      '</div>';
-  }
-
-  function extractArtist(title, ch) {
-    var m = title.match(/^([^\-–|()\.\[\]]+?)\s*[\-–]\s*.+/);
-    if (m) return m[1].trim();
-    return ch.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').replace(/Official$/i, '').trim() || ch;
-  }
-
-  function addSongNext(vid, title, ch) {
-    if (!socket || !partyId) return;
-    socket.emit('party_add_song_next', {
-      party_id: partyId,
-      username: ME,
-      song: {
-        song_id: Math.random().toString(36).slice(2, 10),
-        song_title: title,
-        artist_name: extractArtist(title, ch),
-        youtube_query: vid,
-        added_by: ME
+            history.replaceState({}, '', '/party/' + d.party_id);
+            enterRoom(d.party_id);
+          });
       }
-    });
-    showToast('"' + title.substring(0, 30) + '" plays next!');
-    document.getElementById('sr-list').innerHTML = '';
-    document.getElementById('search-inp').value = '';
-  }
 
-  function addSong(vid, title, ch) {
-    if (!socket || !partyId) return;
-    socket.emit('party_add_song', {
-      party_id: partyId,
-      username: ME,
-      song: {
-        song_id: Math.random().toString(36).slice(2, 10),
-        song_title: title,
-        artist_name: extractArtist(title, ch),
-        youtube_query: vid,
-        added_by: ME
-      }
-    });
-    showToast('"' + title.substring(0, 30) + '" added!');
-    document.getElementById('sr-list').innerHTML = '';
-    document.getElementById('search-inp').value = '';
-  }
-
-  function sendChat() {
-    var inp = document.getElementById('chat-inp');
-    var text = inp.value.trim();
-    if (!text) return;
-    socket.emit('party_chat', { party_id: partyId, username: ME, text: text });
-    inp.value = '';
-  }
-
-  function appendChat(user, text) {
-    var el = document.getElementById('chat-msgs');
-    var div = document.createElement('div');
-    div.className = 'chat-msg';
-    div.innerHTML = '<div class="cm-user">' + esc(user) + '</div><div class="cm-text">' + esc(text) + '</div>';
-    el.appendChild(div);
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function sysChat(text) {
-    var el = document.getElementById('chat-msgs');
-    var div = document.createElement('div');
-    div.className = 'chat-msg system';
-    div.innerHTML = '<div class="cm-text">' + esc(text) + '</div>';
-    el.appendChild(div);
-    el.scrollTop = el.scrollHeight;
-  }
-
-  function createParty() {
-    var name = document.getElementById('party-name').value.trim();
-    fetch('/api/party/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name || ME + "'s Party" })
-    })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.error) {
-          showToast(d.error);
+      function joinParty() {
+        var code = document.getElementById('join-code').value.trim();
+        if (!code) {
+          showToast('Enter a party code first');
           return;
         }
-        history.replaceState({}, '', '/party/' + d.party_id);
-        enterRoom(d.party_id);
+        if (!/^[a-zA-Z0-9]{4,8}$/.test(code)) {
+          showToast('Invalid party code');
+          return;
+        }
+        enterRoom(code);
+      }
+
+      function enterRoom(pid) {
+        partyId = pid;
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('room').classList.add('active');
+        connectSocket(pid);
+      }
+
+      function leaveOrEnd() {
+        if (!socket) return;
+        if (ME === partyHost) {
+          if (!confirm('End the party for everyone?')) return;
+          fetch('/api/party/' + partyId + '/end', { method: 'POST' });
+          sysChat('Host ended the party.');
+        }
+        socket.emit('leave_party', { party_id: partyId, username: ME });
+        setTimeout(function() {
+          socket.disconnect();
+          window.location.href = '/';
+        }, 300);
+      }
+
+      function copyCode() {
+        navigator.clipboard.writeText(window.location.origin + '/party/' + partyId)
+          .then(function() { showToast('Party link copied!'); })
+          .catch(function() { prompt('Share this link:', window.location.origin + '/party/' + partyId); });
+      }
+
+      function showToast(msg) {
+        var t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(function() { t.classList.remove('show'); }, 2500);
+      }
+
+      function esc(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function escA(s) {
+        return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      }
+
+      // Initialize if party data is provided
+      if (INIT_PARTY) {
+        document.getElementById('lobby').style.display = 'none';
+        document.getElementById('room').classList.add('active');
+        partyId = INIT_PARTY.party_id;
+        connectSocket(INIT_PARTY.party_id);
+      }
+
+      document.addEventListener('keydown', function(e) {
+        var tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          togglePlay();
+        }
+        if (e.code === 'ArrowRight') nextSong();
+        if (e.code === 'ArrowLeft') prevSong();
       });
-  }
 
-  function joinParty() {
-    var code = document.getElementById('join-code').value.trim();
-    if (!code) {
-      showToast('Enter a party code first');
-      return;
-    }
-    if (!/^[a-zA-Z0-9]{4,8}$/.test(code)) {
-      showToast('Invalid party code');
-      return;
-    }
-    enterRoom(code);
-  }
-
-  function enterRoom(pid) {
-    partyId = pid;
-    document.getElementById('lobby').style.display = 'none';
-    document.getElementById('room').classList.add('active');
-    connectSocket(pid);
-  }
-
-  function leaveOrEnd() {
-    if (!socket) return;
-    if (ME === partyHost) {
-      if (!confirm('End the party for everyone?')) return;
-      fetch('/api/party/' + partyId + '/end', { method: 'POST' });
-      sysChat('Host ended the party.');
-    }
-    socket.emit('leave_party', { party_id: partyId, username: ME });
-    setTimeout(function() {
-      socket.disconnect();
-      window.location.href = '/';
-    }, 300);
-  }
-
-  function copyCode() {
-    navigator.clipboard.writeText(window.location.origin + '/party/' + partyId)
-      .then(function() { showToast('Party link copied!'); })
-      .catch(function() { prompt('Share this link:', window.location.origin + '/party/' + partyId); });
-  }
-
-  function showToast(msg) {
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); }, 2500);
-  }
-
-  function esc(s) {
-    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function escA(s) {
-    return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-  }
-
-  // Initialize if party data is provided
-  if (INIT_PARTY) {
-    document.getElementById('lobby').style.display = 'none';
-    document.getElementById('room').classList.add('active');
-    partyId = INIT_PARTY.party_id;
-    connectSocket(INIT_PARTY.party_id);
-  }
-
-  document.addEventListener('keydown', function(e) {
-    var tag = document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    if (e.code === 'Space') {
-      e.preventDefault();
-      togglePlay();
-    }
-    if (e.code === 'ArrowRight') nextSong();
-    if (e.code === 'ArrowLeft') prevSong();
-  });
-  
-  // Close modal when clicking outside
-  window.onclick = function(event) {
-    var modal = document.getElementById('inviteModal');
-    if (event.target === modal) {
-      closeInviteModal();
-    }
-  };
-</script>
-
-</body>
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        var modal = document.getElementById('inviteModal');
+        if (event.target === modal) {
+          closeInviteModal();
+        }
+      };
+    </script>
+  </body>
 </html>
