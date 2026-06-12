@@ -764,42 +764,6 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
 
-      .navbar-scroll-zone {
-        flex: 1;
-        overflow: hidden;
-        height: 100%;
-        display: flex;
-        align-items: center;
-      }
-
-      .navbar-auth {
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
-        padding: 0 1rem;
-        flex-shrink: 0;
-        white-space: nowrap;
-      }
-
-      .navbar-auth a {
-        color: #aaa;
-        text-decoration: none;
-        font-size: 0.82rem;
-        transition: color 0.2s;
-      }
-
-      .navbar-auth a:hover { color: #fff; }
-
-      .navbar-auth .auth-user {
-        color: #e50914;
-        font-weight: 600;
-      }
-
-      .navbar-auth .auth-reg {
-        color: #e50914;
-        font-weight: 600;
-      }
-
       /* Filter Tags - Simple Scrolling */
       .filter-tags {
         display: flex;
@@ -977,7 +941,66 @@
           font-size: 0.88rem;
         }
       }
-    </style>
+    
+      /* ── Top scrolling bar ── */
+      .navbar-scroll-zone {
+        flex: 1;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+      }
+
+      /* ── Hero auth row (above title) ── */
+      .hero-auth {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+        flex-wrap: wrap;
+      }
+      .hero-auth a {
+        color: #aaa;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: color 0.2s;
+      }
+      .hero-auth a:hover { color: #fff; }
+      .hero-auth .auth-user { color: #e50914; font-weight: 700; font-size: 0.9rem; }
+      .hero-auth .auth-reg  { color: #e50914; font-weight: 700; }
+      .hero-auth .auth-sep  { color: #444; }
+
+      /* ── Hero search bar (above Explore section) ── */
+      .hero-search-wrap {
+        width: 90%;
+        max-width: 560px;
+        margin: 2rem auto 0;
+        position: relative;
+      }
+      .hero-search-wrap input {
+        width: 100%;
+        padding: 0.65rem 1rem 0.65rem 2.4rem;
+        background: rgba(20,20,20,0.95);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 6px;
+        color: #fff;
+        font-size: 0.9rem;
+        outline: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        transition: border-color 0.2s;
+      }
+      .hero-search-wrap input:focus { border-color: #e50914; }
+      .hero-search-icon {
+        position: absolute;
+        left: 0.7rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #888;
+        pointer-events: none;
+        font-size: 1rem;
+      }
+</style>
   </head>
   <body>
     <div id="preloader" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;z-index:9999;">
@@ -1173,24 +1196,31 @@
         >
           Top 10 R&B Artists
         </div>
-      </div></div>
+      </div></div></div>
+    </div>
       <div class="navbar-auth">{% if username %}<a href="/u/{{ username }}" class="auth-user">{{ username }}</a><a href="/logout">Logout</a>{% else %}<a href="/feed">Feed</a><a href="/login">Login</a><a href="/register" class="auth-reg">Register</a>{% endif %}</div></div>
     </div>
 
     <div class="bg-overlay"></div>
 
-    <!-- Global Search Bar -->
-    <div style="max-width:560px;width:90%;margin:1.5rem auto 0;position:relative;">
-      <div style="position:relative;">
-        <input id="global-search" type="text" placeholder="Search movies, series, artists, directors..." autocomplete="off"
-          style="width:100%;padding:0.6rem 1rem 0.6rem 2.5rem;background:rgba(20,20,20,0.95);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:0.9rem;outline:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);"
-          oninput="globalSearch(this.value)" onfocus="this.style.borderColor='#e50914'" onblur="setTimeout(()=>document.getElementById('search-dropdown').style.display='none',200)" />
-        <span style="position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:#888;pointer-events:none;">&#128269;</span>
-      </div>
-      <div id="search-dropdown" style="display:none;background:rgba(18,18,18,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:0 0 6px 6px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
-    </div>
+    
 
     <div class="title-container">
+      <div class="hero-auth">
+      {% if username %}
+        <a href="/u/{{ username }}" class="auth-user">{{ username }}</a>
+        <span class="auth-sep">|</span>
+        <a href="/feed">Feed</a>
+        <span class="auth-sep">|</span>
+        <a href="/logout">Logout</a>
+      {% else %}
+        <a href="/feed">Feed</a>
+        <span class="auth-sep">|</span>
+        <a href="/login">Login</a>
+        <span class="auth-sep">|</span>
+        <a href="/register" class="auth-reg">Register</a>
+      {% endif %}
+      </div>
       <h1
         class="title"
         id="main-title"
@@ -1202,6 +1232,17 @@
         MEDIA PEDIA
       </h1>
       <div class="subtitle">YOUR PERSONALIZED GUIDE</div>
+
+      <!-- Global Search Bar -->
+      <div class="hero-search-wrap" style="position:relative;">
+        <span class="hero-search-icon">&#128269;</span>
+        <input id="global-search" type="text"
+          placeholder="Search movies, series, artists, directors..."
+          autocomplete="off"
+          oninput="globalSearch(this.value)"
+          onblur="setTimeout(()=>document.getElementById('search-dropdown').style.display='none',200)" />
+        <div id="search-dropdown" style="position:absolute;width:100%;top:100%;left:0;display:none;background:rgba(18,18,18,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:0 0 6px 6px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;"></div>
+      </div>
 
       <script>
         const title = document.getElementById("main-title");

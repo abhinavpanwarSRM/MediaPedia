@@ -1,1806 +1,1726 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>{{ movie["Movie Name"] }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="icon"
-      href="{{ url_for('static', filename='favicon.png') }}"
-      type="image/x-icon"
-    />
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ movie["Movie Name"] }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+      type="image/x-icon"
+    />
+    <style>
+      :root {
+        --primary: #e50914; /* Netflix red */
+        --secondary: #141414;
+        --dark-bg: #181818;
+        --text-light: #ffffff;
+        --text-grey: #e5e5e5;
+        --card-bg: rgba(20, 20, 20, 0.9);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", sans-serif;
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: var(--text-light);
+        line-height: 1.6;
+        cursor: default;
+      }
+
+      .overlay {
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.9) 0%,
+          rgba(20, 20, 20, 0.8) 100%
+        );
+        min-height: 100vh;
+        padding: 1rem;
+        backdrop-filter: blur(5px);
+      }
+
+      .movie-detail {
+        max-width: 900px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      h1 {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        margin-bottom: 1.5rem;
+        color: white;
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(229, 9, 20, 0.3);
+        padding-bottom: 1rem;
+      }
+
+      .trailer-container {
+        margin: 1.5rem 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+      }
+
+      .trailer-thumbnail {
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+        border-radius: 8px;
+      }
+
+      .trailer-thumbnail:hover {
+        transform: scale(1.02);
+      }
+
+      .trailer-thumbnail::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        transition: background 0.3s ease;
+      }
+
+      .trailer-thumbnail:hover::after {
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      .trailer-thumbnail::before {
+        content: "▶";
+        font-size: clamp(3rem, 8vw, 4rem);
+        color: var(--text-light);
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        opacity: 0.9;
+        transition: all 0.3s ease;
+      }
+
+      .trailer-thumbnail:hover::before {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+      }
+
+      .movie-info {
+        margin: 1.5rem 0;
+      }
+
+      .movie-info p {
+        font-size: clamp(1rem, 3vw, 1.1rem);
+        margin-bottom: 1rem;
+        padding: 0.8rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        display: flex;
+        flex-wrap: wrap;
+      }
+
+      .movie-info p strong {
+        min-width: 100px;
+        display: inline-block;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .movie-info p span {
+        white-space: pre-wrap;
+        display: block;
+        margin-top: 0.3rem;
+        font-weight: 400;
+        color: #ccc;
+        flex: 1 1 70%;
+      }
+
+      .back-link {
+        margin-top: 1.5rem;
+        display: inline-block;
+        padding: 0.8rem 1.5rem;
+        background: rgba(229, 9, 20, 0.2);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        border: 1px solid rgba(229, 9, 20, 0.3);
+        width: 100%;
+        text-align: center;
+      }
+
+      .back-link:hover {
+        background: rgba(229, 9, 20, 0.3);
+        transform: translateY(-2px);
+      }
+
+      iframe {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        border: none;
+        border-radius: 8px;
+      }
+
+      /* Related Movies Section */
+      .related-movies {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(229, 9, 20, 0.3);
+      }
+
+      .related-movies h3 {
+        color: var(--primary);
+        margin-bottom: 1rem;
+        text-align: center;
+        font-size: clamp(1.2rem, 4vw, 1.5rem);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        position: relative;
+        padding-bottom: 0.5rem;
+      }
+
+      .related-movies h3::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 2px;
+        background: var(--primary);
+      }
+
+      .related-movies-list {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.8rem;
+        margin: 0 auto;
+        max-width: 100%;
+      }
+
+      .related-movies-list li {
+        transition: transform 0.3s ease;
+        flex: 1 0 calc(50% - 1rem);
+        max-width: calc(50% - 1rem);
+      }
+
+      .related-movies-list li:hover {
+        transform: translateY(-3px);
+      }
+
+      .related-movies-list a {
+        display: inline-block;
+        padding: 0.6rem 0.8rem;
+        background: rgba(36, 36, 36, 0.8);
+        color: var(--text-light);
+        text-decoration: none;
+        border-radius: 4px;
+        border-left: 3px solid var(--primary);
+        transition: all 0.3s ease;
+        font-size: clamp(0.8rem, 3vw, 0.95rem);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        text-align: center;
+      }
+
+      .related-movies-list a:hover {
+        background: rgba(229, 9, 20, 0.2);
+        color: var(--primary);
+      }
+
+      /* Responsive adjustments */
+      @media (min-width: 600px) {
+        .overlay {
+          padding: 2rem;
+        }
+
+        .movie-detail {
+          padding: 2rem;
+        }
+
+        .movie-info p {
+          flex-direction: row;
+        }
+
+        .back-link {
+          width: auto;
+        }
+
+        .related-movies-list li {
+          flex: 0 0 auto;
+          max-width: none;
+        }
+
+        .related-movies-list a {
+          white-space: normal;
+        }
+      }
+
+      @media (min-width: 768px) {
+        .related-movies-list {
+          gap: 1rem;
+        }
+
+        .related-movies-list a {
+          padding: 0.8rem 1rem;
+        }
+      }
+
+      @media (min-width: 992px) {
+        .movie-info p strong {
+          min-width: 120px;
+        }
+      }
+    </style>
     <style>
-      :root {
-        --primary: #e50914; /* Netflix red */
-        --secondary: #141414;
-        --dark-bg: #181818;
-        --text-light: #ffffff;
-        --text-grey: #e5e5e5;
-        --card-bg: rgba(20, 20, 20, 0.9);
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        font-family:
-          "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", sans-serif;
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        color: var(--text-light);
-        line-height: 1.6;
-        cursor: default;
-      }
-
-      .overlay {
-        background: linear-gradient(
-          to bottom,
-          rgba(0, 0, 0, 0.9) 0%,
-          rgba(20, 20, 20, 0.8) 100%
-        );
-        min-height: 100vh;
-        padding: 1rem;
-        backdrop-filter: blur(5px);
-      }
-
-      .movie-detail {
-        max-width: 900px;
-        margin: 0 auto;
-        background: var(--card-bg);
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-      }
-
-      h1 {
-        font-size: clamp(1.8rem, 5vw, 2.5rem);
-        margin-bottom: 1.5rem;
-        color: white;
-        text-align: center;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid rgba(229, 9, 20, 0.3);
-        padding-bottom: 1rem;
-      }
-
-      .trailer-container {
-        margin: 1.5rem 0;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
-      }
-
-      .trailer-thumbnail {
-        width: 100%;
-        height: 0;
-        padding-bottom: 56.25%; /* 16:9 aspect ratio */
-        background-size: cover;
-        background-position: center;
-        position: relative;
-        cursor: pointer;
-        transition: transform 0.3s ease;
-        border-radius: 8px;
-      }
-
-      .trailer-thumbnail:hover {
-        transform: scale(1.02);
-      }
-
-      .trailer-thumbnail::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
-        transition: background 0.3s ease;
-      }
-
-      .trailer-thumbnail:hover::after {
-        background: rgba(0, 0, 0, 0.1);
-      }
-
-      .trailer-thumbnail::before {
-        content: "▶";
-        font-size: clamp(3rem, 8vw, 4rem);
-        color: var(--text-light);
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
-        opacity: 0.9;
-        transition: all 0.3s ease;
-      }
-
-      .trailer-thumbnail:hover::before {
-        transform: translate(-50%, -50%) scale(1.1);
-        opacity: 1;
-      }
-
-      .movie-info {
-        margin: 1.5rem 0;
-      }
-
-      .movie-info p {
-        font-size: clamp(1rem, 3vw, 1.1rem);
-        margin-bottom: 1rem;
-        padding: 0.8rem;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 6px;
-        display: flex;
-        flex-wrap: wrap;
-      }
-
-      .movie-info p strong {
-        min-width: 100px;
-        display: inline-block;
-        color: var(--primary);
-        font-weight: 600;
-      }
-
-      .movie-info p span {
-        white-space: pre-wrap;
-        display: block;
-        margin-top: 0.3rem;
-        font-weight: 400;
-        color: #ccc;
-        flex: 1 1 70%;
-      }
-
-      .back-link {
-        margin-top: 1.5rem;
-        display: inline-block;
-        padding: 0.8rem 1.5rem;
-        background: rgba(229, 9, 20, 0.2);
-        color: white;
-        text-decoration: none;
-        border-radius: 6px;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        border: 1px solid rgba(229, 9, 20, 0.3);
-        width: 100%;
-        text-align: center;
-      }
-
-      .back-link:hover {
-        background: rgba(229, 9, 20, 0.3);
-        transform: translateY(-2px);
-      }
-
-      iframe {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 16/9;
-        border: none;
-        border-radius: 8px;
-      }
-
-      /* Related Movies Section */
-      .related-movies {
-        margin-top: 2rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid rgba(229, 9, 20, 0.3);
-      }
-
-      .related-movies h3 {
-        color: var(--primary);
-        margin-bottom: 1rem;
-        text-align: center;
-        font-size: clamp(1.2rem, 4vw, 1.5rem);
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        position: relative;
-        padding-bottom: 0.5rem;
-      }
-
-      .related-movies h3::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 2px;
-        background: var(--primary);
-      }
-
-      .related-movies-list {
-        list-style: none;
-        padding: 0;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 0.8rem;
-        margin: 0 auto;
-        max-width: 100%;
-      }
-
-      .related-movies-list li {
-        transition: transform 0.3s ease;
-        flex: 1 0 calc(50% - 1rem);
-        max-width: calc(50% - 1rem);
-      }
-
-      .related-movies-list li:hover {
-        transform: translateY(-3px);
-      }
-
-      .related-movies-list a {
-        display: inline-block;
-        padding: 0.6rem 0.8rem;
-        background: rgba(36, 36, 36, 0.8);
-        color: var(--text-light);
-        text-decoration: none;
-        border-radius: 4px;
-        border-left: 3px solid var(--primary);
-        transition: all 0.3s ease;
-        font-size: clamp(0.8rem, 3vw, 0.95rem);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        width: 100%;
-        text-align: center;
-      }
-
-      .related-movies-list a:hover {
-        background: rgba(229, 9, 20, 0.2);
-        color: var(--primary);
-      }
-
-      /* Responsive adjustments */
-      @media (min-width: 600px) {
-        .overlay {
-          padding: 2rem;
-        }
-
-        .movie-detail {
-          padding: 2rem;
-        }
-
-        .movie-info p {
-          flex-direction: row;
-        }
-
-        .back-link {
-          width: auto;
-        }
-
-        .related-movies-list li {
-          flex: 0 0 auto;
-          max-width: none;
-        }
-
-        .related-movies-list a {
-          white-space: normal;
-        }
-      }
-
-      @media (min-width: 768px) {
-        .related-movies-list {
-          gap: 1rem;
-        }
-
-        .related-movies-list a {
-          padding: 0.8rem 1rem;
-        }
-      }
-
-      @media (min-width: 992px) {
-        .movie-info p strong {
-          min-width: 120px;
-        }
-      }
-    </style>
-    <style>
-      /* Add to your existing CSS */
-      .heart-save-section {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 1.5rem 0;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-
-      .btn {
-        background: rgba(20, 20, 20, 0.8);
-        border: 2px solid var(--primary);
-        color: white;
-        border-radius: 50px;
-        padding: 0.6rem 1.4rem;
-        font-size: 1rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-      }
-
-      .btn:hover {
-        background: rgba(229, 9, 20, 0.2);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
-      }
-
-      .saved-counter {
-        position: fixed;
-        top: 56px;
-        right: 20px;
-        background: var(--card-bg);
-        padding: 6px;
-        border-radius: 999px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        z-index: 999;
-      }
-
-      .view-saved-btn {
-        padding: 6px 14px;
-        background: var(--primary);
-        color: #fff;
-        border: none;
-        border-radius: 999px;
-        cursor: pointer;
-        font-size: 0.9rem;
-        font-weight: 600;
-        transition:
-          background-color 0.25s ease,
-          transform 0.15s ease;
-      }
-
-      .view-saved-btn:hover {
-        background: #ff0000;
-        transform: scale(1.05);
-      }
-    </style>
-  </head>
-  <body>
-    {% if username %}
-    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
-      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
-      <a href="/u/{{ username }}" style="color:#e50914;text-decoration:none;font-size:0.88rem;font-weight:600;">{{ username }}</a>
-      <a href="/logout" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Logout</a>
-    </div>
-    {% else %}
-    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
-      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
-      <a href="/login" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Login</a>
-      <a href="/register" style="color:#e50914;text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
-    </div>
-    {% endif %}
-    <div class="overlay" style="padding-top:3rem;">
-      <div class="movie-detail">
-        <h1>{{ movie["Movie Name"] }}</h1>
-
-        <div class="heart-save-section">
-          <button class="btn" id="save-movie-btn">
-            <span id="save-text">Save</span>
-          </button>
-          <button class="btn" id="link-movie-btn">
-            <span id="link-text">Link</span>
-          </button>
-          <button class="btn" id="share-movie-btn" onclick="shareItem()">
-            <span>Share</span>
-          </button>
-          <button class="btn" onclick="openAddToList()">
-            <span>+ List</span>
-          </button>
+      .action-bar { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:0.6rem; margin:1.2rem 0; }
+      .action-btn { background:rgba(20,20,20,0.8); border:1.5px solid var(--primary); color:#fff; border-radius:20px; padding:0.45rem 1.1rem; font-size:0.88rem; font-weight:600; cursor:pointer; transition:background 0.2s,transform 0.15s; white-space:nowrap; }
+      .action-btn:hover { background:rgba(229,9,20,0.22); transform:translateY(-2px); }
+      .saved-counter { position:fixed; top:56px; right:20px; background:var(--card-bg); padding:6px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:999; }
+      .view-saved-btn { padding:6px 14px; background:var(--primary); color:#fff; border:none; border-radius:999px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:background 0.25s,transform 0.15s; }
+      .view-saved-btn:hover { background:#c0000e; transform:scale(1.05); }
+    </style>
+  </head>
+  <body>
+    {% if username %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/u/{{ username }}" style="color:#e50914;text-decoration:none;font-size:0.88rem;font-weight:600;">{{ username }}</a>
+      <a href="/logout" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Logout</a>
+    </div>
+    {% else %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/login" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Login</a>
+      <a href="/register" style="color:#e50914;text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
+    </div>
+    {% endif %}
+    <div class="overlay" style="padding-top:3rem;">
+      <div class="movie-detail">
+        <h1>{{ movie["Movie Name"] }}</h1>
+
+        <div class="action-bar">
+          <button class="action-btn" id="save-movie-btn" onclick="saveMovie()">💾 Save</button>
+          <button class="action-btn" id="link-movie-btn">🔗 Links</button>
+          <button class="action-btn" onclick="shareItem()">📤 Share</button>
+          <button class="action-btn" onclick="openAddToList()">+ List</button>
         </div>
 
-        <div class="saved-counter">
-          <button id="saved-count" class="view-saved-btn" onclick="viewSaved()">
-            0
-          </button>
-        </div>
-
-        <!-- Trailer will be inserted here -->
-        <div id="trailer-container" class="trailer-container"></div>
-
-        <!-- Seen It Widget -->
-        <div style="text-align:center;margin:1rem 0;">
-          <p style="color:#999;font-size:0.85rem;margin-bottom:0.5rem;">Have you seen this movie?</p>
-          <div style="display:flex;gap:0.8rem;justify-content:center;">
-            <button id="seen-yes-btn" onclick="voteSeenIt('yes')" style="background:rgba(46,213,115,0.2);color:#2ed573;border:1px solid #2ed573;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Yes ✓</button>
-            <button id="seen-no-btn" onclick="voteSeenIt('no')" style="background:rgba(255,71,87,0.2);color:#ff4757;border:1px solid #ff4757;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Not Yet</button>
-          </div>
-          <p id="seen-count" style="color:#888;font-size:0.78rem;margin-top:0.4rem;">Loading votes...</p>
-        </div>
-
-        <div class="movie-info">
-          <p><strong>Rating:</strong> <span>{{ movie["Rating"] }}</span></p>
-          <p><strong>Genre:</strong> <span>{{ movie["Genre"] }}</span></p>
-          <p>
-            <strong>Directors:</strong>
-            <span>{% for d in movie["Directors"].strip("[]").replace("'","").split(",") %}<a href="/director/{{ d.strip() }}" style="color:#e50914;text-decoration:none;">{{ d.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
-          </p>
-          <p><strong>Stars:</strong>
-            <span>{% for s in movie["Stars"].strip("[]").replace("'","").split(",") %}<a href="/actor/{{ s.strip() }}" style="color:#5799ef;text-decoration:none;">{{ s.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
-          </p>
-          <p>
-            <strong>Release Year:</strong>
-            <span>{{ movie.get("Year", "N/A") }}</span>
-          </p>
-          <p>
-            <strong>Runtime:</strong>
-            <span>{{ movie.get("Runtime", "N/A") }}</span>
-          </p>
-          <p>
-            <strong>Language:</strong>
-            <span>{{ movie.get("Language", "N/A") }}</span>
-          </p>
-          <p>
-            <strong>Plot:</strong>
-            <span>{{ movie.get("Plot", "Plot not available.") }}</span>
-          </p>
-        </div>
-
-        <!-- Related Movies Section -->
-        <div class="related-movies">
-          <h3>More {{ movie["Genre"] }} Movies</h3>
-          <ul class="related-movies-list">
-            {% for m in related_movies %}
-            <li>
-              <a href="/movie/{{ m['ID'] }}"> {{ m['Movie Name'] }} </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-        <!-- Comment Section CSS - Professional & Compact -->
-        <style>
-          .comments-section {
-            margin-top: 2rem;
-            border-top: 1px solid rgba(229, 9, 20, 0.2);
-            font-family: "Segoe UI", Roboto, sans-serif;
-          }
-
-          /* Compact Header */
-          .comments-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0 0.5rem;
-          }
-
-          .comments-header h3 {
-            color: var(--primary);
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin: 0;
-            letter-spacing: 0.3px;
-          }
-
-          .comment-stats {
-            display: flex;
-            gap: 1rem;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-          }
-
-          .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.85rem;
-          }
-
-          .stat-label {
-            color: #999;
-          }
-
-          .stat-value {
-            color: var(--primary);
-            font-weight: 600;
-          }
-
-          /* Toggle Button - Professional */
-          .comment-form-toggle {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            padding: 0.6rem 1rem;
-            margin: 0.5rem 0 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-
-          .comment-form-toggle:hover {
-            background: rgba(229, 9, 20, 0.1);
-            border-color: var(--primary);
-          }
-
-          .toggle-text {
-            color: #ccc;
-            font-size: 0.9rem;
-          }
-
-          .toggle-icon {
-            color: var(--primary);
-            font-size: 1.2rem;
-            font-weight: 400;
-          }
-
-          /* Comment Form */
-          .comment-form {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            display: none;
-          }
-
-          .comment-form.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-          }
-
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
-
-          /* Form Layout - Uniform styling for all form groups */
-          .form-row {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-          }
-
-          .form-group {
-            flex: 1;
-            min-width: 200px;
-          }
-
-          .form-group label,
-          .rating-group label {
-            display: block;
-            color: #999;
-            font-size: 0.8rem;
-            margin-bottom: 0.3rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .form-group input,
-          .rating-group .star-rating-container {
-            width: 100%;
-            padding: 0.6rem 0.8rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            color: white;
-            font-size: 0.9rem;
-          }
-
-          .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-          }
-
-          /* Rating group with uniform styling */
-          .rating-group {
-            flex: 1;
-            min-width: 200px;
-          }
-
-          .star-rating-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            padding: 0.3rem 0.8rem;
-            height: 38px; /* Match input height */
-          }
-
-          .star-rating {
-            display: inline-flex;
-            flex-direction: row-reverse;
-            gap: 0.2rem;
-            margin-left: auto;
-          }
-
-          .star-rating input {
-            display: none;
-          }
-
-          .star-rating label {
-            font-size: 1.2rem;
-            color: #444;
-            cursor: pointer;
-            transition: color 0.2s ease;
-            margin-bottom: 0;
-            text-transform: none;
-            letter-spacing: normal;
-          }
-
-          .star-rating label:hover,
-          .star-rating label:hover ~ label,
-          .star-rating input:checked ~ label {
-            color: #ffc107;
-          }
-
-          .comment-textarea {
-            width: 100%;
-            padding: 0.6rem 0.8rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            color: white;
-            font-size: 0.9rem;
-            min-height: 80px;
-            resize: vertical;
-            margin-bottom: 1rem;
-          }
-
-          .submit-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.6rem 1rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            width: 100%;
-          }
-
-          .submit-btn:hover:not(:disabled) {
-            background: #f40612;
-          }
-
-          .submit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-
-          /* Comments List */
-          .comments-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            max-height: 450px;
-            overflow-y: auto;
-            padding-right: 0.5rem;
-            scrollbar-width: thin;
-            scrollbar-color: var(--primary) rgba(0, 0, 0, 0.2);
-          }
-
-          .comments-list::-webkit-scrollbar {
-            width: 4px;
-          }
-
-          .comments-list::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-          }
-
-          .comments-list::-webkit-scrollbar-thumb {
-            background-color: var(--primary);
-            border-radius: 2px;
-          }
-
-          .comment-card {
-            background: rgba(0, 0, 0, 0.15);
-            border-radius: 4px;
-            padding: 1rem;
-            border-left: 2px solid var(--primary);
-            transition: background 0.2s ease;
-          }
-
-          .comment-card:hover {
-            background: rgba(229, 9, 20, 0.05);
-          }
-
-          .comment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-          }
-
-          .comment-user {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 500;
-            color: white;
-            font-size: 0.8rem;
-          }
-
-          .username {
-            font-weight: 500;
-            color: white;
-            font-size: 0.9rem;
-          }
-
-          .comment-date {
-            color: #888;
-            font-size: 0.75rem;
-          }
-
-          .comment-rating {
-            color: #ffc107;
-            font-size: 0.8rem;
-            margin-bottom: 0.5rem;
-          }
-
-          .comment-text {
-            color: #ddd;
-            line-height: 1.5;
-            font-size: 0.9rem;
-            margin-bottom: 0.75rem;
-            word-break: break-word;
-          }
-
-          .comment-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-          }
-
-          .like-btn {
-            background: none;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.8rem;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-          }
-
-          .like-btn:hover {
-            background: rgba(229, 9, 20, 0.1);
-            color: var(--primary);
-          }
-
-          .like-btn.liked {
-            color: var(--primary);
-          }
-
-          .delete-btn {
-            background: none;
-            border: none;
-            color: #ff4757;
-            cursor: pointer;
-            font-size: 0.8rem;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            opacity: 0.7;
-            transition: all 0.2s ease;
-          }
-
-          .delete-btn:hover {
-            opacity: 1;
-            background: rgba(255, 71, 87, 0.1);
-          }
-
-          /* Loading & Empty States */
-          .comments-loading,
-          .no-comments {
-            text-align: center;
-            padding: 2rem;
-            color: #888;
-            font-size: 0.9rem;
-          }
-
-          .comment-spinner {
-            width: 30px;
-            height: 30px;
-            border: 2px solid rgba(229, 9, 20, 0.1);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 0.5rem;
-          }
-
-          .error-message {
-            background: rgba(255, 71, 87, 0.1);
-            border: 1px solid #ff4757;
-            color: #ff4757;
-            padding: 0.8rem;
-            border-radius: 4px;
-            text-align: center;
-            font-size: 0.85rem;
-            margin: 0.5rem 0;
-          }
-
-          /* Mobile Responsive */
-          @media (max-width: 600px) {
-            .form-row {
-              flex-direction: column;
-              gap: 0.8rem;
-            }
-
-            .comments-header h3 {
-              font-size: 1rem;
-            }
-          }
-
-          .sort-btn {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #999;
-            padding: 0.3rem 0.7rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.78rem;
-            transition: all 0.2s ease;
-          }
-          .sort-btn:hover, .sort-btn.active {
-            background: rgba(229,9,20,0.15);
-            border-color: var(--primary);
-            color: white;
-          }
-        </style>
-
-        <!-- Comment Section HTML -->
-        <div class="comments-section">
-          <div class="comments-header">
-            <h3>Discussion</h3>
-            <div class="comment-stats" id="commentStats">
-              <div class="stat-item">
-                <span class="stat-label">Comments</span>
-                <span class="stat-value" id="totalComments">0</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Rating</span>
-                <span class="stat-value" id="avgRating">0.0</span>
-              </div>
-            </div>
-          </div>
-
-          {% if mongo_connected %}
-          <!-- Toggleable Comment Form -->
-          <div class="comment-form-toggle" onclick="toggleCommentForm()">
-            <span class="toggle-text">Add your comment...</span>
-            <span class="toggle-icon">+</span>
-          </div>
-
-          <!-- Comment Form -->
-          <div class="comment-form" id="commentForm">
-            <div class="form-row">
-              <!-- Name field - uniform styling -->
-              <div class="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  id="comment-username"
-                  placeholder="Your name"
-                  maxlength="50"
-                />
-              </div>
-
-              <!-- Rating field - uniform styling with label -->
-              <div class="rating-group">
-                <label>Rate</label>
-                <div class="star-rating-container">
-                  <span style="color: #999; font-size: 0.85rem"></span>
-                  <div class="star-rating" id="starRating">
-                    <input type="radio" name="rating" id="star5" value="5" />
-                    <label for="star5" title="5 stars">★</label>
-                    <input type="radio" name="rating" id="star4" value="4" />
-                    <label for="star4" title="4 stars">★</label>
-                    <input type="radio" name="rating" id="star3" value="3" />
-                    <label for="star3" title="3 stars">★</label>
-                    <input type="radio" name="rating" id="star2" value="2" />
-                    <label for="star2" title="2 stars">★</label>
-                    <input type="radio" name="rating" id="star1" value="1" />
-                    <label for="star1" title="1 star">★</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <textarea
-              class="comment-textarea"
-              id="commentText"
-              placeholder="What did you think about this movie?"
-            ></textarea>
-            <button class="submit-btn" onclick="submitComment()">
-              Post Comment
-            </button>
-          </div>
-
-          <!-- Comment Sort Controls -->
-          <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap;">
-            <span style="color:#999;font-size:0.8rem;align-self:center;">Sort:</span>
-            <button class="sort-btn active" data-sort="newest" onclick="sortComments('newest')">Newest</button>
-            <button class="sort-btn" data-sort="oldest" onclick="sortComments('oldest')">Oldest</button>
-            <button class="sort-btn" data-sort="liked" onclick="sortComments('liked')">Most Liked</button>
-          </div>
-
-          <!-- Comments List -->
-          <div id="commentsList" class="comments-list">
-            <div class="comments-loading">
-              <div class="comment-spinner"></div>
-              <p>Loading comments...</p>
-            </div>
-          </div>
-          {% else %}
-          <div class="error-message">Comments are temporarily unavailable</div>
-          {% endif %}
-        </div>
-
-        <script>
-          const movieId = {{ movie_id }};
-          let currentUsername = '{{ username }}' || localStorage.getItem('commentUsername') || '';
-          let allComments = [];
-          let currentSort = 'newest';
-
-          // Track recently viewed
-          (function trackRecentlyViewed() {
-              const key = 'recently_viewed';
-              const item = { type: 'movie', id: {{ movie_id }}, title: {{ movie['Movie Name']|tojson }}, url: window.location.pathname };
-              let viewed = JSON.parse(localStorage.getItem(key) || '[]');
-              viewed = viewed.filter(v => !(v.type === item.type && v.id === item.id));
-              viewed.unshift(item);
-              if (viewed.length > 10) viewed = viewed.slice(0, 10);
-              localStorage.setItem(key, JSON.stringify(viewed));
-          })();
-
-          // Toggle comment form
-          function toggleCommentForm() {
-              const form = document.getElementById('commentForm');
-              form.classList.toggle('active');
-              document.querySelector('.toggle-icon').textContent =
-                  form.classList.contains('active') ? '−' : '+';
-          }
-
-          // Load username from localStorage
-          document.addEventListener('DOMContentLoaded', function() {
-              const usernameInput = document.getElementById('comment-username');
-              if (usernameInput && currentUsername) {
-                  usernameInput.value = currentUsername;
-              }
-
-              loadComments();
-              loadCommentStats();
-          });
-
-          // Save username when typed
-          document.getElementById('comment-username')?.addEventListener('input', function(e) {
-              localStorage.setItem('commentUsername', e.target.value);
-              currentUsername = e.target.value;
-          });
-
-          function loadComments() {
-              fetch(`/api/comments/${movieId}`)
-                  .then(res => res.json())
-                  .then(comments => {
-                      allComments = comments || [];
-                      displayComments(getSortedComments());
-                  })
-                  .catch(error => {
-                      console.error('Error loading comments:', error);
-                      document.getElementById('commentsList').innerHTML = `
-                          <div class="error-message">
-                              Failed to load comments
-                          </div>
-                      `;
-                  });
-          }
-
-          function getSortedComments() {
-              const sorted = [...allComments];
-              if (currentSort === 'newest') sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-              else if (currentSort === 'oldest') sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-              else if (currentSort === 'liked') sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-              return sorted;
-          }
-
-          function sortComments(order) {
-              currentSort = order;
-              document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === order));
-              displayComments(getSortedComments());
-          }
-
-          function loadCommentStats() {
-              fetch(`/api/comments/${movieId}/stats`)
-                  .then(res => res.json())
-                  .then(stats => {
-                      document.getElementById('totalComments').textContent = stats.total_comments;
-                      document.getElementById('avgRating').textContent = stats.avg_rating?.toFixed(1) || '0.0';
-                  })
-                  .catch(error => console.error('Error loading stats:', error));
-          }
-
-          function displayComments(comments) {
-              const container = document.getElementById('commentsList');
-
-              if (!comments || comments.length === 0) {
-                  container.innerHTML = `
-                      <div class="no-comments">
-                          No comments yet. Be the first to share your thoughts.
-                      </div>
-                  `;
-                  return;
-              }
-
-              container.innerHTML = comments.map(comment => `
-                  <div class="comment-card" data-comment-id="${comment.comment_id}">
-                      <div class="comment-header">
-                          <div class="comment-user">
-                              <div class="user-avatar">
-                                  ${(comment.username || 'A').charAt(0).toUpperCase()}
-                              </div>
-                              <span class="username">${escapeHtml(comment.username || 'Anonymous')}</span>
-                          </div>
-                          <div class="comment-date">
-                              ${formatDate(comment.created_at)}
-                          </div>
-                      </div>
-
-                      <div class="comment-rating">
-                          ${'★'.repeat(comment.rating)}${'☆'.repeat(5 - comment.rating)}
-                      </div>
-
-                      <div class="comment-text">
-                          ${escapeHtml(comment.text)}
-                      </div>
-
-                      <div class="comment-footer">
-                          <button class="like-btn ${localStorage.getItem(`liked_${comment.comment_id}`) ? 'liked' : ''}"
-                                  onclick="likeComment('${comment.comment_id}')">
-                              <span>👍</span>
-                              <span class="likes-count">${comment.likes || 0}</span>
-                          </button>
-                          <button class="like-btn" onclick="toggleReplyBox('${comment.comment_id}')">↩ Reply</button>
-                          ${(comment.username || 'Anonymous') === currentUsername ? `
-                              <button class="delete-btn" onclick="deleteComment('${comment.comment_id}')">
-                                  Delete
-                              </button>
-                          ` : ''}
-                      </div>
-                      <div id="reply-box-${comment.comment_id}" style="display:none;margin-top:0.6rem;">
-                        <div style="display:flex;gap:0.5rem;">
-                          <input type="text" placeholder="Write a reply..." id="reply-input-${comment.comment_id}"
-                            style="flex:1;padding:0.4rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;font-size:0.85rem;" />
-                          <button onclick="submitReply('${comment.comment_id}')"
-                            style="padding:0.4rem 0.8rem;background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.82rem;">Post</button>
-                        </div>
-                        <div id="replies-${comment.comment_id}" style="margin-top:0.5rem;">
-                          ${(comment.replies||[]).map(r=>`
-                            <div style="background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;">
-                              <span style="font-weight:600;font-size:0.82rem;color:#ccc;">${escapeHtml(r.username)}</span>
-                              <span style="color:#888;font-size:0.75rem;margin-left:0.5rem;">${r.created_at?r.created_at.slice(0,10):''}</span>
-                              <div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${escapeHtml(r.text)}</div>
-                            </div>`).join('')}
-                        </div>
-                      </div>
-                  </div>
-              `).join('');
-          }
-
-          function submitComment() {
-              const username = document.getElementById('comment-username').value.trim() || 'Anonymous';
-              const text = document.getElementById('commentText').value.trim();
-              const rating = document.querySelector('input[name="rating"]:checked')?.value;
-
-              if (!text) {
-                  alert('Please enter a comment');
-                  return;
-              }
-
-              if (!rating) {
-                  alert('Please select a rating');
-                  return;
-              }
-
-              const submitBtn = document.querySelector('.submit-btn');
-              submitBtn.disabled = true;
-              submitBtn.textContent = 'Posting...';
-
-              fetch('/api/comments', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                      id: movieId,
-                      username: username,
-                      text: text,
-                      rating: parseInt(rating)
-                  })
-              })
-              .then(res => res.json())
-              .then(data => {
-                  if (data.error) {
-                      alert(data.error);
-                  } else {
-                      document.getElementById('commentText').value = '';
-                      document.querySelector('input[name="rating"]:checked').checked = false;
-                      document.getElementById('commentForm').classList.remove('active');
-                      document.querySelector('.toggle-icon').textContent = '+';
-
-                      loadComments();
-                      loadCommentStats();
-                  }
-              })
-              .catch(error => {
-                  console.error('Error posting comment:', error);
-                  alert('Failed to post comment');
-              })
-              .finally(() => {
-                  submitBtn.disabled = false;
-                  submitBtn.textContent = 'Post Comment';
-              });
-          }
-
-          function likeComment(commentId) {
-              const likeBtn = document.querySelector(`[data-comment-id="${commentId}"] .like-btn`);
-              const wasLiked = localStorage.getItem(`liked_${commentId}`);
-
-              if (wasLiked) return;
-
-              fetch(`/api/comments/${commentId}/like`, { method: 'POST' })
-                  .then(res => res.json())
-                  .then(data => {
-                      if (data.likes !== undefined) {
-                          likeBtn.querySelector('.likes-count').textContent = data.likes;
-                          likeBtn.classList.add('liked');
-                          localStorage.setItem(`liked_${commentId}`, 'true');
-                      }
-                  })
-                  .catch(error => console.error('Error liking comment:', error));
-          }
-
-          function deleteComment(commentId) {
-              if (!confirm('Delete this comment?')) return;
-
-              fetch(`/api/comments/${commentId}?username=${encodeURIComponent(currentUsername || 'Anonymous')}`, {
-                  method: 'DELETE'
-              })
-              .then(res => res.json())
-              .then(data => {
-                  if (data.success) {
-                      document.querySelector(`[data-comment-id="${commentId}"]`).remove();
-                      loadCommentStats();
-                  } else {
-                      alert('Failed to delete comment');
-                  }
-              })
-              .catch(error => console.error('Error deleting comment:', error));
-          }
-
-          function toggleReplyBox(commentId) {
-              const box = document.getElementById('reply-box-' + commentId);
-              box.style.display = box.style.display === 'none' ? 'block' : 'none';
-          }
-
-          function submitReply(commentId) {
-              const input = document.getElementById('reply-input-' + commentId);
-              const text = input.value.trim();
-              if (!text) return;
-              fetch(`/api/comments/${commentId}/reply`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ text, username: currentUsername || 'Anonymous' })
-              })
-              .then(r => r.json())
-              .then(reply => {
-                  if (reply.error) { alert(reply.error); return; }
-                  input.value = '';
-                  const container = document.getElementById('replies-' + commentId);
-                  const div = document.createElement('div');
-                  div.style.cssText = 'background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;';
-                  div.innerHTML = `<span style="font-weight:600;font-size:0.82rem;color:#ccc;">${reply.username}</span><div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${reply.text}</div>`;
-                  container.appendChild(div);
-              });
-          }
-
-          function escapeHtml(unsafe) {
-              if (!unsafe) return '';
-              return unsafe
-                  .replace(/&/g, "&amp;")
-                  .replace(/</g, "&lt;")
-                  .replace(/>/g, "&gt;")
-                  .replace(/"/g, "&quot;")
-                  .replace(/'/g, "&#039;");
-          }
-
-          function formatDate(dateString) {
-              const date = new Date(dateString);
-              const now = new Date();
-              const diffMins = Math.floor((now - date) / 60000);
-
-              if (diffMins < 1) return 'Just now';
-              if (diffMins < 60) return `${diffMins}m ago`;
-              if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-              if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
-
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          }
-
-          function shareItem() {
-              if (navigator.share) {
-                  navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
-              } else {
-                  navigator.clipboard.writeText(window.location.href)
-                      .then(() => {
-                          const btn = document.getElementById('share-movie-btn');
-                          btn.querySelector('span').textContent = 'Copied!';
-                          setTimeout(() => btn.querySelector('span').textContent = 'Share', 2000);
-                      })
-                      .catch(() => prompt('Copy this link:', window.location.href));
-              }
-          }
-        </script>
-        <a href="/" class="back-link">⬅ Back to Search</a>
-      </div>
-    </div>
-
-    <script>
-      const movieName =
-        "{{ movie['Movie Name'] }} {{ movie['Genre'] }} movie - official trailer";
-      const API_KEYS = ["{{ api_key_1 }}", "{{ api_key_2 }}"];
-      let currentKeyIndex = 0;
-
-      function fetchTrailerWithKey() {
-        if (currentKeyIndex >= API_KEYS.length) {
-          document.getElementById("trailer-container").innerHTML =
-            "<p style='text-align:center; color:var(--primary);'>Trailer could not be loaded.</p>";
-          return;
-        }
-
-        const currentKey = API_KEYS[currentKeyIndex];
-
-        fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
-            movieName,
-          )}&key=${currentKey}&maxResults=1&type=video`,
-        )
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-          })
-          .then((data) => {
-            if (data?.items?.length > 0) {
-              const videoId = data.items[0].id.videoId;
-              const thumbnail = data.items[0].snippet.thumbnails.high.url;
-
-              document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${thumbnail}')`;
-
-              document.getElementById("trailer-container").innerHTML = `
-            <div class="trailer-thumbnail"
-                 style="background-image:url('${thumbnail}')"
-                 onclick="playTrailer('${videoId}')">
-            </div>
-          `;
-            } else {
-              throw new Error("No items found in response");
-            }
-          })
-          .catch((err) => {
-            console.error("Error with key:", currentKey, err);
-            currentKeyIndex++;
-            fetchTrailerWithKey();
-          });
-      }
-
-      function playTrailer(videoId) {
-        document.getElementById("trailer-container").innerHTML = `
-      <iframe width="560" height="315"
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
-          frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen>
-      </iframe>
-    `;
-      }
-
-      // Start fetching trailer with first API key
-      fetchTrailerWithKey();
-    </script>
-    <script>
-      // Save Manager WITHOUT expiry
-      const SaveManager = {
-          storageKey: 'saved_movies',
-
-          // Get all saved items
-          getSavedItems() {
-              const data = localStorage.getItem(this.storageKey);
-              if (!data) return [];
-
-              try {
-                  const parsed = JSON.parse(data);
-                  return parsed.items || [];
-              } catch {
-                  this.clear();
-                  return [];
-              }
-          },
-
-          // Save item
-          saveItem(item) {
-              const items = this.getSavedItems();
-              const itemId = `${item.type}_${item.id}`;
-              const existingIndex = items.findIndex(i => i.itemId === itemId);
-
-              if (existingIndex === -1) {
-                  // Add new item
-                  items.push({
-                      itemId: itemId,
-                      type: item.type,
-                      id: item.id,
-                      title: item.title,
-                      data: item.data,
-                      savedAt: new Date().toISOString()
-                  });
-                  this.saveAll(items);
-                  return true; // Added
-              } else {
-                  // Remove item
-                  items.splice(existingIndex, 1);
-                  this.saveAll(items);
-                  return false; // Removed
-              }
-          },
-
-          // Save all items
-          saveAll(items) {
-              const data = {
-                  items: items,
-                  lastUpdated: new Date().toISOString()
-              };
-
-              localStorage.setItem(this.storageKey, JSON.stringify(data));
-              this.updateUI();
-          },
-
-          // Clear all saved items
-          clear() {
-              localStorage.removeItem(this.storageKey);
-              this.updateUI();
-          },
-
-          // Check if item is saved
-          isSaved(itemType, itemId) {
-              const items = this.getSavedItems();
-              const itemIdStr = `${itemType}_${itemId}`;
-              return items.some(item => item.itemId === itemIdStr);
-          },
-
-          // Update UI elements
-          updateUI() {
-              const items = this.getSavedItems();
-
-              // Update counter
-              document.getElementById('saved-count').textContent = items.length;
-
-              // Update current movie's heart button if on movie page
-              const movieId = {{ movie.get('ID', 0) }};
-              if (movieId) {
-                  const isSaved = this.isSaved('movie', movieId);
-                  const btn = document.getElementById('save-movie-btn');
-                  const text = document.getElementById('save-text');
-
-                  btn.classList.toggle('saved', isSaved);
-                  text.textContent = isSaved ? 'Saved' : 'Save';
-              }
-          }
-      };
-
-      // Initialize when page loads
-      document.addEventListener('DOMContentLoaded', function() {
-          // Initialize save manager
-          SaveManager.updateUI();
-
-          // Add click handler for save button
-          const saveBtn = document.getElementById('save-movie-btn');
-          if (saveBtn) {
-              saveBtn.addEventListener('click', function() {
-                  const movieId = {{ movie.get('ID', 0) }};
-                  const movieTitle = "{{ movie['Movie Name'] }}";
-                  const movieData = {
-                      rating: "{{ movie['Rating'] }}",
-                      genre: "{{ movie['Genre'] }}",
-                      year: "{{ movie.get('Year', 'N/A') }}"
-                  };
-
-                  const wasAdded = SaveManager.saveItem({
-                      type: 'movie',
-                      id: movieId,
-                      title: movieTitle,
-                      data: movieData
-                  });
-
-                  // Visual feedback
-                  const txt = this.querySelector('span');
-                  txt.style.transform = 'scale(1.2)';
-                  setTimeout(() => { txt.style.transform = 'scale(1)'; }, 300);
-              });
-          }
+        <div class="saved-counter">
+          <button id="saved-count" class="view-saved-btn" onclick="viewSaved()">
+            0
+          </button>
+        </div>
+
+        <!-- Trailer will be inserted here -->
+        <div id="trailer-container" class="trailer-container"></div>
+
+        <!-- Seen It Widget -->
+        <div style="text-align:center;margin:1rem 0;">
+          <p style="color:#999;font-size:0.85rem;margin-bottom:0.5rem;">Have you seen this movie?</p>
+          <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button id="seen-yes-btn" onclick="voteSeenIt('yes')" style="background:rgba(46,213,115,0.2);color:#2ed573;border:1px solid #2ed573;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Yes ✓</button>
+            <button id="seen-no-btn" onclick="voteSeenIt('no')" style="background:rgba(255,71,87,0.2);color:#ff4757;border:1px solid #ff4757;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Not Yet</button>
+          </div>
+          <p id="seen-count" style="color:#888;font-size:0.78rem;margin-top:0.4rem;">Loading votes...</p>
+        </div>
+
+        <div class="movie-info">
+          <p><strong>Rating:</strong> <span>{{ movie["Rating"] }}</span></p>
+          <p><strong>Genre:</strong> <span>{{ movie["Genre"] }}</span></p>
+          <p>
+            <strong>Directors:</strong>
+            <span>{% for d in movie["Directors"].strip("[]").replace("'","").split(",") %}<a href="/director/{{ d.strip() }}" style="color:#e50914;text-decoration:none;">{{ d.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+          </p>
+          <p><strong>Stars:</strong>
+            <span>{% for s in movie["Stars"].strip("[]").replace("'","").split(",") %}<a href="/actor/{{ s.strip() }}" style="color:#5799ef;text-decoration:none;">{{ s.strip() }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+          </p>
+          <p>
+            <strong>Release Year:</strong>
+            <span>{{ movie.get("Year", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Runtime:</strong>
+            <span>{{ movie.get("Runtime", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Language:</strong>
+            <span>{{ movie.get("Language", "N/A") }}</span>
+          </p>
+          <p>
+            <strong>Plot:</strong>
+            <span>{{ movie.get("Plot", "Plot not available.") }}</span>
+          </p>
+        </div>
+
+        <!-- Related Movies Section -->
+        <div class="related-movies">
+          <h3>More {{ movie["Genre"] }} Movies</h3>
+          <ul class="related-movies-list">
+            {% for m in related_movies %}
+            <li>
+              <a href="/movie/{{ m['ID'] }}"> {{ m['Movie Name'] }} </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        <!-- Comment Section CSS - Professional & Compact -->
+        <style>
+          .comments-section {
+            margin-top: 2rem;
+            border-top: 1px solid rgba(229, 9, 20, 0.2);
+            font-family: "Segoe UI", Roboto, sans-serif;
+          }
+
+          /* Compact Header */
+          .comments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0 0.5rem;
+          }
+
+          .comments-header h3 {
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 0.3px;
+          }
+
+          .comment-stats {
+            display: flex;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+          }
+
+          .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.85rem;
+          }
+
+          .stat-label {
+            color: #999;
+          }
+
+          .stat-value {
+            color: var(--primary);
+            font-weight: 600;
+          }
+
+          /* Toggle Button - Professional */
+          .comment-form-toggle {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 0.6rem 1rem;
+            margin: 0.5rem 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+
+          .comment-form-toggle:hover {
+            background: rgba(229, 9, 20, 0.1);
+            border-color: var(--primary);
+          }
+
+          .toggle-text {
+            color: #ccc;
+            font-size: 0.9rem;
+          }
+
+          .toggle-icon {
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: 400;
+          }
+
+          /* Comment Form */
+          .comment-form {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: none;
+          }
+
+          .comment-form.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+          }
+
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
+
+          /* Form Layout - Uniform styling for all form groups */
+          .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+          }
+
+          .form-group {
+            flex: 1;
+            min-width: 200px;
+          }
+
+          .form-group label,
+          .rating-group label {
+            display: block;
+            color: #999;
+            font-size: 0.8rem;
+            margin-bottom: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .form-group input,
+          .rating-group .star-rating-container {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9rem;
+          }
+
+          .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+          }
+
+          /* Rating group with uniform styling */
+          .rating-group {
+            flex: 1;
+            min-width: 200px;
+          }
+
+          .star-rating-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 0.3rem 0.8rem;
+            height: 38px; /* Match input height */
+          }
+
+          .star-rating {
+            display: inline-flex;
+            flex-direction: row-reverse;
+            gap: 0.2rem;
+            margin-left: auto;
+          }
+
+          .star-rating input {
+            display: none;
+          }
+
+          .star-rating label {
+            font-size: 1.2rem;
+            color: #444;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            margin-bottom: 0;
+            text-transform: none;
+            letter-spacing: normal;
+          }
+
+          .star-rating label:hover,
+          .star-rating label:hover ~ label,
+          .star-rating input:checked ~ label {
+            color: #ffc107;
+          }
+
+          .comment-textarea {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9rem;
+            min-height: 80px;
+            resize: vertical;
+            margin-bottom: 1rem;
+          }
+
+          .submit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+          }
+
+          .submit-btn:hover:not(:disabled) {
+            background: #f40612;
+          }
+
+          .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          /* Comments List */
+          .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(0, 0, 0, 0.2);
+          }
+
+          .comments-list::-webkit-scrollbar {
+            width: 4px;
+          }
+
+          .comments-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+          }
+
+          .comments-list::-webkit-scrollbar-thumb {
+            background-color: var(--primary);
+            border-radius: 2px;
+          }
+
+          .comment-card {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            padding: 1rem;
+            border-left: 2px solid var(--primary);
+            transition: background 0.2s ease;
+          }
+
+          .comment-card:hover {
+            background: rgba(229, 9, 20, 0.05);
+          }
+
+          .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+          }
+
+          .comment-user {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+
+          .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            color: white;
+            font-size: 0.8rem;
+          }
+
+          .username {
+            font-weight: 500;
+            color: white;
+            font-size: 0.9rem;
+          }
+
+          .comment-date {
+            color: #888;
+            font-size: 0.75rem;
+          }
+
+          .comment-rating {
+            color: #ffc107;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .comment-text {
+            color: #ddd;
+            line-height: 1.5;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            word-break: break-word;
+          }
+
+          .comment-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+          }
+
+          .like-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+          }
+
+          .like-btn:hover {
+            background: rgba(229, 9, 20, 0.1);
+            color: var(--primary);
+          }
+
+          .like-btn.liked {
+            color: var(--primary);
+          }
+
+          .delete-btn {
+            background: none;
+            border: none;
+            color: #ff4757;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            opacity: 0.7;
+            transition: all 0.2s ease;
+          }
+
+          .delete-btn:hover {
+            opacity: 1;
+            background: rgba(255, 71, 87, 0.1);
+          }
+
+          /* Loading & Empty States */
+          .comments-loading,
+          .no-comments {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+            font-size: 0.9rem;
+          }
+
+          .comment-spinner {
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(229, 9, 20, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.5rem;
+          }
+
+          .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            color: #ff4757;
+            padding: 0.8rem;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.85rem;
+            margin: 0.5rem 0;
+          }
+
+          /* Mobile Responsive */
+          @media (max-width: 600px) {
+            .form-row {
+              flex-direction: column;
+              gap: 0.8rem;
+            }
+
+            .comments-header h3 {
+              font-size: 1rem;
+            }
+          }
+
+          .sort-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #999;
+            padding: 0.3rem 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            transition: all 0.2s ease;
+          }
+          .sort-btn:hover, .sort-btn.active {
+            background: rgba(229,9,20,0.15);
+            border-color: var(--primary);
+            color: white;
+          }
+        </style>
+
+        <!-- Comment Section HTML -->
+        <div class="comments-section">
+          <div class="comments-header">
+            <h3>Discussion</h3>
+            <div class="comment-stats" id="commentStats">
+              <div class="stat-item">
+                <span class="stat-label">Comments</span>
+                <span class="stat-value" id="totalComments">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Rating</span>
+                <span class="stat-value" id="avgRating">0.0</span>
+              </div>
+            </div>
+          </div>
+
+          {% if mongo_connected %}
+          <!-- Toggleable Comment Form -->
+          <div class="comment-form-toggle" onclick="toggleCommentForm()">
+            <span class="toggle-text">Add your comment...</span>
+            <span class="toggle-icon">+</span>
+          </div>
+
+          <!-- Comment Form -->
+          <div class="comment-form" id="commentForm">
+            <div class="form-row">
+              <!-- Name field - uniform styling -->
+              <div class="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  id="comment-username"
+                  placeholder="Your name"
+                  maxlength="50"
+                />
+              </div>
+
+              <!-- Rating field - uniform styling with label -->
+              <div class="rating-group">
+                <label>Rate</label>
+                <div class="star-rating-container">
+                  <span style="color: #999; font-size: 0.85rem"></span>
+                  <div class="star-rating" id="starRating">
+                    <input type="radio" name="rating" id="star5" value="5" />
+                    <label for="star5" title="5 stars">★</label>
+                    <input type="radio" name="rating" id="star4" value="4" />
+                    <label for="star4" title="4 stars">★</label>
+                    <input type="radio" name="rating" id="star3" value="3" />
+                    <label for="star3" title="3 stars">★</label>
+                    <input type="radio" name="rating" id="star2" value="2" />
+                    <label for="star2" title="2 stars">★</label>
+                    <input type="radio" name="rating" id="star1" value="1" />
+                    <label for="star1" title="1 star">★</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <textarea
+              class="comment-textarea"
+              id="commentText"
+              placeholder="What did you think about this movie?"
+            ></textarea>
+            <button class="submit-btn" onclick="submitComment()">
+              Post Comment
+            </button>
+          </div>
+
+          <!-- Comment Sort Controls -->
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+            <span style="color:#999;font-size:0.8rem;align-self:center;">Sort:</span>
+            <button class="sort-btn active" data-sort="newest" onclick="sortComments('newest')">Newest</button>
+            <button class="sort-btn" data-sort="oldest" onclick="sortComments('oldest')">Oldest</button>
+            <button class="sort-btn" data-sort="liked" onclick="sortComments('liked')">Most Liked</button>
+          </div>
+
+          <!-- Comments List -->
+          <div id="commentsList" class="comments-list">
+            <div class="comments-loading">
+              <div class="comment-spinner"></div>
+              <p>Loading comments...</p>
+            </div>
+          </div>
+          {% else %}
+          <div class="error-message">Comments are temporarily unavailable</div>
+          {% endif %}
+        </div>
+
+        <script>
+          const movieId = {{ movie_id }};
+          let currentUsername = '{{ username }}' || localStorage.getItem('commentUsername') || '';
+          let allComments = [];
+          let currentSort = 'newest';
+
+          // Track recently viewed
+          (function trackRecentlyViewed() {
+              const key = 'recently_viewed';
+              const item = { type: 'movie', id: {{ movie_id }}, title: {{ movie['Movie Name']|tojson }}, url: window.location.pathname };
+              let viewed = JSON.parse(localStorage.getItem(key) || '[]');
+              viewed = viewed.filter(v => !(v.type === item.type && v.id === item.id));
+              viewed.unshift(item);
+              if (viewed.length > 10) viewed = viewed.slice(0, 10);
+              localStorage.setItem(key, JSON.stringify(viewed));
+          })();
+
+          // Toggle comment form
+          function toggleCommentForm() {
+              const form = document.getElementById('commentForm');
+              form.classList.toggle('active');
+              document.querySelector('.toggle-icon').textContent =
+                  form.classList.contains('active') ? '−' : '+';
+          }
+
+          // Load username from localStorage
+          document.addEventListener('DOMContentLoaded', function() {
+              const usernameInput = document.getElementById('comment-username');
+              if (usernameInput && currentUsername) {
+                  usernameInput.value = currentUsername;
+              }
+
+              loadComments();
+              loadCommentStats();
+          });
+
+          // Save username when typed
+          document.getElementById('comment-username')?.addEventListener('input', function(e) {
+              localStorage.setItem('commentUsername', e.target.value);
+              currentUsername = e.target.value;
+          });
+
+          function loadComments() {
+              fetch(`/api/comments/${movieId}`)
+                  .then(res => res.json())
+                  .then(comments => {
+                      allComments = comments || [];
+                      displayComments(getSortedComments());
+                  })
+                  .catch(error => {
+                      console.error('Error loading comments:', error);
+                      document.getElementById('commentsList').innerHTML = `
+                          <div class="error-message">
+                              Failed to load comments
+                          </div>
+                      `;
+                  });
+          }
+
+          function getSortedComments() {
+              const sorted = [...allComments];
+              if (currentSort === 'newest') sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              else if (currentSort === 'oldest') sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+              else if (currentSort === 'liked') sorted.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+              return sorted;
+          }
+
+          function sortComments(order) {
+              currentSort = order;
+              document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === order));
+              displayComments(getSortedComments());
+          }
+
+          function loadCommentStats() {
+              fetch(`/api/comments/${movieId}/stats`)
+                  .then(res => res.json())
+                  .then(stats => {
+                      document.getElementById('totalComments').textContent = stats.total_comments;
+                      document.getElementById('avgRating').textContent = stats.avg_rating?.toFixed(1) || '0.0';
+                  })
+                  .catch(error => console.error('Error loading stats:', error));
+          }
+
+          function displayComments(comments) {
+              const container = document.getElementById('commentsList');
+
+              if (!comments || comments.length === 0) {
+                  container.innerHTML = `
+                      <div class="no-comments">
+                          No comments yet. Be the first to share your thoughts.
+                      </div>
+                  `;
+                  return;
+              }
+
+              container.innerHTML = comments.map(comment => `
+                  <div class="comment-card" data-comment-id="${comment.comment_id}">
+                      <div class="comment-header">
+                          <div class="comment-user">
+                              <div class="user-avatar">
+                                  ${(comment.username || 'A').charAt(0).toUpperCase()}
+                              </div>
+                              <span class="username">${escapeHtml(comment.username || 'Anonymous')}</span>
+                          </div>
+                          <div class="comment-date">
+                              ${formatDate(comment.created_at)}
+                          </div>
+                      </div>
+
+                      <div class="comment-rating">
+                          ${'★'.repeat(comment.rating)}${'☆'.repeat(5 - comment.rating)}
+                      </div>
+
+                      <div class="comment-text">
+                          ${escapeHtml(comment.text)}
+                      </div>
+
+                      <div class="comment-footer">
+                          <button class="like-btn ${localStorage.getItem(`liked_${comment.comment_id}`) ? 'liked' : ''}"
+                                  onclick="likeComment('${comment.comment_id}')">
+                              <span>👍</span>
+                              <span class="likes-count">${comment.likes || 0}</span>
+                          </button>
+                          <button class="like-btn" onclick="toggleReplyBox('${comment.comment_id}')">↩ Reply</button>
+                          ${(comment.username || 'Anonymous') === currentUsername ? `
+                              <button class="delete-btn" onclick="deleteComment('${comment.comment_id}')">
+                                  Delete
+                              </button>
+                          ` : ''}
+                      </div>
+                      <div id="reply-box-${comment.comment_id}" style="display:none;margin-top:0.6rem;">
+                        <div style="display:flex;gap:0.5rem;">
+                          <input type="text" placeholder="Write a reply..." id="reply-input-${comment.comment_id}"
+                            style="flex:1;padding:0.4rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;font-size:0.85rem;" />
+                          <button onclick="submitReply('${comment.comment_id}')"
+                            style="padding:0.4rem 0.8rem;background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.82rem;">Post</button>
+                        </div>
+                        <div id="replies-${comment.comment_id}" style="margin-top:0.5rem;">
+                          ${(comment.replies||[]).map(r=>`
+                            <div style="background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;">
+                              <span style="font-weight:600;font-size:0.82rem;color:#ccc;">${escapeHtml(r.username)}</span>
+                              <span style="color:#888;font-size:0.75rem;margin-left:0.5rem;">${r.created_at?r.created_at.slice(0,10):''}</span>
+                              <div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${escapeHtml(r.text)}</div>
+                            </div>`).join('')}
+                        </div>
+                      </div>
+                  </div>
+              `).join('');
+          }
+
+          function submitComment() {
+              const username = document.getElementById('comment-username').value.trim() || 'Anonymous';
+              const text = document.getElementById('commentText').value.trim();
+              const rating = document.querySelector('input[name="rating"]:checked')?.value;
+
+              if (!text) {
+                  alert('Please enter a comment');
+                  return;
+              }
+
+              if (!rating) {
+                  alert('Please select a rating');
+                  return;
+              }
+
+              const submitBtn = document.querySelector('.submit-btn');
+              submitBtn.disabled = true;
+              submitBtn.textContent = 'Posting...';
+
+              fetch('/api/comments', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      id: movieId,
+                      username: username,
+                      text: text,
+                      rating: parseInt(rating)
+                  })
+              })
+              .then(res => res.json())
+              .then(data => {
+                  if (data.error) {
+                      alert(data.error);
+                  } else {
+                      document.getElementById('commentText').value = '';
+                      document.querySelector('input[name="rating"]:checked').checked = false;
+                      document.getElementById('commentForm').classList.remove('active');
+                      document.querySelector('.toggle-icon').textContent = '+';
+
+                      loadComments();
+                      loadCommentStats();
+                  }
+              })
+              .catch(error => {
+                  console.error('Error posting comment:', error);
+                  alert('Failed to post comment');
+              })
+              .finally(() => {
+                  submitBtn.disabled = false;
+                  submitBtn.textContent = 'Post Comment';
+              });
+          }
+
+          function likeComment(commentId) {
+              const likeBtn = document.querySelector(`[data-comment-id="${commentId}"] .like-btn`);
+              const wasLiked = localStorage.getItem(`liked_${commentId}`);
+
+              if (wasLiked) return;
+
+              fetch(`/api/comments/${commentId}/like`, { method: 'POST' })
+                  .then(res => res.json())
+                  .then(data => {
+                      if (data.likes !== undefined) {
+                          likeBtn.querySelector('.likes-count').textContent = data.likes;
+                          likeBtn.classList.add('liked');
+                          localStorage.setItem(`liked_${commentId}`, 'true');
+                      }
+                  })
+                  .catch(error => console.error('Error liking comment:', error));
+          }
+
+          function deleteComment(commentId) {
+              if (!confirm('Delete this comment?')) return;
+
+              fetch(`/api/comments/${commentId}?username=${encodeURIComponent(currentUsername || 'Anonymous')}`, {
+                  method: 'DELETE'
+              })
+              .then(res => res.json())
+              .then(data => {
+                  if (data.success) {
+                      document.querySelector(`[data-comment-id="${commentId}"]`).remove();
+                      loadCommentStats();
+                  } else {
+                      alert('Failed to delete comment');
+                  }
+              })
+              .catch(error => console.error('Error deleting comment:', error));
+          }
+
+          function toggleReplyBox(commentId) {
+              const box = document.getElementById('reply-box-' + commentId);
+              box.style.display = box.style.display === 'none' ? 'block' : 'none';
+          }
+
+          function submitReply(commentId) {
+              const input = document.getElementById('reply-input-' + commentId);
+              const text = input.value.trim();
+              if (!text) return;
+              fetch(`/api/comments/${commentId}/reply`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text, username: currentUsername || 'Anonymous' })
+              })
+              .then(r => r.json())
+              .then(reply => {
+                  if (reply.error) { alert(reply.error); return; }
+                  input.value = '';
+                  const container = document.getElementById('replies-' + commentId);
+                  const div = document.createElement('div');
+                  div.style.cssText = 'background:rgba(255,255,255,0.03);border-left:2px solid rgba(229,9,20,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;';
+                  div.innerHTML = `<span style="font-weight:600;font-size:0.82rem;color:#ccc;">${reply.username}</span><div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${reply.text}</div>`;
+                  container.appendChild(div);
+              });
+          }
+
+          function escapeHtml(unsafe) {
+              if (!unsafe) return '';
+              return unsafe
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+          }
+
+          function formatDate(dateString) {
+              const date = new Date(dateString);
+              const now = new Date();
+              const diffMins = Math.floor((now - date) / 60000);
+
+              if (diffMins < 1) return 'Just now';
+              if (diffMins < 60) return `${diffMins}m ago`;
+              if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+              if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
+
+              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }
+
+          function shareItem() {
+              if (navigator.share) {
+                  navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
+              } else {
+                  navigator.clipboard.writeText(window.location.href)
+                      .then(() => {
+                          const btn = document.getElementById('share-movie-btn');
+                          btn.querySelector('span').textContent = 'Copied!';
+                          setTimeout(() => btn.querySelector('span').textContent = 'Share', 2000);
+                      })
+                      .catch(() => prompt('Copy this link:', window.location.href));
+              }
+          }
+        </script>
+        <a href="/" class="back-link">⬅ Back to Search</a>
+      </div>
+    </div>
+
+    <script>
+      const movieName =
+        "{{ movie['Movie Name'] }} {{ movie['Genre'] }} movie - official trailer";
+      const API_KEYS = ["{{ api_key_1 }}", "{{ api_key_2 }}"];
+      let currentKeyIndex = 0;
+
+      function fetchTrailerWithKey() {
+        if (currentKeyIndex >= API_KEYS.length) {
+          document.getElementById("trailer-container").innerHTML =
+            "<p style='text-align:center; color:var(--primary);'>Trailer could not be loaded.</p>";
+          return;
+        }
+
+        const currentKey = API_KEYS[currentKeyIndex];
+
+        fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(
+            movieName,
+          )}&key=${currentKey}&maxResults=1&type=video`,
+        )
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data?.items?.length > 0) {
+              const videoId = data.items[0].id.videoId;
+              const thumbnail = data.items[0].snippet.thumbnails.high.url;
+
+              document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${thumbnail}')`;
+
+              document.getElementById("trailer-container").innerHTML = `
+            <div class="trailer-thumbnail"
+                 style="background-image:url('${thumbnail}')"
+                 onclick="playTrailer('${videoId}')">
+            </div>
+          `;
+            } else {
+              throw new Error("No items found in response");
+            }
+          })
+          .catch((err) => {
+            console.error("Error with key:", currentKey, err);
+            currentKeyIndex++;
+            fetchTrailerWithKey();
+          });
+      }
+
+      function playTrailer(videoId) {
+        document.getElementById("trailer-container").innerHTML = `
+      <iframe width="560" height="315"
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
+          frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+      </iframe>
+    `;
+      }
+
+      // Start fetching trailer with first API key
+      fetchTrailerWithKey();
+    </script>
+    <script>
+      // Save Manager WITHOUT expiry
+      const SaveManager = {
+          storageKey: 'saved_movies',
+
+          // Get all saved items
+          getSavedItems() {
+              const data = localStorage.getItem(this.storageKey);
+              if (!data) return [];
+
+              try {
+                  const parsed = JSON.parse(data);
+                  return parsed.items || [];
+              } catch {
+                  this.clear();
+                  return [];
+              }
+          },
+
+          // Save item
+          saveItem(item) {
+              const items = this.getSavedItems();
+              const itemId = `${item.type}_${item.id}`;
+              const existingIndex = items.findIndex(i => i.itemId === itemId);
+
+              if (existingIndex === -1) {
+                  // Add new item
+                  items.push({
+                      itemId: itemId,
+                      type: item.type,
+                      id: item.id,
+                      title: item.title,
+                      data: item.data,
+                      savedAt: new Date().toISOString()
+                  });
+                  this.saveAll(items);
+                  return true; // Added
+              } else {
+                  // Remove item
+                  items.splice(existingIndex, 1);
+                  this.saveAll(items);
+                  return false; // Removed
+              }
+          },
+
+          // Save all items
+          saveAll(items) {
+              const data = {
+                  items: items,
+                  lastUpdated: new Date().toISOString()
+              };
+
+              localStorage.setItem(this.storageKey, JSON.stringify(data));
+              this.updateUI();
+          },
+
+          // Clear all saved items
+          clear() {
+              localStorage.removeItem(this.storageKey);
+              this.updateUI();
+          },
+
+          // Check if item is saved
+          isSaved(itemType, itemId) {
+              const items = this.getSavedItems();
+              const itemIdStr = `${itemType}_${itemId}`;
+              return items.some(item => item.itemId === itemIdStr);
+          },
+
+          // Update UI elements
+          updateUI() {
+              const items = this.getSavedItems();
+
+              // Update counter
+              document.getElementById('saved-count').textContent = items.length;
+
+              // Update current movie's heart button if on movie page
+              const movieId = {{ movie.get('ID', 0) }};
+              if (movieId) {
+                  const isSaved = this.isSaved('movie', movieId);
+                  const btn = document.getElementById('save-movie-btn');
+                  const text = document.getElementById('save-text');
+
+                  btn.classList.toggle('saved', isSaved);
+                  text.textContent = isSaved ? 'Saved' : 'Save';
+              }
+          }
+      };
+
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+          // Initialize save manager
+          SaveManager.updateUI();
+
+          // save-movie-btn now uses inline onclick via saveMovie()
       });
-
-      // View saved items
-      function viewSaved() {
-          const items = SaveManager.getSavedItems();
-
-          if (items.length === 0) {
-              return;
-          }
-
-          // Create modal
-          const modal = document.createElement('div');
-          modal.style.cssText = `
-              position: fixed;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: rgba(0,0,0,0.9);
-              z-index: 2000;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              padding: 2rem;
-              overflow-y: auto;
-          `;
-
-          // Filter movies only
-          const movieItems = items.filter(item => item.type === 'movie');
-
-          modal.innerHTML = `
-              <div style="max-width: 800px; width: 100%;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                      <h2 style="color: white; margin: 0;">
-                          Saved Movies (${movieItems.length})
-                      </h2>
-                      <button onclick="this.parentElement.parentElement.parentElement.remove()"
-                              style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">
-                          ×
-                      </button>
-                  </div>
-
-                  <div id="saved-movies-list" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
-                      ${movieItems.map(item => `
-                          <div style="background: var(--card-bg); border-radius: 8px; padding: 1rem; border-left: 4px solid var(--primary);">
-                              <h4 style="color: white; margin: 0 0 10px 0;">${item.title}</h4>
-                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
-                                  ${item.data.rating || 'N/A'}
-                              </p>
-                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
-                                  ${item.data.genre || 'N/A'}
-                              </p>
-                              <div style="display: flex; gap: 10px; margin-top: 15px;">
-                                  <a href="/movie/${item.id}"
-                                     style="background: var(--primary); color: white; padding: 8px 15px;
-                                            border-radius: 4px; text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;">
-                                      View
-                                  </a>
-                                  <button onclick="removeSavedItem('${item.itemId}')"
-                                          style="background: rgba(255,71,87,0.2); color: #ff4757; border: 1px solid #ff4757;
-                                                 padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
-                                      Remove
-                                  </button>
-                              </div>
-                          </div>
-                      `).join('')}
-                  </div>
-
-                  ${movieItems.length === 0 ? `
-                      <div style="text-align: center; padding: 3rem; color: #ccc;">
-                          <p style="font-size: 1.2rem;">No movies saved yet!</p>
-                      </div>
-                  ` : ''}
-
-                  <div style="margin-top: 2rem; text-align: center;">
-                      <button onclick="SaveManager.clear()"
-                              style="background: rgba(255,71,87,0.2); color: #ff4757; border: 1px solid #ff4757;
-                                     padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem;">
-                          Clear All
-                      </button>
-                  </div>
-              </div>
-          `;
-
-          document.body.appendChild(modal);
-
-          // Close modal on ESC key
-          document.addEventListener('keydown', function closeModal(e) {
-              if (e.key === 'Escape') {
-                  modal.remove();
-                  document.removeEventListener('keydown', closeModal);
-              }
-          });
-      }
-
-      // Remove individual saved item
-      function removeSavedItem(itemId) {
-          const items = SaveManager.getSavedItems();
-          const index = items.findIndex(item => item.itemId === itemId);
-          if (index !== -1) {
-              items.splice(index, 1);
-              SaveManager.saveAll(items);
-
-              // Update the modal if open
-              setTimeout(() => {
-                  const modal = document.querySelector('div[style*="position: fixed; top: 0; left: 0"]');
-                  if (modal) {
-                      modal.remove();
-                      viewSaved();
-                  }
-              }, 500);
-          }
-      }
-
-      // Add animation styles for heart icon only
-      const style = document.createElement('style');
-      style.textContent = `
-      @keyframes heartBeat {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.3); }
-          100% { transform: scale(1); }
-      }
-      `;
-      document.head.appendChild(style);
-    </script>
-    <script>
-      document
-        .getElementById("link-movie-btn")
-        .addEventListener("click", openLinksModal);
-
-      function openLinksModal() {
-        const movieName = "{{ movie['Movie Name'] }}";
-        const encodedName = encodeURIComponent(movieName);
-
-        const links = [
-          {
-            name: "YTS",
-            url: `https://en.ytsrs.com/movies/?search=${encodedName}`,
-          },
-          {
-            name: "TorrentMovie",
-            url: `https://torrentmovie.net/search?query=${encodedName}`,
-          },
-          {
-            name: "LookMovie2",
-            url: `https://www.lookmovie2.to/movies/search?q=${encodedName}`,
-          },
-          {
-            name: "HdMovic",
-            url: `https://hdmovic.com/?s=${encodedName}`,
-          },
-          {
-            name: "FreeMovieTVApps",
-            url: `https://freemovietvapps.com/search/${encodedName}.html`,
-          },
-          {
-            name: "Flixtor",
-            url: `https://flixtor.mov/browser?keyword=${encodedName}`,
-          },
-          {
-            name: "ThirdMovies",
-            url: `https://thirdmovies.net/?s=${encodedName}`,
-          },
-          {
-            name: "MovHub",
-            url: `https://movhub.ws/browser?keyword=${encodedName}`,
-          },
-          {
-            name: "1HD",
-            url: `https://1hd.gg/search?keyword=${encodedName}`,
-          },
-          {
-            name: "TMovie",
-            url: `https://tmovie.tv/search?query=${encodedName}`,
-          },
-          {
-            name: "Noxx",
-            url: `https://noxx.to/browse?q=${encodedName}`,
-          },
-        ];
-
-        const overlay = document.createElement("div");
-        overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 3000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
-
-        overlay.innerHTML = `
-      <div style="
-        width: 90%;
-        max-width: 420px;
-        max-height: 70vh;
-        background: var(--card-bg);
-        border-radius: 10px;
-        padding: 1.2rem;
-        overflow-y: auto;
-        border: 1px solid rgba(255,255,255,0.1);
-      ">
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        ">
-          <h3 style="margin:0; color:white;">Watch Links</h3>
-          <button onclick="this.parentElement.parentElement.parentElement.remove()"
-            style="
-              background:none;
-              border:none;
-              color:white;
-              font-size:22px;
-              cursor:pointer;
-            ">
-            ×
-          </button>
-        </div>
-
-        ${links
-          .map(
-            (link) => `
-          <a href="${link.url}" target="_blank"
-            style="
-              display:block;
-              padding:0.7rem;
-              margin-bottom:0.6rem;
-              background: rgba(255,255,255,0.05);
-              border-left: 4px solid var(--primary);
-              color:white;
-              text-decoration:none;
-              border-radius:6px;
-              transition: background 0.2s ease;
-            "
-            onmouseover="this.style.background='rgba(229,9,20,0.2)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.05)'"
-          >
-            ${link.name}
-          </a>
-        `,
-          )
-          .join("")}
-      </div>
-    `;
-
-        document.body.appendChild(overlay);
-
-        document.addEventListener("keydown", function escClose(e) {
-          if (e.key === "Escape") {
-            overlay.remove();
-            document.removeEventListener("keydown", escClose);
-          }
-        });
-      }
-    </script>
-    <script>
-      // Add to List
-      let _listOverlay = null;
-
-      function openAddToList() {
-        fetch('/api/lists')
-          .then(r => r.json())
-          .then(lists => {
-            if (_listOverlay) _listOverlay.remove();
-            _listOverlay = document.createElement('div');
-            _listOverlay.id = 'list-overlay';
-            _listOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
-            _listOverlay.addEventListener('click', function(e) {
-              if (e.target === _listOverlay) closeListOverlay();
-            });
-
-            const loggedIn = {{ 'true' if username else 'false' }};
-            let bodyHtml;
-            if (!loggedIn) {
-              bodyHtml = '<p style="color:#888;font-size:0.9rem;"><a href="/login" style="color:#5799ef;">Login</a> to use lists.</p>';
-            } else if (lists.length === 0) {
-              bodyHtml = '<p style="color:#888;font-size:0.9rem;">No lists yet. <a href="/u/{{ username }}" style="color:#5799ef;">Create one on your profile.</a></p>';
-            } else {
-              bodyHtml = lists.map(l =>
-                `<button onclick="addMovieToList('${escId(l.list_id)}','${escId(l.name)}')"
-                  style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
-                  ${escHtmlStr(l.name)} <span style="color:#888;font-size:0.78rem;">(${(l.items||[]).length} items)</span>
-                </button>`
-              ).join('');
-            }
-
-            _listOverlay.innerHTML = `
-              <div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
-                  <h3 style="margin:0;color:#fff;">Add to List</h3>
-                  <button onclick="closeListOverlay()" style="background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0 0.3rem;">&times;</button>
-                </div>
-                ${bodyHtml}
-              </div>`;
-            document.body.appendChild(_listOverlay);
-          })
-          .catch(() => { window.location.href = '/login'; });
-      }
-
-      function closeListOverlay() {
-        if (_listOverlay) { _listOverlay.remove(); _listOverlay = null; }
-      }
-
-      function addMovieToList(listId, listName) {
-        fetch('/api/lists/' + listId + '/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content_type: 'movie',
-            content_id: {{ movie_id }},
-            title: {{ movie['Movie Name']|tojson }}
-          })
-        })
-        .then(r => r.json())
-        .then(d => {
-          closeListOverlay();
-          const msg = d.success ? 'Added to "' + listName + '"' : (d.error || 'Error');
-          const toast = document.createElement('div');
-          toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:' + (d.success ? '#2ed573' : '#ff4757') + ';color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
-          toast.textContent = msg;
-          document.body.appendChild(toast);
-          setTimeout(() => toast.remove(), 2500);
-        })
-        .catch(() => closeListOverlay());
-      }
-
-      function escId(s) { return String(s).replace(/'/g, '').replace(/"/g, ''); }
-      function escHtmlStr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    </script>
-    <script>
-      // Seen It voting
-      const seenMovieId = {{ movie_id }};
-      const seenVoted = localStorage.getItem('seen_' + seenMovieId);
-
-      fetch('/api/seen/' + seenMovieId)
-        .then(r => r.json())
-        .then(d => updateSeenCount(d.yes, d.no));
-
-      function voteSeenIt(choice) {
-        if (localStorage.getItem('seen_' + seenMovieId)) return;
-        fetch('/api/seen/' + seenMovieId + '/vote', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({vote: choice})
-        })
-        .then(r => r.json())
-        .then(d => {
-          localStorage.setItem('seen_' + seenMovieId, choice);
-          updateSeenCount(d.yes, d.no);
-        });
-      }
-
-      function updateSeenCount(yes, no) {
-        const total = yes + no;
-        const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
-        document.getElementById('seen-count').textContent =
-          total > 0 ? pct + '% of MediaPedia users have seen this (' + total + ' votes)' : 'Be the first to vote';
-      }
-    </script>
-  </body>
-</html>
+      function saveMovie() {
+          const id = {{ movie.get('ID', 0) }};
+          SaveManager.saveItem({ type:'movie', id:id, title:{{ movie['Movie Name']|tojson }},
+              data:{ rating:'{{ movie["Rating"] }}', genre:'{{ movie["Genre"] }}' } });
+      }
+
+      // View saved items
+      function viewSaved() {
+          const items = SaveManager.getSavedItems();
+
+          if (items.length === 0) {
+              return;
+          }
+
+          // Create modal
+          const modal = document.createElement('div');
+          modal.style.cssText = `
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.9);
+              z-index: 2000;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              padding: 2rem;
+              overflow-y: auto;
+          `;
+
+          // Filter movies only
+          const movieItems = items.filter(item => item.type === 'movie');
+
+          modal.innerHTML = `
+              <div style="max-width: 800px; width: 100%;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                      <h2 style="color: white; margin: 0;">
+                          Saved Movies (${movieItems.length})
+                      </h2>
+                      <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                              style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">
+                          ×
+                      </button>
+                  </div>
+
+                  <div id="saved-movies-list" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));">
+                      ${movieItems.map(item => `
+                          <div style="background: var(--card-bg); border-radius: 8px; padding: 1rem; border-left: 4px solid var(--primary);">
+                              <h4 style="color: white; margin: 0 0 10px 0;">${item.title}</h4>
+                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
+                                  ${item.data.rating || 'N/A'}
+                              </p>
+                              <p style="color: #ccc; margin: 5px 0; font-size: 0.9rem;">
+                                  ${item.data.genre || 'N/A'}
+                              </p>
+                              <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                  <a href="/movie/${item.id}"
+                                     style="background: var(--primary); color: white; padding: 8px 15px;
+                                            border-radius: 4px; text-decoration: none; font-size: 0.9rem; flex: 1; text-align: center;">
+                                      View
+                                  </a>
+                                  <button onclick="removeSavedItem('${item.itemId}')"
+                                          style="background: rgba(255,71,87,0.2); color: #ff4757; border: 1px solid #ff4757;
+                                                 padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                                      Remove
+                                  </button>
+                              </div>
+                          </div>
+                      `).join('')}
+                  </div>
+
+                  ${movieItems.length === 0 ? `
+                      <div style="text-align: center; padding: 3rem; color: #ccc;">
+                          <p style="font-size: 1.2rem;">No movies saved yet!</p>
+                      </div>
+                  ` : ''}
+
+                  <div style="margin-top: 2rem; text-align: center;">
+                      <button onclick="SaveManager.clear()"
+                              style="background: rgba(255,71,87,0.2); color: #ff4757; border: 1px solid #ff4757;
+                                     padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem;">
+                          Clear All
+                      </button>
+                  </div>
+              </div>
+          `;
+
+          document.body.appendChild(modal);
+
+          // Close modal on ESC key
+          document.addEventListener('keydown', function closeModal(e) {
+              if (e.key === 'Escape') {
+                  modal.remove();
+                  document.removeEventListener('keydown', closeModal);
+              }
+          });
+      }
+
+      // Remove individual saved item
+      function removeSavedItem(itemId) {
+          const items = SaveManager.getSavedItems();
+          const index = items.findIndex(item => item.itemId === itemId);
+          if (index !== -1) {
+              items.splice(index, 1);
+              SaveManager.saveAll(items);
+
+              // Update the modal if open
+              setTimeout(() => {
+                  const modal = document.querySelector('div[style*="position: fixed; top: 0; left: 0"]');
+                  if (modal) {
+                      modal.remove();
+                      viewSaved();
+                  }
+              }, 500);
+          }
+      }
+
+      // Add animation styles for heart icon only
+      const style = document.createElement('style');
+      style.textContent = `
+      @keyframes heartBeat {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); }
+          100% { transform: scale(1); }
+      }
+      `;
+      document.head.appendChild(style);
+    </script>
+    <script>
+      document
+        .getElementById("link-movie-btn")
+        .addEventListener("click", openLinksModal);
+
+      function openLinksModal() {
+        const movieName = "{{ movie['Movie Name'] }}";
+        const encodedName = encodeURIComponent(movieName);
+
+        const links = [
+          {
+            name: "YTS",
+            url: `https://en.ytsrs.com/movies/?search=${encodedName}`,
+          },
+          {
+            name: "TorrentMovie",
+            url: `https://torrentmovie.net/search?query=${encodedName}`,
+          },
+          {
+            name: "LookMovie2",
+            url: `https://www.lookmovie2.to/movies/search?q=${encodedName}`,
+          },
+          {
+            name: "HdMovic",
+            url: `https://hdmovic.com/?s=${encodedName}`,
+          },
+          {
+            name: "FreeMovieTVApps",
+            url: `https://freemovietvapps.com/search/${encodedName}.html`,
+          },
+          {
+            name: "Flixtor",
+            url: `https://flixtor.mov/browser?keyword=${encodedName}`,
+          },
+          {
+            name: "ThirdMovies",
+            url: `https://thirdmovies.net/?s=${encodedName}`,
+          },
+          {
+            name: "MovHub",
+            url: `https://movhub.ws/browser?keyword=${encodedName}`,
+          },
+          {
+            name: "1HD",
+            url: `https://1hd.gg/search?keyword=${encodedName}`,
+          },
+          {
+            name: "TMovie",
+            url: `https://tmovie.tv/search?query=${encodedName}`,
+          },
+          {
+            name: "Noxx",
+            url: `https://noxx.to/browse?q=${encodedName}`,
+          },
+        ];
+
+        const overlay = document.createElement("div");
+        overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+        overlay.innerHTML = `
+      <div style="
+        width: 90%;
+        max-width: 420px;
+        max-height: 70vh;
+        background: var(--card-bg);
+        border-radius: 10px;
+        padding: 1.2rem;
+        overflow-y: auto;
+        border: 1px solid rgba(255,255,255,0.1);
+      ">
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        ">
+          <h3 style="margin:0; color:white;">Watch Links</h3>
+          <button onclick="this.parentElement.parentElement.parentElement.remove()"
+            style="
+              background:none;
+              border:none;
+              color:white;
+              font-size:22px;
+              cursor:pointer;
+            ">
+            ×
+          </button>
+        </div>
+
+        ${links
+          .map(
+            (link) => `
+          <a href="${link.url}" target="_blank"
+            style="
+              display:block;
+              padding:0.7rem;
+              margin-bottom:0.6rem;
+              background: rgba(255,255,255,0.05);
+              border-left: 4px solid var(--primary);
+              color:white;
+              text-decoration:none;
+              border-radius:6px;
+              transition: background 0.2s ease;
+            "
+            onmouseover="this.style.background='rgba(229,9,20,0.2)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.05)'"
+          >
+            ${link.name}
+          </a>
+        `,
+          )
+          .join("")}
+      </div>
+    `;
+
+        document.body.appendChild(overlay);
+
+        document.addEventListener("keydown", function escClose(e) {
+          if (e.key === "Escape") {
+            overlay.remove();
+            document.removeEventListener("keydown", escClose);
+          }
+        });
+      }
+    </script>
+    <script>
+      // Add to List
+      let _listOverlay = null;
+
+      function openAddToList() {
+        fetch('/api/lists')
+          .then(r => r.json())
+          .then(lists => {
+            if (_listOverlay) _listOverlay.remove();
+            _listOverlay = document.createElement('div');
+            _listOverlay.id = 'list-overlay';
+            _listOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
+            _listOverlay.addEventListener('click', function(e) {
+              if (e.target === _listOverlay) closeListOverlay();
+            });
+
+            const loggedIn = {{ 'true' if username else 'false' }};
+            let bodyHtml;
+            if (!loggedIn) {
+              bodyHtml = '<p style="color:#888;font-size:0.9rem;"><a href="/login" style="color:#5799ef;">Login</a> to use lists.</p>';
+            } else if (lists.length === 0) {
+              bodyHtml = '<p style="color:#888;font-size:0.9rem;">No lists yet. <a href="/u/{{ username }}" style="color:#5799ef;">Create one on your profile.</a></p>';
+            } else {
+              bodyHtml = lists.map(l =>
+                `<button onclick="addMovieToList('${escId(l.list_id)}','${escId(l.name)}')"
+                  style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
+                  ${escHtmlStr(l.name)} <span style="color:#888;font-size:0.78rem;">(${(l.items||[]).length} items)</span>
+                </button>`
+              ).join('');
+            }
+
+            _listOverlay.innerHTML = `
+              <div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+                  <h3 style="margin:0;color:#fff;">Add to List</h3>
+                  <button onclick="closeListOverlay()" style="background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0 0.3rem;">&times;</button>
+                </div>
+                ${bodyHtml}
+              </div>`;
+            document.body.appendChild(_listOverlay);
+          })
+          .catch(() => { window.location.href = '/login'; });
+      }
+
+      function closeListOverlay() {
+        if (_listOverlay) { _listOverlay.remove(); _listOverlay = null; }
+      }
+
+      function addMovieToList(listId, listName) {
+        fetch('/api/lists/' + listId + '/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content_type: 'movie',
+            content_id: {{ movie_id }},
+            title: {{ movie['Movie Name']|tojson }}
+          })
+        })
+        .then(r => r.json())
+        .then(d => {
+          closeListOverlay();
+          const msg = d.success ? 'Added to "' + listName + '"' : (d.error || 'Error');
+          const toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:' + (d.success ? '#2ed573' : '#ff4757') + ';color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2500);
+        })
+        .catch(() => closeListOverlay());
+      }
+
+      function escId(s) { return String(s).replace(/'/g, '').replace(/"/g, ''); }
+      function escHtmlStr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    </script>
+    <script>
+      // Seen It voting
+      const seenMovieId = {{ movie_id }};
+      const seenVoted = localStorage.getItem('seen_' + seenMovieId);
+
+      fetch('/api/seen/' + seenMovieId)
+        .then(r => r.json())
+        .then(d => updateSeenCount(d.yes, d.no));
+
+      function voteSeenIt(choice) {
+        if (localStorage.getItem('seen_' + seenMovieId)) return;
+        fetch('/api/seen/' + seenMovieId + '/vote', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({vote: choice})
+        })
+        .then(r => r.json())
+        .then(d => {
+          localStorage.setItem('seen_' + seenMovieId, choice);
+          updateSeenCount(d.yes, d.no);
+        });
+      }
+
+      function updateSeenCount(yes, no) {
+        const total = yes + no;
+        const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
+        document.getElementById('seen-count').textContent =
+          total > 0 ? pct + '% of MediaPedia users have seen this (' + total + ' votes)' : 'Be the first to vote';
+      }
+    </script>
+  </body>
+</html>
