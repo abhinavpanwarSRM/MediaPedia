@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8" />
     <title>{{ movie["Movie Name"] }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
@@ -303,7 +304,8 @@
         justify-content: center;
         align-items: center;
         margin: 1.5rem 0;
-        gap: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
       .btn {
@@ -311,12 +313,12 @@
         border: 2px solid var(--primary);
         color: white;
         border-radius: 50px;
-        padding: 0.8rem 2rem;
-        font-size: 1.1rem;
+        padding: 0.6rem 1.4rem;
+        font-size: 1rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         transition: all 0.3s ease;
       }
 
@@ -328,13 +330,13 @@
 
       .saved-counter {
         position: fixed;
-        top: 20px;
+        top: 56px;
         right: 20px;
         background: var(--card-bg);
         padding: 6px;
         border-radius: 999px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        z-index: 1000;
+        z-index: 999;
       }
 
       .view-saved-btn {
@@ -358,7 +360,20 @@
     </style>
   </head>
   <body>
-    <div class="overlay">
+    {% if username %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/u/{{ username }}" style="color:#e50914;text-decoration:none;font-size:0.88rem;font-weight:600;">{{ username }}</a>
+      <a href="/logout" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Logout</a>
+    </div>
+    {% else %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/login" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Login</a>
+      <a href="/register" style="color:#e50914;text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
+    </div>
+    {% endif %}
+    <div class="overlay" style="padding-top:3rem;">
       <div class="movie-detail">
         <h1>{{ movie["Movie Name"] }}</h1>
 
@@ -880,7 +895,7 @@
                 <label>Name</label>
                 <input
                   type="text"
-                  id="username"
+                  id="comment-username"
                   placeholder="Your name"
                   maxlength="50"
                 />
@@ -939,7 +954,7 @@
 
         <script>
           const movieId = {{ movie_id }};
-          let currentUsername = localStorage.getItem('commentUsername') || '';
+          let currentUsername = '{{ username }}' || localStorage.getItem('commentUsername') || '';
           let allComments = [];
           let currentSort = 'newest';
 
@@ -964,7 +979,7 @@
 
           // Load username from localStorage
           document.addEventListener('DOMContentLoaded', function() {
-              const usernameInput = document.getElementById('username');
+              const usernameInput = document.getElementById('comment-username');
               if (usernameInput && currentUsername) {
                   usernameInput.value = currentUsername;
               }
@@ -974,7 +989,7 @@
           });
 
           // Save username when typed
-          document.getElementById('username')?.addEventListener('input', function(e) {
+          document.getElementById('comment-username')?.addEventListener('input', function(e) {
               localStorage.setItem('commentUsername', e.target.value);
               currentUsername = e.target.value;
           });
@@ -1088,7 +1103,7 @@
           }
 
           function submitComment() {
-              const username = document.getElementById('username').value.trim() || 'Anonymous';
+              const username = document.getElementById('comment-username').value.trim() || 'Anonymous';
               const text = document.getElementById('commentText').value.trim();
               const rating = document.querySelector('input[name="rating"]:checked')?.value;
 
@@ -1387,7 +1402,6 @@
               if (movieId) {
                   const isSaved = this.isSaved('movie', movieId);
                   const btn = document.getElementById('save-movie-btn');
-                  const icon = btn.querySelector('i');
                   const text = document.getElementById('save-text');
 
                   btn.classList.toggle('saved', isSaved);
@@ -1420,12 +1434,10 @@
                       data: movieData
                   });
 
-                  // Visual feedback only - no message
-                  const icon = this.querySelector('i');
-                  icon.style.transform = 'scale(1.3)';
-                  setTimeout(() => {
-                      icon.style.transform = 'scale(1)';
-                  }, 300);
+                  // Visual feedback
+                  const txt = this.querySelector('span');
+                  txt.style.transform = 'scale(1.2)';
+                  setTimeout(() => { txt.style.transform = 'scale(1)'; }, 300);
               });
           }
       });
@@ -1688,34 +1700,53 @@
     </script>
     <script>
       // Add to List
+      let _listOverlay = null;
+
       function openAddToList() {
         fetch('/api/lists')
           .then(r => r.json())
           .then(lists => {
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
-            const noLists = lists.length === 0;
-            overlay.innerHTML = `
+            if (_listOverlay) _listOverlay.remove();
+            _listOverlay = document.createElement('div');
+            _listOverlay.id = 'list-overlay';
+            _listOverlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
+            _listOverlay.addEventListener('click', function(e) {
+              if (e.target === _listOverlay) closeListOverlay();
+            });
+
+            const loggedIn = {{ 'true' if username else 'false' }};
+            let bodyHtml;
+            if (!loggedIn) {
+              bodyHtml = '<p style="color:#888;font-size:0.9rem;"><a href="/login" style="color:#5799ef;">Login</a> to use lists.</p>';
+            } else if (lists.length === 0) {
+              bodyHtml = '<p style="color:#888;font-size:0.9rem;">No lists yet. <a href="/u/{{ username }}" style="color:#5799ef;">Create one on your profile.</a></p>';
+            } else {
+              bodyHtml = lists.map(l =>
+                `<button onclick="addMovieToList('${escId(l.list_id)}','${escId(l.name)}')"
+                  style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
+                  ${escHtmlStr(l.name)} <span style="color:#888;font-size:0.78rem;">(${(l.items||[]).length} items)</span>
+                </button>`
+              ).join('');
+            }
+
+            _listOverlay.innerHTML = `
               <div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
                   <h3 style="margin:0;color:#fff;">Add to List</h3>
-                  <button onclick="this.closest('div[style]').parentElement.remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;">×</button>
+                  <button onclick="closeListOverlay()" style="background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0 0.3rem;">&times;</button>
                 </div>
-                ${noLists
-                  ? '<p style="color:#888;font-size:0.9rem;margin-bottom:1rem;">You have no lists yet. <a href="/u/" style="color:#5799ef;">Create one on your profile</a>.</p>'
-                  : lists.map(l => `
-                    <button onclick="addMovieToList('${l.list_id}','${l.name}',this.closest('div[style]').parentElement)" style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
-                      ${l.name} <span style="color:#888;font-size:0.78rem;">(${l.items.length} items)</span>
-                    </button>`).join('')
-                }
-                <p style="margin-top:0.8rem;font-size:0.78rem;color:#666;">Not logged in? <a href="/login" style="color:#5799ef;">Login</a> to use lists.</p>
+                ${bodyHtml}
               </div>`;
-            document.body.appendChild(overlay);
+            document.body.appendChild(_listOverlay);
           })
           .catch(() => { window.location.href = '/login'; });
       }
 
-      function addMovieToList(listId, listName, overlay) {
+      function closeListOverlay() {
+        if (_listOverlay) { _listOverlay.remove(); _listOverlay = null; }
+      }
+
+      function addMovieToList(listId, listName) {
         fetch('/api/lists/' + listId + '/add', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1727,16 +1758,19 @@
         })
         .then(r => r.json())
         .then(d => {
-          overlay.remove();
-          if (d.success) {
-            const toast = document.createElement('div');
-            toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#2ed573;color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
-            toast.textContent = 'Added to "' + listName + '"';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2500);
-          }
-        });
+          closeListOverlay();
+          const msg = d.success ? 'Added to "' + listName + '"' : (d.error || 'Error');
+          const toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:' + (d.success ? '#2ed573' : '#ff4757') + ';color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2500);
+        })
+        .catch(() => closeListOverlay());
       }
+
+      function escId(s) { return String(s).replace(/'/g, '').replace(/"/g, ''); }
+      function escHtmlStr(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     </script>
     <script>
       // Seen It voting

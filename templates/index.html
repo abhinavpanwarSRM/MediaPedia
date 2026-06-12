@@ -761,8 +761,43 @@
         display: flex;
         align-items: center;
         height: 46px;
-        overflow: hidden;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .navbar-scroll-zone {
+        flex: 1;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+      }
+
+      .navbar-auth {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0 1rem;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
+      .navbar-auth a {
+        color: #aaa;
+        text-decoration: none;
+        font-size: 0.82rem;
+        transition: color 0.2s;
+      }
+
+      .navbar-auth a:hover { color: #fff; }
+
+      .navbar-auth .auth-user {
+        color: #e50914;
+        font-weight: 600;
+      }
+
+      .navbar-auth .auth-reg {
+        color: #e50914;
+        font-weight: 600;
       }
 
       /* Filter Tags - Simple Scrolling */

@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8" />
     <title>{{ series["Title"] }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
@@ -303,7 +304,8 @@
         justify-content: center;
         align-items: center;
         margin: 1.5rem 0;
-        gap: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
       .btn {
@@ -311,12 +313,12 @@
         border: 2px solid var(--primary);
         color: white;
         border-radius: 50px;
-        padding: 0.8rem 2rem;
-        font-size: 1.1rem;
+        padding: 0.6rem 1.4rem;
+        font-size: 1rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         transition: all 0.3s ease;
       }
 
@@ -328,13 +330,13 @@
 
       .saved-counter {
         position: fixed;
-        top: 20px;
+        top: 56px;
         right: 20px;
         background: var(--card-bg);
         padding: 6px;
         border-radius: 999px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        z-index: 1000;
+        z-index: 999;
       }
 
       .view-saved-btn {
@@ -358,7 +360,20 @@
     </style>
   </head>
   <body>
-    <div class="overlay">
+    {% if username %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/u/{{ username }}" style="color:#00a8e1;text-decoration:none;font-size:0.88rem;font-weight:600;">{{ username }}</a>
+      <a href="/logout" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Logout</a>
+    </div>
+    {% else %}
+    <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
+      <a href="/" style="color:#aaa;text-decoration:none;font-size:0.85rem;margin-right:auto;padding-left:0.5rem;">&#8592; Home</a>
+      <a href="/login" style="color:#aaa;text-decoration:none;font-size:0.85rem;">Login</a>
+      <a href="/register" style="color:#00a8e1;text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
+    </div>
+    {% endif %}
+    <div class="overlay" style="padding-top:3rem;">
       <div class="series-detail">
         <h1>{{ series["Title"] }}</h1>
 
@@ -372,6 +387,9 @@
           <button class="btn" id="share-series-btn" onclick="shareItem()">
             <span>Share</span>
           </button>
+          <button class="btn" onclick="openAddToList()">
+            <span>+ List</span>
+          </button>
         </div>
 
         <div class="saved-counter">
@@ -382,6 +400,17 @@
 
         <!-- Trailer will be inserted here -->
         <div id="trailer-container" class="trailer-container"></div>
+
+        
+        <!-- Seen It Widget -->
+        <div style="text-align:center;margin:1rem 0;">
+          <p style="color:#999;font-size:0.85rem;margin-bottom:0.5rem;">Have you seen this series?</p>
+          <div style="display:flex;gap:0.8rem;justify-content:center;">
+            <button id="seen-yes-btn" onclick="voteSeenIt('yes')" style="background:rgba(46,213,115,0.2);color:#2ed573;border:1px solid #2ed573;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Yes ✓</button>
+            <button id="seen-no-btn" onclick="voteSeenIt('no')" style="background:rgba(255,71,87,0.2);color:#ff4757;border:1px solid #ff4757;padding:0.4rem 1.2rem;border-radius:4px;cursor:pointer;font-weight:600;">Not Yet</button>
+          </div>
+          <p id="seen-count" style="color:#888;font-size:0.78rem;margin-top:0.4rem;">Loading votes...</p>
+        </div>
 
         <div class="series-info">
           <p>
@@ -864,6 +893,7 @@
             </div>
           </div>
 
+          {% if mongo_connected %}
           <!-- Toggleable Comment Form -->
           <div class="comment-form-toggle" onclick="toggleCommentForm()">
             <span class="toggle-text">Add your comment...</span>
@@ -878,7 +908,7 @@
                 <label>Name</label>
                 <input
                   type="text"
-                  id="username"
+                  id="comment-username"
                   placeholder="Your name"
                   maxlength="50"
                 />
@@ -930,11 +960,14 @@
               <p>Loading comments...</p>
             </div>
           </div>
+          {% else %}
+          <div class="error-message">Comments are temporarily unavailable</div>
+          {% endif %}
         </div>
 
         <script>
           const seriesId = {{ series['ID'] }};
-          let currentUsername = localStorage.getItem('commentUsername') || '';
+          let currentUsername = '{{ username }}' || localStorage.getItem('commentUsername') || '';
           let allComments = [];
           let currentSort = 'newest';
 
@@ -959,7 +992,7 @@
 
           // Load username from localStorage
           document.addEventListener('DOMContentLoaded', function() {
-              const usernameInput = document.getElementById('username');
+              const usernameInput = document.getElementById('comment-username');
               if (usernameInput && currentUsername) {
                   usernameInput.value = currentUsername;
               }
@@ -969,7 +1002,7 @@
           });
 
           // Save username when typed
-          document.getElementById('username')?.addEventListener('input', function(e) {
+          document.getElementById('comment-username')?.addEventListener('input', function(e) {
               localStorage.setItem('commentUsername', e.target.value);
               currentUsername = e.target.value;
           });
@@ -1055,19 +1088,35 @@
                               <span>👍</span>
                               <span class="likes-count">${comment.likes || 0}</span>
                           </button>
-
+                          <button class="like-btn" onclick="toggleReplyBox('${comment.comment_id}')">↩ Reply</button>
                           ${(comment.username || 'Anonymous') === currentUsername ? `
                               <button class="delete-btn" onclick="deleteComment('${comment.comment_id}')">
                                   Delete
                               </button>
                           ` : ''}
                       </div>
+                      <div id="reply-box-${comment.comment_id}" style="display:none;margin-top:0.6rem;">
+                        <div style="display:flex;gap:0.5rem;">
+                          <input type="text" placeholder="Write a reply..." id="reply-input-${comment.comment_id}"
+                            style="flex:1;padding:0.4rem 0.7rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;font-size:0.85rem;" />
+                          <button onclick="submitReply('${comment.comment_id}')"
+                            style="padding:0.4rem 0.8rem;background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.82rem;">Post</button>
+                        </div>
+                        <div id="replies-${comment.comment_id}" style="margin-top:0.5rem;">
+                          ${(comment.replies||[]).map(r=>`
+                            <div style="background:rgba(255,255,255,0.03);border-left:2px solid rgba(0,168,225,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;">
+                              <span style="font-weight:600;font-size:0.82rem;color:#ccc;">${escapeHtml(r.username)}</span>
+                              <span style="color:#888;font-size:0.75rem;margin-left:0.5rem;">${r.created_at?r.created_at.slice(0,10):''}</span>
+                              <div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${escapeHtml(r.text)}</div>
+                            </div>`).join('')}
+                        </div>
+                      </div>
                   </div>
               `).join('');
           }
 
           function submitComment() {
-              const username = document.getElementById('username').value.trim() || 'Anonymous';
+              const username = document.getElementById('comment-username').value.trim() || 'Anonymous';
               const text = document.getElementById('commentText').value.trim();
               const rating = document.querySelector('input[name="rating"]:checked')?.value;
 
@@ -1154,6 +1203,32 @@
                   }
               })
               .catch(error => console.error('Error deleting comment:', error));
+          }
+
+          function toggleReplyBox(commentId) {
+              const box = document.getElementById('reply-box-' + commentId);
+              box.style.display = box.style.display === 'none' ? 'block' : 'none';
+          }
+
+          function submitReply(commentId) {
+              const input = document.getElementById('reply-input-' + commentId);
+              const text = input.value.trim();
+              if (!text) return;
+              fetch(`/api/comments/${commentId}/reply`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text, username: currentUsername || 'Anonymous' })
+              })
+              .then(r => r.json())
+              .then(reply => {
+                  if (reply.error) { alert(reply.error); return; }
+                  input.value = '';
+                  const container = document.getElementById('replies-' + commentId);
+                  const div = document.createElement('div');
+                  div.style.cssText = 'background:rgba(255,255,255,0.03);border-left:2px solid rgba(0,168,225,0.3);padding:0.5rem 0.8rem;border-radius:4px;margin-bottom:0.4rem;';
+                  div.innerHTML = `<span style="font-weight:600;font-size:0.82rem;color:#ccc;">${reply.username}</span><div style="color:#ddd;font-size:0.85rem;margin-top:0.2rem;">${reply.text}</div>`;
+                  container.appendChild(div);
+              });
           }
 
           function escapeHtml(unsafe) {
@@ -1342,7 +1417,6 @@
               if (seriesId) {
                   const isSaved = this.isSaved('series', seriesId);
                   const btn = document.getElementById('save-series-btn');
-                  const icon = btn.querySelector('i');
                   const text = document.getElementById('save-text');
 
                   btn.classList.toggle('saved', isSaved);
@@ -1375,12 +1449,10 @@
                       data: seriesData
                   });
 
-                  // Visual feedback only - no message
-                  const icon = this.querySelector('i');
-                  icon.style.transform = 'scale(1.3)';
-                  setTimeout(() => {
-                      icon.style.transform = 'scale(1)';
-                  }, 300);
+                  // Visual feedback
+                  const txt = this.querySelector('span');
+                  txt.style.transform = 'scale(1.2)';
+                  setTimeout(() => { txt.style.transform = 'scale(1)'; }, 300);
               });
           }
       });
@@ -1442,7 +1514,7 @@
                                       View
                                   </a>
                                   <button onclick="removeSavedItem('${item.itemId}')"
-                                          style="background: black; color: #0088b6; border: 1px solid #0088b6;
+                                          style="background: rgba(0,136,182,0.15); color: #0088b6; border: 1px solid #0088b6;
                                                  padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
                                       Remove
                                   </button>
@@ -1459,7 +1531,7 @@
 
                   <div style="margin-top: 2rem; text-align: center;">
                       <button onclick="SaveManager.clear()"
-                              style="background: black; color: #0088b6; border: 1px solid #0088b6;
+                              style="background: rgba(0,136,182,0.15); color: #0088b6; border: 1px solid #0088b6;
                                      padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem;">
                           Clear All
                       </button>
@@ -1596,7 +1668,7 @@
               border-radius:6px;
               transition: background 0.2s ease;
             "
-            onmouseover="this.style.background='#0088b6'"
+            onmouseover="this.style.background='rgba(0,136,182,0.3)'"
             onmouseout="this.style.background='rgba(255,255,255,0.05)'"
           >
             ${link.name}
@@ -1615,6 +1687,90 @@
             document.removeEventListener("keydown", escClose);
           }
         });
+      }
+    </script>
+  
+    <script>
+      const seenSeriesId = {{ series_id }};
+      fetch('/api/seen/' + seenSeriesId)
+        .then(r => r.json())
+        .then(d => updateSeenCount(d.yes, d.no));
+
+      function voteSeenIt(choice) {
+        if (localStorage.getItem('seen_s_' + seenSeriesId)) return;
+        fetch('/api/seen/' + seenSeriesId + '/vote', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({vote: choice})
+        })
+        .then(r => r.json())
+        .then(d => {
+          localStorage.setItem('seen_s_' + seenSeriesId, choice);
+          updateSeenCount(d.yes, d.no);
+        });
+      }
+
+      function updateSeenCount(yes, no) {
+        const total = yes + no;
+        const pct = total > 0 ? Math.round((yes / total) * 100) : 0;
+        document.getElementById('seen-count').textContent =
+          total > 0 ? pct + '% of MediaPedia users have seen this (' + total + ' votes)' : 'Be the first to vote';
+      }
+
+      // Add to List
+      let _listOverlay = null;
+
+      function openAddToList() {
+        fetch('/api/lists')
+          .then(r => r.json())
+          .then(lists => {
+            if (_listOverlay) _listOverlay.remove();
+            _listOverlay = document.createElement('div');
+            const overlay = _listOverlay;
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
+            overlay.addEventListener('click', e => { if (e.target === overlay) closeListOverlay(); });
+            const loggedIn = {{ 'true' if username else 'false' }};
+            const noLists = !loggedIn || lists.length === 0;
+            overlay.innerHTML = `
+              <div style="width:90%;max-width:380px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:1.5rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+                  <h3 style="margin:0;color:#fff;">Add to List</h3>
+                  <button onclick="closeListOverlay()" style="background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0 0.3rem;">&times;</button>
+                </div>
+                ${noLists
+                  ? '<p style="color:#888;font-size:0.9rem;"><a href="/login" style="color:#00a8e1;">Login</a> or create a list on your profile first.</p>'
+                  : lists.map(l => `
+                    <button onclick="addSeriesToList('${(l.list_id||'').replace(/'/g,'')}','${(l.name||'').replace(/'/g,'\\&#39;')}')" style="display:block;width:100%;text-align:left;padding:0.7rem 1rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;cursor:pointer;font-size:0.9rem;">
+                      ${(l.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')} <span style="color:#888;font-size:0.78rem;">(${(l.items||[]).length} items)</span>
+                    </button>`).join('')
+                }
+              </div>`;
+            document.body.appendChild(overlay);
+          })
+          .catch(() => { window.location.href = '/login'; });
+      }
+
+      function closeListOverlay() {
+        if (_listOverlay) { _listOverlay.remove(); _listOverlay = null; }
+      }
+
+      function addSeriesToList(listId, listName) {
+        fetch('/api/lists/' + listId + '/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content_type: 'series', content_id: {{ series_id }}, title: {{ series['Title']|tojson }} })
+        })
+        .then(r => r.json())
+        .then(d => {
+          closeListOverlay();
+          const msg = d.success ? 'Added to "' + listName + '"' : (d.error || 'Error');
+          const toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:' + (d.success ? '#2ed573' : '#ff4757') + ';color:#000;padding:0.6rem 1.4rem;border-radius:20px;font-weight:600;font-size:0.9rem;z-index:4000;';
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2500);
+        })
+        .catch(() => closeListOverlay());
       }
     </script>
   </body>

@@ -11,7 +11,8 @@ from flask_bcrypt import Bcrypt
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "mediapedia-secret-2024")
+import secrets as _secrets
+app.secret_key = os.getenv("SECRET_KEY") or _secrets.token_hex(32)
 bcrypt = Bcrypt(app)
 
 MONGO_URI = os.getenv("MONGO_URI", "")
@@ -251,13 +252,14 @@ def movie_detail(movie_id):
     mongo_connected = comments_collection is not None
 
     return render_template(
-        "movie.html", 
-        movie=movie, 
+        "movie.html",
+        movie=movie,
         related_movies=related_movies,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
         mongo_connected=mongo_connected,
-        movie_id=movie_id
+        movie_id=movie_id,
+        username=current_user()
     )
 
 @app.route("/search")
@@ -293,8 +295,7 @@ def search():
     if director:
         results = results[results['Directors'].str.lower().str.contains(director, na=False)]
 
-    if year:
-        results = results[results['Year'].astype(str).str.contains(year, na=False)]
+    # Year column does not exist in movies.csv - skip year filter
 
     # Convert Rating to numeric and filter
     results['Rating'] = pd.to_numeric(results['Rating'], errors='coerce').fillna(0)
@@ -340,13 +341,17 @@ def series_detail(series_id):
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
 
+    mongo_connected = comments_collection is not None
+
     return render_template(
         "series.html",
         series=series,
         related_series=related_series,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
-        series_id=series_id
+        series_id=series_id,
+        mongo_connected=mongo_connected,
+        username=current_user()
     )
 
 # ===== Series Search =====
@@ -499,10 +504,12 @@ def get_game_recommendations(game_id):
     # Get 1 diverse recommendation (different genre/platform, lower rank)
     diverse_games = games_df[
         ((games_df['Genre'] != genre) | (games_df['Platform'] != platform)) &
-        (games_df['Rank'] > 100)  # Lower ranked games
-    ].sample(n=1)
-    
-    recommendations = pd.concat([similar_games, diverse_games])
+        (games_df['Rank'] > 100)
+    ]
+    if not diverse_games.empty:
+        recommendations = pd.concat([similar_games, diverse_games.sample(n=1)])
+    else:
+        recommendations = similar_games
     return recommendations.to_dict(orient='records')
 
 # ===== Game Search =====
@@ -548,10 +555,11 @@ def search_games():
 def recommend_games():
     # Get base recommendations (top sellers + some diverse picks)
     top_games = games_df.sort_values('Global_Sales', ascending=False).head(45)
-    diverse_games = games_df[
-        (games_df['Rank'] > 100) & 
+    diverse_pool = games_df[
+        (games_df['Rank'] > 100) &
         ~games_df['Genre'].isin(top_games['Genre'].unique())
-    ].sample(n=5)
+    ]
+    diverse_games = diverse_pool.sample(n=min(5, len(diverse_pool))) if not diverse_pool.empty else pd.DataFrame()
     
     recommendations = pd.concat([top_games, diverse_games]).sample(frac=1)  # Shuffle
     recommendations['DetailLink'] = recommendations['ID'].apply(lambda x: f"/game/{x}")
@@ -734,7 +742,9 @@ def vote_seen(content_id):
 @app.route("/u/<username>")
 def user_profile(username):
     if comments_collection is None:
-        return render_template('404.html'), 404
+        return render_template('profile.html', username=username, comments=[],
+                               total_likes=0, avg_rating=0, followers=0, following=0,
+                               is_following=False, viewer=current_user(), user_lists=[])
     user_comments = list(comments_collection.find(
         {'username': username}, {'_id': 0}
     ).sort('created_at', -1).limit(50))
@@ -1084,6 +1094,19 @@ def get_playlists():
     if not username or playlists_collection is None:
         return jsonify([])
     playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
+    for pl in playlists:
+        if isinstance(pl.get('created_at'), datetime):
+            pl['created_at'] = pl['created_at'].isoformat()
+    return jsonify(playlists)
+
+@app.route('/api/playlists/user/<target_username>', methods=['GET'])
+def get_user_playlists(target_username):
+    if playlists_collection is None:
+        return jsonify([])
+    playlists = list(playlists_collection.find({'username': target_username}, {'_id': 0}))
+    for pl in playlists:
+        if isinstance(pl.get('created_at'), datetime):
+            pl['created_at'] = pl['created_at'].isoformat()
     return jsonify(playlists)
 
 @app.route('/api/playlists', methods=['POST'])
@@ -1107,6 +1130,46 @@ def create_playlist():
     }
     playlists_collection.insert_one(doc)
     return jsonify({'playlist_id': playlist_id, 'name': name, 'songs': []}), 201
+
+@app.route('/api/playlists/recommendations')
+def playlist_recommendations():
+    """Suggest artists based on genres in user's playlists"""
+    username = current_user()
+    if not username or playlists_collection is None:
+        return jsonify([])
+    playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
+    # Collect all artist names already in playlists
+    existing_artists = set()
+    genre_counts = {}
+    for pl in playlists:
+        for song in pl.get('songs', []):
+            aname = song.get('artist_name', '').lower()
+            existing_artists.add(aname)
+            # Look up genres from CSV
+            match = artists_df[artists_df['artist_name'].str.lower() == aname]
+            if not match.empty:
+                for g in str(match.iloc[0].get('artist_genre', '')).split(','):
+                    g = g.strip().lower()
+                    if g:
+                        genre_counts[g] = genre_counts.get(g, 0) + 1
+    if not genre_counts:
+        # No genre data — return random popular artists
+        sample = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
+        for a in sample:
+            a['DetailLink'] = f"/artist/{a['ID']}"
+        return jsonify(sample)
+    # Sort genres by frequency
+    top_genres = sorted(genre_counts, key=genre_counts.get, reverse=True)[:3]
+    # Find artists matching top genres, excluding ones already in playlist
+    mask = artists_df['artist_genre'].str.lower().apply(
+        lambda g: any(tg in g for tg in top_genres)
+    )
+    candidates = artists_df[mask]
+    candidates = candidates[~candidates['artist_name'].str.lower().isin(existing_artists)]
+    result = candidates.sample(n=min(8, len(candidates))).to_dict(orient='records') if not candidates.empty else []
+    for a in result:
+        a['DetailLink'] = f"/artist/{a['ID']}"
+    return jsonify(result)
 
 @app.route('/api/playlists/<playlist_id>', methods=['GET'])
 def get_playlist(playlist_id):
@@ -1190,45 +1253,7 @@ def reorder_songs(playlist_id):
     )
     return jsonify({'success': True})
 
-@app.route('/api/playlists/recommendations')
-def playlist_recommendations():
-    """Suggest artists based on genres in user's playlists"""
-    username = current_user()
-    if not username or playlists_collection is None:
-        return jsonify([])
-    playlists = list(playlists_collection.find({'username': username}, {'_id': 0}))
-    # Collect all artist names already in playlists
-    existing_artists = set()
-    genre_counts = {}
-    for pl in playlists:
-        for song in pl.get('songs', []):
-            aname = song.get('artist_name', '').lower()
-            existing_artists.add(aname)
-            # Look up genres from CSV
-            match = artists_df[artists_df['artist_name'].str.lower() == aname]
-            if not match.empty:
-                for g in str(match.iloc[0].get('artist_genre', '')).split(','):
-                    g = g.strip().lower()
-                    if g:
-                        genre_counts[g] = genre_counts.get(g, 0) + 1
-    if not genre_counts:
-        # No genre data — return random popular artists
-        sample = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
-        for a in sample:
-            a['DetailLink'] = f"/artist/{a['ID']}"
-        return jsonify(sample)
-    # Sort genres by frequency
-    top_genres = sorted(genre_counts, key=genre_counts.get, reverse=True)[:3]
-    # Find artists matching top genres, excluding ones already in playlist
-    mask = artists_df['artist_genre'].str.lower().apply(
-        lambda g: any(tg in g for tg in top_genres)
-    )
-    candidates = artists_df[mask]
-    candidates = candidates[~candidates['artist_name'].str.lower().isin(existing_artists)]
-    result = candidates.sample(n=min(8, len(candidates))).to_dict(orient='records') if not candidates.empty else []
-    for a in result:
-        a['DetailLink'] = f"/artist/{a['ID']}"
-    return jsonify(result)
+
 
 @app.route('/playlist/<playlist_id>')
 def view_playlist(playlist_id):

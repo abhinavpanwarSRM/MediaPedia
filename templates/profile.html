@@ -195,8 +195,9 @@
       });
     }
 
-    // Load playlists for this profile
-    fetch('/api/playlists')
+    // Load playlists for this profile (works for any user's page)
+    const profileUsername = '{{ username }}';
+    fetch('/api/playlists/user/' + profileUsername)
       .then(r => r.json())
       .then(playlists => {
         const container = document.getElementById('playlists-container');
