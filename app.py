@@ -1815,8 +1815,11 @@ def on_join_party(data):
     join_room(party_id)
     party_collection.update_one({'party_id': party_id}, {'$addToSet': {'members': username}})
     updated = party_collection.find_one({'party_id': party_id}, {'_id': 0})
-    emit('party_state', updated, to=party_id)
-    emit('member_joined', {'username': username}, to=party_id)
+    # Send full state only to the joining socket
+    updated['position'] = _live_position(updated)
+    emit('party_state', updated)
+    # Notify everyone else about the new member + updated member list
+    emit('member_joined', {'username': username, 'members': updated.get('members', [])}, to=party_id)
 
 @socketio.on('leave_party')
 def on_leave_party(data):
@@ -1827,17 +1830,34 @@ def on_leave_party(data):
     leave_room(party_id)
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id}, {'$pull': {'members': username}})
-    emit('member_left', {'username': username}, to=party_id)
+        updated = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+        members = updated.get('members', []) if updated else []
+    else:
+        members = []
+    emit('member_left', {'username': username, 'members': members}, to=party_id)
+
+def _live_position(party):
+    """Compute current playback position accounting for elapsed time."""
+    pos = float(party.get('position', 0))
+    if party.get('state') == 'playing' and party.get('played_at'):
+        try:
+            played_at = datetime.fromisoformat(party['played_at'])
+            elapsed = (datetime.now(timezone.utc) - played_at).total_seconds()
+            pos = pos + max(0, elapsed)
+        except Exception:
+            pass
+    return pos
 
 @socketio.on('party_play')
 def on_party_play(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
     username = data.get('username')
+    now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
             {'$set': {'state': 'playing', 'position': position,
-                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+                      'played_at': now, 'updated_at': now}})
     emit('sync_play', {'position': position, 'by': username}, to=party_id)
 
 @socketio.on('party_pause')
@@ -1845,10 +1865,11 @@ def on_party_pause(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
     username = data.get('username')
+    now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
             {'$set': {'state': 'paused', 'position': position,
-                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+                      'played_at': None, 'updated_at': now}})
     emit('sync_pause', {'position': position, 'by': username}, to=party_id)
 
 @socketio.on('party_seek')
@@ -1856,10 +1877,10 @@ def on_party_seek(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
     username = data.get('username')
+    now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
-            {'$set': {'position': position,
-                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+            {'$set': {'position': position, 'played_at': now, 'updated_at': now}})
     emit('sync_seek', {'position': position, 'by': username}, to=party_id)
 
 @socketio.on('party_change_song')
@@ -1867,16 +1888,17 @@ def on_party_change_song(data):
     party_id = data.get('party_id')
     index = int(data.get('index', 0))
     username = data.get('username')
+    now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
             {'$set': {'current_index': index, 'state': 'playing', 'position': 0,
-                      'updated_at': datetime.now(timezone.utc).isoformat()}})
+                      'played_at': now, 'updated_at': now}})
     emit('sync_change_song', {'index': index, 'by': username}, to=party_id)
 
 @socketio.on('party_add_song')
 def on_party_add_song(data):
     party_id = data.get('party_id')
-    song = data.get('song')   # {song_id, song_title, artist_name, youtube_query}
+    song = data.get('song')
     username = data.get('username')
     if not song or not party_id or party_collection is None:
         return
@@ -1884,11 +1906,11 @@ def on_party_add_song(data):
     song['song_id'] = song.get('song_id') or str(uuid.uuid4())[:8]
     party_collection.update_one({'party_id': party_id}, {'$push': {'queue': song}})
     party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'queue': 1, 'current_index': 1})
-    # auto-start if nothing playing
     if party and party.get('current_index', -1) == -1:
         idx = len(party['queue']) - 1
+        now = datetime.now(timezone.utc).isoformat()
         party_collection.update_one({'party_id': party_id},
-            {'$set': {'current_index': idx, 'state': 'playing', 'position': 0}})
+            {'$set': {'current_index': idx, 'state': 'playing', 'position': 0, 'played_at': now}})
         emit('sync_change_song', {'index': idx, 'by': username}, to=party_id)
     emit('song_added', {'song': song, 'by': username}, to=party_id)
 
@@ -1910,8 +1932,9 @@ def on_party_add_song_next(data):
     queue.insert(insert_at, song)
     party_collection.update_one({'party_id': party_id}, {'$set': {'queue': queue}})
     if cur == -1:
+        now = datetime.now(timezone.utc).isoformat()
         party_collection.update_one({'party_id': party_id},
-            {'$set': {'current_index': 0, 'state': 'playing', 'position': 0}})
+            {'$set': {'current_index': 0, 'state': 'playing', 'position': 0, 'played_at': now}})
         emit('sync_change_song', {'index': 0, 'by': username}, to=party_id)
     emit('song_added', {'song': song, 'by': username, 'insert_next': True, 'insert_at': insert_at}, to=party_id)
 
@@ -1938,13 +1961,16 @@ def on_party_chat(data):
 
 @socketio.on('request_sync')
 def on_request_sync(data):
-    """New joiner asks for current state; host/first member responds."""
+    """New joiner requests live state; respond only to that socket with live position."""
     party_id = data.get('party_id')
     if party_collection is None:
         return
     party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
-    if party:
-        emit('party_state', party, to=party_id)
+    if not party:
+        return
+    # Compute live position so the joiner seeks to the right timestamp
+    party['position'] = _live_position(party)
+    emit('party_state', party)  # emit only to requesting socket (no room broadcast)
 
 
 if __name__ == "__main__":

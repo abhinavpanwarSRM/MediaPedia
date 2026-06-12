@@ -89,19 +89,22 @@
     .qs-head { display: flex; align-items: center; justify-content: space-between;
                padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); }
     .qs-head h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    #queue-list { max-height: 320px; overflow-y: auto;
+                  scrollbar-width: thin; scrollbar-color: var(--g) rgba(0,0,0,0.2); }
     .q-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem;
              border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; }
+    .q-row:last-child { border-bottom: none; }
     .q-row:hover { background: rgba(255,255,255,0.04); }
-    .q-row.q-active { background: rgba(29,185,84,0.08); }
+    .q-row.q-active { background: rgba(29,185,84,0.1); border-left: 2px solid var(--g); }
     .q-row.q-active .q-title { color: var(--g); }
-    .q-num { width: 20px; font-size: 0.75rem; color: var(--muted); flex-shrink: 0; text-align: right; }
+    .q-num { width: 22px; font-size: 0.75rem; color: var(--muted); flex-shrink: 0; text-align: center; }
     .q-info { flex: 1; min-width: 0; }
     .q-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .q-artist { font-size: 0.72rem; color: var(--muted); }
-    .q-by { font-size: 0.65rem; color: #444; }
-    .q-del { background: none; border: none; color: #555; cursor: pointer; font-size: 0.85rem; padding: 0.2rem; }
-    .q-del:hover { color: var(--red); }
-    .q-empty { padding: 1.5rem; text-align: center; color: #444; font-style: italic; font-size: 0.85rem; }
+    .q-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .q-del { background: none; border: none; color: #444; cursor: pointer; font-size: 0.8rem;
+             padding: 0.3rem 0.4rem; border-radius: 4px; flex-shrink: 0; line-height: 1; }
+    .q-del:hover { color: var(--red); background: rgba(229,9,20,0.1); }
+    .q-empty { padding: 2rem 1rem; text-align: center; color: #444; font-style: italic; font-size: 0.85rem; }
 
     /* Add song */
     .add-song-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
@@ -273,7 +276,8 @@
   let queue      = [];
   let curIdx     = -1;
   let progTimer  = null;
-  let iAmPlaying = false;   // are WE driving playback right now?
+  // Pending sync to apply once YT player is ready
+  let pendingSync = null;
 
   // ── YouTube Player ────────────────────────────────────────────────────────
   let ytPlayer = null, ytReady = false;
@@ -282,7 +286,10 @@
       height: '1', width: '1',
       playerVars: { autoplay: 0, controls: 0, rel: 0 },
       events: {
-        onReady: () => { ytReady = true; },
+        onReady: () => {
+          ytReady = true;
+          if (pendingSync) { applyState(pendingSync); pendingSync = null; }
+        },
         onStateChange: onYTState,
         onError: () => { setTimeout(nextSong, 800); }
       }
@@ -333,22 +340,33 @@
   }
 
   // ── Resolve YT video ID ───────────────────────────────────────────────────
-  function resolveAndPlay(song, startSec) {
+  function resolveAndPlay(song, startSec, paused) {
     const q = song.youtube_query || '';
     const tMatch = q.match(/#t=(\d+)$/);
     const clean = q.replace(/#t=\d+$/, '');
     const sec = tMatch ? parseInt(tMatch[1]) : (startSec || 0);
     if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
-      loadAndPlay(clean, sec);
+      loadAndPlayMayPause(clean, sec, paused);
     } else {
       const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(clean)}&key=${key}&maxResults=1&type=video`)
         .then(r => r.json())
         .then(d => {
-          if (d.items && d.items.length) loadAndPlay(d.items[0].id.videoId, sec);
+          if (d.items && d.items.length) loadAndPlayMayPause(d.items[0].id.videoId, sec, paused);
           else setTimeout(nextSong, 500);
         })
         .catch(() => { ytKeyIdx++; setTimeout(nextSong, 500); });
+    }
+  }
+
+  function loadAndPlayMayPause(videoId, startSec, paused) {
+    if (!ytReady) { setTimeout(() => loadAndPlayMayPause(videoId, startSec, paused), 300); return; }
+    document.getElementById('prog-fill').style.width = '0%';
+    document.getElementById('elapsed').textContent = '0:00';
+    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
+    if (paused) {
+      // YT needs a moment to load before we can pause
+      setTimeout(() => { if (ytReady) ytPlayer.pauseVideo(); }, 1400);
     }
   }
 
@@ -360,18 +378,20 @@
       socket.emit('join_party', { party_id: pid, username: ME });
     });
 
+    // Full state from server (join / sync response)
     socket.on('party_state', (party) => {
+      if (!ytReady) { pendingSync = party; return; }
       applyState(party);
     });
 
     socket.on('member_joined', (d) => {
       sysChat(d.username + ' joined the party 🎉');
-      // send current state to new joiner
-      socket.emit('request_sync', { party_id: pid });
+      renderMembers(d.members || []);
     });
 
     socket.on('member_left', (d) => {
       sysChat(d.username + ' left the party');
+      renderMembers(d.members || []);
     });
 
     socket.on('sync_play', (d) => {
@@ -442,10 +462,9 @@
       document.getElementById('np-title').textContent  = s.song_title || '—';
       document.getElementById('np-artist').textContent = s.artist_name || '';
       document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
-      resolveAndPlay(s, party.position || 0);
-      if (party.state === 'paused' && ytReady) {
-        setTimeout(() => ytPlayer.pauseVideo(), 1200);
-      }
+      const paused = party.state === 'paused';
+      // party.position is the live-computed position from the server
+      resolveAndPlay(s, party.position || 0, paused);
     }
   }
 
@@ -484,13 +503,13 @@
     }
   }
 
-  function playCurrent() {
+  function playCurrent(startSec) {
     if (curIdx < 0 || curIdx >= queue.length) return;
     const s = queue[curIdx];
     document.getElementById('np-title').textContent  = s.song_title || '—';
     document.getElementById('np-artist').textContent = s.artist_name || '';
     document.getElementById('np-by').textContent     = s.added_by ? 'added by ' + s.added_by : '';
-    resolveAndPlay(s, 0);
+    resolveAndPlay(s, startSec || 0, false);
     renderQueue();
   }
 
@@ -515,16 +534,21 @@
     const el = document.getElementById('queue-list');
     document.getElementById('q-count').textContent = queue.length ? '(' + queue.length + ')' : '';
     if (!queue.length) { el.innerHTML = '<div class="q-empty">No songs yet. Add one below!</div>'; return; }
-    el.innerHTML = queue.map((s, i) => `
-      <div class="q-row ${i === curIdx ? 'q-active' : ''}" onclick="playFromQueue(${i})">
-        <div class="q-num">${i === curIdx ? '▶' : (i + 1)}</div>
+    el.innerHTML = queue.map((s, i) => {
+      const active = i === curIdx;
+      const artist = [s.artist_name, s.added_by ? 'by ' + s.added_by : ''].filter(Boolean).join(' · ');
+      return `<div class="q-row${active ? ' q-active' : ''}" onclick="playFromQueue(${i})">
+        <div class="q-num">${active ? '▶' : (i + 1)}</div>
         <div class="q-info">
           <div class="q-title">${esc(s.song_title)}</div>
-          <div class="q-artist">${esc(s.artist_name)}</div>
-          <div class="q-by">${s.added_by ? 'by ' + esc(s.added_by) : ''}</div>
+          <div class="q-sub">${esc(artist)}</div>
         </div>
-        <button class="q-del" onclick="event.stopPropagation();removeSong('${s.song_id}')">✕</button>
-      </div>`).join('');
+        <button class="q-del" onclick="event.stopPropagation();removeSong('${s.song_id}')" title="Remove">✕</button>
+      </div>`;
+    }).join('');
+    // scroll active into view
+    const activeEl = el.querySelector('.q-active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
   }
 
   function removeSong(songId) {
@@ -576,7 +600,7 @@
         <div class="sr-t">${esc(title)}</div>
         <div class="sr-c">${esc(ch)}</div>
       </div>
-      <button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">▶ Next</button>
+      <button class="sr-add" style="margin-right:0.3rem" onclick="addSongNext('${vid}','${escA(title)}','${escA(ch)}')">&#9654; Next</button>
       <button class="sr-add" onclick="addSong('${vid}','${escA(title)}','${escA(ch)}')">+ Add</button>
     </div>`;
   }
@@ -587,8 +611,15 @@
     loadAndPlay(vid, 0);
   }
 
+  function loadAndPlay(videoId, startSec) {
+    if (!ytReady) { setTimeout(() => loadAndPlay(videoId, startSec), 300); return; }
+    document.getElementById('prog-fill').style.width = '0%';
+    document.getElementById('elapsed').textContent = '0:00';
+    ytPlayer.loadVideoById({ videoId, startSeconds: startSec || 0 });
+  }
+
   function extractArtist(title, ch) {
-    let m = title.match(/^([^\-–|()\[\]]+?)\s*[-–]\s*.+/);
+    let m = title.match(/^([^\-–|()\.\[\]]+?)\s*[-–]\s*.+/);
     if (m) return m[1].trim();
     const clean = ch.replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/i,'').replace(/Official$/i,'').trim();
     return clean || ch;
@@ -707,7 +738,6 @@
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
-  // alias used in older calls
   const toast = showToast;
 
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
