@@ -4,10 +4,11 @@
   <title>{{ other_user }} — Messages — MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root { --primary:#e50914; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --muted:#888; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:#fff; font-family:'Segoe UI',sans-serif;
+    body { background:var(--bg); color:#fff; font-family:'Poppins','Segoe UI',sans-serif;
            height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
     /* Top bar */
@@ -90,6 +91,7 @@
 <body>
   <div class="topbar">
     <a class="back-btn" href="/messages">&#8592;</a>
+    <a href="/" style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:#e50914;text-decoration:none;flex-shrink:0;letter-spacing:0.5px;">M</a>
     <a class="peer-av" href="/u/{{ other_user }}">{{ other_user[0]|upper }}</a>
     <div class="peer-info">
       <div class="peer-name">{{ other_user }}</div>
@@ -230,6 +232,13 @@
     }
 
     input.focus();
+  </script>
+  <script>
+    const _cp = ["{{ url_for('static', filename='poster/poster2.jpg') }}",
+                 "{{ url_for('static', filename='poster/poster5.jpg') }}",
+                 "{{ url_for('static', filename='poster/poster8.jpg') }}"];
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div style="position:fixed;inset:0;background-image:url('${_cp[Math.floor(Math.random()*_cp.length)]}');background-size:cover;background-position:center;opacity:0.06;z-index:-1;pointer-events:none;"></div>`);
   </script>
 </body>
 </html>

@@ -4,6 +4,7 @@
   <title>{{ username }} — MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --primary: #e50914; --green: #1db954; --blue: #5799ef;
@@ -11,7 +12,7 @@
       --text: #fff; --muted: #888;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif;
+    body { background: var(--bg); color: var(--text); font-family: 'Poppins', 'Segoe UI', sans-serif;
            padding: 0 0 3rem; min-height: 100vh; }
 
     /* Nav */
@@ -29,7 +30,7 @@
 
     /* Banner + avatar */
     .profile-banner { height: 140px;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+      background: linear-gradient(135deg, #1a0505 0%, #2d0000 40%, #1a0a0a 70%, #0f0f1a 100%);
       position: relative; margin-bottom: 56px; }
     .avatar-wrap { position: absolute; bottom: -44px; left: 1.5rem; }
     .avatar { width: 88px; height: 88px; border-radius: 50%;
