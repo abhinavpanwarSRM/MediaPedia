@@ -766,19 +766,33 @@ def user_profile(username):
         return render_template('profile.html', username=username, comments=[],
                                total_likes=0, avg_rating=0, followers=0, following=0,
                                is_following=False, viewer=current_user(), user_lists=[])
+    
+    # Check if follows_collection exists by comparing to None, not using bool()
+    follows_exists = follows_collection is not None
+    lists_exists = lists_collection is not None
+    
     user_comments = list(comments_collection.find(
         {'username': username}, {'_id': 0}
     ).sort('created_at', -1).limit(50))
+    
     for c in user_comments:
         if 'created_at' in c:
             c['created_at'] = c['created_at'].isoformat()
+    
     total_likes = sum(c.get('likes', 0) for c in user_comments)
     avg_rating = round(sum(c.get('rating', 0) for c in user_comments) / len(user_comments), 1) if user_comments else 0
-    followers = follows_collection.count_documents({'following': username}) if follows_collection else 0
-    following = follows_collection.count_documents({'follower': username}) if follows_collection else 0
+    
+    # Fixed: Compare with None instead of using truth value testing
+    followers = follows_collection.count_documents({'following': username}) if follows_exists else 0
+    following = follows_collection.count_documents({'follower': username}) if follows_exists else 0
+    
     viewer = current_user()
-    is_following = follows_collection.find_one({'follower': viewer, 'following': username}) is not None if (follows_collection and viewer) else False
-    user_lists = list(lists_collection.find({'username': username}, {'_id': 0})) if lists_collection else []
+    is_following = False
+    if viewer and follows_exists:
+        is_following = follows_collection.find_one({'follower': viewer, 'following': username}) is not None
+    
+    user_lists = list(lists_collection.find({'username': username}, {'_id': 0})) if lists_exists else []
+    
     return render_template('profile.html', username=username, comments=user_comments,
                            total_likes=total_likes, avg_rating=avg_rating,
                            followers=followers, following=following,
