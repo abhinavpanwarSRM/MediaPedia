@@ -830,6 +830,9 @@
           <div class="comment-form" id="commentForm">
             <div class="form-row">
               <!-- Name field - uniform styling -->
+              {% if username %}
+              <input type="hidden" id="comment-username" value="{{ username }}" />
+              {% else %}
               <div class="form-group">
                 <label>Name</label>
                 <input
@@ -839,6 +842,7 @@
                   maxlength="50"
                 />
               </div>
+              {% endif %}
 
               <!-- Rating field - uniform styling with label -->
               <div class="rating-group">
@@ -893,7 +897,7 @@
 
         <script>
           const movieId = {{ movie_id }};
-          let currentUsername = '{{ username }}' || localStorage.getItem('commentUsername') || '';
+          let currentUsername = '{{ username }}' || '';
           let allComments = [];
           let currentSort = 'newest';
 
@@ -916,21 +920,19 @@
                   form.classList.contains('active') ? '−' : '+';
           }
 
-          // Load username from localStorage
           document.addEventListener('DOMContentLoaded', function() {
+              {% if not username %}
               const usernameInput = document.getElementById('comment-username');
-              if (usernameInput && currentUsername) {
-                  usernameInput.value = currentUsername;
-              }
-
+              const saved = localStorage.getItem('commentUsername') || '';
+              if (usernameInput && saved) usernameInput.value = saved;
+              currentUsername = usernameInput?.value || '';
+              usernameInput?.addEventListener('input', function(e) {
+                  localStorage.setItem('commentUsername', e.target.value);
+                  currentUsername = e.target.value;
+              });
+              {% endif %}
               loadComments();
               loadCommentStats();
-          });
-
-          // Save username when typed
-          document.getElementById('comment-username')?.addEventListener('input', function(e) {
-              localStorage.setItem('commentUsername', e.target.value);
-              currentUsername = e.target.value;
           });
 
           function loadComments() {
@@ -1184,11 +1186,6 @@
                   navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
               } else {
                   navigator.clipboard.writeText(window.location.href)
-                      .then(() => {
-                          const btn = document.getElementById('share-movie-btn');
-                          btn.querySelector('span').textContent = 'Copied!';
-                          setTimeout(() => btn.querySelector('span').textContent = 'Share', 2000);
-                      })
                       .catch(() => prompt('Copy this link:', window.location.href));
               }
           }
