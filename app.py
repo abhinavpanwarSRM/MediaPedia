@@ -611,7 +611,8 @@ def franchise_page(franchise_name):
         .sort_values('Rating', ascending=False).to_dict(orient='records')
     if not franchise_movies:
         return render_template('404.html'), 404
-    return render_template('franchise.html', franchise_name=franchise_name, movies=franchise_movies)
+    return render_template('franchise.html', franchise_name=franchise_name, movies=franchise_movies,
+                           username=current_user())
 
 @app.route("/api/franchises")
 def get_franchises():
