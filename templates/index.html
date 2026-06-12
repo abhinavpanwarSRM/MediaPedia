@@ -973,9 +973,9 @@
 
       /* ── Hero search bar (above Explore section) ── */
       .hero-search-wrap {
-        width: 90%;
+        width: 100%;
         max-width: 560px;
-        margin: 2rem auto 0;
+        margin: 0 auto;
         position: relative;
       }
       .hero-search-wrap input {
@@ -1198,8 +1198,6 @@
         </div>
       </div></div></div>
     </div>
-      <div class="navbar-auth">{% if username %}<a href="/u/{{ username }}" class="auth-user">{{ username }}</a><a href="/logout">Logout</a>{% else %}<a href="/feed">Feed</a><a href="/login">Login</a><a href="/register" class="auth-reg">Register</a>{% endif %}</div></div>
-    </div>
 
     <div class="bg-overlay"></div>
 
@@ -1233,17 +1231,6 @@
       </h1>
       <div class="subtitle">YOUR PERSONALIZED GUIDE</div>
 
-      <!-- Global Search Bar -->
-      <div class="hero-search-wrap" style="position:relative;">
-        <span class="hero-search-icon">&#128269;</span>
-        <input id="global-search" type="text"
-          placeholder="Search movies, series, artists, directors..."
-          autocomplete="off"
-          oninput="globalSearch(this.value)"
-          onblur="setTimeout(()=>document.getElementById('search-dropdown').style.display='none',200)" />
-        <div id="search-dropdown" style="position:absolute;width:100%;top:100%;left:0;display:none;background:rgba(18,18,18,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:0 0 6px 6px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;"></div>
-      </div>
-
       <script>
         const title = document.getElementById("main-title");
 
@@ -1262,6 +1249,17 @@
     </div>
 
     <div class="content-wrapper">
+      <!-- Global Search Bar -->
+      <div class="hero-search-wrap" style="position:relative;margin-bottom:1.5rem;">
+        <span class="hero-search-icon">&#128269;</span>
+        <input id="global-search" type="text"
+          placeholder="Search movies, series, artists, directors..."
+          autocomplete="off"
+          oninput="globalSearch(this.value)"
+          onblur="setTimeout(()=>document.getElementById('search-dropdown').style.display='none',200)" />
+        <div id="search-dropdown" style="position:absolute;width:100%;top:100%;left:0;display:none;background:rgba(18,18,18,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:0 0 6px 6px;max-height:340px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.6);z-index:200;"></div>
+      </div>
+
       <!-- Feature Hub Navigation -->
       <section style="background:rgba(20,20,20,0.9);padding:1.5rem 2rem;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.05);margin-bottom:2.5rem;">
         <h2 style="margin-bottom:1.2rem;">Explore MediaPedia</h2>

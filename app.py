@@ -485,7 +485,8 @@ def game_detail(game_id):
         game=game,
         recommendations=recommendations,
         api_key_1=api_key_1,
-        api_key_2=api_key_2
+        api_key_2=api_key_2,
+        username=current_user()
     )
 
 
@@ -586,7 +587,8 @@ def director_page(director_name):
     signature_genres = sorted(genres, key=genres.get, reverse=True)[:3]
     avg_rating = round(sum(float(m.get('Rating') or 0) for m in movies) / len(movies), 1) if movies else 0
     return render_template('director.html', director_name=director_name, movies=movies,
-                           signature_genres=signature_genres, avg_rating=avg_rating, total=len(movies))
+                           signature_genres=signature_genres, avg_rating=avg_rating, total=len(movies),
+                           username=current_user())
 
 # ===== Actor Page =====
 @app.route("/actor/<path:actor_name>")
@@ -598,7 +600,8 @@ def actor_page(actor_name):
         return render_template('404.html'), 404
     movies.sort(key=lambda x: float(x.get('Rating') or 0), reverse=True)
     series.sort(key=lambda x: float(x.get('Rating') or 0), reverse=True)
-    return render_template('actor.html', actor_name=actor_name, movies=movies[:20], series=series[:10])
+    return render_template('actor.html', actor_name=actor_name, movies=movies[:20], series=series[:10],
+                           username=current_user())
 
 # ===== Franchise Tracker =====
 @app.route("/franchise/<path:franchise_name>")
@@ -823,7 +826,7 @@ def oscars_room():
         match = df[df['Movie Name'].str.lower().str.contains(w['title'].lower(), na=False)]
         movie_id = int(match.iloc[0]['ID']) if not match.empty else None
         enriched.append({**w, 'movie_id': movie_id})
-    return render_template('oscars.html', winners=enriched)
+    return render_template('oscars.html', winners=enriched, username=current_user())
 
 # ===== Random Movies (dedicated endpoint) =====
 @app.route("/random_movies")
