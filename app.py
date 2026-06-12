@@ -283,6 +283,9 @@ def movie_detail(movie_id):
     
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    api_key_3 = os.getenv("YOUTUBE_API_KEY_3", "")
+    api_key_4 = os.getenv("YOUTUBE_API_KEY_4", "")
+    api_key_5 = os.getenv("YOUTUBE_API_KEY_5", "")
 
     # Check if MongoDB is connected
     mongo_connected = comments_collection is not None
@@ -293,6 +296,9 @@ def movie_detail(movie_id):
         related_movies=related_movies,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
+        api_key_3=api_key_3,
+        api_key_4=api_key_4,
+        api_key_5=api_key_5,
         mongo_connected=mongo_connected,
         movie_id=movie_id,
         username=current_user()
@@ -370,6 +376,9 @@ def series_detail(series_id):
     # Pass YouTube API keys for trailer loading
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    api_key_3 = os.getenv("YOUTUBE_API_KEY_3", "")
+    api_key_4 = os.getenv("YOUTUBE_API_KEY_4", "")
+    api_key_5 = os.getenv("YOUTUBE_API_KEY_5", "")
 
     mongo_connected = comments_collection is not None
 
@@ -379,6 +388,9 @@ def series_detail(series_id):
         related_series=related_series,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
+        api_key_3=api_key_3,
+        api_key_4=api_key_4,
+        api_key_5=api_key_5,
         series_id=series_id,
         mongo_connected=mongo_connected,
         username=current_user()
@@ -468,6 +480,9 @@ def artist_detail(artist_id):
     # YouTube API keys for video embedding
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    api_key_3 = os.getenv("YOUTUBE_API_KEY_3", "")
+    api_key_4 = os.getenv("YOUTUBE_API_KEY_4", "")
+    api_key_5 = os.getenv("YOUTUBE_API_KEY_5", "")
 
     return render_template(
         "artist.html",
@@ -475,6 +490,9 @@ def artist_detail(artist_id):
         related_artists=related_artists,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
+        api_key_3=api_key_3,
+        api_key_4=api_key_4,
+        api_key_5=api_key_5,
         username=current_user()
     )
 
@@ -509,6 +527,9 @@ def game_detail(game_id):
     # YouTube API keys for video embedding
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    api_key_3 = os.getenv("YOUTUBE_API_KEY_3", "")
+    api_key_4 = os.getenv("YOUTUBE_API_KEY_4", "")
+    api_key_5 = os.getenv("YOUTUBE_API_KEY_5", "")
 
     return render_template(
         "game.html",
@@ -516,6 +537,9 @@ def game_detail(game_id):
         recommendations=recommendations,
         api_key_1=api_key_1,
         api_key_2=api_key_2,
+        api_key_3=api_key_3,
+        api_key_4=api_key_4,
+        api_key_5=api_key_5,
         username=current_user()
     )
 
@@ -1576,8 +1600,12 @@ def view_playlist(playlist_id):
         pl['created_at'] = pl['created_at'].isoformat()
     api_key_1 = os.getenv("YOUTUBE_API_KEY_1", "")
     api_key_2 = os.getenv("YOUTUBE_API_KEY_2", "")
+    api_key_3 = os.getenv("YOUTUBE_API_KEY_3", "")
+    api_key_4 = os.getenv("YOUTUBE_API_KEY_4", "")
+    api_key_5 = os.getenv("YOUTUBE_API_KEY_5", "")
+
     return render_template('playlist.html', pl=pl, username=current_user(),
-                           api_key_1=api_key_1, api_key_2=api_key_2)
+                           api_key_1=api_key_1, api_key_2=api_key_2, api_key_3=api_key_3, api_key_4=api_key_4, api_key_5=api_key_5)
 
 # ===== Messaging =====
 @app.route('/messages')
