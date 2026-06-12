@@ -1167,6 +1167,75 @@ def reply_to_comment(comment_id):
         return jsonify({'error': 'Comment not found'}), 404
     return jsonify(reply), 201
 
+# ===== Followers / Following Lists =====
+@app.route('/api/followers/<target_username>')
+def get_followers(target_username):
+    if follows_collection is None:
+        return jsonify([])
+    viewer = current_user()
+    follower_names = [f['follower'] for f in follows_collection.find({'following': target_username})]
+    # For each follower, check if viewer follows them back
+    result = []
+    for name in follower_names:
+        is_following_back = False
+        if viewer and viewer != name:
+            is_following_back = follows_collection.find_one({'follower': viewer, 'following': name}) is not None
+        bio = ''
+        if users_collection is not None:
+            u = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
+            if u: bio = u.get('bio', '')
+        result.append({'username': name, 'is_following': is_following_back, 'bio': bio})
+    return jsonify(result)
+
+@app.route('/api/following/<target_username>')
+def get_following(target_username):
+    if follows_collection is None:
+        return jsonify([])
+    viewer = current_user()
+    following_names = [f['following'] for f in follows_collection.find({'follower': target_username})]
+    result = []
+    for name in following_names:
+        is_following_back = False
+        if viewer and viewer != name:
+            is_following_back = follows_collection.find_one({'follower': viewer, 'following': name}) is not None
+        bio = ''
+        if users_collection is not None:
+            u = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
+            if u: bio = u.get('bio', '')
+        result.append({'username': name, 'is_following': is_following_back, 'bio': bio})
+    return jsonify(result)
+
+@app.route('/api/users/discover')
+def discover_users():
+    """Return active users the viewer doesn't follow yet, ordered by review count."""
+    viewer = current_user()
+    if comments_collection is None or users_collection is None:
+        return jsonify([])
+    # Get users already followed
+    already_following = set()
+    if viewer and follows_collection is not None:
+        already_following = {f['following'] for f in follows_collection.find({'follower': viewer})}
+    # Aggregate most active users
+    pipeline = [
+        {'$group': {'_id': '$username', 'review_count': {'$sum': 1}}},
+        {'$sort': {'review_count': -1}},
+        {'$limit': 30}
+    ]
+    active = list(comments_collection.aggregate(pipeline))
+    result = []
+    for u in active:
+        name = u['_id']
+        if not name or name == viewer or name in already_following:
+            continue
+        bio = ''
+        if users_collection is not None:
+            doc = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
+            if doc: bio = doc.get('bio', '')
+        result.append({'username': name, 'review_count': u['review_count'], 'bio': bio})
+        if len(result) >= 8:
+            break
+    return jsonify(result)
+
 # ===== Bio Update =====
 @app.route('/api/profile/bio', methods=['POST'])
 def update_bio():

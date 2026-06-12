@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); }
+    :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --blue: #5799ef; --border: rgba(255,255,255,0.08); --muted: #888; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
-    .container { max-width: 680px; margin: 0 auto; }
+    .page { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; }
+    @media (max-width: 680px) { .page { grid-template-columns: 1fr; } .sidebar { display: none; } }
+    .container { max-width: 680px; }
     .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 0.8rem; }
     .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; }
     h1 { font-size: 1.6rem; }
@@ -26,9 +28,26 @@
     .empty { color: #666; text-align: center; padding: 3rem; font-style: italic; }
     .hint { background: rgba(87,153,239,0.1); border: 1px solid rgba(87,153,239,0.3); color: #5799ef; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5rem; }
     .hint a { color: #5799ef; }
+    /* Sidebar */
+    .sidebar-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 1rem; }
+    .sidebar-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 0.9rem; }
+    .suggest-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+    .suggest-row:last-child { border-bottom: none; }
+    .sug-av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #e50914, #ff6b6b);
+              display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+              text-decoration: none; color: #fff; flex-shrink: 0; }
+    .sug-info { flex: 1; min-width: 0; }
+    .sug-info a { font-size: 0.85rem; font-weight: 600; color: #fff; text-decoration: none; }
+    .sug-info a:hover { color: var(--primary); }
+    .sug-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sug-btn { padding: 0.22rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+               cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff;
+               transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+    .sug-btn:hover { background: rgba(229,9,20,0.3); }
   </style>
 </head>
 <body>
+  <div class="page">
   <div class="container">
     <div class="top">
       <a href="/" class="back">← Home</a>
@@ -67,5 +86,54 @@
       <p class="empty">No activity yet. Be the first to review something!</p>
     {% endif %}
   </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">People to follow</div>
+      <div id="discover-list"><div style="color:var(--muted);font-size:0.82rem;">Loading...</div></div>
+    </div>
+    {% if username %}
+    <div class="sidebar-card">
+      <div class="sidebar-title">Your profile</div>
+      <a href="/u/{{ username }}" style="display:flex;align-items:center;gap:0.6rem;text-decoration:none;color:#fff;">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e50914,#ff6b6b);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">{{ username[0]|upper }}</div>
+        <span style="font-size:0.88rem;font-weight:600;">{{ username }}</span>
+      </a>
+    </div>
+    {% endif %}
+  </aside>
+
+  </div>
+<script>
+  const FEED_VIEWER = '{{ username or "" }}';
+  fetch('/api/users/discover')
+    .then(r => r.json())
+    .then(users => {
+      const el = document.getElementById('discover-list');
+      if (!users.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;">No suggestions yet.</div>'; return; }
+      el.innerHTML = users.map(u => `
+        <div class="suggest-row">
+          <a class="sug-av" href="/u/${esc(u.username)}">${u.username[0].toUpperCase()}</a>
+          <div class="sug-info">
+            <a href="/u/${esc(u.username)}">${esc(u.username)}</a>
+            <div class="sug-sub">${u.review_count} review${u.review_count !== 1 ? 's' : ''}</div>
+          </div>
+          ${FEED_VIEWER ? `<button class="sug-btn" onclick="feedFollow(this,'${esc(u.username)}')">Follow</button>` : ''}
+        </div>`).join('');
+    })
+    .catch(() => { const el = document.getElementById('discover-list'); if (el) el.innerHTML = ''; });
+
+  function feedFollow(btn, target) {
+    if (!FEED_VIEWER) { window.location.href = '/login'; return; }
+    fetch('/api/follow/' + target, { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'followed') { btn.textContent = 'Following'; btn.disabled = true; btn.style.opacity = '0.5'; }
+        else { btn.textContent = 'Follow'; btn.disabled = false; btn.style.opacity = '1'; }
+      });
+  }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
 </body>
 </html>
