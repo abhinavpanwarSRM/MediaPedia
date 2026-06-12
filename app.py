@@ -1753,6 +1753,26 @@ def unread_count():
     )
     return jsonify({'count': count})
 
+# Add these helper functions after current_user() and before the party routes
+
+def get_mutual_followers(username):
+    """Get list of users who follow the given user AND are followed back"""
+    if follows_collection is None:
+        return []
+    
+    following = {f['following'] for f in follows_collection.find({'follower': username})}
+    followers = {f['follower'] for f in follows_collection.find({'following': username})}
+    return list(following & followers)
+
+def are_mutual_followers(user1, user2):
+    """Check if two users follow each other"""
+    if follows_collection is None or user1 == user2:
+        return False
+    
+    user1_follows_user2 = follows_collection.find_one({'follower': user1, 'following': user2}) is not None
+    user2_follows_user1 = follows_collection.find_one({'follower': user2, 'following': user1}) is not None
+    
+    return user1_follows_user2 and user2_follows_user1
 
 # ===== Party Collection =====
 party_collection = None
@@ -1765,6 +1785,26 @@ except Exception as e:
     party_collection = None
 
 # ===== Party HTTP Routes =====
+@app.route('/api/mutual_followers')
+def get_mutual_followers_api():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    mutuals = get_mutual_followers(username)
+    
+    # Get bio info for each
+    result = []
+    for m in mutuals:
+        bio = ''
+        if users_collection is not None:
+            user = users_collection.find_one({'username': m}, {'bio': 1})
+            if user:
+                bio = user.get('bio', '')
+        result.append({'username': m, 'bio': bio})
+    
+    return jsonify(result)
+
 @app.route('/party')
 def party_lobby():
     username = current_user()
@@ -1803,26 +1843,57 @@ def create_party():
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json or {}
     party_id = str(uuid.uuid4())[:8]
-    # only mutuals can join — get mutual list
-    mutuals = []
-    if follows_collection is not None:
-        following = {f['following'] for f in follows_collection.find({'follower': username})}
-        followers = {f['follower'] for f in follows_collection.find({'following': username})}
-        mutuals = list(following & followers)
+    # Get mutual followers only
+    mutuals = get_mutual_followers(username)
     party = {
         'party_id': party_id,
         'name': data.get('name', f"{username}'s Party")[:60],
         'host': username,
         'members': [username],
         'invited': mutuals,
+        'allowed_users': mutuals + [username],  # Add this field
         'queue': [],
         'current_index': -1,
-        'state': 'stopped',   # playing | paused | stopped
+        'state': 'stopped',
         'position': 0.0,
         'updated_at': datetime.now(timezone.utc).isoformat()
     }
     party_collection.insert_one(party)
     return jsonify({'party_id': party_id}), 201
+
+@app.route('/api/party/<party_id>/invite', methods=['POST'])
+def invite_to_party(party_id):
+    """Invite a mutual follower to the party"""
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    target = request.json.get('username', '').strip()
+    if not target:
+        return jsonify({'error': 'Username required'}), 400
+    
+    # Check if they're mutual followers
+    if not are_mutual_followers(username, target):
+        return jsonify({'error': 'Can only invite mutual followers'}), 403
+    
+    if party_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    
+    party = party_collection.find_one({'party_id': party_id})
+    if not party:
+        return jsonify({'error': 'Party not found'}), 404
+    
+    # Check if user is host
+    if party.get('host') != username:
+        return jsonify({'error': 'Only host can invite'}), 403
+    
+    # Add to invited and allowed_users
+    party_collection.update_one(
+        {'party_id': party_id},
+        {'$addToSet': {'invited': target, 'allowed_users': target}}
+    )
+    
+    return jsonify({'success': True})
 
 @app.route('/api/party/<party_id>', methods=['GET'])
 def get_party(party_id):
@@ -1847,19 +1918,77 @@ def on_join_party(data):
     party_id = data.get('party_id')
     username = data.get('username')
     if not party_id or not username or party_collection is None:
+        emit('error', {'msg': 'Invalid request'})
         return
+    
     party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
     if not party:
         emit('error', {'msg': 'Party not found'})
         return
+    
+    # Check if user is allowed to join
+    host = party.get('host')
+    invited = party.get('invited', [])
+    allowed_users = party.get('allowed_users', [])
+    
+    # Host can always join
+    if username == host:
+        pass
+    # Check if user is mutual follower or invited
+    elif username not in allowed_users and username not in invited:
+        # Check if they're a mutual follower (in case the list wasn't updated)
+        if not are_mutual_followers(host, username):
+            emit('error', {'msg': 'You must be mutual followers to join this party'})
+            return
+        # Add to allowed_users
+        party_collection.update_one(
+            {'party_id': party_id},
+            {'$addToSet': {'allowed_users': username}}
+        )
+    
     join_room(party_id)
     party_collection.update_one({'party_id': party_id}, {'$addToSet': {'members': username}})
     updated = party_collection.find_one({'party_id': party_id}, {'_id': 0})
     # Send full state only to the joining socket
     updated['position'] = _live_position(updated)
+    
+    # Remove sensitive info before sending
+    if 'allowed_users' in updated:
+        del updated['allowed_users']
+    if 'invited' in updated:
+        del updated['invited']
+    
     emit('party_state', updated)
     # Notify everyone else about the new member + updated member list
     emit('member_joined', {'username': username, 'members': updated.get('members', [])}, to=party_id)
+
+@socketio.on('invite_to_party')
+def on_invite_to_party(data):
+    party_id = data.get('party_id')
+    target_username = data.get('username')
+    inviter = data.get('inviter')
+    
+    if not party_id or not target_username or not inviter:
+        return
+    
+    # Verify mutual followers
+    if not are_mutual_followers(inviter, target_username):
+        emit('error', {'msg': 'Can only invite mutual followers'}, to=inviter)
+        return
+    
+    if party_collection is None:
+        return
+    
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        return
+    
+    # Notify the invited user if they're online
+    emit('party_invite', {
+        'party_id': party_id,
+        'party_name': party.get('name', 'Party'),
+        'invited_by': inviter
+    }, room=target_username)
 
 @socketio.on('leave_party')
 def on_leave_party(data):

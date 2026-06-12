@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Party Room</title>
+  <title>Party Room - MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
@@ -47,9 +47,17 @@
     .chip { width: 30px; height: 30px; border-radius: 50%;
             background: linear-gradient(135deg, var(--g), #0d7a38);
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.75rem; font-weight: 700; }
+            font-size: 0.75rem; font-weight: 700; cursor: pointer; position: relative; }
     .chip.host { background: linear-gradient(135deg, #ffc107, #ff8c00); }
-    .btn-end { margin-left: auto; padding: 0.4rem 0.9rem; background: rgba(229,9,20,0.15);
+    .chip:hover::after { content: attr(title); position: absolute; bottom: -25px;
+                         left: 50%; transform: translateX(-50%); background: #000;
+                         padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;
+                         white-space: nowrap; z-index: 100; }
+    .btn-invite { padding: 0.4rem 0.9rem; background: rgba(29,185,84,0.15);
+                  border: 1px solid var(--g); border-radius: 6px; color: var(--g);
+                  font-size: 0.82rem; cursor: pointer; margin-left: 0.5rem; }
+    .btn-invite:hover { background: rgba(29,185,84,0.3); }
+    .btn-end { padding: 0.4rem 0.9rem; background: rgba(229,9,20,0.15);
                border: 1px solid var(--red); border-radius: 6px; color: var(--red);
                font-size: 0.82rem; cursor: pointer; }
     .btn-end:hover { background: rgba(229,9,20,0.3); }
@@ -177,6 +185,34 @@
                               border-radius: 6px; color: #000; font-weight: 700;
                               cursor: pointer; font-size: 0.85rem; }
 
+    /* Modal styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+             width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+             backdrop-filter: blur(4px); }
+    .modal-content { background: var(--bg); border: 1px solid var(--border);
+                     border-radius: 16px; max-width: 400px; margin: 10% auto;
+                     padding: 1.5rem; position: relative; }
+    .modal-content h3 { margin-bottom: 1rem; color: var(--g); }
+    .modal-close { position: absolute; right: 1rem; top: 1rem;
+                   font-size: 1.5rem; cursor: pointer; color: var(--muted); }
+    .modal-close:hover { color: #fff; }
+    .invite-list { max-height: 300px; overflow-y: auto; margin: 1rem 0; }
+    .invite-item { display: flex; justify-content: space-between;
+                   align-items: center; padding: 0.6rem;
+                   border-bottom: 1px solid var(--border); }
+    .invite-item:last-child { border-bottom: none; }
+    .invite-item button { padding: 0.3rem 0.8rem; background: var(--g);
+                          border: none; border-radius: 4px; color: #000;
+                          font-weight: 600; cursor: pointer; font-size: 0.8rem; }
+    .invite-item button:hover { background: #1ed760; }
+    .copy-link-btn { width: 100%; padding: 0.6rem; background: rgba(29,185,84,0.2);
+                     border: 1px solid var(--g); border-radius: 8px;
+                     color: var(--g); font-weight: 600; cursor: pointer;
+                     margin-top: 0.5rem; }
+    .copy-link-btn:hover { background: rgba(29,185,84,0.4); }
+    .empty-mutuals { text-align: center; padding: 1rem; color: var(--muted);
+                     font-style: italic; }
+
     /* Toast */
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
              background: var(--g); color: #000; padding: 0.5rem 1.2rem;
@@ -211,6 +247,7 @@
   <div class="room-top">
     <span class="room-name" id="room-name">Party</span>
     <span class="party-code" id="party-code-chip" onclick="copyCode()" title="Click to copy">— —</span>
+    <button class="btn-invite" id="btn-invite" onclick="showInviteModal()">👥 Invite</button>
     <div class="member-chips" id="member-chips"></div>
     <button class="btn-end" id="btn-end" onclick="leaveOrEnd()">Leave</button>
   </div>
@@ -274,6 +311,18 @@
     </div>
   </div>
 
+</div>
+
+<!-- Invite Modal -->
+<div id="inviteModal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeInviteModal()">&times;</span>
+    <h3>👥 Invite Mutual Followers</h3>
+    <div id="mutualFollowersList" class="invite-list">
+      <div class="empty-mutuals">Loading mutual followers...</div>
+    </div>
+    <button class="copy-link-btn" onclick="copyPartyLink()">🔗 Copy Party Link</button>
+  </div>
 </div>
 
 <!-- Hidden YT player -->
@@ -405,7 +454,81 @@
     ytPlayer.loadVideoById({ videoId: videoId, startSeconds: startSec || 0 });
   }
 
-  // Socket
+  // ========== INVITE FUNCTIONS (NEW) ==========
+  
+  function showInviteModal() {
+    var modal = document.getElementById('inviteModal');
+    var listDiv = document.getElementById('mutualFollowersList');
+    listDiv.innerHTML = '<div class="empty-mutuals">Loading mutual followers...</div>';
+    modal.style.display = 'block';
+    
+    // Fetch mutual followers from backend
+    fetch('/api/mutual_followers')
+      .then(function(r) { return r.json(); })
+      .then(function(followers) {
+        if (followers.error) {
+          listDiv.innerHTML = '<div class="empty-mutuals">Error: ' + followers.error + '</div>';
+          return;
+        }
+        if (!followers.length) {
+          listDiv.innerHTML = '<div class="empty-mutuals">No mutual followers found.<br>Follow each other first to invite!</div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < followers.length; i++) {
+          var f = followers[i];
+          html += '<div class="invite-item">' +
+            '<span><strong>' + esc(f.username) + '</strong><br><small style="color:#666">' + esc(f.bio || '') + '</small></span>' +
+            '<button onclick="inviteToParty(\'' + escA(f.username) + '\')">Invite</button>' +
+            '</div>';
+        }
+        listDiv.innerHTML = html;
+      })
+      .catch(function(err) {
+        listDiv.innerHTML = '<div class="empty-mutuals">Failed to load mutual followers</div>';
+        console.error(err);
+      });
+  }
+  
+  function closeInviteModal() {
+    document.getElementById('inviteModal').style.display = 'none';
+  }
+  
+  function inviteToParty(username) {
+    // Use HTTP endpoint for invite
+    fetch('/api/party/' + partyId + '/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showToast('Error: ' + data.error);
+        } else {
+          showToast('Invited ' + username + ' to the party!');
+          sysChat('You invited @' + username + ' to the party');
+          closeInviteModal();
+        }
+      })
+      .catch(function() {
+        showToast('Failed to send invite');
+      });
+  }
+  
+  function copyPartyLink() {
+    var url = window.location.origin + '/party/' + partyId;
+    navigator.clipboard.writeText(url)
+      .then(function() { 
+        showToast('Party link copied! Share it with your mutual followers');
+      })
+      .catch(function() { 
+        prompt('Share this link with mutual followers:', url);
+      });
+  }
+
+  // ========== SOCKET.IO ==========
+  
   function connectSocket(pid) {
     socket = io();
 
@@ -476,6 +599,14 @@
       if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
       renderQueue();
       if (d.by !== ME) sysChat(d.by + ' removed a song');
+    });
+    
+    // Socket.IO invite event (receiving invites)
+    socket.on('party_invite', function(d) {
+      showToast(d.invited_by + ' invited you to join "' + d.party_name + '"');
+      if (confirm(d.invited_by + ' invited you to join their party!\n\nParty: ' + d.party_name + '\n\nJoin now?')) {
+        window.location.href = '/party/' + d.party_id;
+      }
     });
 
     socket.on('chat_message', function(d) {
@@ -606,7 +737,6 @@
     var q = document.getElementById('search-inp').value.trim();
     if (!q) return;
     
-    // Debounce search
     if (searchTimeout) clearTimeout(searchTimeout);
     
     searchTimeout = setTimeout(function() {
@@ -825,6 +955,14 @@
     if (e.code === 'ArrowRight') nextSong();
     if (e.code === 'ArrowLeft') prevSong();
   });
+  
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    var modal = document.getElementById('inviteModal');
+    if (event.target === modal) {
+      closeInviteModal();
+    }
+  };
 </script>
 
 </body>
