@@ -1,9 +1,10 @@
 import json
+import math
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import pandas as pd
 import os
 from pymongo import MongoClient, DESCENDING
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from dotenv import load_dotenv
 from flask_bcrypt import Bcrypt
@@ -32,9 +33,9 @@ try:
     follows_collection.create_index([("follower", 1), ("following", 1)], unique=True)
     playlists_collection = db.playlists
     playlists_collection.create_index("username")
-    print("✅ MongoDB connected successfully")
+    print("âœ… MongoDB connected successfully")
 except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+    print(f"âŒ MongoDB connection failed: {e}")
     db = None
     comments_collection = None
     users_collection = None
@@ -107,7 +108,7 @@ def add_comment():
             "username": data["username"][:50],
             "text": data["text"][:1000],
             "rating": min(5, max(1, int(data.get("rating", 5)))),
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "likes": 0,
             "replies": []
         }
@@ -158,11 +159,9 @@ def delete_comment(comment_id):
         return jsonify({"error": "Database not connected"}), 500
     
     try:
-        username = request.args.get("username")
+        username = (request.args.get("username") or "").strip()
         if not username:
             return jsonify({"error": "Username required"}), 400
-        
-        # Find and delete comment (only if username matches)
         result = comments_collection.delete_one({
             "comment_id": comment_id,
             "username": username
@@ -271,12 +270,14 @@ def search():
 
     try:
         min_rating = float(request.args.get("min_rating", 0) or 0)
-    except ValueError:
+        if math.isnan(min_rating): min_rating = 0
+    except (ValueError, TypeError):
         min_rating = 0
 
     try:
         max_rating = float(request.args.get("max_rating", 10) or 10)
-    except ValueError:
+        if math.isnan(max_rating): max_rating = 10
+    except (ValueError, TypeError):
         max_rating = 10
 
     results = df.copy()
@@ -361,8 +362,16 @@ def search_series():
     genre = request.args.get("genre", "").strip().lower()
     actor = request.args.get("actor", "").strip().lower()
     year = request.args.get("year", "").strip()
-    min_rating = float(request.args.get("min_rating", 0) or 0)
-    max_rating = float(request.args.get("max_rating", 10) or 10)
+    try:
+        min_rating = float(request.args.get("min_rating", 0) or 0)
+        if math.isnan(min_rating): min_rating = 0
+    except (ValueError, TypeError):
+        min_rating = 0
+    try:
+        max_rating = float(request.args.get("max_rating", 10) or 10)
+        if math.isnan(max_rating): max_rating = 10
+    except (ValueError, TypeError):
+        max_rating = 10
 
     results = series_df.copy()
 
@@ -521,8 +530,16 @@ def search_games():
     year = request.args.get("year", "").strip()
     genre = request.args.get("genre", "").strip()
     publisher = request.args.get("publisher", "").strip()
-    min_sales = float(request.args.get("min_sales", 0) or 0)
-    max_sales = float(request.args.get("max_sales", 100) or 100)
+    try:
+        min_sales = float(request.args.get("min_sales", 0) or 0)
+        if math.isnan(min_sales): min_sales = 0
+    except (ValueError, TypeError):
+        min_sales = 0
+    try:
+        max_sales = float(request.args.get("max_sales", 100) or 100)
+        if math.isnan(max_sales): max_sales = 100
+    except (ValueError, TypeError):
+        max_sales = 100
 
     results = games_df.copy()
 
@@ -668,7 +685,7 @@ def era_movies():
         return jsonify(results.to_dict(orient='records'))
     else:
         results = df.copy()
-        # movies.csv has no Year column — decade filter skipped for movies
+        # movies.csv has no Year column â€” decade filter skipped for movies
         if target_genres:
             results = results[results['Genre'].str.lower().apply(lambda g: any(t.lower() in g for t in target_genres))]
         results['Rating'] = pd.to_numeric(results['Rating'], errors='coerce').fillna(0)
@@ -786,7 +803,7 @@ OSCARS_WINNERS = [
     {'year': 2024, 'title': 'Oppenheimer', 'director': 'Christopher Nolan'},
     {'year': 2023, 'title': 'Everything Everywhere All at Once', 'director': 'Daniel Kwan, Daniel Scheinert'},
     {'year': 2022, 'title': 'CODA', 'director': 'Sian Heder'},
-    {'year': 2021, 'title': 'Nomadland', 'director': 'Chloé Zhao'},
+    {'year': 2021, 'title': 'Nomadland', 'director': 'ChloÃ© Zhao'},
     {'year': 2020, 'title': 'Parasite', 'director': 'Bong Joon-ho'},
     {'year': 2019, 'title': 'Green Book', 'director': 'Peter Farrelly'},
     {'year': 2018, 'title': 'The Shape of Water', 'director': 'Guillermo del Toro'},
@@ -889,7 +906,7 @@ def register():
         if not username or not password:
             return render_template('register.html', error='All fields required')
         if len(username) < 3 or len(username) > 30:
-            return render_template('register.html', error='Username must be 3–30 characters')
+            return render_template('register.html', error='Username must be 3â€“30 characters')
         if users_collection is None:
             return render_template('register.html', error='Database unavailable')
         if users_collection.find_one({'username': username}):
@@ -898,10 +915,11 @@ def register():
         users_collection.insert_one({
             'username': username,
             'password': hashed,
-            'created_at': datetime.utcnow(),
+            'created_at': datetime.now(timezone.utc),
             'bio': ''
         })
         session['username'] = username
+        session.permanent = True
         return redirect('/')
     return render_template('register.html', error=None)
 
@@ -919,6 +937,7 @@ def login():
         if not user or not bcrypt.check_password_hash(user['password'], password):
             return render_template('login.html', error='Invalid username or password')
         session['username'] = username
+        session.permanent = True
         return redirect('/')
     return render_template('login.html', error=None)
 
@@ -979,7 +998,7 @@ def follow_user(target):
     if existing:
         follows_collection.delete_one({'follower': username, 'following': target})
         return jsonify({'status': 'unfollowed'})
-    follows_collection.insert_one({'follower': username, 'following': target, 'created_at': datetime.utcnow()})
+    follows_collection.insert_one({'follower': username, 'following': target, 'created_at': datetime.now(timezone.utc)})
     return jsonify({'status': 'followed'})
 
 # ===== User Lists =====
@@ -1008,7 +1027,7 @@ def create_list():
         'username': username,
         'name': name,
         'items': [],
-        'created_at': datetime.utcnow()
+        'created_at': datetime.now(timezone.utc)
     })
     return jsonify({'list_id': list_id, 'name': name}), 201
 
@@ -1024,7 +1043,7 @@ def add_to_list(list_id):
         'content_type': data.get('content_type', 'movie'),
         'content_id': data.get('content_id'),
         'title': data.get('title', ''),
-        'added_at': datetime.utcnow().isoformat()
+        'added_at': datetime.now(timezone.utc).isoformat()
     }
     result = lists_collection.update_one(
         {'list_id': list_id, 'username': username},
@@ -1079,7 +1098,7 @@ def reply_to_comment(comment_id):
         'reply_id': str(uuid.uuid4()),
         'username': username[:50],
         'text': text[:500],
-        'created_at': datetime.utcnow().isoformat(),
+        'created_at': datetime.now(timezone.utc).isoformat(),
         'likes': 0
     }
     result = comments_collection.update_one(
@@ -1130,7 +1149,7 @@ def create_playlist():
         'username': username,
         'name': name,
         'songs': [],
-        'created_at': datetime.utcnow()
+        'created_at': datetime.now(timezone.utc)
     }
     playlists_collection.insert_one(doc)
     return jsonify({'playlist_id': playlist_id, 'name': name, 'songs': []}), 201
@@ -1157,7 +1176,7 @@ def playlist_recommendations():
                     if g:
                         genre_counts[g] = genre_counts.get(g, 0) + 1
     if not genre_counts:
-        # No genre data — return random popular artists
+        # No genre data â€” return random popular artists
         sample = artists_df.sample(n=min(8, len(artists_df))).to_dict(orient='records')
         for a in sample:
             a['DetailLink'] = f"/artist/{a['ID']}"
@@ -1222,7 +1241,7 @@ def add_song(playlist_id):
         'artist_name': data.get('artist_name', '').strip(),
         'artist_id': data.get('artist_id', 0),
         'youtube_query': data.get('youtube_query', '').strip(),
-        'added_at': datetime.utcnow().isoformat()
+        'added_at': datetime.now(timezone.utc).isoformat()
     }
     if not song['song_title'] or not song['artist_name']:
         return jsonify({'error': 'Song title and artist required'}), 400
