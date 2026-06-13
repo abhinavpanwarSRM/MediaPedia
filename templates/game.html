@@ -326,6 +326,16 @@
           min-width: 120px;
         }
       }
+      @media (max-width: 480px) {
+        .overlay { padding: 1rem; }
+        .game-detail { padding: 1rem; }
+        .recommendations-list li {
+          flex: 1 0 100%;
+          max-width: 100%;
+        }
+        .game-info p { flex-direction: column; }
+        .game-info p strong { min-width: unset; }
+      }
     </style>
   </head>
   <body>

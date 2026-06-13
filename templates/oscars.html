@@ -13,14 +13,14 @@
     h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin-bottom: 0.4rem; }
     .subtitle { color: var(--grey); margin-bottom: 2rem; font-size: 0.95rem; }
     .trophy { font-size: 1.5rem; margin-right: 0.5rem; }
-    .entry { background: var(--card); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1.2rem; border-left: 4px solid var(--gold); }
+    .entry { background: var(--card); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1.2rem; border-left: 4px solid var(--gold); flex-wrap: wrap; }
     .year { font-size: 1.6rem; font-weight: 700; color: var(--gold); min-width: 60px; }
-    .info { flex: 1; }
+    .info { flex: 1; min-width: 0; }
     .title-link { font-size: 1.05rem; font-weight: 600; color: var(--text); text-decoration: none; }
     .title-link:hover { color: var(--gold); }
     .director { font-size: 0.85rem; color: var(--grey); margin-top: 0.2rem; }
     .seen-section { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 80px; }
-    .seen-bar { display: flex; gap: 0.4rem; }
+    .seen-bar { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
     .seen-btn { border: none; border-radius: 4px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.2s; }
     .seen-yes { background: rgba(46,213,115,0.2); color: #2ed573; border: 1px solid #2ed573; }
     .seen-yes:hover { background: rgba(46,213,115,0.4); }
@@ -28,6 +28,13 @@
     .seen-no:hover { background: rgba(255,71,87,0.4); }
     .seen-count { font-size: 0.75rem; color: var(--grey); text-align: center; }
     .no-link { font-size: 1.05rem; font-weight: 600; color: var(--text); }
+    @media (max-width: 480px) {
+      body { padding: 1.2rem 0.75rem; }
+      .entry { flex-direction: column; align-items: flex-start; gap: 0.6rem; padding: 1rem; }
+      .seen-section { align-items: flex-start; min-width: unset; width: 100%; }
+      .seen-bar { justify-content: flex-start; }
+      .year { font-size: 1.3rem; }
+    }
   </style>
 </head>
 <body>

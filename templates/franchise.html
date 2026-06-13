@@ -19,6 +19,13 @@
     .title { font-weight: 600; font-size: 1rem; }
     .meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
     .rating { font-size: 1.1rem; font-weight: 700; color: var(--primary); white-space: nowrap; margin-left: 1rem; }
+    @media (max-width: 480px) {
+      body { padding: 1.2rem 0.6rem; }
+      .timeline { padding-left: 1.2rem; }
+      .entry { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .entry::before { left: -1.45rem; }
+      .rating { margin-left: 0; }
+    }
   </style>
 </head>
 <body>

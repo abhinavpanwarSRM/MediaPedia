@@ -25,6 +25,17 @@
     .movie-meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
     .movie-rating { font-size: 1.1rem; font-weight: 700; color: var(--primary); white-space: nowrap; margin-left: 1rem; }
     h2 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--grey); text-transform: uppercase; letter-spacing: 1px; }
+    @media (max-width: 600px) {
+      body { padding: 1.2rem 0.75rem; }
+      .stats { gap: 0.8rem; }
+      .stat { padding: 0.7rem 1rem; }
+      .stat-val { font-size: 1.4rem; }
+    }
+    @media (max-width: 480px) {
+      .movie-row { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .movie-rating { margin-left: 0; font-size: 0.95rem; }
+      .signatures { gap: 0.4rem; }
+    }
   </style>
 </head>
 <body>

@@ -44,6 +44,13 @@
                cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff;
                transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
     .sug-btn:hover { background: rgba(229,9,20,0.3); }
+    @media (max-width: 480px) {
+      body { padding: 1.2rem 0.75rem; }
+      .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .auth-links { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+      .auth-links a { margin-left: 0; }
+      .feed-meta { flex-direction: column; align-items: flex-start; }
+    }
   </style>
 </head>
 <body>

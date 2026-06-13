@@ -24,6 +24,11 @@
     .rating.movie { color: var(--primary); }
     .rating.series { color: var(--series); }
     .empty { color: var(--grey); font-style: italic; padding: 1rem 0; }
+    @media (max-width: 480px) {
+      body { padding: 1.2rem 0.75rem; }
+      .row { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+      .rating { margin-left: 0; font-size: 0.95rem; }
+    }
   </style>
 </head>
 <body>
