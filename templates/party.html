@@ -1454,16 +1454,16 @@
           '<span style="font-size:1.2rem">🎉</span>' +
           '<span style="flex:1;font-size:0.9rem"><strong style="color:#1db954">' + esc(inv.invited_by) + '</strong>' +
           ' invited you to join <strong>' + esc(inv.party_name) + '</strong></span>' +
-          '<button onclick="joinInvite(\'' + escA(inv.party_id) + '\',\'' + escA(inv.party_id) + '\'" ' +
+          '<button onclick="joinInvite(\'' + escA(inv.party_id) + '\'" ' +
           'style="background:#1db954;border:none;border-radius:8px;padding:0.4rem 0.9rem;font-weight:700;cursor:pointer;color:#000;">Join</button>' +
           '<button onclick="dismissInvite(\'' + escA(inv.party_id) + '\'" ' +
           'style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.3rem;">&times;</button>';
         document.body.appendChild(banner);
       }
 
-      function joinInvite(partyId, bannerId) {
-        dismissInvite(partyId);
-        window.location.href = '/party/' + partyId;
+      function joinInvite(pid) {
+        dismissInvite(pid);
+        window.location.href = '/party/' + pid;
       }
 
       function dismissInvite(pid) {
