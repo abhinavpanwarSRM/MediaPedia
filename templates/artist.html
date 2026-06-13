@@ -508,10 +508,16 @@
         if (!q) return;
         const container = document.getElementById('artist-search-results');
         container.innerHTML = '<div style="color:#888;font-size:0.85rem;padding:0.4rem;">Searching...</div>';
-        const key = ART_YT_KEYS[artKeyIdx % ART_YT_KEYS.length];
+        const key = YT_KEYS[artKeyIdx % YT_KEYS.length];
         fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=5&type=video`)
           .then(r => r.json())
           .then(data => {
+            if (data.error && (data.error.code === 403 || data.error.code === 429)) {
+              artKeyIdx++;
+              if (artKeyIdx < YT_KEYS.length) artistSearch();
+              else container.innerHTML = '<div style="color:#ff8888;font-size:0.82rem;">All API keys exhausted.</div>';
+              return;
+            }
             if (!data.items || !data.items.length) { container.innerHTML = '<div style="color:#666;">No results.</div>'; return; }
             container.innerHTML = data.items.map(item => {
               const vid = item.id.videoId;
@@ -525,7 +531,7 @@
               </div>`;
             }).join('');
           })
-          .catch(() => { artKeyIdx++; if (artKeyIdx < 4) artistSearch(); });
+          .catch(() => { artKeyIdx++; if (artKeyIdx < YT_KEYS.length) artistSearch(); else container.innerHTML = '<div style="color:#ff8888;">Search failed.</div>'; });
       }
 
       function previewArtistSong(videoId) {

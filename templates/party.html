@@ -8,7 +8,9 @@
       href="{{ url_for('static', filename='favicon.png') }}"
       type="image/x-icon"
     />
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+      integrity="sha384-BvL9M5YSGMEMdHTQVEfFEGWgVmFd5z5FNAMiWlFDMFJFLTOhbMx2rKi7nO5Ojjs"
+      crossorigin="anonymous"></script>
     <style>
       :root {
         --g: #1db954;
@@ -973,6 +975,11 @@
         opacity: 1;
       }
 
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      }
+
       /* Responsive */
       @media (max-width: 768px) {
         #room.active {
@@ -1369,7 +1376,7 @@
               var f = followers[i];
               html += '<div class="invite-item">' +
                 '<span><strong>' + esc(f.username) + '</strong><br><small style="color:#666">' + esc(f.bio || '') + '</small></span>' +
-                '<button onclick="inviteToParty(\'' + escA(f.username) + '\')">Invite</button>' +
+                '<button data-uname="' + esc(f.username) + '" onclick="inviteToParty(\'' + escA(f.username) + '\')">Invite</button>' +
                 '</div>';
             }
             listDiv.innerHTML = html;
@@ -1385,7 +1392,6 @@
       }
 
       function inviteToParty(username) {
-        // Use HTTP endpoint for invite
         fetch('/api/party/' + partyId + '/invite', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1393,17 +1399,23 @@
         })
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            if (data.error) {
-              showToast('Error: ' + data.error);
-            } else {
-              showToast('Invited ' + username + ' to the party!');
-              sysChat('You invited @' + username + ' to the party');
-              closeInviteModal();
-            }
+            if (data.error) { showToast('Error: ' + data.error); return; }
+            // Real-time delivery via socket (works if invitee is currently online)
+            if (socket) socket.emit('invite_to_party', { party_id: partyId, username: username });
+            // Mark button as sent
+            var btns = document.querySelectorAll('#mutualFollowersList .invite-item button');
+            btns.forEach(function(btn) {
+              if (btn.getAttribute('data-uname') === username) {
+                btn.textContent = '✓ Sent';
+                btn.disabled = true;
+                btn.style.background = '#555';
+                btn.style.color = '#ccc';
+              }
+            });
+            showToast('Invited ' + username + '!');
+            sysChat('You invited @' + username + ' to the party');
           })
-          .catch(function() {
-            showToast('Failed to send invite');
-          });
+          .catch(function() { showToast('Failed to send invite'); });
       }
 
       function copyPartyLink() {
@@ -1416,6 +1428,58 @@
             prompt('Share this link with mutual followers:', url);
           });
       }
+
+      // ========== PENDING INVITE BANNER ==========
+      // Check for pending invites on page load and via socket
+      function checkPendingInvites() {
+        fetch('/api/party/pending_invites')
+          .then(function(r) { return r.json(); })
+          .then(function(invites) {
+            if (!Array.isArray(invites) || !invites.length) return;
+            invites.forEach(function(inv) { showInviteBanner(inv); });
+          })
+          .catch(function() {});
+      }
+
+      function showInviteBanner(inv) {
+        // Remove existing banner for same party if any
+        var existing = document.getElementById('invite-banner-' + inv.party_id);
+        if (existing) existing.remove();
+
+        var banner = document.createElement('div');
+        banner.id = 'invite-banner-' + inv.party_id;
+        banner.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);' +
+          'background:#1a1a1a;border:1px solid #1db954;border-radius:16px;padding:1rem 1.2rem;' +
+          'z-index:9998;display:flex;align-items:center;gap:1rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);' +
+          'max-width:90vw;animation:slideDown 0.3s ease;';
+        banner.innerHTML =
+          '<span style="font-size:1.2rem">🎉</span>' +
+          '<span style="flex:1;font-size:0.9rem"><strong style="color:#1db954">' + esc(inv.invited_by) + '</strong>' +
+          ' invited you to join <strong>' + esc(inv.party_name) + '</strong></span>' +
+          '<button onclick="joinInvite(\'' + escA(inv.party_id) + '\',\'' + escA(inv.party_id) + '\'" ' +
+          'style="background:#1db954;border:none;border-radius:8px;padding:0.4rem 0.9rem;font-weight:700;cursor:pointer;color:#000;">Join</button>' +
+          '<button onclick="dismissInvite(\'' + escA(inv.party_id) + '\'" ' +
+          'style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.3rem;">&times;</button>';
+        document.body.appendChild(banner);
+      }
+
+      function joinInvite(partyId, bannerId) {
+        dismissInvite(partyId);
+        window.location.href = '/party/' + partyId;
+      }
+
+      function dismissInvite(pid) {
+        var banner = document.getElementById('invite-banner-' + pid);
+        if (banner) banner.remove();
+        fetch('/api/party/dismiss_invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ party_id: pid })
+        }).catch(function() {});
+      }
+
+      // Check on page load
+      checkPendingInvites();
 
       // ========== SOCKET.IO ==========
 

@@ -3,11 +3,7 @@ import math
 import atexit
 import logging
 import requests as http_requests
-from markupsafe import escape as _esc
-import atexit
-import logging
-import requests as http_requests
-from markupsafe import escape as _esc
+from markupsafe import escape as _esc, Markup
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
 import pandas as pd
@@ -627,7 +623,7 @@ def recommend_games():
 # ===== Director Page =====
 @app.route("/director/<path:director_name>")
 def director_page(director_name):
-    director_name = str(_esc(director_name))
+    director_name = Markup(_esc(director_name))
     name_lower = director_name.lower()
     movies = df[df['Directors'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
     if not movies:
@@ -648,7 +644,7 @@ def director_page(director_name):
 # ===== Actor Page =====
 @app.route("/actor/<path:actor_name>")
 def actor_page(actor_name):
-    actor_name = str(_esc(actor_name))
+    actor_name = Markup(_esc(actor_name))
     name_lower = actor_name.lower()
     movies = df[df['Stars'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
     series = series_df[series_df['Actors'].str.lower().str.contains(name_lower, na=False)].to_dict(orient='records')
@@ -662,7 +658,7 @@ def actor_page(actor_name):
 # ===== Franchise Tracker =====
 @app.route("/franchise/<path:franchise_name>")
 def franchise_page(franchise_name):
-    franchise_name = str(_esc(franchise_name))
+    franchise_name = Markup(_esc(franchise_name))
     name_lower = franchise_name.lower()
     franchise_movies = df[df['Movie Name'].str.lower().str.contains(name_lower, na=False)]\
         .sort_values('Rating', ascending=False).to_dict(orient='records')
@@ -1784,6 +1780,16 @@ except Exception as e:
     log.error("Failed to init parties collection: %s", e)
     party_collection = None
 
+# ===== Party Invites Collection =====
+party_invites_collection = None
+try:
+    if db is not None:
+        party_invites_collection = db.party_invites
+        party_invites_collection.create_index([('to_user', 1), ('dismissed', 1)])
+except Exception as e:
+    log.error("Failed to init party_invites collection: %s", e)
+    party_invites_collection = None
+
 # ===== Party HTTP Routes =====
 @app.route('/api/mutual_followers')
 def get_mutual_followers_api():
@@ -1867,32 +1873,75 @@ def invite_to_party(party_id):
     username = current_user()
     if not username:
         return jsonify({'error': 'Not logged in'}), 401
-    
-    target = request.json.get('username', '').strip()
+
+    target = (request.json or {}).get('username', '').strip()
     if not target:
         return jsonify({'error': 'Username required'}), 400
-    
-    # Check if they're mutual followers
+
     if not are_mutual_followers(username, target):
         return jsonify({'error': 'Can only invite mutual followers'}), 403
-    
+
     if party_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
-    
+
     party = party_collection.find_one({'party_id': party_id})
     if not party:
         return jsonify({'error': 'Party not found'}), 404
-    
-    # Check if user is host
+
     if party.get('host') != username:
         return jsonify({'error': 'Only host can invite'}), 403
-    
-    # Add to invited and allowed_users
+
+    # Add to allowed_users so they can join
     party_collection.update_one(
         {'party_id': party_id},
         {'$addToSet': {'invited': target, 'allowed_users': target}}
     )
-    
+
+    # Persist invite in DB so it survives across page navigations
+    if party_invites_collection is not None:
+        party_invites_collection.update_one(
+            {'party_id': party_id, 'to_user': target},
+            {'$set': {
+                'party_id': party_id,
+                'party_name': party.get('name', "Party"),
+                'invited_by': username,
+                'to_user': target,
+                'dismissed': False,
+                'created_at': datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+
+    return jsonify({'success': True, 'party_name': party.get('name', 'Party')})
+
+
+@app.route('/api/party/pending_invites')
+def pending_invites():
+    """Return undismissed party invites for the logged-in user."""
+    username = current_user()
+    if not username:
+        return jsonify([]), 401
+    if party_invites_collection is None:
+        return jsonify([])
+    invites = list(party_invites_collection.find(
+        {'to_user': username, 'dismissed': False},
+        {'_id': 0, 'party_id': 1, 'party_name': 1, 'invited_by': 1}
+    ))
+    return jsonify(invites)
+
+
+@app.route('/api/party/dismiss_invite', methods=['POST'])
+def dismiss_invite():
+    """Mark an invite as dismissed."""
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    party_id = (request.json or {}).get('party_id', '')
+    if party_invites_collection is not None and party_id:
+        party_invites_collection.update_one(
+            {'party_id': party_id, 'to_user': username},
+            {'$set': {'dismissed': True}}
+        )
     return jsonify({'success': True})
 
 @app.route('/api/party/<party_id>', methods=['GET'])
@@ -1912,11 +1961,18 @@ def end_party(party_id):
     party_collection.delete_one({'party_id': party_id, 'host': username})
     return jsonify({'success': True})
 
+# ===== SocketIO Connect — join personal room for invite notifications =====
+@socketio.on('connect')
+def on_connect():
+    username = session.get('username')
+    if username:
+        join_room(username)  # personal room so party_invite events are delivered
+
 # ===== SocketIO Party Events =====
 @socketio.on('join_party')
 def on_join_party(data):
     party_id = data.get('party_id')
-    username = data.get('username')
+    username = session.get('username')
     if not party_id or not username or party_collection is None:
         emit('error', {'msg': 'Invalid request'})
         return
@@ -1966,34 +2022,49 @@ def on_join_party(data):
 def on_invite_to_party(data):
     party_id = data.get('party_id')
     target_username = data.get('username')
-    inviter = data.get('inviter')
-    
+    inviter = session.get('username')  # trust session, not client payload
+
     if not party_id or not target_username or not inviter:
         return
-    
+
     # Verify mutual followers
     if not are_mutual_followers(inviter, target_username):
-        emit('error', {'msg': 'Can only invite mutual followers'}, to=inviter)
+        emit('error', {'msg': 'Can only invite mutual followers'})
         return
-    
+
     if party_collection is None:
         return
-    
+
     party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
     if not party:
         return
-    
-    # Notify the invited user if they're online
+
+    # Persist invite so the user sees it even if not currently online
+    if party_invites_collection is not None:
+        party_invites_collection.update_one(
+            {'party_id': party_id, 'to_user': target_username},
+            {'$set': {
+                 'party_id': party_id,
+                 'party_name': party.get('name', 'Party'),
+                 'invited_by': inviter,
+                 'to_user': target_username,
+                 'dismissed': False,
+                 'created_at': datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+
+    # Also deliver real-time notification if the user is online
     emit('party_invite', {
         'party_id': party_id,
         'party_name': party.get('name', 'Party'),
         'invited_by': inviter
-    }, room=target_username)
+    }, to=target_username)
 
 @socketio.on('leave_party')
 def on_leave_party(data):
     party_id = data.get('party_id')
-    username = data.get('username')
+    username = session.get('username')
     if not party_id or not username:
         return
     leave_room(party_id)
@@ -2021,7 +2092,7 @@ def _live_position(party):
 def on_party_play(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
-    username = data.get('username')
+    username = session.get('username')
     now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
@@ -2033,7 +2104,7 @@ def on_party_play(data):
 def on_party_pause(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
-    username = data.get('username')
+    username = session.get('username')
     now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
@@ -2045,7 +2116,7 @@ def on_party_pause(data):
 def on_party_seek(data):
     party_id = data.get('party_id')
     position = float(data.get('position', 0))
-    username = data.get('username')
+    username = session.get('username')
     now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
@@ -2056,7 +2127,7 @@ def on_party_seek(data):
 def on_party_change_song(data):
     party_id = data.get('party_id')
     index = int(data.get('index', 0))
-    username = data.get('username')
+    username = session.get('username')
     now = datetime.now(timezone.utc).isoformat()
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id},
@@ -2068,7 +2139,7 @@ def on_party_change_song(data):
 def on_party_add_song(data):
     party_id = data.get('party_id')
     song = data.get('song')
-    username = data.get('username')
+    username = session.get('username')
     if not song or not party_id or party_collection is None:
         return
     song['added_by'] = username
@@ -2087,7 +2158,7 @@ def on_party_add_song(data):
 def on_party_add_song_next(data):
     party_id = data.get('party_id')
     song = data.get('song')
-    username = data.get('username')
+    username = session.get('username')
     if not song or not party_id or party_collection is None:
         return
     song['added_by'] = username
@@ -2111,16 +2182,40 @@ def on_party_add_song_next(data):
 def on_party_remove_song(data):
     party_id = data.get('party_id')
     song_id = data.get('song_id')
-    username = data.get('username')
+    username = session.get('username')
     if party_collection is not None:
+        # Get current state before removal to detect if playing song was removed
+        party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'queue': 1, 'current_index': 1})
         party_collection.update_one({'party_id': party_id},
             {'$pull': {'queue': {'song_id': song_id}}})
+        if party:
+            cur = party.get('current_index', -1)
+            old_queue = party.get('queue', [])
+            removed_idx = next((i for i, s in enumerate(old_queue) if s.get('song_id') == song_id), -1)
+            new_len = len(old_queue) - 1
+            now = datetime.now(timezone.utc).isoformat()
+            if removed_idx != -1 and removed_idx == cur:
+                # Currently playing song was removed — advance to next or stop
+                new_idx = cur if cur < new_len else (new_len - 1)
+                if new_len > 0:
+                    party_collection.update_one({'party_id': party_id},
+                        {'$set': {'current_index': new_idx, 'state': 'playing',
+                                  'position': 0, 'played_at': now}})
+                    emit('sync_change_song', {'index': new_idx, 'by': username,
+                                              'position': 0, 'paused': False}, to=party_id)
+                else:
+                    party_collection.update_one({'party_id': party_id},
+                        {'$set': {'current_index': -1, 'state': 'stopped', 'position': 0}})
+            elif removed_idx != -1 and removed_idx < cur:
+                # A song before the current one was removed — shift index down
+                party_collection.update_one({'party_id': party_id},
+                    {'$set': {'current_index': cur - 1}})
     emit('song_removed', {'song_id': song_id, 'by': username}, to=party_id)
 
 @socketio.on('party_chat')
 def on_party_chat(data):
     party_id = data.get('party_id')
-    username = data.get('username')
+    username = session.get('username')
     text = (data.get('text') or '').strip()[:300]
     if not text or not party_id:
         return
