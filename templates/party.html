@@ -57,6 +57,7 @@
       /* Lobby */
       #lobby {
         max-width: 480px;
+        width: 90%;
         margin: 10vh auto;
         padding: 2rem 1.5rem;
         text-align: center;
@@ -360,6 +361,45 @@
         margin-bottom: 1.2rem;
       }
 
+      /* Video panel */
+      .video-panel {
+        display: none;
+        margin: 0 auto 1rem;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        width: 100%;
+        padding-bottom: 56.25%;
+        background: #000;
+        text-align: left;
+      }
+      .video-panel.open { display: block; }
+      .video-panel iframe {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        border: none;
+        border-radius: 12px;
+      }
+      .btn-video {
+        display: inline-block;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        padding: 0.3rem 0.9rem;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        margin: 0 auto 0.8rem;
+      }
+      .btn-video:hover, .btn-video.active {
+        background: rgba(29,185,84,0.15);
+        border-color: var(--g);
+        color: var(--g);
+      }
+
       /* Controls */
       .controls {
         display: flex;
@@ -470,7 +510,8 @@
       }
 
       .vol-wrap input {
-        width: 100px;
+        width: 100%;
+        max-width: 100px;
         accent-color: var(--g);
         cursor: pointer;
       }
@@ -840,6 +881,7 @@
         background: rgba(0, 0, 0, 0.9);
         backdrop-filter: blur(8px);
         animation: fadeIn 0.2s ease;
+        overflow-y: auto;
       }
 
       .modal-content {
@@ -847,7 +889,8 @@
         border: 1px solid var(--border);
         border-radius: 24px;
         max-width: 400px;
-        margin: 15% auto;
+        width: 90%;
+        margin: 10vh auto 2rem;
         padding: 1.5rem;
         position: relative;
         animation: slideUp 0.3s ease;
@@ -991,7 +1034,8 @@
         .room-side {
           border-left: none;
           border-top: 1px solid var(--border);
-          max-height: 300px;
+          min-height: 200px;
+          max-height: 350px;
         }
 
         .room-main {
@@ -1013,6 +1057,15 @@
         .btn-end {
           font-size: 0.75rem;
           padding: 0.3rem 0.8rem;
+          order: 2;
+        }
+
+        .party-code {
+          order: 3;
+        }
+
+        .room-name {
+          order: 0;
         }
 
         .controls {
@@ -1032,8 +1085,8 @@
         }
 
         .modal-content {
-          margin: 30% auto;
-          width: 90%;
+          margin: 5vh auto 2rem;
+          width: 92%;
         }
       }
 
@@ -1129,6 +1182,8 @@
           <div class="np-title" id="np-title">—</div>
           <div class="np-artist" id="np-artist"></div>
           <div class="np-by" id="np-by"></div>
+          <button class="btn-video" id="btn-video" onclick="toggleVideo()">📺 Watch Video</button>
+          <div class="video-panel" id="video-panel"></div>
           <div class="controls">
             <button class="ctrl-btn" onclick="prevSong()" title="Previous">
               ⏮
@@ -1348,9 +1403,15 @@
           setTimeout(function() { _loadVideo(videoId, startSec); }, 300);
           return;
         }
+        currentVideoId = videoId;
         document.getElementById('prog-fill').style.width = '0%';
         document.getElementById('elapsed').textContent = '0:00';
         ytPlayer.loadVideoById({ videoId: videoId, startSeconds: startSec || 0 });
+        // Update visible video panel if open
+        if (videoOn) {
+          var playing = pauseAtSec === null; // if pauseAtSec is set, we'll pause after load
+          updateVideoPanel(videoId, startSec || 0, playing);
+        }
       }
 
       // ========== INVITE FUNCTIONS (NEW) ==========
@@ -1483,6 +1544,48 @@
       // Check on page load
       checkPendingInvites();
 
+      var videoOn = false;
+      var currentVideoId = null;
+
+      function toggleVideo() {
+        videoOn = !videoOn;
+        var btn = document.getElementById('btn-video');
+        var panel = document.getElementById('video-panel');
+        btn.classList.toggle('active', videoOn);
+        btn.textContent = videoOn ? '🙈 Hide Video' : '📺 Watch Video';
+        if (videoOn) {
+          panel.classList.add('open');
+          if (currentVideoId) renderVideoPanel(currentVideoId);
+        } else {
+          panel.classList.remove('open');
+          panel.innerHTML = '';
+        }
+      }
+
+      function renderVideoPanel(videoId) {
+        if (!videoOn || !videoId) return;
+        var pos = (ytReady && ytPlayer.getCurrentTime) ? Math.floor(ytPlayer.getCurrentTime() || 0) : 0;
+        var playing = ytReady && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+        // autoplay=1 only if currently playing, start= seeks to current position
+        var src = 'https://www.youtube.com/embed/' + videoId +
+          '?autoplay=' + (playing ? '1' : '0') +
+          '&start=' + pos +
+          '&rel=0&modestbranding=1&enablejsapi=0';
+        document.getElementById('video-panel').innerHTML =
+          '<iframe src="' + src + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+      }
+
+      function updateVideoPanel(videoId, startSec, shouldPlay) {
+        currentVideoId = videoId;
+        if (!videoOn) return;
+        var src = 'https://www.youtube.com/embed/' + videoId +
+          '?autoplay=' + (shouldPlay ? '1' : '0') +
+          '&start=' + Math.floor(startSec || 0) +
+          '&rel=0&modestbranding=1&enablejsapi=0';
+        document.getElementById('video-panel').innerHTML =
+          '<iframe src="' + src + '" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+      }
+
       // ========== SOCKET.IO ==========
 
       function connectSocket(pid) {
@@ -1517,6 +1620,7 @@
           }
           document.getElementById('play-btn').innerHTML = '⏸';
           if (d.by !== ME) sysChat(d.by + ' pressed play');
+          if (videoOn && currentVideoId) updateVideoPanel(currentVideoId, d.position, true);
         });
 
         socket.on('sync_pause', function(d) {
@@ -1526,10 +1630,13 @@
           }
           document.getElementById('play-btn').innerHTML = '▶';
           if (d.by !== ME) sysChat(d.by + ' paused');
+          if (videoOn && currentVideoId) updateVideoPanel(currentVideoId, d.position, false);
         });
 
         socket.on('sync_seek', function(d) {
           if (ytReady) ytPlayer.seekTo(d.position, true);
+          if (videoOn && currentVideoId) updateVideoPanel(currentVideoId, d.position,
+            ytReady && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING);
         });
 
         socket.on('sync_change_song', function(d) {
