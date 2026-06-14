@@ -484,18 +484,69 @@
       }
 
       function playVideo(videoId, containerId) {
-        document.getElementById(containerId).innerHTML = `
-      <iframe width="560" height="315"
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
-          frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen>
-      </iframe>
-    `;
+        const el = document.getElementById(containerId);
+        el.innerHTML = '';
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('playsinline', '');  // iOS inline playback
+        iframe.setAttribute('webkit-playsinline', '');
+        iframe.style.cssText = 'width:100%;aspect-ratio:16/9;border:none;border-radius:8px;display:block;';
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+        el.appendChild(iframe);
+        el.dataset.videoId = videoId;
+      }
+
+      function syncPlayer(containerId) {
+        const el = document.getElementById(containerId);
+        const videoId = el.dataset.videoId;
+        if (!videoId) return;
+        playVideo(videoId, containerId);
       }
 
       fetchArtistVideo();
       fetchBestSongsPlaylist();
     </script>
+
+    <!-- Sync Button -->
+    <style>
+      .sync-bar {
+        position: fixed;
+        bottom: 1.2rem;
+        right: 1.2rem;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-end;
+      }
+      .sync-btn {
+        background: var(--primary);
+        color: #000;
+        border: none;
+        border-radius: 50px;
+        padding: 0.55rem 1.1rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(29,185,84,0.45);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: opacity 0.2s;
+      }
+      .sync-btn:active { opacity: 0.75; }
+      .sync-btn svg { width:14px;height:14px;flex-shrink:0; }
+    </style>
+    <div class="sync-bar">
+      <button class="sync-btn" onclick="syncAll()" title="Fix audio/video playback issues">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0114.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0020.49 15"/>
+        </svg>
+        Sync
+      </button>
+    </div>
 
     <script>
       const ARTIST_NAME = '{{ artist["artist_name"] }}';
@@ -535,7 +586,6 @@
       }
 
       function previewArtistSong(videoId) {
-        // Show inline player at top of artist page
         let player = document.getElementById('inline-player');
         if (!player) {
           player = document.createElement('div');
@@ -543,10 +593,18 @@
           player.style.cssText = 'margin:1rem 0;border-radius:8px;overflow:hidden;';
           document.getElementById('video-container').after(player);
         }
-        player.innerHTML = `<iframe width="100%" style="aspect-ratio:16/9;border:none;border-radius:8px;"
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        // Use playVideo for consistent mobile-safe iframe creation
+        player.id = 'inline-player'; // ensure id set before playVideo references it
+        playVideo(videoId, 'inline-player');
         player.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+
+      function syncAll() {
+        // Re-seat every active iframe — satisfies iOS user-gesture requirement
+        ['video-container', 'playlist-container', 'inline-player'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && el.dataset.videoId) syncPlayer(id);
+        });
       }
 
       function openAddToPlaylistModal(videoId, title) {

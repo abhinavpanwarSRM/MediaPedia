@@ -1139,6 +1139,7 @@
             <button class="ctrl-btn" onclick="nextSong()" title="Next">
               ⏭
             </button>
+            <button class="ctrl-btn" onclick="syncParty()" title="Sync — fix audio issues on this device" style="font-size:0.9rem;">🔄</button>
           </div>
           <div class="progress-wrap">
             <span id="elapsed">0:00</span>
@@ -1215,16 +1216,10 @@
       </div>
     </div>
 
-    <!-- Hidden YT player -->
+    <!-- Hidden YT player — must stay in viewport for iOS autoplay -->
     <div
       id="yt-div"
-      style="
-        position: fixed;
-        left: -9999px;
-        top: -9999px;
-        width: 1px;
-        height: 1px;
-      "
+      style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;"
     ></div>
     <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -1255,13 +1250,14 @@
         ytPlayer = new YT.Player('yt-div', {
           height: '1',
           width: '1',
-          playerVars: { autoplay: 0, controls: 0, rel: 0 },
+          playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1 },
           events: {
             onReady: function() {
               ytReady = true;
               if (pendingSync) {
-                applyState(pendingSync);
+                var ps = pendingSync;
                 pendingSync = null;
+                applyState(ps);
               }
             },
             onStateChange: onYTState,
@@ -1485,10 +1481,47 @@
 
       // ========== SOCKET.IO ==========
 
+      var _iosPlayBlocked = false;
+
+      function _tryPlay() {
+        ytPlayer.playVideo();
+        setTimeout(function() {
+          var state = ytPlayer.getPlayerState();
+          if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+            _showResumePrompt();
+          }
+        }, 600);
+      }
+
+      function _showResumePrompt() {
+        if (document.getElementById('resume-prompt')) return;
+        var btn = document.createElement('button');
+        btn.id = 'resume-prompt';
+        btn.textContent = '▶ Tap to play';
+        btn.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
+          'background:var(--g);color:#000;border:none;border-radius:40px;padding:0.7rem 1.8rem;' +
+          'font-size:1rem;font-weight:700;cursor:pointer;z-index:9999;box-shadow:0 4px 16px rgba(29,185,84,0.5);';
+        btn.onclick = function() {
+          btn.remove();
+          ytPlayer.playVideo();
+        };
+        document.body.appendChild(btn);
+        setTimeout(function() { if (btn.parentNode) btn.remove(); }, 8000);
+      }
+
       function connectSocket(pid) {
-        socket = io();
+        socket = io({ reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: 10 });
 
         socket.on('connect', function() {
+          socket.emit('join_party', { party_id: pid, username: ME });
+        });
+
+        socket.on('disconnect', function() {
+          sysChat('Connection lost — reconnecting…');
+        });
+
+        socket.on('reconnect', function() {
+          sysChat('Reconnected!');
           socket.emit('join_party', { party_id: pid, username: ME });
         });
 
@@ -1513,10 +1546,19 @@
         socket.on('sync_play', function(d) {
           if (ytReady) {
             ytPlayer.seekTo(d.position, true);
-            ytPlayer.playVideo();
+            _tryPlay();
           }
           document.getElementById('play-btn').innerHTML = '⏸';
           if (d.by !== ME) sysChat(d.by + ' pressed play');
+        });
+
+        socket.on('request_sync', function() {
+          // Host re-broadcasts current state when any member taps Sync
+          if (ME === partyHost && ytReady) {
+            var pos = ytPlayer.getCurrentTime() || 0;
+            var playing = ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+            socket.emit(playing ? 'party_play' : 'party_pause', { party_id: partyId, username: ME, position: pos });
+          }
         });
 
         socket.on('sync_pause', function(d) {
@@ -1856,6 +1898,22 @@
         document.getElementById('lobby').style.display = 'none';
         document.getElementById('room').classList.add('active');
         connectSocket(pid);
+      }
+
+      function syncParty() {
+        if (!socket || curIdx < 0) { showToast('Nothing playing to sync'); return; }
+        socket.emit('party_request_sync', { party_id: partyId, username: ME });
+        // Re-apply current state as a direct user-gesture — fixes iOS/Android autoplay block
+        fetch('/api/party/' + partyId + '/state')
+          .then(function(r) { return r.json(); })
+          .then(function(party) {
+            if (party.error) { showToast('Sync failed'); return; }
+            var pos = party.position || 0;
+            var paused = party.state !== 'playing';
+            resolveAndPlay(queue[curIdx], pos, paused);
+            showToast('Synced ✓');
+          })
+          .catch(function() { showToast('Sync failed'); });
       }
 
       function leaveOrEnd() {

@@ -1953,6 +1953,15 @@ def get_party(party_id):
         return jsonify({'error': 'Not found'}), 404
     return jsonify(party)
 
+@app.route('/api/party/<party_id>/state', methods=['GET'])
+def get_party_state(party_id):
+    if party_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'state': party.get('state', 'stopped'), 'position': _live_position(party)})
+
 @app.route('/api/party/<party_id>/end', methods=['POST'])
 def end_party(party_id):
     username = current_user()
@@ -2222,6 +2231,17 @@ def on_party_chat(data):
     msg = {'username': username, 'text': text,
            'ts': datetime.now(timezone.utc).isoformat()}
     emit('chat_message', msg, to=party_id)
+
+@socketio.on('party_request_sync')
+def on_party_request_sync(data):
+    """Member tapped Sync button — re-broadcast live state to that socket only."""
+    party_id = data.get('party_id')
+    if party_collection is None:
+        return
+    party = party_collection.find_one({'party_id': party_id}, {'_id': 0})
+    if not party:
+        return
+    emit('request_sync', {}, to=party_id)  # prompt host to re-broadcast
 
 @socketio.on('request_sync')
 def on_request_sync(data):
