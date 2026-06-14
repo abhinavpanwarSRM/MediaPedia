@@ -1295,8 +1295,8 @@
         if (e.data === YT.PlayerState.ENDED) {
           clearInterval(progTimer);
           document.getElementById('prog-fill').style.width = '100%';
-          // Any member can advance — first one to detect ENDED wins; server deduplicates
-          nextSong();
+          // Only host advances — prevents multi-member spam
+          if (ME === partyHost) nextSong();
         }
       }
 
@@ -1339,14 +1339,16 @@
             .catch(function() {
               pauseAtSec = null;
               ytKeyIdx = (ytKeyIdx + 1) % YT_KEYS.length;
-              if (ME === partyHost) setTimeout(nextSong, 500);
+              setTimeout(nextSong, 500); // any member can skip unresolvable songs
             });
         }
       }
 
-      function _loadVideo(videoId, startSec) {
+      function _loadVideo(videoId, startSec, _retries) {
+        _retries = _retries || 0;
         if (!ytReady) {
-          setTimeout(function() { _loadVideo(videoId, startSec); }, 300);
+          if (_retries > 20) return; // give up after ~6 seconds
+          setTimeout(function() { _loadVideo(videoId, startSec, _retries + 1); }, 300);
           return;
         }
         document.getElementById('prog-fill').style.width = '0%';
@@ -1486,8 +1488,6 @@
 
       // ========== SOCKET.IO ==========
 
-      var _iosPlayBlocked = false;
-
       function _tryPlay() {
         ytPlayer.playVideo();
         setTimeout(function() {
@@ -1523,9 +1523,12 @@
 
         socket.on('disconnect', function() {
           sysChat('Connection lost — reconnecting…');
+          // Lock controls while disconnected to prevent stale-queue actions
+          _toggleLock = true;
         });
 
         socket.on('reconnect', function() {
+          _toggleLock = false;
           sysChat('Reconnected!');
           socket.emit('join_party', { party_id: pid, username: ME });
         });
@@ -1599,7 +1602,10 @@
         socket.on('song_removed', function(d) {
           var removedIdx = queue.findIndex(function(s) { return s.song_id === d.song_id; });
           queue = queue.filter(function(s) { return s.song_id !== d.song_id; });
-          if (removedIdx !== -1 && removedIdx < curIdx) curIdx--;
+          if (removedIdx !== -1) {
+            if (removedIdx < curIdx) curIdx--;
+            else if (removedIdx === curIdx) curIdx = d.new_index !== undefined ? d.new_index : curIdx;
+          }
           renderQueue();
           if (d.by !== ME) sysChat(d.by + ' removed a song');
         });
