@@ -1776,7 +1776,6 @@ try:
     if db is not None:
         party_collection = db.parties
         party_collection.create_index('party_id', unique=True)
-        party_collection.create_index('members')  # index for disconnect lookup
 except Exception as e:
     log.error("Failed to init parties collection: %s", e)
     party_collection = None
@@ -2076,12 +2075,10 @@ def on_disconnect():
     username = session.get('username')
     if not username or party_collection is None:
         return
-    already_left = session.pop('_left_party', None)  # skip party user explicitly left
-    parties = list(party_collection.find({'members': username}, {'_id': 0, 'party_id': 1}))
+    # Remove user from all parties they were in
+    parties = list(party_collection.find({'members': username}, {'_id': 0, 'party_id': 1, 'members': 1}))
     for party in parties:
         party_id = party['party_id']
-        if party_id == already_left:
-            continue
         party_collection.update_one({'party_id': party_id}, {'$pull': {'members': username}})
         updated = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'members': 1})
         members = updated.get('members', []) if updated else []
@@ -2093,7 +2090,6 @@ def on_leave_party(data):
     username = session.get('username')
     if not party_id or not username:
         return
-    session['_left_party'] = party_id  # flag so on_disconnect skips this party
     leave_room(party_id)
     if party_collection is not None:
         party_collection.update_one({'party_id': party_id}, {'$pull': {'members': username}})
@@ -2153,20 +2149,13 @@ def on_party_seek(data):
 @socketio.on('party_change_song')
 def on_party_change_song(data):
     party_id = data.get('party_id')
-    username = session.get('username')
-    if party_collection is None:
-        return
-    party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'queue': 1})
-    if not party:
-        return
     index = int(data.get('index', 0))
-    queue_len = len(party.get('queue', []))
-    if queue_len == 0 or index < 0 or index >= queue_len:
-        return  # reject out-of-bounds index
+    username = session.get('username')
     now = datetime.now(timezone.utc).isoformat()
-    party_collection.update_one({'party_id': party_id},
-        {'$set': {'current_index': index, 'state': 'playing', 'position': 0,
-                  'played_at': now, 'updated_at': now}})
+    if party_collection is not None:
+        party_collection.update_one({'party_id': party_id},
+            {'$set': {'current_index': index, 'state': 'playing', 'position': 0,
+                      'played_at': now, 'updated_at': now}})
     emit('sync_change_song', {'index': index, 'by': username, 'position': 0, 'paused': False}, to=party_id)
 
 @socketio.on('party_add_song')
@@ -2244,10 +2233,7 @@ def on_party_remove_song(data):
                 # A song before the current one was removed — shift index down
                 party_collection.update_one({'party_id': party_id},
                     {'$set': {'current_index': cur - 1}})
-    # Include new_index in event so clients can update curIdx accurately
-    updated_party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'current_index': 1}) if party_collection else None
-    new_index = updated_party.get('current_index', -1) if updated_party else -1
-    emit('song_removed', {'song_id': song_id, 'by': username, 'new_index': new_index}, to=party_id)
+    emit('song_removed', {'song_id': song_id, 'by': username}, to=party_id)
 
 @socketio.on('party_chat')
 def on_party_chat(data):
