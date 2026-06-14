@@ -841,16 +841,18 @@ def user_profile(username):
     user_lists = list(lists_collection.find({'username': username}, {'_id': 0})) if lists_exists else []
 
     bio = ''
+    avatar_url = ''
     if users_collection is not None:
-        user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'bio': 1})
+        user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'bio': 1, 'avatar_url': 1})
         if user_doc:
             bio = user_doc.get('bio', '')
+            avatar_url = user_doc.get('avatar_url', '')
 
     return render_template('profile.html', username=username, comments=user_comments,
                            total_likes=total_likes, avg_rating=avg_rating,
                            followers=followers, following=following,
                            is_following=is_following, viewer=viewer,
-                           user_lists=user_lists, bio=bio)
+                           user_lists=user_lists, bio=bio, avatar_url=avatar_url)
 
 # ===== Hot Takes Feed =====
 @app.route("/api/hot_takes")
@@ -1219,10 +1221,13 @@ def get_followers(target_username):
         if viewer and viewer != name:
             is_following_back = follows_collection.find_one({'follower': viewer, 'following': name}) is not None
         bio = ''
+        avatar_url = ''
         if users_collection is not None:
-            u = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
-            if u: bio = u.get('bio', '')
-        result.append({'username': name, 'is_following': is_following_back, 'bio': bio})
+            u = users_collection.find_one({'username': name}, {'bio': 1, 'avatar_url': 1, '_id': 0})
+            if u:
+                bio = u.get('bio', '')
+                avatar_url = u.get('avatar_url', '')
+        result.append({'username': name, 'is_following': is_following_back, 'bio': bio, 'avatar_url': avatar_url})
     return jsonify(result)
 
 @app.route('/api/following/<target_username>')
@@ -1237,10 +1242,13 @@ def get_following(target_username):
         if viewer and viewer != name:
             is_following_back = follows_collection.find_one({'follower': viewer, 'following': name}) is not None
         bio = ''
+        avatar_url = ''
         if users_collection is not None:
-            u = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
-            if u: bio = u.get('bio', '')
-        result.append({'username': name, 'is_following': is_following_back, 'bio': bio})
+            u = users_collection.find_one({'username': name}, {'bio': 1, 'avatar_url': 1, '_id': 0})
+            if u:
+                bio = u.get('bio', '')
+                avatar_url = u.get('avatar_url', '')
+        result.append({'username': name, 'is_following': is_following_back, 'bio': bio, 'avatar_url': avatar_url})
     return jsonify(result)
 
 @app.route('/api/users/discover')
@@ -1266,10 +1274,13 @@ def discover_users():
         if not name or name == viewer or name in already_following:
             continue
         bio = ''
+        avatar_url = ''
         if users_collection is not None:
-            doc = users_collection.find_one({'username': name}, {'bio': 1, '_id': 0})
-            if doc: bio = doc.get('bio', '')
-        result.append({'username': name, 'review_count': u['review_count'], 'bio': bio})
+            doc = users_collection.find_one({'username': name}, {'bio': 1, 'avatar_url': 1, '_id': 0})
+            if doc:
+                bio = doc.get('bio', '')
+                avatar_url = doc.get('avatar_url', '')
+        result.append({'username': name, 'review_count': u['review_count'], 'bio': bio, 'avatar_url': avatar_url})
         if len(result) >= 8:
             break
     return jsonify(result)
@@ -1285,6 +1296,20 @@ def update_bio():
     bio = (request.json or {}).get('bio', '').strip()[:200]
     users_collection.update_one({'username': username}, {'$set': {'bio': bio}})
     return jsonify({'success': True})
+
+# ===== Avatar Update =====
+@app.route('/api/profile/avatar', methods=['POST'])
+def update_avatar():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    url = (request.json or {}).get('url', '').strip()[:500]
+    if url and not url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    users_collection.update_one({'username': username}, {'$set': {'avatar_url': url}})
+    return jsonify({'success': True, 'avatar_url': url})
 
 # ===== Playlist Routes =====
 

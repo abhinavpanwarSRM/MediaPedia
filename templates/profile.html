@@ -58,7 +58,24 @@
       background: linear-gradient(135deg, var(--primary), #ff6b6b);
       display: flex; align-items: center; justify-content: center;
       font-size: 2.2rem; font-weight: 800; border: 4px solid var(--bg);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; cursor: pointer; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
+    .avatar-modal-overlay.open { display: flex; }
+    .avatar-modal { background: #1c1c1c; border: 1px solid var(--border); border-radius: 14px;
+      width: 100%; max-width: 380px; padding: 1.4rem; }
+    .avatar-modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .avatar-modal input { width: 100%; padding: 0.6rem 0.85rem; background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 0.88rem;
+      margin-bottom: 0.8rem; }
+    .avatar-modal input:focus { outline: none; border-color: var(--primary); }
+    .avatar-modal-preview { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 0.9rem;
+      background: linear-gradient(135deg, var(--primary), #ff6b6b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 800; overflow: hidden; }
+    .avatar-modal-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
 
     /* Profile head */
     .profile-head { display: flex; align-items: flex-start; justify-content: space-between;
@@ -246,7 +263,14 @@
 
   <div class="profile-banner">
     <div class="avatar-wrap">
-      <div class="avatar">{{ username[0]|upper }}</div>
+      <div class="avatar" id="avatar-circle" {% if viewer == username %}onclick="openAvatarModal()" title="Change profile picture"{% endif %}>
+        {% if avatar_url %}
+          <img src="{{ avatar_url }}" alt="{{ username }}" id="avatar-img" onerror="this.style.display='none';document.getElementById('avatar-letter').style.display='flex'">
+          <span id="avatar-letter" style="display:none;">{{ username[0]|upper }}</span>
+        {% else %}
+          <span id="avatar-letter">{{ username[0]|upper }}</span>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -405,6 +429,27 @@
     </div>
   </div>
 
+  {% if viewer == username %}
+  <!-- Avatar Modal -->
+  <div class="avatar-modal-overlay" id="avatar-modal-overlay" onclick="if(event.target===this)closeAvatarModal()">
+    <div class="avatar-modal">
+      <h3>Change Profile Picture</h3>
+      <div class="avatar-modal-preview" id="avatar-preview">
+        {% if avatar_url %}
+          <img src="{{ avatar_url }}" id="avatar-preview-img" onerror="this.style.display='none'">
+        {% else %}
+          <span id="avatar-preview-letter">{{ username[0]|upper }}</span>
+        {% endif %}
+      </div>
+      <input type="url" id="avatar-url-input" placeholder="Paste image URL (https://...)" value="{{ avatar_url or '' }}" oninput="previewAvatar(this.value)" />
+      <div class="avatar-modal-actions">
+        <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="closeAvatarModal()">Cancel</button>
+        <button class="btn btn-red" onclick="saveAvatar()">Save</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -472,8 +517,11 @@
       const btnHtml = (VIEWER && !isMe)
         ? `<button class="mini-follow-btn ${u.is_following ? 'following' : ''}" onclick="doFollow(this,'${escAttr(u.username)}')">${u.is_following ? 'Following' : 'Follow'}</button>`
         : '';
+      const avContent = u.avatar_url
+        ? `<img src="${escAttr(u.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextSibling.style.display=''"><span style="display:none">${u.username[0].toUpperCase()}</span>`
+        : u.username[0].toUpperCase();
       return `<div class="user-row">
-        <a class="user-av" href="/u/${escAttr(u.username)}">${u.username[0].toUpperCase()}</a>
+        <a class="user-av" href="/u/${escAttr(u.username)}">${avContent}</a>
         <div class="user-info">
           <a href="/u/${escAttr(u.username)}">${escHtml(u.username)}</a>${mutual}
           <div class="user-bio-text">${escHtml(u.bio || 'No bio')}</div>
@@ -619,6 +667,49 @@
     }
     function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+    // Avatar modal
+    function openAvatarModal() { document.getElementById('avatar-modal-overlay').classList.add('open'); }
+    function closeAvatarModal() { document.getElementById('avatar-modal-overlay').classList.remove('open'); }
+    function previewAvatar(url) {
+      const preview = document.getElementById('avatar-preview');
+      const existing = preview.querySelector('img');
+      if (url) {
+        if (existing) { existing.src = url; existing.style.display = ''; }
+        else { preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` + (preview.querySelector('span') ? preview.querySelector('span').outerHTML : ''); }
+        const letter = preview.querySelector('span');
+        if (letter) letter.style.display = 'none';
+      } else {
+        if (existing) existing.style.display = 'none';
+        const letter = preview.querySelector('span');
+        if (letter) letter.style.display = '';
+      }
+    }
+    function saveAvatar() {
+      const url = document.getElementById('avatar-url-input').value.trim();
+      fetch('/api/profile/avatar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url}) })
+        .then(r => r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          const circle = document.getElementById('avatar-circle');
+          const letter = document.getElementById('avatar-letter');
+          let img = document.getElementById('avatar-img');
+          if (url) {
+            if (!img) {
+              img = document.createElement('img');
+              img.id = 'avatar-img';
+              img.onerror = function() { this.style.display='none'; letter.style.display='flex'; };
+              circle.insertBefore(img, letter);
+            }
+            img.src = url; img.style.display = '';
+            if (letter) letter.style.display = 'none';
+          } else {
+            if (img) img.style.display = 'none';
+            if (letter) letter.style.display = 'flex';
+          }
+          closeAvatarModal();
+          showToast('Profile picture updated');
+        });
+    }
   </script>
   {% if viewer %}
   <script>
