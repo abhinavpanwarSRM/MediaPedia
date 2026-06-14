@@ -722,6 +722,9 @@
         flex-direction: column;
         background: rgba(10, 10, 10, 0.8);
         overflow: hidden;
+        height: calc(100vh - 60px);
+        position: sticky;
+        top: 60px;
       }
 
       .side-head {
@@ -991,7 +994,8 @@
         .room-side {
           border-left: none;
           border-top: 1px solid var(--border);
-          max-height: 300px;
+          height: 300px;
+          position: static;
         }
 
         .room-main {
@@ -1958,6 +1962,12 @@
         partyId = INIT_PARTY.party_id;
         connectSocket(INIT_PARTY.party_id);
       }
+
+      window.addEventListener('beforeunload', function() {
+        if (socket && partyId) {
+          socket.emit('leave_party', { party_id: partyId, username: ME });
+        }
+      });
 
       document.addEventListener('keydown', function(e) {
         var tag = document.activeElement.tagName;

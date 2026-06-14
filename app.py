@@ -2070,6 +2070,20 @@ def on_invite_to_party(data):
         'invited_by': inviter
     }, to=target_username)
 
+@socketio.on('disconnect')
+def on_disconnect():
+    username = session.get('username')
+    if not username or party_collection is None:
+        return
+    # Remove user from all parties they were in
+    parties = list(party_collection.find({'members': username}, {'_id': 0, 'party_id': 1, 'members': 1}))
+    for party in parties:
+        party_id = party['party_id']
+        party_collection.update_one({'party_id': party_id}, {'$pull': {'members': username}})
+        updated = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'members': 1})
+        members = updated.get('members', []) if updated else []
+        emit('member_left', {'username': username, 'members': members}, to=party_id)
+
 @socketio.on('leave_party')
 def on_leave_party(data):
     party_id = data.get('party_id')
