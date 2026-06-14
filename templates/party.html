@@ -1295,7 +1295,8 @@
         if (e.data === YT.PlayerState.ENDED) {
           clearInterval(progTimer);
           document.getElementById('prog-fill').style.width = '100%';
-          if (ME === partyHost) nextSong();
+          // Any member can advance — first one to detect ENDED wins; server deduplicates
+          nextSong();
         }
       }
 
@@ -1645,10 +1646,17 @@
         document.getElementById('np-by').textContent = s.added_by ? 'added by ' + s.added_by : '';
       }
 
+      var _toggleLock = false;
+
       function togglePlay() {
-        if (!socket || curIdx < 0) return;
+        if (!socket || curIdx < 0 || _toggleLock) return;
+        _toggleLock = true;
+        setTimeout(function() { _toggleLock = false; }, 300);
         var pos = ytReady ? (ytPlayer.getCurrentTime() || 0) : 0;
-        var playing = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+        // Read icon state as fallback when ytPlayer state is unreliable (e.g. before first play)
+        var playingByState = ytReady && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+        var playingByIcon = document.getElementById('play-btn').innerHTML.trim() === '⏸';
+        var playing = playingByState || playingByIcon;
         if (playing) {
           socket.emit('party_pause', { party_id: partyId, username: ME, position: pos });
         } else {
@@ -1657,20 +1665,19 @@
       }
 
       function nextSong() {
-        if (socket && curIdx < queue.length - 1) {
-          socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
-        }
+        if (!socket || !partyId) return;
+        if (curIdx >= queue.length - 1) { showToast('End of queue'); return; }
+        socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx + 1 });
       }
 
       function prevSong() {
-        if (!socket) return;
+        if (!socket || !partyId) return;
         if (ytReady && (ytPlayer.getCurrentTime() || 0) > 3) {
           socket.emit('party_seek', { party_id: partyId, username: ME, position: 0 });
           return;
         }
-        if (curIdx > 0) {
-          socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
-        }
+        if (curIdx <= 0) { showToast('Already at first song'); return; }
+        socket.emit('party_change_song', { party_id: partyId, username: ME, index: curIdx - 1 });
       }
 
       function playCurrent(startSec, paused) {
@@ -1686,7 +1693,11 @@
 
       function seekBar(e) {
         if (!ytReady || !socket) return;
-        var pct = e.offsetX / document.getElementById('prog-bar').offsetWidth;
+        var bar = document.getElementById('prog-bar');
+        var rect = bar.getBoundingClientRect();
+        // Use clientX for both mouse and touch events
+        var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        var pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
         var pos = pct * (ytPlayer.getDuration() || 0);
         socket.emit('party_seek', { party_id: partyId, username: ME, position: pos });
       }
@@ -1968,6 +1979,12 @@
           socket.emit('leave_party', { party_id: partyId, username: ME });
         }
       });
+
+      // Touch support for progress bar scrubbing
+      document.getElementById('prog-bar').addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        seekBar(e);
+      }, { passive: false });
 
       document.addEventListener('keydown', function(e) {
         var tag = document.activeElement.tagName;
