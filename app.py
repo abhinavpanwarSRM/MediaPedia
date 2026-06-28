@@ -3,6 +3,7 @@ import math
 import atexit
 import logging
 import requests as http_requests
+from pywebpush import webpush, WebPushException
 from markupsafe import escape as _esc, Markup
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
@@ -1567,6 +1568,41 @@ except Exception as e:
     log.error("Failed to init liked_songs collection: %s", e)
     liked_collection = None
 
+# ===== Push Subscriptions Collection =====
+push_subs_collection = None
+try:
+    if db is not None:
+        push_subs_collection = db.push_subscriptions
+        push_subs_collection.create_index([('username', 1)], unique=True)
+except Exception as e:
+    log.error("Failed to init push_subscriptions collection: %s", e)
+    push_subs_collection = None
+
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIMS_EMAIL = os.getenv('VAPID_CLAIMS_EMAIL', 'mailto:admin@mediapedia.app')
+
+def send_push(username, payload):
+    """Send a push notification to a user's registered subscription."""
+    if push_subs_collection is None or not VAPID_PRIVATE_KEY:
+        return
+    doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
+    if not doc:
+        return
+    sub = doc['subscription']
+    try:
+        webpush(
+            subscription_info=sub,
+            data=json.dumps(payload),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={'sub': VAPID_CLAIMS_EMAIL}
+        )
+    except WebPushException as ex:
+        log.error('WebPush failed for %s: %s', username, ex)
+        # Remove stale subscription
+        if ex.response and ex.response.status_code in (404, 410):
+            push_subs_collection.delete_one({'username': username})
+
 @app.route('/api/liked_songs', methods=['GET'])
 def get_liked_songs():
     username = current_user()
@@ -1937,6 +1973,19 @@ def invite_to_party(party_id):
             upsert=True
         )
 
+    # Send push notification (works even if user is offline/phone locked)
+    send_push(target, {
+        'title': '🎉 Party Invite!',
+        'body': f'{username} invited you to join "{party.get("name", "Party")}"',
+        'url': f'/party/{party_id}',
+        'tag': f'party-invite-{party_id}',
+        'party_id': party_id,
+        'actions': [
+            {'action': 'join', 'title': 'Join Party'},
+            {'action': 'dismiss', 'title': 'Dismiss'}
+        ]
+    })
+
     return jsonify({'success': True, 'party_name': party.get('name', 'Party')})
 
 
@@ -2094,6 +2143,19 @@ def on_invite_to_party(data):
         'party_name': party.get('name', 'Party'),
         'invited_by': inviter
     }, to=target_username)
+
+    # Push notification (works even when app is closed / phone locked)
+    send_push(target_username, {
+        'title': '🎉 Party Invite!',
+        'body': f'{inviter} invited you to join "{party.get("name", "Party")}"',
+        'url': f'/party/{party_id}',
+        'tag': f'party-invite-{party_id}',
+        'party_id': party_id,
+        'actions': [
+            {'action': 'join', 'title': 'Join Party'},
+            {'action': 'dismiss', 'title': 'Dismiss'}
+        ]
+    })
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -2271,6 +2333,20 @@ def on_party_chat(data):
            'ts': datetime.now(timezone.utc).isoformat()}
     emit('chat_message', msg, to=party_id)
 
+    # Push to offline party members
+    if party_collection is not None:
+        party = party_collection.find_one({'party_id': party_id}, {'_id': 0, 'members': 1, 'name': 1, 'allowed_users': 1})
+        if party:
+            all_users = list(set(party.get('members', []) + party.get('allowed_users', [])))
+            for u in all_users:
+                if u != username:
+                    send_push(u, {
+                        'title': f'💬 {username} in party chat',
+                        'body': text[:80],
+                        'url': f'/party/{party_id}',
+                        'tag': f'party-chat-{party_id}'
+                    })
+
 @socketio.on('party_request_sync')
 def on_party_request_sync(data):
     """Member tapped Sync button — re-broadcast live state to that socket only."""
@@ -2294,6 +2370,37 @@ def on_request_sync(data):
     # Compute live position so the joiner seeks to the right timestamp
     party['position'] = _live_position(party)
     emit('party_state', party)  # emit only to requesting socket (no room broadcast)
+
+
+# ===== Push Subscription Routes =====
+@app.route('/api/push/vapid_public_key')
+def vapid_public_key():
+    return jsonify({'key': VAPID_PUBLIC_KEY})
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def push_subscribe():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if push_subs_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    sub = request.json
+    if not sub or not sub.get('endpoint'):
+        return jsonify({'error': 'Invalid subscription'}), 400
+    push_subs_collection.update_one(
+        {'username': username},
+        {'$set': {'username': username, 'subscription': sub}},
+        upsert=True
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+def push_unsubscribe():
+    username = current_user()
+    if not username or push_subs_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    push_subs_collection.delete_one({'username': username})
+    return jsonify({'success': True})
 
 
 if __name__ == "__main__":

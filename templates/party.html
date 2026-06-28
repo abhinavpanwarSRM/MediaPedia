@@ -3,6 +3,8 @@
   <head>
     <title>Party Room</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1db954" />
+    <link rel="manifest" href="/static/manifest.json" />
     <link
       rel="icon"
       href="{{ url_for('static', filename='favicon.png') }}"
@@ -1282,6 +1284,7 @@
             return;
           }
           document.getElementById('play-btn').innerHTML = '⏸';
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
           startProg();
           setTimeout(function() {
             var dur = ytPlayer.getDuration();
@@ -1290,6 +1293,7 @@
         }
         if (e.data === YT.PlayerState.PAUSED) {
           document.getElementById('play-btn').innerHTML = '▶';
+          if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
           clearInterval(progTimer);
         }
         if (e.data === YT.PlayerState.ENDED) {
@@ -1644,6 +1648,7 @@
         document.getElementById('np-title').textContent = s.song_title || '—';
         document.getElementById('np-artist').textContent = s.artist_name || '';
         document.getElementById('np-by').textContent = s.added_by ? 'added by ' + s.added_by : '';
+        updateMediaSession(s.song_title, s.artist_name);
       }
 
       var _toggleLock = false;
@@ -2004,6 +2009,70 @@
           closeInviteModal();
         }
       };
+
+      // ========== PWA: SERVICE WORKER + PUSH + MEDIA SESSION ==========
+
+      // 1. Register service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js').then(function(reg) {
+          // 2. Subscribe to push notifications once SW is ready
+          reg.ready.then(function() { initPush(reg); });
+        }).catch(function(err) { console.warn('SW registration failed:', err); });
+      }
+
+      function initPush(reg) {
+        // Ask for notification permission
+        if (!('PushManager' in window) || !('Notification' in window)) return;
+        fetch('/api/push/vapid_public_key')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.key) return;
+            Notification.requestPermission().then(function(perm) {
+              if (perm !== 'granted') return;
+              reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(d.key)
+              }).then(function(sub) {
+                fetch('/api/push/subscribe', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(sub.toJSON())
+                });
+              }).catch(function(err) { console.warn('Push subscribe failed:', err); });
+            });
+          });
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var raw = window.atob(base64);
+        var output = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+        return output;
+      }
+
+      // 3. Media Session API — lock screen / notification shade controls
+      function updateMediaSession(title, artist) {
+        if (!('mediaSession' in navigator)) return;
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: title || 'MediaPedia Party',
+          artist: artist || '',
+          album: document.getElementById('room-name') ? document.getElementById('room-name').textContent : 'Party',
+          artwork: [{ src: '/static/favicon.png', sizes: '192x192', type: 'image/png' }]
+        });
+        navigator.mediaSession.setActionHandler('play', function() { togglePlay(); });
+        navigator.mediaSession.setActionHandler('pause', function() { togglePlay(); });
+        navigator.mediaSession.setActionHandler('nexttrack', function() { nextSong(); });
+        navigator.mediaSession.setActionHandler('previoustrack', function() { prevSong(); });
+      }
+
+      // 4. Re-sync when tab becomes visible again (e.g. phone unlocked)
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible' && socket && partyId) {
+          socket.emit('request_sync', { party_id: partyId });
+        }
+      });
     </script>
   </body>
 </html>
