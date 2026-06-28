@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>KOC Live</title>
+  <title>KOC Live — MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='koc/icon.png') }}" type="image/x-icon" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,59 +12,59 @@
     .topnav{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,13,13,.97);backdrop-filter:blur(8px);z-index:100;gap:.8rem;}
     .topnav a{color:var(--muted);text-decoration:none;font-size:.85rem;transition:color .2s;}
     .topnav a:hover{color:#fff;} .topnav .brand{color:var(--primary);font-weight:700;font-size:1rem;}
-    .live-topnav-right{display:flex;gap:1rem;align-items:center;}
-    .content{max-width:900px;margin:0 auto;padding:2rem 1.5rem;}
-    .section-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:1.2rem;}
-    /* LIVE GRID */
-    .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:2rem;}
-    .player-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:all .3s;}
-    .player-card.leading{border-color:rgba(255,215,0,.6);box-shadow:0 0 24px rgba(255,215,0,.12);background:rgba(255,215,0,.04);}
-    .pc-name{font-weight:700;font-size:.95rem;margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem;}
-    .pc-total{font-size:2rem;font-weight:800;color:var(--gold);line-height:1;}
-    .pc-sub{font-size:.72rem;color:var(--muted);margin-top:.2rem;}
-    .pc-games{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-top:.8rem;}
-    .pc-game{background:rgba(255,255,255,.05);border-radius:6px;padding:.35rem;text-align:center;}
-    .pc-game-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
-    .pc-game-val{font-size:1rem;font-weight:700;color:var(--gold);}
-    /* CONTROLS */
-    .controls{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:2rem;}
-    .controls h3{color:var(--gold2);font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;}
-    .game-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
-    .game-tab{padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,215,0,.2);background:transparent;color:var(--muted);transition:all .2s;font-family:'Poppins',sans-serif;}
-    .game-tab.active{background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold);}
-    .score-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem;}
-    .score-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-radius:8px;padding:.5rem .8rem;}
-    .score-row span{font-size:.85rem;font-weight:600;}
-    .score-btns{display:flex;align-items:center;gap:.4rem;}
-    .score-btns button{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;font-size:1rem;line-height:1;transition:all .2s;}
-    .score-btns button:hover{background:rgba(255,215,0,.2);border-color:var(--gold);}
-    .score-val{font-size:1rem;font-weight:700;color:var(--gold);min-width:20px;text-align:center;}
-    .btn{padding:.55rem 1.2rem;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;border:1px solid;transition:all .2s;}
-    .btn-gold{background:rgba(255,215,0,.12);border-color:var(--gold);color:var(--gold);}
-    .btn-gold:hover{background:rgba(255,215,0,.25);}
-    .btn-red{background:rgba(229,9,20,.12);border-color:var(--primary);color:var(--primary);}
-    .btn-red:hover{background:rgba(229,9,20,.25);}
-    .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);font-family:'Poppins',sans-serif;}
-    .btn-muted:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.05);}
-    .round-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,215,0,.08);border:1px solid var(--border);border-radius:8px;padding:.35rem .8rem;font-size:.78rem;color:var(--gold2);margin-bottom:1rem;}
-    .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid var(--border);padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
-    .toast.show{opacity:1;}
-    .pulse{animation:pulse 1.5s ease-in-out infinite;}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .nav-right{display:flex;gap:1rem;align-items:center;}
     .nav-burger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:4px;}
     .nav-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
     .nav-drawer{display:none;flex-direction:column;background:rgba(13,13,13,.98);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99;}
     .nav-drawer.open{display:flex;}
     .nav-drawer a{padding:.75rem 1.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;border-bottom:1px solid var(--border);}
     .nav-drawer a:hover{color:#fff;background:rgba(255,255,255,.04);}
-    @media(max-width:600px){.live-topnav-right{display:none!important;}.nav-burger{display:flex;}}
-    @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.game-tabs{gap:.3rem;}.game-tab{padding:.35rem .6rem;font-size:.76rem;}}
+    @media(max-width:600px){.nav-right{display:none;}.nav-burger{display:flex;}}
+    .content{max-width:900px;margin:0 auto;padding:2rem 1.5rem;}
+    .section-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:1.2rem;}
+    .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:2rem;}
+    .player-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:all .3s;}
+    .player-card.leading{border-color:rgba(255,215,0,.6);box-shadow:0 0 24px rgba(255,215,0,.12);background:rgba(255,215,0,.04);}
+    .pc-name{font-weight:700;font-size:.95rem;margin-bottom:.6rem;}
+    .pc-total{font-size:2rem;font-weight:800;color:var(--gold);line-height:1;}
+    .pc-sub{font-size:.72rem;color:var(--muted);margin-top:.15rem;margin-bottom:.8rem;}
+    .pc-games{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;}
+    .pc-game{background:rgba(255,255,255,.05);border-radius:6px;padding:.4rem .3rem;text-align:center;}
+    .pc-game-label{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+    .pc-game-total{font-size:.95rem;font-weight:700;color:var(--gold);}
+    .pc-game-rounds{font-size:.6rem;color:var(--muted);margin-top:.15rem;}
+    .controls{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:2rem;}
+    .ctrl-label{color:var(--gold2);font-size:.78rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem;font-weight:600;}
+    .tabs-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;}
+    .tab-btn{padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,215,0,.2);background:transparent;color:var(--muted);transition:all .2s;font-family:'Poppins',sans-serif;}
+    .tab-btn.active{background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold);}
+    .score-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem;margin-bottom:1rem;}
+    .score-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-radius:8px;padding:.5rem .8rem;}
+    .score-row-name{font-size:.85rem;font-weight:600;}
+    .score-btns{display:flex;align-items:center;gap:.4rem;}
+    .score-btns button{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;font-size:1rem;line-height:1;transition:all .2s;}
+    .score-btns button:hover{background:rgba(255,215,0,.2);border-color:var(--gold);}
+    .score-val{font-size:1rem;font-weight:700;color:var(--gold);min-width:20px;text-align:center;}
+    .btn{padding:.55rem 1.2rem;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;border:1px solid;transition:all .2s;font-family:'Poppins',sans-serif;}
+    .btn-gold{background:rgba(255,215,0,.12);border-color:var(--gold);color:var(--gold);}
+    .btn-gold:hover{background:rgba(255,215,0,.25);}
+    .btn-red{background:rgba(229,9,20,.12);border-color:var(--primary);color:var(--primary);}
+    .btn-red:hover{background:rgba(229,9,20,.25);}
+    .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);}
+    .btn-muted:hover{color:#fff;border-color:rgba(255,255,255,.35);}
+    .round-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,215,0,.08);border:1px solid var(--border);border-radius:8px;padding:.35rem .8rem;font-size:.78rem;color:var(--gold2);margin-bottom:1rem;}
+    .divider{border:none;border-top:1px solid var(--border);margin:1rem 0;}
+    .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid var(--border);padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+    .toast.show{opacity:1;}
+    .pulse{animation:pulse 1.5s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.tabs-row{gap:.3rem;}.tab-btn{padding:.35rem .6rem;font-size:.76rem;}}
   </style>
 </head>
 <body>
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
-    <div class="live-topnav-right">
+    <div class="nav-right">
       <a href="/kingofcards" style="color:var(--gold);font-weight:700;">KOC</a>
       {% if username %}<a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>{% endif %}
     </div>
@@ -78,52 +78,72 @@
   </div>
 
   <div class="content">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.5rem;">
+    <!-- HEADER ROW -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
       <div class="section-title" style="margin:0;border:none;">Live Tracker</div>
       <div style="display:flex;gap:.6rem;align-items:center;">
         <span class="pulse" style="width:8px;height:8px;border-radius:50%;background:#2ed573;display:inline-block;"></span>
         <span style="font-size:.8rem;color:#2ed573;">LIVE</span>
-        <span id="session-id-label" style="font-size:.75rem;color:var(--muted);margin-left:.5rem;"></span>
-        <button onclick="copyLiveLink()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:6px;padding:.25rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;margin-left:.4rem;">Share Link</button>
+        <span id="session-id-label" style="font-size:.75rem;color:var(--muted);"></span>
+        <button onclick="copyLiveLink()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:6px;padding:.25rem .7rem;font-size:.75rem;font-weight:600;cursor:pointer;">Share Link</button>
       </div>
     </div>
 
-    <!-- ROUND INDICATOR -->
-    <div id="round-info" class="round-badge">Round 1 &nbsp;•&nbsp; Game: <strong id="current-game-label" style="color:var(--gold);margin-left:.3rem;">Monopoly</strong></div>
+    <!-- CURRENT GAME BADGE -->
+    <div id="round-info" class="round-badge">Round 1 &nbsp;&bull;&nbsp; Game: <strong id="current-game-label" style="color:var(--gold);margin-left:.3rem;">Monopoly</strong></div>
 
     <!-- PLAYER SCORECARDS -->
     <div class="live-grid" id="player-cards"></div>
 
     {% if is_koc_player %}
-    <!-- SCORE CONTROLS -->
+    <!-- CONTROLS -->
     <div class="controls">
-      <h3>Update Scores</h3>
-      <div class="game-tabs">
-        <button class="game-tab active" onclick="setGame('monopoly',this)">Monopoly</button>
-        <button class="game-tab" onclick="setGame('bluff',this)">Bluff</button>
-        <button class="game-tab" onclick="setGame('spoon',this)">Spoon</button>
-        <button class="game-tab" onclick="setGame('uno',this)">UNO</button>
+      <!-- GAME SELECTOR -->
+      <div class="ctrl-label">Game</div>
+      <div class="tabs-row" id="game-tabs">
+        <button class="tab-btn active" onclick="setGame('monopoly',this)">Monopoly</button>
+        <button class="tab-btn" onclick="setGame('bluff',this)">Bluff</button>
+        <button class="tab-btn" onclick="setGame('spoon',this)">Spoon</button>
+        <button class="tab-btn" onclick="setGame('uno',this)">UNO</button>
       </div>
+
+      <!-- ROUND SELECTOR -->
+      <div class="ctrl-label" style="margin-top:.8rem;">Round</div>
+      <div class="tabs-row" id="round-tabs">
+        <button class="tab-btn active" id="round-btn-1" onclick="setRound(1,this)">Round 1</button>
+        <button class="tab-btn" id="round-btn-2" onclick="setRound(2,this)">Round 2</button>
+      </div>
+
+      <!-- SCORE INPUTS -->
+      <div class="ctrl-label" style="margin-top:.8rem;">Scores — <span id="score-context" style="color:var(--gold);text-transform:none;letter-spacing:0;">Monopoly, Round 1</span></div>
       <div class="score-inputs" id="score-inputs"></div>
-      <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap;">
+
+      <!-- ACTION BUTTONS -->
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem;">
         <button class="btn btn-gold" onclick="pushScores()">Save Scores</button>
-        <button class="btn btn-muted" onclick="nextRound()">Next Round →</button>
         <button class="btn btn-gold" onclick="saveAsEdition()" style="background:rgba(255,215,0,.2);">Save as Edition</button>
         <button class="btn btn-red" onclick="endSession()">End Session</button>
       </div>
 
-      <!-- ADD PLAYER -->
-      <div style="margin-top:1.2rem;padding-top:1.2rem;border-top:1px solid var(--border);">
-        <h3 style="color:var(--gold2);font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Add Player</h3>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-          <input id="new-player-name" type="text" placeholder="Display name (e.g. RAHUL)" maxlength="30"
-            style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
-            onkeydown="if(event.key==='Enter')addPlayer()" />
-          <input id="new-player-username" type="text" placeholder="Username (optional)" maxlength="30"
-            style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
-            onkeydown="if(event.key==='Enter')addPlayer()" />
-          <button class="btn btn-gold" onclick="addPlayer()">+ Add</button>
-        </div>
+      <hr class="divider">
+
+      <!-- ADD / REMOVE PLAYER -->
+      <div class="ctrl-label">Add Player</div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <input id="new-player-name" type="text" placeholder="Display name (e.g. RAHUL)" maxlength="30"
+          style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
+          onkeydown="if(event.key==='Enter')addPlayer()" />
+        <input id="new-player-username" type="text" placeholder="Username (optional)" maxlength="30"
+          style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
+          onkeydown="if(event.key==='Enter')addPlayer()" />
+        <button class="btn btn-gold" onclick="addPlayer()">+ Add</button>
+      </div>
+      <div class="ctrl-label">Remove Player</div>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+        <select id="remove-player-select"
+          style="flex:1;min-width:150px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;appearance:none;">
+        </select>
+        <button class="btn btn-red" onclick="removePlayer()">Remove</button>
       </div>
     </div>
     {% endif %}
@@ -134,7 +154,8 @@
   <script>
     const SESSION_ID = '{{ session_id }}';
     const IS_PLAYER = {{ 'true' if is_koc_player else 'false' }};
-    const KOC_PLAYERS = [
+    const GAMES = ['monopoly','bluff','spoon','uno'];
+    let KOC_PLAYERS = [
       {username:'abhinav',  display:'ABHINAV'},
       {username:'abhishek', display:'ABHISHEK'},
       {username:'akhil',    display:'AKHIL'},
@@ -142,10 +163,19 @@
       {username:'shruti',   display:'SHRUTI'},
       {username:'utkarsh',  display:'UTKARSH'},
     ];
-    const GAMES = ['monopoly','bluff','spoon','uno'];
     let state = null;
     let currentGame = 'monopoly';
+    let currentRound = 1;
     let pollInterval = null;
+
+    // score key is "r1_monopoly", "r2_bluff" etc.
+    function key(game, round) { return 'r' + round + '_' + game; }
+
+    function recalcTotal(scores, username) {
+      let t = 0;
+      GAMES.forEach(g => { t += (scores[username][key(g,1)]||0) + (scores[username][key(g,2)]||0); });
+      scores[username].total = t;
+    }
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -155,37 +185,59 @@
 
     function setGame(game, btn) {
       currentGame = game;
-      document.querySelectorAll('.game-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#game-tabs .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      updateScoreContext();
       renderInputs();
+    }
+
+    function setRound(round, btn) {
+      currentRound = round;
+      document.querySelectorAll('#round-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateScoreContext();
+      renderInputs();
+    }
+
+    function updateScoreContext() {
+      const el = document.getElementById('score-context');
+      if (el) el.textContent = currentGame.charAt(0).toUpperCase()+currentGame.slice(1) + ', Round ' + currentRound;
     }
 
     function renderCards() {
       if (!state) return;
       const scores = state.scores || {};
-      const players = KOC_PLAYERS.filter(p => scores[p.username]);
-      const maxTotal = Math.max(...players.map(p => scores[p.username]?.total || 0));
+      const players = KOC_PLAYERS.filter(p => scores[p.username] !== undefined);
+      const maxTotal = Math.max(...players.map(p => scores[p.username]?.total || 0), 0);
       const container = document.getElementById('player-cards');
       container.innerHTML = players
         .sort((a,b) => (scores[b.username]?.total||0) - (scores[a.username]?.total||0))
-        .map((p,i) => {
+        .map(p => {
           const s = scores[p.username] || {};
           const total = s.total || 0;
           const isLeading = total === maxTotal && total > 0;
+          const gameBoxes = GAMES.map(g => {
+            const r1 = s[key(g,1)] || 0;
+            const r2 = s[key(g,2)] || 0;
+            return `<div class="pc-game">
+              <div class="pc-game-label">${g.slice(0,4)}</div>
+              <div class="pc-game-total">${r1+r2}</div>
+              <div class="pc-game-rounds">R1:${r1} R2:${r2}</div>
+            </div>`;
+          }).join('');
           return `<div class="player-card ${isLeading?'leading':''}">
             <div class="pc-name">${p.display}</div>
             <div class="pc-total">${total}</div>
             <div class="pc-sub">Total Points</div>
-            <div class="pc-games">
-              ${GAMES.map(g=>`<div class="pc-game"><div class="pc-game-label">${g.slice(0,4)}</div><div class="pc-game-val">${s[g]||0}</div></div>`).join('')}
-            </div>
+            <div class="pc-games">${gameBoxes}</div>
           </div>`;
         }).join('');
 
-      document.getElementById('current-game-label').textContent =
-        (state.current_game||'monopoly').charAt(0).toUpperCase() + (state.current_game||'monopoly').slice(1);
+      const cg = state.current_game || 'monopoly';
+      const cr = state.current_round || 1;
+      document.getElementById('current-game-label').textContent = cg.charAt(0).toUpperCase()+cg.slice(1);
       document.getElementById('round-info').innerHTML =
-        `Round ${state.round||1} &nbsp;•&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${(state.current_game||'monopoly').charAt(0).toUpperCase()+(state.current_game||'monopoly').slice(1)}</strong>`;
+        `Round ${cr} &nbsp;&bull;&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${cg.charAt(0).toUpperCase()+cg.slice(1)}</strong>`;
       document.getElementById('session-id-label').textContent = `#${SESSION_ID}`;
     }
 
@@ -194,9 +246,9 @@
       const scores = state.scores || {};
       const players = KOC_PLAYERS.filter(p => scores[p.username] !== undefined);
       document.getElementById('score-inputs').innerHTML = players.map(p => {
-        const val = (scores[p.username]||{})[currentGame] || 0;
+        const val = (scores[p.username]||{})[key(currentGame,currentRound)] || 0;
         return `<div class="score-row">
-          <span>${p.display}</span>
+          <span class="score-row-name">${p.display}</span>
           <div class="score-btns">
             <button onclick="adjustScore('${p.username}',-1)">−</button>
             <span class="score-val" id="sv-${p.username}">${val}</span>
@@ -208,12 +260,12 @@
 
     function adjustScore(username, delta) {
       if (!state) return;
-      if (!state.scores[username]) state.scores[username] = {monopoly:0,bluff:0,spoon:0,uno:0,total:0};
-      const cur = state.scores[username][currentGame] || 0;
+      if (!state.scores[username]) state.scores[username] = {};
+      const k = key(currentGame, currentRound);
+      const cur = state.scores[username][k] || 0;
       const newVal = Math.max(0, cur + delta);
-      state.scores[username][currentGame] = newVal;
-      // Recalculate total
-      state.scores[username].total = GAMES.reduce((s,g) => s + (state.scores[username][g]||0), 0);
+      state.scores[username][k] = newVal;
+      recalcTotal(state.scores, username);
       const el = document.getElementById('sv-' + username);
       if (el) el.textContent = newVal;
       renderCards();
@@ -224,27 +276,8 @@
       fetch(`/api/koc/live/${SESSION_ID}`, {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({scores: state.scores, current_game: currentGame, round: state.round})
+        body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
       }).then(r => r.json()).then(d => { state = d; showToast('Scores saved'); });
-    }
-
-    function nextRound() {
-      if (!state) return;
-      const games = GAMES;
-      const idx = games.indexOf(state.current_game || 'monopoly');
-      let nextGame = games[(idx+1) % games.length];
-      let nextRound = state.round || 1;
-      if (idx === games.length-1) nextRound++;
-      fetch(`/api/koc/live/${SESSION_ID}`, {
-        method: 'PUT',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({scores: state.scores, current_game: nextGame, round: nextRound})
-      }).then(r => r.json()).then(d => {
-        state = d; currentGame = nextGame;
-        document.querySelectorAll('.game-tab').forEach((b,i) => b.classList.toggle('active', GAMES[i]===nextGame));
-        renderCards(); renderInputs();
-        showToast(`Round ${nextRound} — ${nextGame.charAt(0).toUpperCase()+nextGame.slice(1)}`);
-      });
     }
 
     function endSession() {
@@ -269,46 +302,51 @@
       });
     }
 
-    function poll() {
-      fetch(`/api/koc/live/${SESSION_ID}`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.error) return;
-          state = d;
-          if (!d.active) { clearInterval(pollInterval); showToast('Session ended by host'); setTimeout(()=>window.location.href='/kingofcards',1500); return; }
-          renderCards();
-          if (IS_PLAYER) renderInputs();
-        });
-    }
-
     function addPlayer() {
       const nameInp = document.getElementById('new-player-name');
       const userInp = document.getElementById('new-player-username');
       const display = nameInp.value.trim().toUpperCase();
       const username = userInp.value.trim().toLowerCase() || display.toLowerCase().replace(/\s+/g,'_');
       if (!display) { showToast('Enter a display name'); return; }
-      // check not already in list
-      if (KOC_PLAYERS.find(p => p.username === username || p.display === display)) {
-        showToast(display + ' is already in the session'); return;
-      }
-      // add to local player list
+      if (KOC_PLAYERS.find(p => p.username === username)) { showToast(display + ' already in session'); return; }
       KOC_PLAYERS.push({username, display});
-      // initialise their scores in state
       if (state) {
         if (!state.scores) state.scores = {};
-        state.scores[username] = {monopoly:0, bluff:0, spoon:0, uno:0, total:0};
-      }
-      // push to server
-      if (state) {
+        state.scores[username] = {};
+        GAMES.forEach(g => { state.scores[username][key(g,1)]=0; state.scores[username][key(g,2)]=0; });
+        state.scores[username].total = 0;
         fetch(`/api/koc/live/${SESSION_ID}`, {
-          method: 'PUT',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({scores: state.scores, current_game: currentGame, round: state.round})
-        }).then(r=>r.json()).then(d=>{ state=d; renderCards(); renderInputs(); });
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
+        }).then(r=>r.json()).then(d=>{ state=d; renderCards(); renderInputs(); updateRemoveSelect(); });
       }
-      nameInp.value = '';
-      userInp.value = '';
-      showToast(display + ' added to session');
+      nameInp.value=''; userInp.value='';
+      showToast(display + ' added');
+    }
+
+    function removePlayer() {
+      const sel = document.getElementById('remove-player-select');
+      const username = sel.value;
+      if (!username) { showToast('Select a player'); return; }
+      const idx = KOC_PLAYERS.findIndex(p => p.username === username);
+      if (idx === -1) return;
+      const display = KOC_PLAYERS[idx].display;
+      KOC_PLAYERS.splice(idx, 1);
+      if (state && state.scores) {
+        delete state.scores[username];
+        fetch(`/api/koc/live/${SESSION_ID}`, {
+          method:'PUT', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
+        }).then(r=>r.json()).then(d=>{ state=d; renderCards(); renderInputs(); updateRemoveSelect(); });
+      }
+      showToast(display + ' removed');
+    }
+
+    function updateRemoveSelect() {
+      const sel = document.getElementById('remove-player-select');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Select player --</option>' +
+        KOC_PLAYERS.map(p=>`<option value="${p.username}">${p.display}</option>`).join('');
     }
 
     function copyLiveLink() {
@@ -320,9 +358,59 @@
       }
     }
 
-    // Initial load
+    function poll() {
+      fetch(`/api/koc/live/${SESSION_ID}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) return;
+          // migrate old flat scores to r1_/r2_ format if needed
+          if (d.scores) {
+            Object.keys(d.scores).forEach(u => {
+              GAMES.forEach(g => {
+                if (d.scores[u][g] !== undefined && d.scores[u][key(g,1)] === undefined) {
+                  d.scores[u][key(g,1)] = d.scores[u][g];
+                  d.scores[u][key(g,2)] = 0;
+                  delete d.scores[u][g];
+                }
+                if (d.scores[u][key(g,1)] === undefined) d.scores[u][key(g,1)] = 0;
+                if (d.scores[u][key(g,2)] === undefined) d.scores[u][key(g,2)] = 0;
+              });
+              recalcTotal(d.scores, u);
+            });
+          }
+          state = d;
+          // sync game + round tabs from server state so all clients stay in sync
+          if (IS_PLAYER) {
+            if (d.current_game && d.current_game !== currentGame) {
+              currentGame = d.current_game;
+              document.querySelectorAll('#game-tabs .tab-btn').forEach((b, i) => {
+                b.classList.toggle('active', ['monopoly','bluff','spoon','uno'][i] === currentGame);
+              });
+            }
+            if (d.current_round && d.current_round !== currentRound) {
+              currentRound = d.current_round;
+              document.querySelectorAll('#round-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+              const rb = document.getElementById('round-btn-' + currentRound);
+              if (rb) rb.classList.add('active');
+            }
+            updateScoreContext();
+            renderInputs();
+          }
+          if (!d.active) {
+            clearInterval(pollInterval);
+            showToast('Session ended');
+            setTimeout(()=>window.location.href='/kingofcards',1500);
+            return;
+          }
+          renderCards();
+          if (IS_PLAYER) renderInputs();
+        });
+    }
+
+    // init
     poll();
     pollInterval = setInterval(poll, 4000);
+    if (IS_PLAYER) updateRemoveSelect();
   </script>
 </body>
 </html>

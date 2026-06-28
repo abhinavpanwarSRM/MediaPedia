@@ -2539,7 +2539,7 @@ def _koc_leaderboard():
             stats[u]['editions_played'] += 1
             stats[u]['total_points'] += p.get('total', 0)
             for game in ('monopoly', 'bluff', 'spoon', 'uno'):
-                if p.get(game, 0) == 2:
+                if p.get(game, 0) >= 2:
                     stats[u]['game_wins'] += 1
     for u, tw in tournament_winners.items():
         if u in stats:
@@ -2565,7 +2565,7 @@ def kingofcards():
             latest_edition = last.get('edition', 0)
             current_champion = last.get('winner_display', '')
             try:
-                played = datetime.strptime(last.get('played_on', ''), '%Y-%m-%d')
+                played = datetime.fromisoformat(last.get('played_on', ''))
                 reign_days = (datetime.now() - played).days
             except Exception:
                 reign_days = 0
@@ -2623,7 +2623,7 @@ def koc_add_tournament():
     last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
     edition = (last['edition'] + 1) if last else 1
     def _wins(p):
-        return sum(1 for g in ('monopoly', 'bluff', 'spoon', 'uno') if p.get(g, 0) == 2)
+        return sum(1 for g in ('monopoly', 'bluff', 'spoon', 'uno') if p.get(g, 0) >= 2)
     winner = max(players, key=lambda p: (p.get('total', 0), _wins(p)))
     doc = {
         'edition': edition,
@@ -2652,7 +2652,7 @@ def koc_edit_tournament(edition):
     if not players:
         return jsonify({'error': 'Players required'}), 400
     def _wins(p):
-        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)==2)
+        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)>=2)
     winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
     koc_tournaments_collection.update_one(
         {'edition': edition},
@@ -2720,7 +2720,10 @@ def koc_live_start():
     if koc_live_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     session_id = str(uuid.uuid4())[:8]
-    scores = {u: {'monopoly':0,'bluff':0,'spoon':0,'uno':0,'total':0} for u in KOC_USERNAMES}
+    scores = {}
+    for u in KOC_USERNAMES:
+        scores[u] = {'r1_monopoly':0,'r1_bluff':0,'r1_spoon':0,'r1_uno':0,
+                     'r2_monopoly':0,'r2_bluff':0,'r2_spoon':0,'r2_uno':0,'total':0}
     koc_live_collection.insert_one({
         'session_id': session_id,
         'started_by': username,
@@ -2762,6 +2765,7 @@ def koc_live_update(session_id):
     if 'scores' in data: update['scores'] = data['scores']
     if 'current_game' in data: update['current_game'] = data['current_game']
     if 'round' in data: update['round'] = data['round']
+    if 'current_round' in data: update['current_round'] = data['current_round']
     update['updated_at'] = datetime.now(timezone.utc).isoformat()
     koc_live_collection.update_one({'session_id': session_id}, {'$set': update})
     doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
@@ -2792,20 +2796,23 @@ def koc_live_save_as_edition(session_id):
     scores = doc.get('scores', {})
     players = []
     for u, s in scores.items():
-        if any(s.get(g, 0) > 0 for g in ('monopoly', 'bluff', 'spoon', 'uno')):
+        # support both new r1_/r2_ keys and legacy flat keys
+        mono = (s.get('r1_monopoly',0) or 0) + (s.get('r2_monopoly',0) or 0) or s.get('monopoly',0) or 0
+        blff = (s.get('r1_bluff',0) or 0) + (s.get('r2_bluff',0) or 0) or s.get('bluff',0) or 0
+        spn  = (s.get('r1_spoon',0) or 0) + (s.get('r2_spoon',0) or 0) or s.get('spoon',0) or 0
+        uno  = (s.get('r1_uno',0) or 0) + (s.get('r2_uno',0) or 0) or s.get('uno',0) or 0
+        total = mono + blff + spn + uno
+        if total > 0:
             players.append({
                 'username': u,
                 'display_name': KOC_DISPLAY.get(u, u),
-                'monopoly': s.get('monopoly', 0),
-                'bluff':    s.get('bluff', 0),
-                'spoon':    s.get('spoon', 0),
-                'uno':      s.get('uno', 0),
-                'total':    s.get('total', 0)
+                'monopoly': mono, 'bluff': blff, 'spoon': spn, 'uno': uno,
+                'total': total
             })
     if not players:
         return jsonify({'error': 'No scores recorded'}), 400
     def _wins(p):
-        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)==2)
+        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)>=2)
     winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
     last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
     edition = (last['edition'] + 1) if last else 1
@@ -2926,7 +2933,7 @@ def koc_player_stats(target_username):
         pts = pd.get('total', 0)
         total_points += pts
         for g in ('monopoly', 'bluff', 'spoon', 'uno'):
-            if pd.get(g, 0) == 2:
+            if pd.get(g, 0) >= 2:
                 game_wins += 1
                 best_game_counts[g] += 1
         if t.get('winner_username') == target_username:
@@ -2949,9 +2956,9 @@ def koc_seed_players():
     if users_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     new_players = [
-        {'username': 'sahilp',   'password': 'koc@sahil',   'bio': 'King of Cards player — SAHIL PANWAR'},
-        {'username': 'shruti',   'password': 'koc@shruti',  'bio': 'King of Cards player — SHRUTI SEHRAWAT'},
-        {'username': 'utkarshp','password': 'koc@utkarsh', 'bio': 'King of Cards player — UTKARSH PANWAR'},
+        {'username': 'sahilp',   'password': os.getenv('KOC_PASS_SAHIL', 'koc@sahil'),   'bio': 'King of Cards player — SAHIL PANWAR'},
+        {'username': 'shruti',   'password': os.getenv('KOC_PASS_SHRUTI', 'koc@shruti'),  'bio': 'King of Cards player — SHRUTI SEHRAWAT'},
+        {'username': 'utkarshp','password': os.getenv('KOC_PASS_UTKARSH', 'koc@utkarsh'), 'bio': 'King of Cards player — UTKARSH PANWAR'},
     ]
     created = []
     for p in new_players:
