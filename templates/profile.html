@@ -334,6 +334,8 @@
       </div>
     </div>
 
+    <div id="koc-section" style="display:none;margin-bottom:2rem;"></div>
+
     <div class="tabs">
       <button class="tab active" onclick="switchTab('lists',this)">Lists</button>
       <button class="tab" onclick="switchTab('playlists',this)">&#127925; Playlists</button>
@@ -724,6 +726,53 @@
     setInterval(checkUnread, 15000);
   </script>
   {% endif %}
-    <script src="/static/pwa.js"></script>
+  <script src="/static/pwa.js"></script>
+  <script>
+    // ===== KOC PROFILE SECTION =====
+    fetch('/api/koc/player/{{ username }}')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.is_koc_player) return;
+        const sec = document.getElementById('koc-section');
+        const gameEmoji = {monopoly:'🎯',bluff:'🃏',spoon:'🥄',uno:'🎴'};
+        const historyRows = (d.history || []).map(h =>
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,215,0,0.07);font-size:0.82rem;">
+            <span style="color:#aaa;">Edition ${h.edition}</span>
+            <span style="color:#888;">${h.played_on}</span>
+            <span style="color:#ffd700;font-weight:600;">${h.points} pts${h.won ? ' 👑' : ''}</span>
+          </div>`
+        ).join('');
+        sec.style.display = 'block';
+        sec.innerHTML = `
+          <div style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:14px;padding:1.4rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+              <span style="font-size:1.3rem;">👑</span>
+              <span style="font-family:serif;font-size:1.1rem;font-weight:700;color:#ffd700;letter-spacing:1px;">King of Cards</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:0.6rem;margin-bottom:1.2rem;">
+              <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:0.7rem;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:800;color:#ffd700;">${d.tournament_wins}</div>
+                <div style="font-size:0.68rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:0.2rem;">Titles</div>
+              </div>
+              <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:0.7rem;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:800;color:#ffd700;">${d.total_points}</div>
+                <div style="font-size:0.68rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:0.2rem;">Points</div>
+              </div>
+              <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:0.7rem;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:800;color:#ffd700;">${d.game_wins}</div>
+                <div style="font-size:0.68rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:0.2rem;">Game Wins</div>
+              </div>
+              <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:0.7rem;text-align:center;">
+                <div style="font-size:1.4rem;font-weight:800;color:#ffd700;">${d.editions_played}</div>
+                <div style="font-size:0.68rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:0.2rem;">Editions</div>
+              </div>
+            </div>
+            ${d.best_game ? `<div style="font-size:0.8rem;color:#b8860b;margin-bottom:1rem;">Best game: <strong style="color:#ffd700;">${gameEmoji[d.best_game]||''} ${d.best_game.charAt(0).toUpperCase()+d.best_game.slice(1)}</strong></div>` : ''}
+            ${historyRows ? `<div>${historyRows}</div>` : ''}
+            <a href="/kingofcards" style="display:inline-block;margin-top:1rem;font-size:0.8rem;color:#b8860b;text-decoration:none;">View full tournament →</a>
+          </div>`;
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>

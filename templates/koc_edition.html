@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KOC Edition {{ tournament.edition }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='koc/icon.png') }}" type="image/x-icon" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gold: #ffd700; --gold2: #b8860b;
+      --bg: #0d0d0d; --card: rgba(255,215,0,0.04); --border: rgba(255,215,0,0.12);
+      --text: #fff; --muted: #888; --primary: #e50914;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; }
+
+    .topnav { display: flex; justify-content: space-between; align-items: center;
+              padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--border);
+              position: sticky; top: 0; background: rgba(13,13,13,0.97);
+              backdrop-filter: blur(8px); z-index: 100; gap: 0.8rem; }
+    .topnav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    .topnav a:hover { color: #fff; }
+    .topnav .brand { color: var(--primary); font-weight: 700; font-size: 1rem; }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+
+    .hero {
+      padding: 3rem 1.5rem 2.5rem; text-align: center;
+      background: radial-gradient(ellipse at center, rgba(255,215,0,0.07) 0%, transparent 65%),
+                  linear-gradient(180deg,#1a1500 0%,#0d0d0d 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero .ed-label { font-size: 0.72rem; letter-spacing: 4px; color: var(--gold2); text-transform: uppercase; }
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2rem,7vw,4.5rem); font-weight: 700;
+      background: linear-gradient(135deg,#ffe066,#ffd700,#b8860b,#ffd700);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin: 0.3rem 0;
+    }
+    .hero .winner-row { margin-top: 1rem; }
+    .winner-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(184,134,11,0.15));
+      border: 1px solid rgba(255,215,0,0.35); border-radius: 12px;
+      padding: 0.8rem 2rem; font-size: 1rem; font-weight: 700; color: var(--gold);
+    }
+    .winner-badge span { font-size: 0.72rem; color: var(--gold2); display: block; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.2rem; }
+    .played-date { color: var(--muted); font-size: 0.8rem; margin-top: 0.8rem; }
+
+    .content { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+    .section-title {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.6rem;
+      color: var(--gold); border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem; margin-bottom: 1.2rem;
+    }
+
+    /* SCORE TABLE */
+    .score-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; min-width: 560px; }
+    thead tr { background: rgba(255,215,0,0.08); }
+    th { padding: 0.9rem 1rem; font-size: 0.72rem; text-transform: uppercase;
+         letter-spacing: 1px; color: var(--gold2); font-weight: 600; text-align: center; }
+    th:first-child { text-align: left; }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,215,0,0.06);
+         text-align: center; font-size: 0.9rem; }
+    td:first-child { text-align: left; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,215,0,0.03); }
+    .td-gold { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
+    .td-silver { color: #c0c0c0; font-weight: 700; }
+    .td-zero { color: rgba(255,255,255,0.2); }
+    .player-link { color: var(--text); text-decoration: none; transition: color 0.2s; }
+    .player-link:hover { color: var(--gold); }
+
+    .back-btn { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted);
+                text-decoration: none; font-size: 0.85rem; margin-bottom: 1.5rem;
+                transition: color 0.2s; }
+    .back-btn:hover { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <div class="nav-right">
+      <a href="/kingofcards" style="color:var(--gold);font-weight:600;">👑 KOC</a>
+      {% if username %}
+        <a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>
+        <a href="/logout">Logout</a>
+      {% else %}
+        <a href="/login">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="ed-label">King of Cards</div>
+    <h1>Edition {{ tournament.edition }}</h1>
+    <div class="winner-row">
+      <div class="winner-badge">
+        <span>Champion</span>
+        {{ tournament.winner_display }}
+      </div>
+    </div>
+    <div class="played-date">Played on {{ tournament.played_on }}</div>
+  </div>
+
+  <div class="content">
+    <a class="back-btn" href="/kingofcards">← Back to KOC</a>
+
+    <div class="section-title">🏆 Scoreboard</div>
+    <div class="score-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Monopoly</th>
+            <th>Bluff</th>
+            <th>Spoon</th>
+            <th>UNO</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in players_sorted %}
+          <tr>
+            <td>
+              {% if p.username %}
+                <a class="player-link" href="/u/{{ p.username }}">{{ p.display_name }}{% if loop.index == 1 %} 👑{% endif %}</a>
+              {% else %}
+                {{ p.display_name }}{% if loop.index == 1 %} 👑{% endif %}
+              {% endif %}
+            </td>
+            <td class="{{ 'td-zero' if p.monopoly == 0 else '' }}">{{ p.monopoly }}</td>
+            <td class="{{ 'td-zero' if p.bluff == 0 else '' }}">{{ p.bluff }}</td>
+            <td class="{{ 'td-zero' if p.spoon == 0 else '' }}">{{ p.spoon }}</td>
+            <td class="{{ 'td-zero' if p.uno == 0 else '' }}">{{ p.uno }}</td>
+            <td class="{{ 'td-gold' if loop.index == 1 else ('td-silver' if loop.index == 2 else '') }}">
+              {{ p.total }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -2496,6 +2496,342 @@ def push_unsubscribe():
     return jsonify({'success': True})
 
 
+# ===== KING OF CARDS =====
+
+KOC_USERNAMES = {'abhinav', 'abhishek', 'akhil', 'sahil', 'shruti', 'utkarsh'}
+
+KOC_DISPLAY = {
+    'abhinav':  'ABHINAV PANWAR',
+    'abhishek': 'ABHISHEK SEHRAWAT',
+    'akhil':    'AKHIL PANWAR',
+    'sahil':    'SAHIL PANWAR',
+    'shruti':   'SHRUTI SEHRAWAT',
+    'utkarsh':  'UTKARSH PANWAR',
+}
+
+koc_tournaments_collection = None
+try:
+    if db is not None:
+        koc_tournaments_collection = db.koc_tournaments
+        koc_tournaments_collection.create_index('edition', unique=True)
+except Exception as e:
+    log.error('Failed to init koc_tournaments: %s', e)
+
+def _koc_leaderboard():
+    if koc_tournaments_collection is None:
+        return []
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}))
+    stats = {}
+    tournament_winners = {}
+    for t in tournaments:
+        winner = t.get('winner_username')
+        if winner:
+            tournament_winners[winner] = tournament_winners.get(winner, 0) + 1
+        for p in t.get('players', []):
+            u = p.get('username', '')
+            if u not in stats:
+                stats[u] = {
+                    'username': u,
+                    'display_name': KOC_DISPLAY.get(u, p.get('display_name', u)),
+                    'editions_played': 0, 'game_wins': 0,
+                    'total_points': 0, 'tournament_wins': 0
+                }
+            stats[u]['editions_played'] += 1
+            stats[u]['total_points'] += p.get('total', 0)
+            for game in ('monopoly', 'bluff', 'spoon', 'uno'):
+                if p.get(game, 0) == 2:
+                    stats[u]['game_wins'] += 1
+    for u, tw in tournament_winners.items():
+        if u in stats:
+            stats[u]['tournament_wins'] = tw
+    return sorted(stats.values(), key=lambda x: (-x['total_points'], -x['game_wins']))
+
+@app.route('/kingofcards')
+def kingofcards():
+    username = current_user()
+    is_koc = username in KOC_USERNAMES if username else False
+    tournaments = []
+    current_champion = None
+    reign_days = 0
+    latest_edition = 0
+    if koc_tournaments_collection is not None:
+        raw = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+        for t in raw:
+            winner_u = t.get('winner_username', '')
+            t['winner_display'] = KOC_DISPLAY.get(winner_u, winner_u)
+            tournaments.append(t)
+        if tournaments:
+            last = tournaments[-1]
+            latest_edition = last.get('edition', 0)
+            current_champion = last.get('winner_display', '')
+            try:
+                played = datetime.strptime(last.get('played_on', ''), '%Y-%m-%d')
+                reign_days = (datetime.now() - played).days
+            except Exception:
+                reign_days = 0
+    leaderboard = _koc_leaderboard()
+    return render_template('kingofcards.html',
+        username=username, is_koc_player=is_koc,
+        tournaments=tournaments, leaderboard=leaderboard,
+        current_champion=current_champion, reign_days=reign_days,
+        latest_edition=latest_edition)
+
+@app.route('/kingofcards/<int:edition>')
+def koc_edition(edition):
+    username = current_user()
+    if koc_tournaments_collection is None:
+        return render_template('404.html'), 404
+    t = koc_tournaments_collection.find_one({'edition': edition}, {'_id': 0})
+    if not t:
+        return render_template('404.html'), 404
+    winner_u = t.get('winner_username', '')
+    t['winner_display'] = KOC_DISPLAY.get(winner_u, winner_u)
+    players_sorted = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+    return render_template('koc_edition.html', tournament=t,
+                           players_sorted=players_sorted, username=username)
+
+@app.route('/kingofcards/live/<session_id>')
+def koc_live_page(session_id):
+    username = current_user()
+    if koc_live_collection is None:
+        return render_template('404.html'), 404
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    if not doc:
+        return render_template('404.html'), 404
+    is_koc = username in KOC_USERNAMES if username else False
+    return render_template('koc_live.html', session_id=session_id,
+                           username=username, is_koc_player=is_koc)
+
+def koc_get_tournaments():
+    if koc_tournaments_collection is None:
+        return jsonify([])
+    data = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+    return jsonify(data)
+
+@app.route('/api/koc/tournaments', methods=['POST'])
+def koc_add_tournament():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_tournaments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    players = data.get('players', [])
+    if not players:
+        return jsonify({'error': 'Players data required'}), 400
+    last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
+    edition = (last['edition'] + 1) if last else 1
+    def _wins(p):
+        return sum(1 for g in ('monopoly', 'bluff', 'spoon', 'uno') if p.get(g, 0) == 2)
+    winner = max(players, key=lambda p: (p.get('total', 0), _wins(p)))
+    doc = {
+        'edition': edition,
+        'played_on': data.get('played_on', ''),
+        'winner_username': winner.get('username', ''),
+        'players': players,
+        'added_by': username,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    koc_tournaments_collection.insert_one(doc)
+    return jsonify({'edition': edition, 'winner': winner.get('username', '')}), 201
+
+@app.route('/api/koc/leaderboard')
+def koc_leaderboard_api():
+    return jsonify(_koc_leaderboard())
+
+@app.route('/api/koc/tournaments/<int:edition>', methods=['PUT'])
+def koc_edit_tournament(edition):
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_tournaments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    players = data.get('players', [])
+    if not players:
+        return jsonify({'error': 'Players required'}), 400
+    def _wins(p):
+        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)==2)
+    winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
+    koc_tournaments_collection.update_one(
+        {'edition': edition},
+        {'$set': {
+            'played_on': data.get('played_on',''),
+            'players': players,
+            'winner_username': winner.get('username',''),
+            'updated_by': username,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return jsonify({'success': True, 'winner': winner.get('username','')})
+
+@app.route('/api/koc/tournaments/<int:edition>', methods=['DELETE'])
+def koc_delete_tournament(edition):
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_tournaments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    koc_tournaments_collection.delete_one({'edition': edition})
+    return jsonify({'success': True})
+
+@app.route('/api/koc/h2h')
+def koc_h2h():
+    p1 = request.args.get('p1', '').strip()
+    p2 = request.args.get('p2', '').strip()
+    if not p1 or not p2 or koc_tournaments_collection is None:
+        return jsonify({'error': 'p1 and p2 required'}), 400
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+    p1_wins, p2_wins, draws = 0, 0, 0
+    editions = []
+    for t in tournaments:
+        pd1 = next((p for p in t.get('players',[]) if p.get('username')==p1), None)
+        pd2 = next((p for p in t.get('players',[]) if p.get('username')==p2), None)
+        if not pd1 or not pd2:
+            continue
+        s1, s2 = pd1.get('total',0), pd2.get('total',0)
+        result = 'p1' if s1>s2 else ('p2' if s2>s1 else 'draw')
+        if result=='p1': p1_wins+=1
+        elif result=='p2': p2_wins+=1
+        else: draws+=1
+        editions.append({'edition':t['edition'],'played_on':t.get('played_on',''),
+                         'p1_score':s1,'p2_score':s2,'result':result})
+    return jsonify({
+        'p1': p1, 'p1_display': KOC_DISPLAY.get(p1,p1), 'p1_wins': p1_wins,
+        'p2': p2, 'p2_display': KOC_DISPLAY.get(p2,p2), 'p2_wins': p2_wins,
+        'draws': draws, 'editions': editions
+    })
+
+# KOC Live tracker collection
+koc_live_collection = None
+try:
+    if db is not None:
+        koc_live_collection = db.koc_live
+        koc_live_collection.create_index('session_id', unique=True)
+except Exception as e:
+    log.error('Failed to init koc_live: %s', e)
+
+@app.route('/api/koc/live', methods=['POST'])
+def koc_live_start():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    session_id = str(uuid.uuid4())[:8]
+    scores = {u: {'monopoly':0,'bluff':0,'spoon':0,'uno':0,'total':0} for u in KOC_USERNAMES}
+    koc_live_collection.insert_one({
+        'session_id': session_id,
+        'started_by': username,
+        'started_at': datetime.now(timezone.utc).isoformat(),
+        'current_game': 'monopoly',
+        'round': 1,
+        'scores': scores,
+        'active': True
+    })
+    # Notify all KOC players
+    for u in KOC_USERNAMES:
+        if u != username:
+            send_push(u, {
+                'title': '🃏 KOC Live Started!',
+                'body': f'{username} started a live KOC session',
+                'url': f'/kingofcards/live/{session_id}',
+                'tag': f'koc-live-{session_id}'
+            })
+    return jsonify({'session_id': session_id}), 201
+
+@app.route('/api/koc/live/<session_id>', methods=['GET'])
+def koc_live_get(session_id):
+    if koc_live_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    if not doc:
+        return jsonify({'error': 'Session not found'}), 404
+    return jsonify(doc)
+
+@app.route('/api/koc/live/<session_id>', methods=['PUT'])
+def koc_live_update(session_id):
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    update = {}
+    if 'scores' in data: update['scores'] = data['scores']
+    if 'current_game' in data: update['current_game'] = data['current_game']
+    if 'round' in data: update['round'] = data['round']
+    update['updated_at'] = datetime.now(timezone.utc).isoformat()
+    koc_live_collection.update_one({'session_id': session_id}, {'$set': update})
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    return jsonify(doc)
+
+@app.route('/api/koc/live/<session_id>/end', methods=['POST'])
+def koc_live_end(session_id):
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    koc_live_collection.update_one({'session_id': session_id}, {'$set': {'active': False}})
+    return jsonify({'success': True})
+
+@app.route('/api/koc/player/<target_username>')
+def koc_player_stats(target_username):
+    if koc_tournaments_collection is None or target_username not in KOC_USERNAMES:
+        return jsonify({'is_koc_player': False})
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+    editions_played, total_points, game_wins, tournament_wins = 0, 0, 0, 0
+    best_game_counts = {'monopoly': 0, 'bluff': 0, 'spoon': 0, 'uno': 0}
+    history = []
+    for t in tournaments:
+        pd = next((p for p in t.get('players', []) if p.get('username') == target_username), None)
+        if not pd:
+            continue
+        editions_played += 1
+        pts = pd.get('total', 0)
+        total_points += pts
+        for g in ('monopoly', 'bluff', 'spoon', 'uno'):
+            if pd.get(g, 0) == 2:
+                game_wins += 1
+                best_game_counts[g] += 1
+        if t.get('winner_username') == target_username:
+            tournament_wins += 1
+        history.append({
+            'edition': t['edition'], 'played_on': t.get('played_on', ''),
+            'points': pts, 'won': t.get('winner_username') == target_username
+        })
+    best_game = max(best_game_counts, key=best_game_counts.get) if any(best_game_counts.values()) else None
+    return jsonify({
+        'is_koc_player': True,
+        'display_name': KOC_DISPLAY.get(target_username, target_username),
+        'editions_played': editions_played, 'total_points': total_points,
+        'game_wins': game_wins, 'tournament_wins': tournament_wins,
+        'best_game': best_game, 'history': history
+    })
+
+@app.route('/api/koc/seed', methods=['POST'])
+def koc_seed_players():
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    new_players = [
+        {'username': 'sahilp',   'password': 'koc@sahil',   'bio': 'King of Cards player — SAHIL PANWAR'},
+        {'username': 'shruti',   'password': 'koc@shruti',  'bio': 'King of Cards player — SHRUTI SEHRAWAT'},
+        {'username': 'utkarshp','password': 'koc@utkarsh', 'bio': 'King of Cards player — UTKARSH PANWAR'},
+    ]
+    created = []
+    for p in new_players:
+        if users_collection.find_one({'username': p['username']}):
+            continue
+        hashed = bcrypt.generate_password_hash(p['password']).decode('utf-8')
+        users_collection.insert_one({
+            'username': p['username'], 'password': hashed,
+            'bio': p['bio'], 'created_at': datetime.now(timezone.utc)
+        })
+        created.append(p['username'])
+    return jsonify({'created': created, 'message': 'Seed complete'})
+
+
 if __name__ == "__main__":
     _debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     socketio.run(app, host="0.0.0.0", port=5000, debug=_debug)
