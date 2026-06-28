@@ -2978,6 +2978,140 @@ def koc_player_stats(target_username):
         'best_game': best_game, 'history': history
     })
 
+# ===== KOC Reactions =====
+koc_reactions_collection = None
+try:
+    if db is not None:
+        koc_reactions_collection = db.koc_reactions
+        koc_reactions_collection.create_index([('edition', 1), ('username', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init koc_reactions: %s', e)
+
+@app.route('/api/koc/reactions', methods=['GET'])
+def koc_reactions_get():
+    edition = request.args.get('edition', type=int)
+    if not edition:
+        return jsonify({'counts': {}, 'mine': []})
+    username = current_user()
+    if koc_reactions_collection is None:
+        return jsonify({'counts': {}, 'mine': []})
+    docs = list(koc_reactions_collection.find({'edition': edition}, {'_id': 0}))
+    counts = {}
+    mine = []
+    for d in docs:
+        for r in d.get('reactions', []):
+            counts[r] = counts.get(r, 0) + 1
+        if username and d.get('username') == username:
+            mine = d.get('reactions', [])
+    return jsonify({'counts': counts, 'mine': mine})
+
+@app.route('/api/koc/reactions', methods=['POST'])
+def koc_reactions_post():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if koc_reactions_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    edition = data.get('edition')
+    reaction = data.get('reaction')
+    if not edition or not reaction:
+        return jsonify({'error': 'edition and reaction required'}), 400
+    doc = koc_reactions_collection.find_one({'edition': edition, 'username': username})
+    reactions = doc.get('reactions', []) if doc else []
+    if reaction in reactions:
+        reactions.remove(reaction)
+    else:
+        reactions.append(reaction)
+    koc_reactions_collection.update_one(
+        {'edition': edition, 'username': username},
+        {'$set': {'reactions': reactions}},
+        upsert=True
+    )
+    return jsonify({'success': True})
+
+# ===== KOC Comments =====
+koc_comments_collection = None
+try:
+    if db is not None:
+        koc_comments_collection = db.koc_comments
+        koc_comments_collection.create_index([('edition', 1), ('created_at', 1)])
+except Exception as e:
+    log.error('Failed to init koc_comments: %s', e)
+
+@app.route('/api/koc/comments', methods=['GET'])
+def koc_comments_get():
+    edition = request.args.get('edition', type=int)
+    if not edition or koc_comments_collection is None:
+        return jsonify([])
+    comments = list(koc_comments_collection.find({'edition': edition}, {'_id': 0}).sort('created_at', 1))
+    return jsonify(comments)
+
+@app.route('/api/koc/comments', methods=['POST'])
+def koc_comments_post():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if koc_comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    edition = data.get('edition')
+    text = (data.get('text') or '').strip()[:500]
+    if not edition or not text:
+        return jsonify({'error': 'edition and text required'}), 400
+    comment = {
+        'edition': edition,
+        'username': username,
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    koc_comments_collection.insert_one(comment)
+    return jsonify(comment), 201
+
+# ===== KOC Predict =====
+koc_predict_collection = None
+try:
+    if db is not None:
+        koc_predict_collection = db.koc_predictions
+        koc_predict_collection.create_index('username', unique=True)
+except Exception as e:
+    log.error('Failed to init koc_predictions: %s', e)
+
+@app.route('/api/koc/predict', methods=['GET'])
+def koc_predict_get():
+    if koc_predict_collection is None:
+        return jsonify({'tally': {}})
+    docs = list(koc_predict_collection.find({}, {'_id': 0, 'prediction': 1}))
+    tally = {}
+    for d in docs:
+        p = d.get('prediction')
+        if p:
+            tally[p] = tally.get(p, 0) + 1
+    return jsonify({'tally': tally})
+
+@app.route('/api/koc/predict', methods=['POST'])
+def koc_predict_post():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if koc_predict_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    prediction = (request.json or {}).get('prediction', '').strip()
+    if not prediction:
+        return jsonify({'error': 'prediction required'}), 400
+    koc_predict_collection.update_one(
+        {'username': username},
+        {'$set': {'username': username, 'prediction': prediction}},
+        upsert=True
+    )
+    docs = list(koc_predict_collection.find({}, {'_id': 0, 'prediction': 1}))
+    tally = {}
+    for d in docs:
+        p = d.get('prediction')
+        if p:
+            tally[p] = tally.get(p, 0) + 1
+    return jsonify({'tally': tally})
+
 @app.route('/api/koc/seed', methods=['POST'])
 def koc_seed_players():
     if users_collection is None:
