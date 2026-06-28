@@ -2072,18 +2072,51 @@
           showToast('Push not supported on this browser');
           return;
         }
-        navigator.serviceWorker.ready.then(function(reg) {
-          Notification.requestPermission().then(function(perm) {
-            if (perm === 'granted') {
-              showToast('Notifications enabled! ✅');
-              updateNotifBtn();
-              initPush(reg);
-            } else if (perm === 'denied') {
-              showToast('Notifications blocked — enable in browser settings');
-              updateNotifBtn();
-            }
-          });
+        Notification.requestPermission().then(function(perm) {
+          if (perm === 'granted') {
+            showToast('Notifications enabled! ✅');
+            updateNotifBtn();
+            navigator.serviceWorker.ready.then(function(reg) {
+              subscribeAndSave(reg);
+            });
+          } else if (perm === 'denied') {
+            showToast('Notifications blocked — enable in browser settings');
+            updateNotifBtn();
+          }
         });
+      }
+
+      function subscribeAndSave(reg) {
+        fetch('/api/push/vapid_public_key')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.key) { console.warn('No VAPID key'); return; }
+            // Unsubscribe existing first to get fresh endpoint
+            reg.pushManager.getSubscription().then(function(existing) {
+              var unsub = existing ? existing.unsubscribe() : Promise.resolve();
+              unsub.then(function() {
+                reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(d.key)
+                }).then(function(sub) {
+                  return fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sub.toJSON())
+                  });
+                }).then(function(r) { return r.json(); })
+                  .then(function(res) {
+                    if (res.success) showToast('Push subscription saved ✅');
+                    else showToast('Subscription error: ' + (res.error || '?'));
+                  })
+                  .catch(function(err) {
+                    console.error('Subscribe failed:', err);
+                    showToast('Push subscribe failed — check console');
+                  });
+              });
+            });
+          })
+          .catch(function(err) { console.error('VAPID key fetch failed:', err); });
       }
 
       // 2. Unregister any old SW, then register new one from root
@@ -2111,23 +2144,8 @@
       // 3. Push subscription
       function initPush(reg) {
         if (!('PushManager' in window) || !('Notification' in window)) return;
-        if (Notification.permission !== 'granted') return; // only auto-subscribe if already granted
-        fetch('/api/push/vapid_public_key')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            if (!d.key) return;
-            // Always re-subscribe to get fresh endpoint under new SW
-            reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(d.key)
-            }).then(function(sub) {
-              fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sub.toJSON())
-              });
-            }).catch(function(err) { console.warn('Push subscribe failed:', err); });
-          });
+        if (Notification.permission !== 'granted') return;
+        subscribeAndSave(reg);
       }
 
       function urlBase64ToUint8Array(base64String) {
