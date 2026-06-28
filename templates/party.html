@@ -2097,7 +2097,7 @@
               unsub.then(function() {
                 reg.pushManager.subscribe({
                   userVisibleOnly: true,
-                  applicationServerKey: urlBase64ToUint8Array(d.key)
+                  applicationServerKey: urlBase64ToUint8Array('BNCfhD-i3gRMYPV7Q4Ky3pslclijDLbtNn8NPUUIIQt92xHGr-nMFeWmMbQplU_J3SgBo_lKmQKbDVPG5s7pPU4')
                 }).then(function(sub) {
                   return fetch('/api/push/subscribe', {
                     method: 'POST',
@@ -2212,5 +2212,6 @@
         navigator.mediaSession.setActionHandler('previoustrack', function() { prevSong(); });
       }
     </script>
-  </body>
+      <script src="/static/pwa.js"></script>
+</body>
 </html>

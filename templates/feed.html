@@ -52,6 +52,7 @@
       .feed-meta { flex-direction: column; align-items: flex-start; }
     }
   </style>
+    <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <div class="page">
@@ -155,5 +156,6 @@
   {% endif %}
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>

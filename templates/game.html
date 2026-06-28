@@ -337,7 +337,8 @@
         .game-info p strong { min-width: unset; }
       }
     </style>
-  </head>
+      <link rel="manifest" href="/static/manifest.json" />
+</head>
   <body>
     <div class="overlay">
       <div class="game-detail">
@@ -446,5 +447,6 @@
       // Start fetching trailer with first API key
       fetchTrailerWithKey();
     </script>
-  </body>
+      <script src="/static/pwa.js"></script>
+</body>
 </html>

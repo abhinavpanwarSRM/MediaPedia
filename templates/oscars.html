@@ -36,6 +36,7 @@
       .year { font-size: 1.3rem; }
     }
   </style>
+    <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <div class="container">
@@ -99,5 +100,6 @@
       if (el) el.textContent = total > 0 ? `${pct}% seen it (${total} votes)` : 'Be the first to vote';
     }
   </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>

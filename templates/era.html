@@ -40,6 +40,7 @@
       .res-rating { margin-left: 0; }
     }
   </style>
+    <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <div class="container">
@@ -135,5 +136,6 @@
         .catch(() => { container.innerHTML = '<p class="empty">Error loading results.</p>'; });
     }
   </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>

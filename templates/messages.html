@@ -75,6 +75,7 @@
     .page-title::after { content:''; display:block; width:50%; height:2px;
                          background:var(--primary); margin-top:4px; }
   </style>
+    <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <nav class="topnav">
@@ -165,5 +166,6 @@
     document.body.insertAdjacentHTML('afterbegin',
       `<div style="position:fixed;inset:0;background-image:url('${_p[Math.floor(Math.random()*_p.length)]}');background-size:cover;background-position:center;opacity:0.07;z-index:-1;pointer-events:none;"></div>`);
   </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>

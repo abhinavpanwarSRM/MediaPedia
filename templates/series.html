@@ -358,7 +358,8 @@
         transform: scale(1.05);
       }
     </style>
-  </head>
+      <link rel="manifest" href="/static/manifest.json" />
+</head>
   <body>
     {% if username %}
     <div style="position:fixed;top:0;left:0;width:100%;background:#141414;z-index:1000;display:flex;justify-content:flex-end;align-items:center;height:46px;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 1.5rem;gap:1rem;">
@@ -1773,5 +1774,6 @@
         .catch(() => closeListOverlay());
       }
     </script>
-  </body>
+      <script src="/static/pwa.js"></script>
+</body>
 </html>

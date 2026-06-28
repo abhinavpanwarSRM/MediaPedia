@@ -1579,18 +1579,18 @@ except Exception as e:
     push_subs_collection = None
 
 VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
-VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '').replace('\\n', '\n')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS_EMAIL = os.getenv('VAPID_CLAIMS_EMAIL', 'mailto:admin@mediapedia.app')
 
 def send_push(username, payload):
-    """Send a push notification to a user's registered subscription."""
+    """Send a push notification — never raises, logs errors only."""
     if push_subs_collection is None or not VAPID_PRIVATE_KEY:
         return
-    doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
-    if not doc:
-        return
-    sub = doc['subscription']
     try:
+        doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
+        if not doc:
+            return
+        sub = doc['subscription']
         webpush(
             subscription_info=sub,
             data=json.dumps(payload),
@@ -1599,9 +1599,10 @@ def send_push(username, payload):
         )
     except WebPushException as ex:
         log.error('WebPush failed for %s: %s', username, ex)
-        # Remove stale subscription
         if ex.response and ex.response.status_code in (404, 410):
             push_subs_collection.delete_one({'username': username})
+    except Exception as ex:
+        log.error('send_push unexpected error for %s: %s', username, ex)
 
 @app.route('/api/liked_songs', methods=['GET'])
 def get_liked_songs():

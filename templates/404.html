@@ -109,7 +109,8 @@
         .back-btn { padding: 10px 28px; font-size: 0.95rem; }
       }
     </style>
-  </head>
+      <link rel="manifest" href="/static/manifest.json" />
+</head>
   <body>
     <div class="container">
       <div class="error-code">404</div>
@@ -152,5 +153,6 @@
       // Set random poster background when page loads
       document.addEventListener("DOMContentLoaded", setRandomPosterBackground);
     </script>
-  </body>
+      <script src="/static/pwa.js"></script>
+</body>
 </html>

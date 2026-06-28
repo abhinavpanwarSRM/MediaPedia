@@ -113,6 +113,7 @@
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
   </style>
+    <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <div class="bg-overlay" id="bg"></div>
@@ -154,5 +155,6 @@
     document.getElementById('bg').style.backgroundImage =
       `url('${posters[Math.floor(Math.random() * posters.length)]}')`;
   </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>
