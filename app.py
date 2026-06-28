@@ -2406,17 +2406,34 @@ def push_debug():
 
 @app.route('/api/push/test')
 def push_test():
-    """Send a test push to yourself."""
     username = current_user()
     if not username:
         return jsonify({'error': 'Not logged in'}), 401
-    send_push(username, {
-        'title': '🎉 Test Notification',
-        'body': 'MediaPedia push is working!',
-        'url': '/party',
-        'tag': 'test'
-    })
-    return jsonify({'sent': True, 'to': username})
+    if push_subs_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
+    if not doc:
+        return jsonify({'error': 'No subscription found'}), 404
+    sub = doc['subscription']
+    if not VAPID_PRIVATE_KEY:
+        return jsonify({'error': 'VAPID_PRIVATE_KEY not set'}), 500
+    try:
+        webpush(
+            subscription_info=sub,
+            data=json.dumps({
+                'title': '🎉 Test Notification',
+                'body': 'MediaPedia push is working!',
+                'url': '/party',
+                'tag': 'test'
+            }),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={'sub': VAPID_CLAIMS_EMAIL}
+        )
+        return jsonify({'sent': True, 'to': username})
+    except WebPushException as ex:
+        return jsonify({'error': str(ex), 'response': str(ex.response.text if ex.response else '')}), 500
+    except Exception as ex:
+        return jsonify({'error': type(ex).__name__ + ': ' + str(ex)}), 500
 
 @app.route('/api/push/vapid_public_key')
 def vapid_public_key():
