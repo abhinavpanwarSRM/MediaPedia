@@ -167,15 +167,28 @@
     let currentGame = 'monopoly';
     let currentRound = 1;
     let pollInterval = null;
-    let _localControl = false; // true when this client has changed game/round locally
+    let _localControl = false;
+    // pending holds local score edits not yet saved to server
+    let _pending = {}; // { username: { 'r1_monopoly': val, ... } }
 
-    // score key is "r1_monopoly", "r2_bluff" etc.
     function key(game, round) { return 'r' + round + '_' + game; }
 
     function recalcTotal(scores, username) {
       let t = 0;
       GAMES.forEach(g => { t += (scores[username][key(g,1)]||0) + (scores[username][key(g,2)]||0); });
       scores[username].total = t;
+    }
+
+    // Merge _pending on top of server scores to get the view scores
+    function mergedScores() {
+      if (!state || !state.scores) return {};
+      const merged = JSON.parse(JSON.stringify(state.scores));
+      Object.keys(_pending).forEach(u => {
+        if (!merged[u]) merged[u] = {};
+        Object.assign(merged[u], _pending[u]);
+        recalcTotal(merged, u);
+      });
+      return merged;
     }
 
     function showToast(msg) {
@@ -209,7 +222,7 @@
 
     function renderCards() {
       if (!state) return;
-      const scores = state.scores || {};
+      const scores = mergedScores();
       const players = KOC_PLAYERS.filter(p => scores[p.username] !== undefined);
       const maxTotal = Math.max(...players.map(p => scores[p.username]?.total || 0), 0);
       const container = document.getElementById('player-cards');
@@ -246,7 +259,7 @@
 
     function renderInputs() {
       if (!state || !IS_PLAYER) return;
-      const scores = state.scores || {};
+      const scores = mergedScores();
       const players = KOC_PLAYERS.filter(p => scores[p.username] !== undefined);
       document.getElementById('score-inputs').innerHTML = players.map(p => {
         const val = (scores[p.username]||{})[key(currentGame,currentRound)] || 0;
@@ -263,25 +276,35 @@
 
     function adjustScore(username, delta) {
       if (!state) return;
-      if (!state.scores[username]) state.scores[username] = {};
+      // work on _pending, not state directly
+      if (!_pending[username]) {
+        _pending[username] = JSON.parse(JSON.stringify(state.scores[username] || {}));
+      }
       const k = key(currentGame, currentRound);
-      const cur = state.scores[username][k] || 0;
-      const newVal = Math.max(0, cur + delta);
-      state.scores[username][k] = newVal;
-      recalcTotal(state.scores, username);
+      const cur = _pending[username][k] !== undefined ? _pending[username][k] : (state.scores[username]?.[k] || 0);
+      _pending[username][k] = Math.max(0, cur + delta);
+      // update display inline without full re-render
       const el = document.getElementById('sv-' + username);
-      if (el) el.textContent = newVal;
+      if (el) el.textContent = _pending[username][k];
       renderCards();
     }
 
     function pushScores() {
       if (!state) return;
+      // merge pending into a full scores object
+      const scores = mergedScores();
+      _pending = {};
       _localControl = false;
       fetch(`/api/koc/live/${SESSION_ID}`, {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
-      }).then(r => r.json()).then(d => { state = d; showToast('Scores saved'); });
+        body: JSON.stringify({scores, current_game: currentGame, current_round: currentRound})
+      }).then(r => r.json()).then(d => {
+        state = d;
+        renderCards();
+        renderInputs();
+        showToast('Scores saved');
+      });
     }
 
     function endSession() {
@@ -319,10 +342,11 @@
         state.scores[username] = {};
         GAMES.forEach(g => { state.scores[username][key(g,1)]=0; state.scores[username][key(g,2)]=0; });
         state.scores[username].total = 0;
+        const scores = mergedScores();
         fetch(`/api/koc/live/${SESSION_ID}`, {
           method:'PUT', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
-        }).then(r=>r.json()).then(d=>{ state=d; renderCards(); renderInputs(); updateRemoveSelect(); });
+          body: JSON.stringify({scores, current_game: currentGame, current_round: currentRound})
+        }).then(r=>r.json()).then(d=>{ state=d; _pending={}; renderCards(); renderInputs(); updateRemoveSelect(); });
       }
       nameInp.value=''; userInp.value='';
       showToast(display + ' added');
@@ -337,11 +361,12 @@
       const display = KOC_PLAYERS[idx].display;
       KOC_PLAYERS.splice(idx, 1);
       if (state && state.scores) {
-        delete state.scores[username];
+        const scores = mergedScores();
+        delete scores[username];
         fetch(`/api/koc/live/${SESSION_ID}`, {
           method:'PUT', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({scores: state.scores, current_game: currentGame, current_round: currentRound})
-        }).then(r=>r.json()).then(d=>{ state=d; renderCards(); renderInputs(); updateRemoveSelect(); });
+          body: JSON.stringify({scores, current_game: currentGame, current_round: currentRound})
+        }).then(r=>r.json()).then(d=>{ state=d; delete _pending[username]; renderCards(); renderInputs(); updateRemoveSelect(); });
       }
       showToast(display + ' removed');
     }
@@ -367,6 +392,12 @@
         .then(r => r.json())
         .then(d => {
           if (d.error) return;
+          if (!d.active) {
+            clearInterval(pollInterval);
+            showToast('Session ended');
+            setTimeout(()=>window.location.href='/kingofcards',1500);
+            return;
+          }
           // migrate old flat scores to r1_/r2_ format if needed
           if (d.scores) {
             Object.keys(d.scores).forEach(u => {
@@ -379,11 +410,10 @@
                 if (d.scores[u][key(g,1)] === undefined) d.scores[u][key(g,1)] = 0;
                 if (d.scores[u][key(g,2)] === undefined) d.scores[u][key(g,2)] = 0;
               });
-              recalcTotal(d.scores, u);
             });
           }
           state = d;
-          // sync game + round tabs from server state only if player hasn't taken local control
+          // only sync game/round tabs if player hasn't taken local control
           if (IS_PLAYER && !_localControl) {
             if (d.current_game && d.current_game !== currentGame) {
               currentGame = d.current_game;
@@ -398,16 +428,10 @@
               if (rb) rb.classList.add('active');
             }
             updateScoreContext();
-            renderInputs();
-          }
-          if (!d.active) {
-            clearInterval(pollInterval);
-            showToast('Session ended');
-            setTimeout(()=>window.location.href='/kingofcards',1500);
-            return;
           }
           renderCards();
-          if (IS_PLAYER) renderInputs();
+          // only re-render inputs if no pending local edits (avoids overwriting in-progress scoring)
+          if (IS_PLAYER && Object.keys(_pending).length === 0) renderInputs();
         });
     }
 
