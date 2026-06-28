@@ -2387,6 +2387,37 @@ def offline_page():
     return send_from_directory('static', 'offline.html')
 
 # ===== Push Subscription Routes =====
+@app.route('/api/push/debug')
+def push_debug():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if push_subs_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    doc = push_subs_collection.find_one({'username': username}, {'_id': 0})
+    if not doc:
+        return jsonify({'subscribed': False, 'username': username})
+    sub = doc.get('subscription', {})
+    return jsonify({
+        'subscribed': True,
+        'username': username,
+        'endpoint_start': sub.get('endpoint', '')[:60]
+    })
+
+@app.route('/api/push/test')
+def push_test():
+    """Send a test push to yourself."""
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    send_push(username, {
+        'title': '🎉 Test Notification',
+        'body': 'MediaPedia push is working!',
+        'url': '/party',
+        'tag': 'test'
+    })
+    return jsonify({'sent': True, 'to': username})
+
 @app.route('/api/push/vapid_public_key')
 def vapid_public_key():
     return jsonify({'key': VAPID_PUBLIC_KEY})

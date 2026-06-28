@@ -1095,6 +1095,7 @@
         maxlength="60"
       />
       <button class="btn-g" onclick="createParty()">🎵 Create New Party</button>
+      <button class="btn-outline" id="btn-notif" onclick="requestNotifPermission()" style="margin-bottom:0.6rem;">🔔 Enable Notifications</button>
       <div class="divider">— or join existing —</div>
       <input
         class="inp"
@@ -2046,6 +2047,42 @@
         _deferredInstallPrompt.userChoice.then(function(result) {
           if (result.outcome === 'accepted') showToast('MediaPedia installed! 🎉');
           _deferredInstallPrompt = null;
+        });
+      }
+
+      // Update notification button state on load
+      function updateNotifBtn() {
+        var btn = document.getElementById('btn-notif');
+        if (!btn) return;
+        if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+        if (Notification.permission === 'granted') {
+          btn.textContent = '✅ Notifications On';
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+        } else if (Notification.permission === 'denied') {
+          btn.textContent = '🔕 Notifications Blocked';
+          btn.disabled = true;
+          btn.style.opacity = '0.5';
+        }
+      }
+      updateNotifBtn();
+
+      function requestNotifPermission() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          showToast('Push not supported on this browser');
+          return;
+        }
+        navigator.serviceWorker.ready.then(function(reg) {
+          Notification.requestPermission().then(function(perm) {
+            if (perm === 'granted') {
+              showToast('Notifications enabled! ✅');
+              updateNotifBtn();
+              initPush(reg);
+            } else if (perm === 'denied') {
+              showToast('Notifications blocked — enable in browser settings');
+              updateNotifBtn();
+            }
+          });
         });
       }
 
