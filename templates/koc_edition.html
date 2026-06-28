@@ -77,6 +77,35 @@
                 text-decoration: none; font-size: 0.85rem; margin-bottom: 1.5rem;
                 transition: color 0.2s; }
     .back-btn:hover { color: var(--gold); }
+    .nav-burger { display: none; flex-direction: column; gap: 4px; background: none;
+                  border: none; cursor: pointer; padding: 4px; }
+    .nav-burger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; }
+    .nav-drawer { display: none; flex-direction: column; background: rgba(13,13,13,0.98);
+                  border-bottom: 1px solid var(--border); position: sticky; top: 57px; z-index: 99; }
+    .nav-drawer.open { display: flex; }
+    .nav-drawer a { padding: 0.75rem 1.5rem; color: var(--muted); text-decoration: none;
+                    font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+    .nav-drawer a:hover { color: #fff; background: rgba(255,255,255,0.04); }
+    @media (max-width: 600px) { .nav-right { display: none; } .nav-burger { display: flex; } }
+    .stat-pill { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+                 padding: .7rem 1rem; text-align: center; }
+    .stat-pill-val { font-size: 1.2rem; font-weight: 800; color: var(--gold); }
+    .stat-pill-label { font-size: .68rem; color: var(--muted); text-transform: uppercase;
+                       letter-spacing: .5px; margin-top: .15rem; }
+    .reaction-btn { background: rgba(255,255,255,.04); border: 1px solid var(--border);
+                    border-radius: 20px; padding: .3rem .8rem; font-size: .85rem;
+                    cursor: pointer; color: #ccc; transition: all .2s; }
+    .reaction-btn:hover, .reaction-btn.active { border-color: var(--gold); color: var(--gold);
+                                                background: rgba(255,215,0,.1); }
+    .comment-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+                    padding: .9rem 1.1rem; margin-bottom: .7rem; }
+    .comment-meta { font-size: .72rem; color: var(--muted); margin-bottom: .3rem; }
+    .comment-text { font-size: .88rem; color: #ddd; line-height: 1.5; }
+    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+             background: #222; color: #fff; border: 1px solid var(--border);
+             padding: .55rem 1.3rem; border-radius: 20px; font-size: .85rem;
+             z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -91,7 +120,19 @@
         <a href="/login">Login</a>
       {% endif %}
     </div>
+    <button class="nav-burger" onclick="document.getElementById('ed-nd').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+  <div class="nav-drawer" id="ed-nd">
+    <a href="/kingofcards" style="color:var(--gold);font-weight:600;">KOC</a>
+    {% if username %}
+      <a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>
+      <a href="/logout">Logout</a>
+    {% else %}
+      <a href="/login">Login</a>
+    {% endif %}
+  </div>
 
   <div class="hero">
     <div class="ed-label">King of Cards</div>
@@ -107,6 +148,9 @@
 
   <div class="content">
     <a class="back-btn" href="/kingofcards">← Back to KOC</a>
+
+    <!-- EDITION STATS PILLS -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.7rem;margin-bottom:1.8rem;" id="edition-stats"></div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
       <div class="section-title" style="margin:0;border:none;">Scoreboard</div>
@@ -147,7 +191,125 @@
       </table>
     </div>
   </div>
+  <!-- REACTIONS + COMMENTS -->
+  <div style="max-width:900px;margin:0 auto;padding:0 1.5rem 3rem;">
+    <div class="section-title">Reactions</div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.5rem;" id="reactions-wrap"></div>
+
+    <div class="section-title">Comments</div>
+    <div id="comments-list" style="margin-bottom:1rem;"></div>
+    {% if username %}
+    <div style="display:flex;gap:.6rem;">
+      <input id="comment-input" type="text" placeholder="Add a comment..." maxlength="300"
+        style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
+        onkeydown="if(event.key==='Enter')postComment()" />
+      <button onclick="postComment()" style="background:rgba(255,215,0,.12);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;cursor:pointer;">Post</button>
+    </div>
+    {% else %}
+    <p style="color:var(--muted);font-size:.85rem;"><a href="/login" style="color:var(--gold);">Login</a> to comment.</p>
+    {% endif %}
+  </div>
+
+  <div class="toast" id="toast"></div>
+
   <script>
+    const EDITION_NUM = {{ tournament.edition }};
+    const VIEWER = '{{ username or "" }}';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // ===== EDITION STATS =====
+    (function() {
+      const players = {{ players_sorted | tojson }};
+      if (!players.length) return;
+      const sorted = [...players].sort((a,b)=>(b.total||0)-(a.total||0));
+      const mvp = sorted[0];
+      const scores = sorted.map(p=>p.total||0);
+      const margin = scores[0] - (scores[1]||0);
+      const games = ['monopoly','bluff','spoon','uno'];
+      // closest game = game where most players tied the max score
+      const gameTotals = games.map(g => players.reduce((s,p)=>s+(p[g]||0),0));
+      const minSpread = Math.min(...games.map(g => {
+        const vals = players.map(p=>p[g]||0).sort((a,b)=>b-a);
+        return vals[0] - vals[vals.length-1];
+      }));
+      const closestGame = games[games.map(g=>{ const v=players.map(p=>p[g]||0).sort((a,b)=>b-a); return v[0]-v[v.length-1]; }).indexOf(minSpread)];
+      const wrap = document.getElementById('edition-stats');
+      if (!wrap) return;
+      wrap.innerHTML = [
+        {val: mvp.display_name.split(' ')[0], label: 'MVP'},
+        {val: mvp.total + ' pts', label: 'Winning Score'},
+        {val: margin + ' pts', label: 'Winning Margin'},
+        {val: closestGame.charAt(0).toUpperCase()+closestGame.slice(1), label: 'Closest Game'},
+        {val: players.length, label: 'Players'},
+      ].map(s=>`<div class="stat-pill"><div class="stat-pill-val">${s.val}</div><div class="stat-pill-label">${s.label}</div></div>`).join('');
+    })();
+
+    // ===== REACTIONS =====
+    const REACTIONS = ['fire','clap','goat','gg'];
+    const REACT_LABELS = {fire:'Fire',clap:'Clap',goat:'GOAT',gg:'GG'};
+
+    function loadReactions() {
+      fetch('/api/koc/reactions?edition=' + EDITION_NUM).then(r=>r.json()).then(data => {
+        const wrap = document.getElementById('reactions-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = REACTIONS.map(r => {
+          const count = (data.counts||{})[r] || 0;
+          const mine = (data.mine||[]).includes(r);
+          return `<button class="reaction-btn ${mine?'active':''}" onclick="toggleReaction('${r}',this)">
+            ${REACT_LABELS[r]} <span style="font-size:.78rem;margin-left:.3rem;opacity:.7;">${count||''}</span>
+          </button>`;
+        }).join('');
+      }).catch(()=>{
+        const wrap = document.getElementById('reactions-wrap');
+        if (wrap) wrap.innerHTML = REACTIONS.map(r=>`<button class="reaction-btn" onclick="toggleReaction('${r}',this)">${REACT_LABELS[r]}</button>`).join('');
+      });
+    }
+
+    function toggleReaction(reaction, btn) {
+      if (!VIEWER) { showToast('Login to react'); return; }
+      fetch('/api/koc/reactions', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({edition: EDITION_NUM, reaction})
+      }).then(r=>r.json()).then(d=>{
+        if (d.error) { showToast(d.error); return; }
+        loadReactions();
+      }).catch(()=>showToast('Login to react'));
+    }
+
+    // ===== COMMENTS =====
+    function loadComments() {
+      fetch('/api/koc/comments?edition=' + EDITION_NUM).then(r=>r.json()).then(comments => {
+        const el = document.getElementById('comments-list');
+        if (!el) return;
+        if (!Array.isArray(comments) || !comments.length) { el.innerHTML='<p style="color:var(--muted);font-size:.85rem;font-style:italic;">No comments yet.</p>'; return; }
+        el.innerHTML = comments.map(c=>`
+          <div class="comment-card">
+            <div class="comment-meta">${c.username} &bull; ${(c.created_at||'').slice(0,10)}</div>
+            <div class="comment-text">${c.text}</div>
+          </div>`).join('');
+      }).catch(()=>{});
+    }
+
+    function postComment() {
+      const inp = document.getElementById('comment-input');
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = '';
+      fetch('/api/koc/comments', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({edition: EDITION_NUM, text})
+      }).then(r=>r.json()).then(d=>{
+        if (d.error) { showToast(d.error); return; }
+        loadComments();
+        showToast('Comment posted!');
+      }).catch(()=>showToast('Login to comment'));
+    }
+
     function shareEdition() {
       const url = window.location.href;
       const text = 'KOC Edition {{ tournament.edition }} — {{ tournament.winner_display }} wins! Check the scoreboard:';
@@ -160,6 +322,9 @@
         });
       }
     }
+
+    loadReactions();
+    loadComments();
   </script>
 </body>
 </html>

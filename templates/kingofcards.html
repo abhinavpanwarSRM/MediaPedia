@@ -178,6 +178,24 @@
                   border-radius: 8px; padding: 0.7rem 1.2rem; font-size: 0.82rem;
                   color: var(--gold2); text-align: center; flex: 1; min-width: 100px; }
 
+    /* STREAK BADGES */
+    .streak-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .8rem; }
+    .streak-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center; }
+    .streak-val { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
+    .streak-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: .2rem; }
+    .streak-name { font-size: .82rem; font-weight: 600; margin-top: .3rem; }
+
+    /* TREND CHART */
+    .trend-wrap { overflow-x: auto; }
+    .trend-wrap svg { display: block; }
+
+    /* PREDICT */
+    .predict-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: .6rem; }
+    .predict-btn { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 10px;
+                   padding: .7rem .5rem; font-size: .85rem; font-weight: 600; color: #ccc;
+                   cursor: pointer; transition: all .2s; }
+    .predict-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.08); }
+    .predict-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.15); }
   </style>
 </head>
 <body>
@@ -234,6 +252,20 @@
   </div>
 
   <div class="content">
+
+    <!-- POINTS TREND CHART -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Points Trend</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <div class="trend-wrap" id="trend-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+      </div>
+    </section>
+
+    <!-- WIN STREAKS -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Win Streaks</div>
+      <div class="streak-grid" id="streak-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+    </section>
 
     <!-- ALL-TIME LEADERBOARD -->
     <section style="margin-bottom:3rem;">
@@ -329,6 +361,20 @@
       </div>
     </section>
 
+    <!-- PER-GAME LEADERBOARD -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Per-Game Rankings</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;overflow-x:auto;">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <button class="btn btn-gold" style="font-size:.78rem;padding:.35rem .8rem;" onclick="showGameLB('monopoly',this)">Monopoly</button>
+          <button class="btn btn-muted" style="font-size:.78rem;padding:.35rem .8rem;" onclick="showGameLB('bluff',this)">Bluff</button>
+          <button class="btn btn-muted" style="font-size:.78rem;padding:.35rem .8rem;" onclick="showGameLB('spoon',this)">Spoon</button>
+          <button class="btn btn-muted" style="font-size:.78rem;padding:.35rem .8rem;" onclick="showGameLB('uno',this)">UNO</button>
+        </div>
+        <div id="game-lb-wrap"></div>
+      </div>
+    </section>
+
     <!-- HEAD TO HEAD -->
     <section style="margin-bottom:3rem;">
       <div class="section-title">Head to Head</div>
@@ -347,6 +393,23 @@
         <div id="h2h-result"></div>
       </div>
     </section>
+
+    <!-- PREDICT NEXT WINNER -->
+    {% if is_koc_player %}
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Predict Next Winner</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:#aaa;font-size:.85rem;margin-bottom:1rem;">Who do you think will win the next edition?</p>
+        <div class="predict-grid" id="predict-grid">
+          {% set koc_players_list2 = [('abhinav','ABHINAV'),('abhishek','ABHISHEK'),('akhil','AKHIL'),('sahil','SAHIL'),('shruti','SHRUTI'),('utkarsh','UTKARSH')] %}
+          {% for u,d in koc_players_list2 %}
+          <button class="predict-btn" onclick="submitPrediction('{{ u }}',this)">{{ d }}</button>
+          {% endfor %}
+        </div>
+        <div id="predict-result" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+    {% endif %}
 
     {% if is_koc_player %}
     <!-- LIVE TRACKER -->
@@ -712,7 +775,175 @@
       }).catch(()=>{});
     }
 
+    // ===== POINTS TREND CHART =====
+    function loadTrend() {
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+        const wrap = document.getElementById('trend-wrap');
+        if (!wrap || !tournaments.length) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
+        const players = ['abhinav','abhishek','akhil','sahil','shruti','utkarsh'];
+        const colors = {'abhinav':'#ffd700','abhishek':'#5799ef','akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
+        const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
+        // cumulative points per player
+        const cum = {}; players.forEach(p => cum[p] = 0);
+        const data = sorted.map(t => {
+          const snap = {};
+          (t.players||[]).forEach(p => { cum[p.username] = (cum[p.username]||0) + (p.total||0); });
+          players.forEach(p => snap[p] = cum[p]);
+          return {edition: t.edition, ...snap};
+        });
+        const W = Math.max(wrap.clientWidth - 32, 300);
+        const H = 200; const PAD = {t:10,r:10,b:30,l:32};
+        const maxVal = Math.max(...data.flatMap(d => players.map(p => d[p])), 1);
+        const xStep = (W - PAD.l - PAD.r) / Math.max(data.length - 1, 1);
+        const yScale = v => H - PAD.b - ((v / maxVal) * (H - PAD.t - PAD.b));
+        const xScale = i => PAD.l + i * xStep;
+        let paths = '';
+        players.forEach(p => {
+          const pts = data.map((d,i) => `${xScale(i).toFixed(1)},${yScale(d[p]).toFixed(1)}`).join(' ');
+          paths += `<polyline points="${pts}" fill="none" stroke="${colors[p]}" stroke-width="2" stroke-linejoin="round"/>`;
+          // dots
+          data.forEach((d,i) => { paths += `<circle cx="${xScale(i).toFixed(1)}" cy="${yScale(d[p]).toFixed(1)}" r="3" fill="${colors[p]}"><title>${p.charAt(0).toUpperCase()+p.slice(1)}: ${d[p]}</title></circle>`; });
+        });
+        // x labels
+        let xlabels = data.map((d,i)=>`<text x="${xScale(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="#666">Ed.${d.edition}</text>`).join('');
+        // y labels
+        let ylabels = [0,.5,1].map(f=>`<text x="${PAD.l-4}" y="${yScale(f*maxVal).toFixed(1)}" text-anchor="end" font-size="9" fill="#555" dominant-baseline="middle">${Math.round(f*maxVal)}</text><line x1="${PAD.l}" y1="${yScale(f*maxVal).toFixed(1)}" x2="${W-PAD.r}" y2="${yScale(f*maxVal).toFixed(1)}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`).join('');
+        // legend
+        const legendItems = players.map((p,i)=>`<text x="${PAD.l + i*((W-PAD.l-PAD.r)/players.length)}" y="${H+18}" font-size="8" fill="${colors[p]}">${p.charAt(0).toUpperCase()+p.slice(1)}</text>`).join('');
+        wrap.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H+25}" style="overflow:visible;">${ylabels}${paths}${xlabels}</svg>`;
+      }).catch(()=>{});
+    }
+
+    // ===== WIN STREAKS =====
+    function loadStreaks() {
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+        const wrap = document.getElementById('streak-wrap');
+        if (!wrap) return;
+        if (!tournaments.length) { wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">No data yet.</p>'; return; }
+        const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
+        const players = ['abhinav','abhishek','akhil','sahil','shruti','utkarsh'];
+        const cur = {}, best = {}, names = {};
+        players.forEach(p => { cur[p]=0; best[p]=0; });
+        sorted.forEach(t => {
+          const winner = (t.players||[]).reduce((a,b)=>(b.total||0)>(a.total||0)?b:a, {total:-1});
+          if (!winner.username) return;
+          if (!names[winner.username]) names[winner.username] = winner.display_name||winner.username;
+          players.forEach(p => {
+            if (p === winner.username) { cur[p]++; if(cur[p]>best[p]) best[p]=cur[p]; }
+            else cur[p] = 0;
+          });
+        });
+        // Current streak leader
+        const curLeader = players.reduce((a,b)=>cur[b]>cur[a]?b:a);
+        const bestLeader = players.reduce((a,b)=>best[b]>best[a]?b:a);
+        wrap.innerHTML = players.map(p => `
+          <div class="streak-card">
+            <div class="streak-val">${cur[p]}</div>
+            <div class="streak-label">Current streak</div>
+            <div class="streak-name">${(names[p]||p).split(' ')[0]}</div>
+            <div style="font-size:.7rem;color:var(--muted);margin-top:.4rem;">Best: ${best[p]}</div>
+          </div>`).join('');
+      }).catch(()=>{});
+    }
+
+    // ===== PER-GAME LEADERBOARD =====
+    let _gameLBData = null;
+    function loadGameLB() {
+      fetch('/api/koc/game_heatmap').then(r=>r.json()).then(data => {
+        _gameLBData = data;
+        showGameLB('monopoly', document.querySelector('.btn-gold[onclick*="monopoly"]'));
+      }).catch(()=>{});
+    }
+    function showGameLB(game, btn) {
+      document.querySelectorAll('.predict-grid ~ div, section .btn-gold[onclick*="showGameLB"], section .btn-muted[onclick*="showGameLB"]').forEach(()=>{});
+      document.querySelectorAll('button[onclick*="showGameLB"]').forEach(b => { b.className = 'btn btn-muted'; b.style.fontSize='.78rem'; b.style.padding='.35rem .8rem'; });
+      if (btn) { btn.className = 'btn btn-gold'; btn.style.fontSize='.78rem'; btn.style.padding='.35rem .8rem'; }
+      const wrap = document.getElementById('game-lb-wrap');
+      if (!wrap || !_gameLBData) return;
+      const sorted = [..._gameLBData].sort((a,b)=>(b[game]||0)-(a[game]||0));
+      wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Player</th>
+          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Wins in ${game.charAt(0).toUpperCase()+game.slice(1)}</th>
+          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Win %</th>
+        </tr></thead>
+        <tbody>${sorted.map((p,i) => {
+          const total = (p.monopoly||0)+(p.bluff||0)+(p.spoon||0)+(p.uno||0);
+          const pct = total ? Math.round(((p[game]||0)/total)*100) : 0;
+          return `<tr style="border-top:1px solid rgba(255,215,0,.07);">
+            <td style="padding:.6rem .8rem;font-weight:600;font-size:.88rem;color:${i===0?'var(--gold)':'#ccc'}">${p.display.split(' ')[0]}</td>
+            <td style="text-align:center;padding:.6rem .8rem;font-weight:${i===0?'800':'400'};color:${i===0?'var(--gold)':'#ccc'}">${p[game]||0}</td>
+            <td style="text-align:center;padding:.6rem .8rem;font-size:.82rem;color:var(--muted)">${pct}%</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>`;
+    }
+
+    // ===== PREDICT NEXT WINNER =====
+    function submitPrediction(username, btn) {
+      document.querySelectorAll('.predict-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      fetch('/api/koc/predict', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({prediction: username})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        const res = document.getElementById('predict-result');
+        if (!d.tally) { res.innerHTML=''; return; }
+        const total = Object.values(d.tally).reduce((a,b)=>a+b,0);
+        res.innerHTML = `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">Current predictions (${total} vote${total!==1?'s':''}):</p>` +
+          Object.entries(d.tally).sort((a,b)=>b[1]-a[1]).map(([u,c]) =>
+            `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;">
+              <span style="font-size:.8rem;width:70px;">${u.charAt(0).toUpperCase()+u.slice(1)}</span>
+              <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:6px;">
+                <div style="background:var(--gold);height:100%;border-radius:4px;width:${total?Math.round(c/total*100):0}%"></div>
+              </div>
+              <span style="font-size:.78rem;color:var(--muted);">${c}</span>
+            </div>`
+          ).join('');
+        showToast('Prediction saved!');
+      }).catch(()=>showToast('Login required to predict'));
+      // load existing tally
+      fetch('/api/koc/predict').then(r=>r.json()).then(d=>{
+        if (!d.tally) return;
+        const total = Object.values(d.tally).reduce((a,b)=>a+b,0);
+        document.getElementById('predict-result').innerHTML = `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">Current predictions (${total} vote${total!==1?'s':''}):</p>` +
+          Object.entries(d.tally).sort((a,b)=>b[1]-a[1]).map(([u,c]) =>
+            `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;">
+              <span style="font-size:.8rem;width:70px;">${u.charAt(0).toUpperCase()+u.slice(1)}</span>
+              <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:6px;">
+                <div style="background:var(--gold);height:100%;border-radius:4px;width:${total?Math.round(c/total*100):0}%"></div>
+              </div>
+              <span style="font-size:.78rem;color:var(--muted);">${c}</span>
+            </div>`
+          ).join('');
+      }).catch(()=>{});
+    }
+
+    // load prediction tally on page load
+    {% if is_koc_player %}
+    fetch('/api/koc/predict').then(r=>r.json()).then(d=>{
+      if (!d.tally) return;
+      const total = Object.values(d.tally).reduce((a,b)=>a+b,0);
+      const res = document.getElementById('predict-result');
+      if (!res || !total) return;
+      res.innerHTML = `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem;">Current predictions (${total} vote${total!==1?'s':''}):</p>` +
+        Object.entries(d.tally).sort((a,b)=>b[1]-a[1]).map(([u,c]) =>
+          `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem;">
+            <span style="font-size:.8rem;width:70px;">${u.charAt(0).toUpperCase()+u.slice(1)}</span>
+            <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:6px;">
+              <div style="background:var(--gold);height:100%;border-radius:4px;width:${total?Math.round(c/total*100):0}%"></div>
+            </div>
+            <span style="font-size:.78rem;color:var(--muted);">${c}</span>
+          </div>`
+        ).join('');
+    }).catch(()=>{});
+    {% endif %}
+
     // ===== INIT KOC-PLAYER SECTIONS =====
+    loadTrend();
+    loadStreaks();
+    loadGameLB();
     {% if is_koc_player %}
     loadHeatmap();
     loadChat();
