@@ -2372,6 +2372,20 @@ def on_request_sync(data):
     emit('party_state', party)  # emit only to requesting socket (no room broadcast)
 
 
+# ===== PWA Routes =====
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory, make_response
+    resp = make_response(send_from_directory('static', 'sw.js'))
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Content-Type'] = 'application/javascript'
+    return resp
+
+@app.route('/offline')
+def offline_page():
+    from flask import send_from_directory
+    return send_from_directory('static', 'offline.html')
+
 # ===== Push Subscription Routes =====
 @app.route('/api/push/vapid_public_key')
 def vapid_public_key():

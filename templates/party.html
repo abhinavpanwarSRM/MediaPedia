@@ -2012,35 +2012,92 @@
 
       // ========== PWA: SERVICE WORKER + PUSH + MEDIA SESSION ==========
 
-      // 1. Register service worker
+      var _swReg = null;
+      var _deferredInstallPrompt = null;
+
+      // 1. Capture install prompt before browser shows it
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        _deferredInstallPrompt = e;
+        showInstallBanner();
+      });
+
+      function showInstallBanner() {
+        if (document.getElementById('pwa-install-banner')) return;
+        var banner = document.createElement('div');
+        banner.id = 'pwa-install-banner';
+        banner.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
+          'background:#1a1a1a;border:1px solid #1db954;border-radius:16px;padding:0.8rem 1.2rem;' +
+          'z-index:9997;display:flex;align-items:center;gap:0.8rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);' +
+          'max-width:90vw;animation:slideDown 0.3s ease;';
+        banner.innerHTML =
+          '<span style="font-size:1.2rem">📲</span>' +
+          '<span style="font-size:0.88rem;color:#ccc">Install MediaPedia for the full experience</span>' +
+          '<button onclick="installPWA()" style="background:#1db954;border:none;border-radius:8px;' +
+          'padding:0.35rem 0.9rem;font-weight:700;cursor:pointer;color:#000;font-size:0.82rem;white-space:nowrap;">Install</button>' +
+          '<button onclick="document.getElementById(\'pwa-install-banner\').remove()" ' +
+          'style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.2rem;">&times;</button>';
+        document.body.appendChild(banner);
+      }
+
+      function installPWA() {
+        var banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.remove();
+        if (!_deferredInstallPrompt) return;
+        _deferredInstallPrompt.prompt();
+        _deferredInstallPrompt.userChoice.then(function(result) {
+          if (result.outcome === 'accepted') showToast('MediaPedia installed! 🎉');
+          _deferredInstallPrompt = null;
+        });
+      }
+
+      // 2. Register service worker (from root for full scope)
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/sw.js').then(function(reg) {
-          // 2. Subscribe to push notifications once SW is ready
-          reg.ready.then(function() { initPush(reg); });
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+          _swReg = reg;
+          reg.ready.then(function() {
+            initPush(reg);
+            registerPeriodicSync(reg);
+          });
+          // Listen for messages from SW (background sync flush)
+          navigator.serviceWorker.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'FLUSH_PENDING') flushPendingActions();
+          });
         }).catch(function(err) { console.warn('SW registration failed:', err); });
       }
 
+      // 3. Push subscription
       function initPush(reg) {
-        // Ask for notification permission
         if (!('PushManager' in window) || !('Notification' in window)) return;
-        fetch('/api/push/vapid_public_key')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            if (!d.key) return;
-            Notification.requestPermission().then(function(perm) {
-              if (perm !== 'granted') return;
-              reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(d.key)
-              }).then(function(sub) {
-                fetch('/api/push/subscribe', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(sub.toJSON())
-                });
-              }).catch(function(err) { console.warn('Push subscribe failed:', err); });
+        // If already subscribed, just re-send subscription to server (handles re-installs)
+        reg.pushManager.getSubscription().then(function(existing) {
+          if (existing) {
+            fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(existing.toJSON())
             });
-          });
+            return;
+          }
+          fetch('/api/push/vapid_public_key')
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (!d.key) return;
+              Notification.requestPermission().then(function(perm) {
+                if (perm !== 'granted') return;
+                reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(d.key)
+                }).then(function(sub) {
+                  fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sub.toJSON())
+                  });
+                }).catch(function(err) { console.warn('Push subscribe failed:', err); });
+              });
+            });
+        });
       }
 
       function urlBase64ToUint8Array(base64String) {
@@ -2052,7 +2109,63 @@
         return output;
       }
 
-      // 3. Media Session API — lock screen / notification shade controls
+      // 4. Periodic background sync — check pending invites every 30 min
+      function registerPeriodicSync(reg) {
+        if (!('periodicSync' in reg)) return;
+        navigator.permissions.query({ name: 'periodic-background-sync' }).then(function(status) {
+          if (status.state !== 'granted') return;
+          reg.periodicSync.register('check-invites', { minInterval: 30 * 60 * 1000 })
+            .catch(function() {});
+        }).catch(function() {});
+      }
+
+      // 5. Background sync — queue offline actions and replay when back online
+      var _pendingActions = [];
+
+      function queueAction(fn) {
+        if (navigator.onLine) { fn(); return; }
+        _pendingActions.push(fn);
+        if ('serviceWorker' in navigator && _swReg) {
+          _swReg.sync.register('sync-pending-actions').catch(function() {});
+        }
+      }
+
+      function flushPendingActions() {
+        var actions = _pendingActions.splice(0);
+        actions.forEach(function(fn) { try { fn(); } catch(e) {} });
+      }
+
+      window.addEventListener('online', flushPendingActions);
+
+      // 6. App Badge API — show unread count on app icon
+      function updateBadge(count) {
+        if (!('setAppBadge' in navigator)) return;
+        if (count > 0) navigator.setAppBadge(count).catch(function() {});
+        else navigator.clearAppBadge().catch(function() {});
+      }
+
+      // Update badge whenever pending invites are checked
+      var _origCheckPendingInvites = checkPendingInvites;
+      checkPendingInvites = function() {
+        fetch('/api/party/pending_invites')
+          .then(function(r) { return r.json(); })
+          .then(function(invites) {
+            if (!Array.isArray(invites)) return;
+            updateBadge(invites.length);
+            invites.forEach(function(inv) { showInviteBanner(inv); });
+          })
+          .catch(function() {});
+      };
+
+      // Clear badge when user opens the app and is in a party
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          if (socket && partyId) socket.emit('request_sync', { party_id: partyId });
+          updateBadge(0);
+        }
+      });
+
+      // 7. Media Session API — lock screen / notification shade controls
       function updateMediaSession(title, artist) {
         if (!('mediaSession' in navigator)) return;
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -2066,13 +2179,6 @@
         navigator.mediaSession.setActionHandler('nexttrack', function() { nextSong(); });
         navigator.mediaSession.setActionHandler('previoustrack', function() { prevSong(); });
       }
-
-      // 4. Re-sync when tab becomes visible again (e.g. phone unlocked)
-      document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible' && socket && partyId) {
-          socket.emit('request_sync', { party_id: partyId });
-        }
-      });
     </script>
   </body>
 </html>

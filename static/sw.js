@@ -1,5 +1,5 @@
 var CACHE = 'mediapedia-v1';
-var OFFLINE_URLS = ['/party', '/static/favicon.png'];
+var OFFLINE_URLS = ['/party', '/static/favicon.png', '/static/offline.html'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -11,18 +11,21 @@ self.addEventListener('install', function(e) {
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE; }).map(function(k) { return caches.delete(k); })
+      );
     })
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', function(e) {
-  // Only cache GET requests for our own origin
   if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
     fetch(e.request).catch(function() {
-      return caches.match(e.request);
+      return caches.match(e.request).then(function(cached) {
+        return cached || caches.match('/static/offline.html');
+      });
     })
   );
 });
@@ -39,21 +42,41 @@ self.addEventListener('push', function(e) {
     badge: '/static/favicon.png',
     tag: data.tag || 'mediapedia-notify',
     renotify: true,
-    data: { url: data.url || '/party' },
+    data: { url: data.url || '/party', party_id: data.party_id || null },
     actions: data.actions || []
   };
 
-  e.waitUntil(self.registration.showNotification(title, options));
+  e.waitUntil(
+    // Update app badge count when push arrives
+    Promise.all([
+      self.registration.showNotification(title, options),
+      self.registration.badge ? self.registration.badge.set(1) : Promise.resolve()
+    ])
+  );
 });
 
+// ===== NOTIFICATION CLICK =====
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   var url = (e.notification.data && e.notification.data.url) ? e.notification.data.url : '/party';
 
-  // Handle action buttons
   if (e.action === 'join' && e.notification.data && e.notification.data.party_id) {
     url = '/party/' + e.notification.data.party_id;
+    // Dismiss the invite in DB when user taps Join
+    fetch('/api/party/dismiss_invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ party_id: e.notification.data.party_id })
+    }).catch(function() {});
   } else if (e.action === 'dismiss') {
+    // Dismiss invite silently when user taps Dismiss
+    if (e.notification.data && e.notification.data.party_id) {
+      fetch('/api/party/dismiss_invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ party_id: e.notification.data.party_id })
+      }).catch(function() {});
+    }
     return;
   }
 
@@ -70,3 +93,70 @@ self.addEventListener('notificationclick', function(e) {
     })
   );
 });
+
+// ===== NOTIFICATION CLOSE (swipe away) =====
+self.addEventListener('notificationclose', function(e) {
+  // When user swipes away a party invite notification, auto-dismiss it in DB
+  var data = e.notification.data || {};
+  if (data.party_id && e.notification.tag && e.notification.tag.startsWith('party-invite-')) {
+    fetch('/api/party/dismiss_invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ party_id: data.party_id })
+    }).catch(function() {});
+  }
+  // Clear app badge when all notifications are dismissed
+  self.registration.getNotifications().then(function(notifications) {
+    if (notifications.length === 0 && self.registration.badge) {
+      self.registration.badge.clear();
+    }
+  });
+});
+
+// ===== BACKGROUND SYNC (queued actions when offline) =====
+self.addEventListener('sync', function(e) {
+  if (e.tag === 'sync-pending-actions') {
+    e.waitUntil(flushPendingActions());
+  }
+});
+
+function flushPendingActions() {
+  return self.clients.matchAll().then(function(clients) {
+    clients.forEach(function(client) {
+      client.postMessage({ type: 'FLUSH_PENDING' });
+    });
+  });
+}
+
+// ===== PERIODIC BACKGROUND SYNC (check pending invites) =====
+self.addEventListener('periodicsync', function(e) {
+  if (e.tag === 'check-invites') {
+    e.waitUntil(checkAndNotifyInvites());
+  }
+});
+
+function checkAndNotifyInvites() {
+  return fetch('/api/party/pending_invites')
+    .then(function(r) { return r.json(); })
+    .then(function(invites) {
+      if (!Array.isArray(invites) || !invites.length) return;
+      return Promise.all(invites.map(function(inv) {
+        return self.registration.getNotifications({ tag: 'party-invite-' + inv.party_id })
+          .then(function(existing) {
+            if (existing.length) return; // already shown
+            return self.registration.showNotification('🎉 Party Invite!', {
+              body: inv.invited_by + ' invited you to join "' + inv.party_name + '"',
+              icon: '/static/favicon.png',
+              badge: '/static/favicon.png',
+              tag: 'party-invite-' + inv.party_id,
+              data: { url: '/party/' + inv.party_id, party_id: inv.party_id },
+              actions: [
+                { action: 'join', title: 'Join Party' },
+                { action: 'dismiss', title: 'Dismiss' }
+              ]
+            });
+          });
+      }));
+    })
+    .catch(function() {});
+}
