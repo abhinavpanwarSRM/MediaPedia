@@ -2086,15 +2086,22 @@
         });
       }
 
-      // 2. Register service worker (from root for full scope)
+      // 2. Unregister any old SW, then register new one from root
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+        // First unregister any stale SW registered from /static/
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          var unregPromises = regs
+            .filter(function(r) { return r.scope !== window.location.origin + '/'; })
+            .map(function(r) { return r.unregister(); });
+          return Promise.all(unregPromises);
+        }).then(function() {
+          return navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        }).then(function(reg) {
           _swReg = reg;
           reg.ready.then(function() {
             initPush(reg);
             registerPeriodicSync(reg);
           });
-          // Listen for messages from SW (background sync flush)
           navigator.serviceWorker.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'FLUSH_PENDING') flushPendingActions();
           });
@@ -2104,35 +2111,23 @@
       // 3. Push subscription
       function initPush(reg) {
         if (!('PushManager' in window) || !('Notification' in window)) return;
-        // If already subscribed, just re-send subscription to server (handles re-installs)
-        reg.pushManager.getSubscription().then(function(existing) {
-          if (existing) {
-            fetch('/api/push/subscribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(existing.toJSON())
-            });
-            return;
-          }
-          fetch('/api/push/vapid_public_key')
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-              if (!d.key) return;
-              Notification.requestPermission().then(function(perm) {
-                if (perm !== 'granted') return;
-                reg.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: urlBase64ToUint8Array(d.key)
-                }).then(function(sub) {
-                  fetch('/api/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub.toJSON())
-                  });
-                }).catch(function(err) { console.warn('Push subscribe failed:', err); });
+        if (Notification.permission !== 'granted') return; // only auto-subscribe if already granted
+        fetch('/api/push/vapid_public_key')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.key) return;
+            // Always re-subscribe to get fresh endpoint under new SW
+            reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(d.key)
+            }).then(function(sub) {
+              fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sub.toJSON())
               });
-            });
-        });
+            }).catch(function(err) { console.warn('Push subscribe failed:', err); });
+          });
       }
 
       function urlBase64ToUint8Array(base64String) {
