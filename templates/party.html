@@ -1437,12 +1437,20 @@
       }
 
       // ========== PENDING INVITE BANNER ==========
-      // Check for pending invites on page load and via socket
+
+      // App Badge API — needed by checkPendingInvites below
+      function updateBadge(count) {
+        if (!('setAppBadge' in navigator)) return;
+        if (count > 0) navigator.setAppBadge(count).catch(function() {});
+        else navigator.clearAppBadge().catch(function() {});
+      }
+
       function checkPendingInvites() {
         fetch('/api/party/pending_invites')
           .then(function(r) { return r.json(); })
           .then(function(invites) {
-            if (!Array.isArray(invites) || !invites.length) return;
+            if (!Array.isArray(invites) || !invites.length) { updateBadge(0); return; }
+            updateBadge(invites.length);
             invites.forEach(function(inv) { showInviteBanner(inv); });
           })
           .catch(function() {});
@@ -1736,7 +1744,7 @@
       }
 
       function removeSong(songId) {
-        if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId });
+        queueAction(function() { if (socket) socket.emit('party_remove_song', { party_id: partyId, username: ME, song_id: songId }); });
       }
 
       function renderMembers(members) {
@@ -1822,16 +1830,11 @@
 
       function addSongNext(vid, title, ch) {
         if (!socket || !partyId) return;
-        socket.emit('party_add_song_next', {
-          party_id: partyId,
-          username: ME,
-          song: {
-            song_id: Math.random().toString(36).slice(2, 10),
-            song_title: title,
-            artist_name: extractArtist(title, ch),
-            youtube_query: vid,
-            added_by: ME
-          }
+        queueAction(function() {
+          socket.emit('party_add_song_next', {
+            party_id: partyId, username: ME,
+            song: { song_id: Math.random().toString(36).slice(2, 10), song_title: title, artist_name: extractArtist(title, ch), youtube_query: vid, added_by: ME }
+          });
         });
         showToast('"' + title.substring(0, 30) + '" plays next!');
         document.getElementById('sr-list').innerHTML = '';
@@ -1840,16 +1843,11 @@
 
       function addSong(vid, title, ch) {
         if (!socket || !partyId) return;
-        socket.emit('party_add_song', {
-          party_id: partyId,
-          username: ME,
-          song: {
-            song_id: Math.random().toString(36).slice(2, 10),
-            song_title: title,
-            artist_name: extractArtist(title, ch),
-            youtube_query: vid,
-            added_by: ME
-          }
+        queueAction(function() {
+          socket.emit('party_add_song', {
+            party_id: partyId, username: ME,
+            song: { song_id: Math.random().toString(36).slice(2, 10), song_title: title, artist_name: extractArtist(title, ch), youtube_query: vid, added_by: ME }
+          });
         });
         showToast('"' + title.substring(0, 30) + '" added!');
         document.getElementById('sr-list').innerHTML = '';
@@ -1860,8 +1858,8 @@
         var inp = document.getElementById('chat-inp');
         var text = inp.value.trim();
         if (!text) return;
-        socket.emit('party_chat', { party_id: partyId, username: ME, text: text });
         inp.value = '';
+        queueAction(function() { socket.emit('party_chat', { party_id: partyId, username: ME, text: text }); });
       }
 
       function appendChat(user, text) {
@@ -2137,27 +2135,11 @@
 
       window.addEventListener('online', flushPendingActions);
 
-      // 6. App Badge API — show unread count on app icon
-      function updateBadge(count) {
-        if (!('setAppBadge' in navigator)) return;
-        if (count > 0) navigator.setAppBadge(count).catch(function() {});
-        else navigator.clearAppBadge().catch(function() {});
-      }
+      // 6. App Badge API is defined earlier near checkPendingInvites
 
-      // Update badge whenever pending invites are checked
-      var _origCheckPendingInvites = checkPendingInvites;
-      checkPendingInvites = function() {
-        fetch('/api/party/pending_invites')
-          .then(function(r) { return r.json(); })
-          .then(function(invites) {
-            if (!Array.isArray(invites)) return;
-            updateBadge(invites.length);
-            invites.forEach(function(inv) { showInviteBanner(inv); });
-          })
-          .catch(function() {});
-      };
+      // Update badge whenever pending invites are checked (badge logic is now in checkPendingInvites directly)
 
-      // Clear badge when user opens the app and is in a party
+      // Clear badge when user opens the app
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible') {
           if (socket && partyId) socket.emit('request_sync', { party_id: partyId });

@@ -1579,7 +1579,7 @@ except Exception as e:
     push_subs_collection = None
 
 VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
-VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '').replace('\\n', '\n')
 VAPID_CLAIMS_EMAIL = os.getenv('VAPID_CLAIMS_EMAIL', 'mailto:admin@mediapedia.app')
 
 def send_push(username, payload):

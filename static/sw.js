@@ -1,5 +1,5 @@
 var CACHE = 'mediapedia-v1';
-var OFFLINE_URLS = ['/party', '/static/favicon.png', '/static/offline.html'];
+var OFFLINE_URLS = ['/party', '/static/favicon.png', '/offline'];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -24,7 +24,7 @@ self.addEventListener('fetch', function(e) {
   e.respondWith(
     fetch(e.request).catch(function() {
       return caches.match(e.request).then(function(cached) {
-        return cached || caches.match('/static/offline.html');
+        return cached || caches.match('/offline');
       });
     })
   );
@@ -50,7 +50,7 @@ self.addEventListener('push', function(e) {
     // Update app badge count when push arrives
     Promise.all([
       self.registration.showNotification(title, options),
-      self.registration.badge ? self.registration.badge.set(1) : Promise.resolve()
+      ('setAppBadge' in self) ? self.setAppBadge(1) : Promise.resolve()
     ])
   );
 });
@@ -107,8 +107,8 @@ self.addEventListener('notificationclose', function(e) {
   }
   // Clear app badge when all notifications are dismissed
   self.registration.getNotifications().then(function(notifications) {
-    if (notifications.length === 0 && self.registration.badge) {
-      self.registration.badge.clear();
+    if (notifications.length === 0 && 'clearAppBadge' in self) {
+      self.clearAppBadge();
     }
   });
 });
