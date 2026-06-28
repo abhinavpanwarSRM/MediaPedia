@@ -167,6 +167,7 @@
     let currentGame = 'monopoly';
     let currentRound = 1;
     let pollInterval = null;
+    let _localControl = false; // true when this client has changed game/round locally
 
     // score key is "r1_monopoly", "r2_bluff" etc.
     function key(game, round) { return 'r' + round + '_' + game; }
@@ -185,6 +186,7 @@
 
     function setGame(game, btn) {
       currentGame = game;
+      _localControl = true;
       document.querySelectorAll('#game-tabs .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       updateScoreContext();
@@ -193,6 +195,7 @@
 
     function setRound(round, btn) {
       currentRound = round;
+      _localControl = true;
       document.querySelectorAll('#round-tabs .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       updateScoreContext();
@@ -273,6 +276,7 @@
 
     function pushScores() {
       if (!state) return;
+      _localControl = false;
       fetch(`/api/koc/live/${SESSION_ID}`, {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
@@ -379,8 +383,8 @@
             });
           }
           state = d;
-          // sync game + round tabs from server state so all clients stay in sync
-          if (IS_PLAYER) {
+          // sync game + round tabs from server state only if player hasn't taken local control
+          if (IS_PLAYER && !_localControl) {
             if (d.current_game && d.current_game !== currentGame) {
               currentGame = d.current_game;
               document.querySelectorAll('#game-tabs .tab-btn').forEach((b, i) => {
