@@ -2602,6 +2602,7 @@ def koc_live_page(session_id):
     return render_template('koc_live.html', session_id=session_id,
                            username=username, is_koc_player=is_koc)
 
+@app.route('/api/koc/tournaments', methods=['GET'])
 def koc_get_tournaments():
     if koc_tournaments_collection is None:
         return jsonify([])
@@ -2775,6 +2776,139 @@ def koc_live_end(session_id):
         return jsonify({'error': 'DB unavailable'}), 500
     koc_live_collection.update_one({'session_id': session_id}, {'$set': {'active': False}})
     return jsonify({'success': True})
+
+@app.route('/api/koc/live/<session_id>/save_as_edition', methods=['POST'])
+def koc_live_save_as_edition(session_id):
+    """Save a completed live session as a new official edition."""
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None or koc_tournaments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    if not doc:
+        return jsonify({'error': 'Session not found'}), 404
+    played_on = (request.json or {}).get('played_on', datetime.now().strftime('%Y-%m-%d'))
+    scores = doc.get('scores', {})
+    players = []
+    for u, s in scores.items():
+        if any(s.get(g, 0) > 0 for g in ('monopoly', 'bluff', 'spoon', 'uno')):
+            players.append({
+                'username': u,
+                'display_name': KOC_DISPLAY.get(u, u),
+                'monopoly': s.get('monopoly', 0),
+                'bluff':    s.get('bluff', 0),
+                'spoon':    s.get('spoon', 0),
+                'uno':      s.get('uno', 0),
+                'total':    s.get('total', 0)
+            })
+    if not players:
+        return jsonify({'error': 'No scores recorded'}), 400
+    def _wins(p):
+        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)==2)
+    winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
+    last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
+    edition = (last['edition'] + 1) if last else 1
+    koc_tournaments_collection.insert_one({
+        'edition': edition, 'played_on': played_on,
+        'winner_username': winner['username'],
+        'players': players, 'added_by': username,
+        'from_live': session_id,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    })
+    koc_live_collection.update_one({'session_id': session_id}, {'$set': {'active': False, 'saved_as_edition': edition}})
+    # Notify all KOC players
+    for u in KOC_USERNAMES:
+        if u != username:
+            send_push(u, {
+                'title': '👑 KOC Edition ' + str(edition) + ' saved!',
+                'body': f'{KOC_DISPLAY.get(winner["username"], winner["username"])} wins Edition {edition}!',
+                'url': f'/kingofcards/{edition}',
+                'tag': f'koc-edition-{edition}'
+            })
+    return jsonify({'edition': edition, 'winner': winner['username']}), 201
+
+@app.route('/api/koc/game_heatmap')
+def koc_game_heatmap():
+    """Per-player per-game total points across all editions."""
+    if koc_tournaments_collection is None:
+        return jsonify({})
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}))
+    heatmap = {u: {'monopoly':0,'bluff':0,'spoon':0,'uno':0} for u in KOC_USERNAMES}
+    for t in tournaments:
+        for p in t.get('players', []):
+            u = p.get('username','')
+            if u in heatmap:
+                for g in ('monopoly','bluff','spoon','uno'):
+                    heatmap[u][g] += p.get(g, 0)
+    result = []
+    for u, scores in heatmap.items():
+        result.append({'username': u, 'display': KOC_DISPLAY.get(u,u), **scores,
+                       'best_game': max(scores, key=scores.get) if any(scores.values()) else None})
+    return jsonify(result)
+
+@app.route('/api/koc/push_status')
+def koc_push_status():
+    """Return which KOC players have push subscribed."""
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if push_subs_collection is None:
+        return jsonify([])
+    result = []
+    for u in KOC_USERNAMES:
+        subscribed = push_subs_collection.find_one({'username': u}) is not None
+        result.append({'username': u, 'display': KOC_DISPLAY.get(u,u), 'subscribed': subscribed})
+    return jsonify(result)
+
+# KOC Group Chat collection
+koc_chat_collection = None
+try:
+    if db is not None:
+        koc_chat_collection = db.koc_chat
+        koc_chat_collection.create_index('created_at')
+except Exception as e:
+    log.error('Failed to init koc_chat: %s', e)
+
+@app.route('/api/koc/chat', methods=['GET'])
+def koc_chat_get():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_chat_collection is None:
+        return jsonify([])
+    msgs = list(koc_chat_collection.find({}, {'_id': 0}).sort('created_at', -1).limit(50))
+    msgs.reverse()
+    return jsonify(msgs)
+
+@app.route('/api/koc/chat', methods=['POST'])
+def koc_chat_post():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_chat_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:500]
+    if not text:
+        return jsonify({'error': 'Message required'}), 400
+    msg = {
+        'msg_id': str(uuid.uuid4())[:10],
+        'username': username,
+        'display': KOC_DISPLAY.get(username, username),
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    koc_chat_collection.insert_one(msg)
+    # Push to all other KOC players
+    for u in KOC_USERNAMES:
+        if u != username:
+            send_push(u, {
+                'title': f'👑 KOC Chat — {KOC_DISPLAY.get(username,username).split()[0]}',
+                'body': text[:80],
+                'url': '/kingofcards',
+                'tag': 'koc-chat'
+            })
+    return jsonify(msg), 201
 
 @app.route('/api/koc/player/<target_username>')
 def koc_player_stats(target_username):

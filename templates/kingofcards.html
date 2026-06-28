@@ -369,6 +369,36 @@
         <button class="btn btn-gold" onclick="startLive()">▶ Start Live Session</button>
       </div>
     </section>
+
+    <!-- GAME HEATMAP -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">🔥 Game Heatmap</div>
+      <div id="heatmap-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;overflow-x:auto;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
+
+    <!-- KOC GROUP CHAT -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">💬 Group Chat</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;">
+        <div id="koc-chat-msgs" style="height:260px;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;"></div>
+        <div style="display:flex;gap:.6rem;padding:.8rem;border-top:1px solid var(--border);">
+          <input id="koc-chat-input" type="text" placeholder="Message the squad..." maxlength="500"
+            style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
+            onkeydown="if(event.key==='Enter')sendChat()" />
+          <button class="btn btn-gold" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PUSH NUDGE -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">🔔 Push Notifications</div>
+      <div id="push-status-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
     {% endif %}
 
   </div>
@@ -586,6 +616,121 @@
           window.location.href = '/kingofcards/live/' + d.session_id;
         });
     }
+
+    // ===== GAME HEATMAP =====
+    function loadHeatmap() {
+      fetch('/api/koc/game_heatmap').then(r=>r.json()).then(data => {
+        const wrap = document.getElementById('heatmap-wrap');
+        if (!wrap || !data.length) return;
+        const games = ['monopoly','bluff','spoon','uno'];
+        const gameEmoji = {monopoly:'🎯',bluff:'🃏',spoon:'🥄',uno:'🎴'};
+        const allVals = data.flatMap(p => games.map(g => p[g]||0));
+        const maxVal = Math.max(...allVals, 1);
+        const sorted = [...data].sort((a,b) => (b.monopoly+b.bluff+b.spoon+b.uno)-(a.monopoly+a.bluff+a.spoon+a.uno));
+        wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:420px;">
+          <thead><tr>
+            <th style="text-align:left;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;letter-spacing:1px;">Player</th>
+            ${games.map(g=>`<th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;letter-spacing:1px;">${gameEmoji[g]} ${g}</th>`).join('')}
+            <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;letter-spacing:1px;">Best</th>
+          </tr></thead>
+          <tbody>${sorted.map(p => {
+            const best = p.best_game;
+            return `<tr style="border-top:1px solid rgba(255,215,0,.07);">
+              <td style="padding:.6rem .8rem;font-weight:600;font-size:.88rem;">${p.display.split(' ')[0]}</td>
+              ${games.map(g => {
+                const val = p[g]||0;
+                const intensity = Math.round((val/maxVal)*100);
+                return `<td style="text-align:center;padding:.6rem .8rem;">
+                  <div style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;background:rgba(255,215,0,${(intensity/100)*0.5 + 0.04});font-weight:700;font-size:.9rem;color:${val>0?'var(--gold)':'rgba(255,255,255,.2)'}">${val}</div>
+                </td>`;
+              }).join('')}
+              <td style="text-align:center;padding:.6rem .8rem;font-size:1.1rem;">${best ? gameEmoji[best] : '—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`;
+      }).catch(()=>{});
+    }
+
+    // ===== KOC GROUP CHAT =====
+    let lastMsgId = null;
+    let chatInterval = null;
+
+    function loadChat() {
+      fetch('/api/koc/chat').then(r=>r.json()).then(msgs => {
+        if (!Array.isArray(msgs)) return;
+        const box = document.getElementById('koc-chat-msgs');
+        if (!box) return;
+        box.innerHTML = msgs.map(m => chatBubble(m)).join('');
+        box.scrollTop = box.scrollHeight;
+        if (msgs.length) lastMsgId = msgs[msgs.length-1].msg_id;
+      }).catch(()=>{});
+    }
+
+    function pollChat() {
+      fetch('/api/koc/chat').then(r=>r.json()).then(msgs => {
+        if (!Array.isArray(msgs) || !msgs.length) return;
+        const newest = msgs[msgs.length-1];
+        if (newest.msg_id === lastMsgId) return;
+        const box = document.getElementById('koc-chat-msgs');
+        if (!box) return;
+        const newMsgs = lastMsgId ? msgs.filter((_,i) => i > msgs.findIndex(m=>m.msg_id===lastMsgId)) : msgs;
+        newMsgs.forEach(m => { box.innerHTML += chatBubble(m); });
+        box.scrollTop = box.scrollHeight;
+        lastMsgId = newest.msg_id;
+      }).catch(()=>{});
+    }
+
+    function chatBubble(m) {
+      const VIEWER = '{{ username or "" }}';
+      const isMe = m.username === VIEWER;
+      return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};">
+        <div style="max-width:75%;background:${isMe?'rgba(255,215,0,.15)':'rgba(255,255,255,.06)'};border:1px solid ${isMe?'rgba(255,215,0,.3)':'var(--border)'};border-radius:12px;padding:.5rem .85rem;">
+          ${!isMe?`<div style="font-size:.65rem;color:var(--gold2);margin-bottom:.2rem;">${m.display.split(' ')[0]}</div>`:''}
+          <div style="font-size:.88rem;color:#eee;">${m.text}</div>
+        </div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:.2rem;">${m.created_at ? m.created_at.slice(11,16) : ''}</div>
+      </div>`;
+    }
+
+    function sendChat() {
+      const inp = document.getElementById('koc-chat-input');
+      const text = inp.value.trim();
+      if (!text) return;
+      inp.value = '';
+      fetch('/api/koc/chat', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text})
+      }).then(r=>r.json()).then(m=>{
+        if (m.error) { showToast(m.error); return; }
+        const box = document.getElementById('koc-chat-msgs');
+        box.innerHTML += chatBubble(m);
+        box.scrollTop = box.scrollHeight;
+        lastMsgId = m.msg_id;
+      });
+    }
+
+    // ===== PUSH STATUS =====
+    function loadPushStatus() {
+      fetch('/api/koc/push_status').then(r=>r.json()).then(data => {
+        const wrap = document.getElementById('push-status-wrap');
+        if (!wrap || !Array.isArray(data)) return;
+        wrap.innerHTML = `<p style="font-size:.8rem;color:var(--muted);margin-bottom:.8rem;">Players need push enabled to receive KOC notifications.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:.6rem;">${data.map(p=>
+            `<div style="display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.04);border:1px solid ${p.subscribed?'rgba(46,213,115,.3)':'rgba(255,255,255,.1)'};border-radius:8px;padding:.4rem .8rem;">
+              <span style="font-size:.85rem;">${p.subscribed?'✅':'❌'}</span>
+              <span style="font-size:.82rem;font-weight:600;color:${p.subscribed?'#2ed573':'var(--muted)'}">${p.display.split(' ')[0]}</span>
+            </div>`
+          ).join('')}</div>`;
+      }).catch(()=>{});
+    }
+
+    // ===== INIT KOC-PLAYER SECTIONS =====
+    {% if is_koc_player %}
+    loadHeatmap();
+    loadChat();
+    loadPushStatus();
+    chatInterval = setInterval(pollChat, 5000);
+    {% endif %}
   </script>
 </body>
 </html>

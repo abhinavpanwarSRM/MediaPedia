@@ -108,7 +108,10 @@
   <div class="content">
     <a class="back-btn" href="/kingofcards">← Back to KOC</a>
 
-    <div class="section-title">🏆 Scoreboard</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
+      <div class="section-title" style="margin:0;border:none;">🏆 Scoreboard</div>
+      <button onclick="shareEdition()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:8px;padding:.4rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">📤 Share</button>
+    </div>
     <div class="score-table-wrap">
       <table>
         <thead>
@@ -144,5 +147,19 @@
       </table>
     </div>
   </div>
+  <script>
+    function shareEdition() {
+      const url = window.location.href;
+      const text = 'KOC Edition {{ tournament.edition }} — {{ tournament.winner_display }} wins! Check the scoreboard:';
+      if (navigator.share) {
+        navigator.share({ title: 'King of Cards Edition {{ tournament.edition }}', text, url }).catch(()=>{});
+      } else {
+        navigator.clipboard.writeText(url).then(() => {
+          const btn = document.querySelector('button[onclick="shareEdition()"]');
+          if (btn) { btn.textContent = '✅ Copied!'; setTimeout(()=>btn.innerHTML='📤 Share',2000); }
+        });
+      }
+    }
+  </script>
 </body>
 </html>

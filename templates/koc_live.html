@@ -88,6 +88,7 @@
       <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap;">
         <button class="btn btn-gold" onclick="pushScores()">Save Scores</button>
         <button class="btn btn-muted" onclick="nextRound()">Next Round →</button>
+        <button class="btn btn-gold" onclick="saveAsEdition()" style="background:rgba(255,215,0,.2);">💾 Save as Edition</button>
         <button class="btn btn-red" onclick="endSession()">End Session</button>
       </div>
     </div>
@@ -216,6 +217,22 @@
       if (!confirm('End this live session?')) return;
       fetch(`/api/koc/live/${SESSION_ID}/end`, {method:'POST'})
         .then(() => { clearInterval(pollInterval); showToast('Session ended'); setTimeout(()=>window.location.href='/kingofcards',1200); });
+    }
+
+    function saveAsEdition() {
+      if (!confirm('Save current scores as a new official edition?')) return;
+      const today = new Date().toISOString().slice(0,10);
+      const played_on = prompt('Date played (YYYY-MM-DD):', today) || today;
+      fetch(`/api/koc/live/${SESSION_ID}/save_as_edition`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({played_on})
+      }).then(r=>r.json()).then(d=>{
+        if (d.error) { showToast(d.error); return; }
+        clearInterval(pollInterval);
+        showToast('Edition ' + d.edition + ' saved!');
+        setTimeout(()=>window.location.href='/kingofcards/'+d.edition, 1200);
+      });
     }
 
     function poll() {
