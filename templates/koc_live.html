@@ -11,13 +11,14 @@
     body{background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;min-height:100vh;}
     .topnav{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,13,13,.97);backdrop-filter:blur(8px);z-index:100;gap:.8rem;}
     .topnav a{color:var(--muted);text-decoration:none;font-size:.85rem;transition:color .2s;}
-    .topnav a:hover{color:#fff;} .topnav .brand{color:var(--primary);font-weight:700;}
+    .topnav a:hover{color:#fff;} .topnav .brand{color:var(--primary);font-weight:700;font-size:1rem;}
+    .live-topnav-right{display:flex;gap:1rem;align-items:center;}
     .content{max-width:900px;margin:0 auto;padding:2rem 1.5rem;}
     .section-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:1.2rem;}
     /* LIVE GRID */
     .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-bottom:2rem;}
-    .player-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:all .2s;}
-    .player-card.leading{border-color:rgba(255,215,0,.5);box-shadow:0 0 20px rgba(255,215,0,.1);}
+    .player-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;transition:all .3s;}
+    .player-card.leading{border-color:rgba(255,215,0,.6);box-shadow:0 0 24px rgba(255,215,0,.12);background:rgba(255,215,0,.04);}
     .pc-name{font-weight:700;font-size:.95rem;margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem;}
     .pc-total{font-size:2rem;font-weight:800;color:var(--gold);line-height:1;}
     .pc-sub{font-size:.72rem;color:var(--muted);margin-top:.2rem;}
@@ -29,9 +30,9 @@
     .controls{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:2rem;}
     .controls h3{color:var(--gold2);font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;}
     .game-tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
-    .game-tab{padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,215,0,.2);background:transparent;color:var(--muted);transition:all .2s;}
+    .game-tab{padding:.4rem .9rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,215,0,.2);background:transparent;color:var(--muted);transition:all .2s;font-family:'Poppins',sans-serif;}
     .game-tab.active{background:rgba(255,215,0,.15);border-color:var(--gold);color:var(--gold);}
-    .score-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.6rem;}
+    .score-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem;}
     .score-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.04);border-radius:8px;padding:.5rem .8rem;}
     .score-row span{font-size:.85rem;font-weight:600;}
     .score-btns{display:flex;align-items:center;gap:.4rem;}
@@ -43,7 +44,8 @@
     .btn-gold:hover{background:rgba(255,215,0,.25);}
     .btn-red{background:rgba(229,9,20,.12);border-color:var(--primary);color:var(--primary);}
     .btn-red:hover{background:rgba(229,9,20,.25);}
-    .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);}
+    .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);font-family:'Poppins',sans-serif;}
+    .btn-muted:hover{color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.05);}
     .round-badge{display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,215,0,.08);border:1px solid var(--border);border-radius:8px;padding:.35rem .8rem;font-size:.78rem;color:var(--gold2);margin-bottom:1rem;}
     .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid var(--border);padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
     .toast.show{opacity:1;}
@@ -55,13 +57,14 @@
     .nav-drawer.open{display:flex;}
     .nav-drawer a{padding:.75rem 1.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;border-bottom:1px solid var(--border);}
     .nav-drawer a:hover{color:#fff;background:rgba(255,255,255,.04);}
-    @media(max-width:600px){.live-topnav-right{display:none;}.nav-burger{display:flex;}}
+    @media(max-width:600px){.live-topnav-right{display:none!important;}.nav-burger{display:flex;}}
+    @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.game-tabs{gap:.3rem;}.game-tab{padding:.35rem .6rem;font-size:.76rem;}}
   </style>
 </head>
 <body>
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
-    <div class="live-topnav-right" style="display:flex;gap:1rem;align-items:center;">
+    <div class="live-topnav-right">
       <a href="/kingofcards" style="color:var(--gold);font-weight:700;">KOC</a>
       {% if username %}<a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>{% endif %}
     </div>
@@ -114,10 +117,10 @@
         <h3 style="color:var(--gold2);font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Add Player</h3>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
           <input id="new-player-name" type="text" placeholder="Display name (e.g. RAHUL)" maxlength="30"
-            style="flex:1;min-width:150px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
+            style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
             onkeydown="if(event.key==='Enter')addPlayer()" />
           <input id="new-player-username" type="text" placeholder="Username (optional)" maxlength="30"
-            style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
+            style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.85rem;font-family:'Poppins',sans-serif;"
             onkeydown="if(event.key==='Enter')addPlayer()" />
           <button class="btn btn-gold" onclick="addPlayer()">+ Add</button>
         </div>

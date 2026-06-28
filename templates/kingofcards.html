@@ -179,23 +179,34 @@
                   color: var(--gold2); text-align: center; flex: 1; min-width: 100px; }
 
     /* STREAK BADGES */
-    .streak-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: .8rem; }
-    .streak-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center; }
-    .streak-val { font-size: 1.6rem; font-weight: 800; color: var(--gold); }
-    .streak-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: .2rem; }
-    .streak-name { font-size: .82rem; font-weight: 600; margin-top: .3rem; }
+    .streak-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: .8rem; margin-bottom: 0; }
+    .streak-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 0.8rem; text-align: center; transition: border-color .2s; }
+    .streak-card:hover { border-color: rgba(255,215,0,.35); }
+    .streak-val { font-size: 1.8rem; font-weight: 800; color: var(--gold); line-height: 1; }
+    .streak-label { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: .3rem; }
+    .streak-name { font-size: .85rem; font-weight: 700; margin-top: .4rem; color: #fff; }
 
     /* TREND CHART */
-    .trend-wrap { overflow-x: auto; }
-    .trend-wrap svg { display: block; }
+    .trend-wrap { overflow-x: auto; min-height: 60px; }
+    .trend-wrap svg { display: block; min-width: 300px; }
+    .trend-legend { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: .8rem; }
+    .trend-legend-item { display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: #ccc; }
+    .trend-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
     /* PREDICT */
-    .predict-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: .6rem; }
+    .predict-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: .6rem; }
     .predict-btn { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 10px;
-                   padding: .7rem .5rem; font-size: .85rem; font-weight: 600; color: #ccc;
-                   cursor: pointer; transition: all .2s; }
-    .predict-btn:hover { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.08); }
-    .predict-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.15); }
+                   padding: .75rem .5rem; font-size: .85rem; font-weight: 600; color: #aaa;
+                   cursor: pointer; transition: all .2s; font-family: 'Poppins', sans-serif; }
+    .predict-btn:hover { border-color: rgba(255,215,0,.5); color: var(--gold); background: rgba(255,215,0,.08); transform: translateY(-2px); }
+    .predict-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.15); box-shadow: 0 0 12px rgba(255,215,0,.15); }
+    /* GAME BADGE — fix font */
+    .game-badge { font-family: 'Poppins', sans-serif; font-weight: 600; letter-spacing: .5px; }
+    /* MOBILE LEADERBOARD — prevent overflow at 400px */
+    @media (max-width: 440px) {
+      .lb-row { grid-template-columns: 36px 1fr repeat(4,50px); padding: .6rem .5rem; font-size: .75rem; }
+      .lb-rank { font-size: .9rem; }
+    }
   </style>
 </head>
 <body>
@@ -323,7 +334,7 @@
           </div>
           {% endif %}
         </div>
-        {% else %}
+            {% else %}
         <p style="color:var(--muted);font-style:italic;">No editions recorded yet.</p>
         {% endfor %}
       </div>
@@ -810,7 +821,8 @@
         let ylabels = [0,.5,1].map(f=>`<text x="${PAD.l-4}" y="${yScale(f*maxVal).toFixed(1)}" text-anchor="end" font-size="9" fill="#555" dominant-baseline="middle">${Math.round(f*maxVal)}</text><line x1="${PAD.l}" y1="${yScale(f*maxVal).toFixed(1)}" x2="${W-PAD.r}" y2="${yScale(f*maxVal).toFixed(1)}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`).join('');
         // legend
         const legendItems = players.map((p,i)=>`<text x="${PAD.l + i*((W-PAD.l-PAD.r)/players.length)}" y="${H+18}" font-size="8" fill="${colors[p]}">${p.charAt(0).toUpperCase()+p.slice(1)}</text>`).join('');
-        wrap.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H+25}" style="overflow:visible;">${ylabels}${paths}${xlabels}</svg>`;
+        const legend = players.map(p=>`<div class="trend-legend-item"><span class="trend-legend-dot" style="background:${colors[p]}"></span>${p.charAt(0).toUpperCase()+p.slice(1)}</div>`).join('');
+        wrap.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H+25}" style="overflow:visible;">${ylabels}${paths}${xlabels}</svg><div class="trend-legend">${legend}</div>`;
       }).catch(()=>{});
     }
 
