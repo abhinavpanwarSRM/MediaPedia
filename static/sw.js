@@ -1,5 +1,11 @@
-var CACHE = 'mediapedia-v1';
-var OFFLINE_URLS = ['/party', '/static/favicon.png', '/offline'];
+var CACHE = 'mediapedia-v2';
+var OFFLINE_URLS = [
+  '/',
+  '/party',
+  '/static/favicon.png',
+  '/static/pwa.js',
+  '/static/offline.html'
+];
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -21,13 +27,34 @@ self.addEventListener('activate', function(e) {
 
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) return;
-  e.respondWith(
-    fetch(e.request).catch(function() {
-      return caches.match(e.request).then(function(cached) {
-        return cached || caches.match('/offline');
-      });
-    })
-  );
+
+  var url = e.request.url;
+  var isStatic = url.includes('/static/');
+
+  if (isStatic) {
+    // Cache-first for static assets
+    e.respondWith(
+      caches.match(e.request).then(function(cached) {
+        var fetchPromise = fetch(e.request).then(function(response) {
+          if (response && response.status === 200) {
+            var clone = response.clone();
+            caches.open(CACHE).then(function(c) { c.put(e.request, clone); });
+          }
+          return response;
+        });
+        return cached || fetchPromise;
+      })
+    );
+  } else {
+    // Network-first for pages, fall back to cache then offline
+    e.respondWith(
+      fetch(e.request).catch(function() {
+        return caches.match(e.request).then(function(cached) {
+          return cached || caches.match('/static/offline.html');
+        });
+      })
+    );
+  }
 });
 
 // ===== PUSH NOTIFICATIONS =====

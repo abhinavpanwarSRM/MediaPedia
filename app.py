@@ -181,6 +181,15 @@ def like_comment(comment_id):
             {"_id": 0, "likes": 1}
         )
         
+        # Notify comment author
+        liker = current_user()
+        if liker and comment.get('username') and liker != comment['username']:
+            send_push(comment['username'], {
+                'title': '❤️ Someone liked your review',
+                'body': f'{liker} liked your review',
+                'url': f'/{comment.get("content_type", "movie")}/{comment.get("id", "")}',
+                'tag': f'like-{comment_id}'
+            })
         return jsonify({"likes": comment.get("likes", 0)})
         
     except Exception as e:
@@ -1072,6 +1081,12 @@ def follow_user(target):
         follows_collection.delete_one({'follower': username, 'following': target})
         return jsonify({'status': 'unfollowed'})
     follows_collection.insert_one({'follower': username, 'following': target, 'created_at': datetime.now(timezone.utc)})
+    send_push(target, {
+        'title': f'👤 New Follower',
+        'body': f'{username} started following you',
+        'url': f'/u/{username}',
+        'tag': f'follow-{username}'
+    })
     return jsonify({'status': 'followed'})
 
 # ===== User Lists =====
@@ -1206,6 +1221,15 @@ def reply_to_comment(comment_id):
     )
     if result.matched_count == 0:
         return jsonify({'error': 'Comment not found'}), 404
+    # Notify original comment author
+    original = comments_collection.find_one({'comment_id': comment_id}, {'_id': 0, 'username': 1, 'content_type': 1, 'id': 1})
+    if original and original.get('username') and original['username'] != username:
+        send_push(original['username'], {
+            'title': '💬 New reply to your review',
+            'body': f'{username}: {text[:80]}',
+            'url': f'/{original.get("content_type", "movie")}/{original.get("id", "")}',
+            'tag': f'reply-{comment_id}'
+        })
     return jsonify(reply), 201
 
 # ===== Followers / Following Lists =====
@@ -1757,6 +1781,12 @@ def send_message():
         },
         upsert=True
     )
+    send_push(to, {
+        'title': f'💬 {username}',
+        'body': text[:80],
+        'url': f'/messages/{username}',
+        'tag': f'dm-{username}'
+    })
     return jsonify(msg), 201
 
 

@@ -1057,7 +1057,7 @@
 
       <script>
         window.addEventListener("load", () => {
-          if (!sessionStorage.getItem('disclaimer_closed')) {
+          if (!localStorage.getItem('disclaimer_closed')) {
             setTimeout(() => {
               document.getElementById("disclaimer").style.display = "block";
             }, 1000);
@@ -1066,7 +1066,7 @@
 
         document.getElementById("closeBtn").addEventListener("click", () => {
           document.getElementById("disclaimer").style.display = "none";
-          sessionStorage.setItem('disclaimer_closed', '1');
+          localStorage.setItem('disclaimer_closed', '1');
         });
       </script>
     </div>
