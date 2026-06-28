@@ -499,12 +499,16 @@
       <label>Date Played</label>
       <input type="date" class="text-inp" id="m-date" />
 
-      <div class="modal-grid">
+      <div class="modal-grid" style="grid-template-columns:1fr repeat(8,1fr);">
         <div class="col-header">Player</div>
-        <div class="col-header">Mono</div>
-        <div class="col-header">Bluff</div>
-        <div class="col-header">Spoon</div>
-        <div class="col-header">UNO</div>
+        <div class="col-header" style="font-size:.6rem;">Mono R1</div>
+        <div class="col-header" style="font-size:.6rem;">Mono R2</div>
+        <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
+        <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
+        <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
+        <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
+        <div class="col-header" style="font-size:.6rem;">UNO R1</div>
+        <div class="col-header" style="font-size:.6rem;">UNO R2</div>
         {% set koc_players_list = [
           ('ABHINAV PANWAR','abhinav'),
           ('ABHISHEK SEHRAWAT','abhishek'),
@@ -515,10 +519,14 @@
         ] %}
         {% for dname, uname in koc_players_list %}
         <div class="player-name">{{ dname.split(' ')[0] }}</div>
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-monopoly" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-bluff" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-spoon" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-uno" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_monopoly" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_monopoly" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_bluff" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_bluff" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_spoon" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_spoon" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_uno" />
+        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_uno" />
         {% endfor %}
       </div>
 
@@ -537,12 +545,16 @@
       <h2>Edit Edition <span id="edit-edition-num" style="color:var(--gold2);"></span></h2>
       <label>Date Played</label>
       <input type="date" class="text-inp" id="edit-date" />
-      <div class="modal-grid" id="edit-grid">
+      <div class="modal-grid" id="edit-grid" style="grid-template-columns:1fr repeat(8,1fr);">
         <div class="col-header">Player</div>
-        <div class="col-header">Mono</div>
-        <div class="col-header">Bluff</div>
-        <div class="col-header">Spoon</div>
-        <div class="col-header">UNO</div>
+        <div class="col-header" style="font-size:.6rem;">Mono R1</div>
+        <div class="col-header" style="font-size:.6rem;">Mono R2</div>
+        <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
+        <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
+        <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
+        <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
+        <div class="col-header" style="font-size:.6rem;">UNO R1</div>
+        <div class="col-header" style="font-size:.6rem;">UNO R2</div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-muted" onclick="document.getElementById('edit-modal').classList.remove('open')">Cancel</button>
@@ -586,14 +598,24 @@
     function submitEdition() {
       const date = document.getElementById('m-date').value;
       if (!date) { showToast('Please enter the date played'); return; }
-      const players = KOC_PLAYERS.map(p => ({
-        username: p.username, display_name: p.display,
-        monopoly: parseInt(document.getElementById('s-'+p.username+'-monopoly').value)||0,
-        bluff:    parseInt(document.getElementById('s-'+p.username+'-bluff').value)||0,
-        spoon:    parseInt(document.getElementById('s-'+p.username+'-spoon').value)||0,
-        uno:      parseInt(document.getElementById('s-'+p.username+'-uno').value)||0,
-      }));
-      players.forEach(p => { p.total = p.monopoly + p.bluff + p.spoon + p.uno; });
+      const players = KOC_PLAYERS.map(p => {
+        const r1_mono  = parseInt(document.getElementById('s-'+p.username+'-r1_monopoly').value)||0;
+        const r2_mono  = parseInt(document.getElementById('s-'+p.username+'-r2_monopoly').value)||0;
+        const r1_bluff = parseInt(document.getElementById('s-'+p.username+'-r1_bluff').value)||0;
+        const r2_bluff = parseInt(document.getElementById('s-'+p.username+'-r2_bluff').value)||0;
+        const r1_spoon = parseInt(document.getElementById('s-'+p.username+'-r1_spoon').value)||0;
+        const r2_spoon = parseInt(document.getElementById('s-'+p.username+'-r2_spoon').value)||0;
+        const r1_uno   = parseInt(document.getElementById('s-'+p.username+'-r1_uno').value)||0;
+        const r2_uno   = parseInt(document.getElementById('s-'+p.username+'-r2_uno').value)||0;
+        return {
+          username: p.username, display_name: p.display,
+          r1_monopoly: r1_mono, r2_monopoly: r2_mono, monopoly: r1_mono + r2_mono,
+          r1_bluff: r1_bluff, r2_bluff: r2_bluff, bluff: r1_bluff + r2_bluff,
+          r1_spoon: r1_spoon, r2_spoon: r2_spoon, spoon: r1_spoon + r2_spoon,
+          r1_uno: r1_uno, r2_uno: r2_uno, uno: r1_uno + r2_uno,
+          total: r1_mono + r2_mono + r1_bluff + r2_bluff + r1_spoon + r2_spoon + r1_uno + r2_uno
+        };
+      });
       fetch('/api/koc/tournaments', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({played_on: date, players})
@@ -601,7 +623,6 @@
         if (d.error) { showToast(d.error); return; }
         showToast('Edition ' + d.edition + ' saved!');
         document.getElementById('add-modal').classList.remove('open');
-        // notify all KOC players
         setTimeout(() => window.location.reload(), 1000);
       }).catch(() => showToast('Error saving edition'));
     }
@@ -615,16 +636,27 @@
         document.getElementById('edit-edition-num').textContent = edition;
         document.getElementById('edit-date').value = t.played_on || '';
         const grid = document.getElementById('edit-grid');
-        // clear old rows
-        while (grid.children.length > 5) grid.removeChild(grid.lastChild);
+        while (grid.children.length > 9) grid.removeChild(grid.lastChild);
         KOC_PLAYERS.forEach(p => {
           const pd = (t.players||[]).find(x=>x.username===p.username)||{};
+          const r1m = pd.r1_monopoly !== undefined ? pd.r1_monopoly : Math.floor((pd.monopoly||0)/2);
+          const r2m = pd.r2_monopoly !== undefined ? pd.r2_monopoly : (pd.monopoly||0) - r1m;
+          const r1b = pd.r1_bluff !== undefined ? pd.r1_bluff : Math.floor((pd.bluff||0)/2);
+          const r2b = pd.r2_bluff !== undefined ? pd.r2_bluff : (pd.bluff||0) - r1b;
+          const r1s = pd.r1_spoon !== undefined ? pd.r1_spoon : Math.floor((pd.spoon||0)/2);
+          const r2s = pd.r2_spoon !== undefined ? pd.r2_spoon : (pd.spoon||0) - r1s;
+          const r1u = pd.r1_uno !== undefined ? pd.r1_uno : Math.floor((pd.uno||0)/2);
+          const r2u = pd.r2_uno !== undefined ? pd.r2_uno : (pd.uno||0) - r1u;
           grid.innerHTML += `
             <div class="player-name">${p.display.split(' ')[0]}</div>
-            <input type="number" min="0" max="4" value="${pd.monopoly||0}" id="e-${p.username}-monopoly"/>
-            <input type="number" min="0" max="4" value="${pd.bluff||0}"    id="e-${p.username}-bluff"/>
-            <input type="number" min="0" max="4" value="${pd.spoon||0}"   id="e-${p.username}-spoon"/>
-            <input type="number" min="0" max="4" value="${pd.uno||0}"     id="e-${p.username}-uno"/>`;
+            <input type="number" min="0" max="2" value="${r1m}" id="e-${p.username}-r1_monopoly"/>
+            <input type="number" min="0" max="2" value="${r2m}" id="e-${p.username}-r2_monopoly"/>
+            <input type="number" min="0" max="2" value="${r1b}" id="e-${p.username}-r1_bluff"/>
+            <input type="number" min="0" max="2" value="${r2b}" id="e-${p.username}-r2_bluff"/>
+            <input type="number" min="0" max="2" value="${r1s}" id="e-${p.username}-r1_spoon"/>
+            <input type="number" min="0" max="2" value="${r2s}" id="e-${p.username}-r2_spoon"/>
+            <input type="number" min="0" max="2" value="${r1u}" id="e-${p.username}-r1_uno"/>
+            <input type="number" min="0" max="2" value="${r2u}" id="e-${p.username}-r2_uno"/>`;
         });
         document.getElementById('edit-modal').classList.add('open');
       });
@@ -633,14 +665,24 @@
     function submitEdit() {
       if (!_editEdition) return;
       const date = document.getElementById('edit-date').value;
-      const players = KOC_PLAYERS.map(p => ({
-        username: p.username, display_name: p.display,
-        monopoly: parseInt(document.getElementById('e-'+p.username+'-monopoly').value)||0,
-        bluff:    parseInt(document.getElementById('e-'+p.username+'-bluff').value)||0,
-        spoon:    parseInt(document.getElementById('e-'+p.username+'-spoon').value)||0,
-        uno:      parseInt(document.getElementById('e-'+p.username+'-uno').value)||0,
-      }));
-      players.forEach(p => { p.total = p.monopoly + p.bluff + p.spoon + p.uno; });
+      const players = KOC_PLAYERS.map(p => {
+        const r1_mono  = parseInt(document.getElementById('e-'+p.username+'-r1_monopoly').value)||0;
+        const r2_mono  = parseInt(document.getElementById('e-'+p.username+'-r2_monopoly').value)||0;
+        const r1_bluff = parseInt(document.getElementById('e-'+p.username+'-r1_bluff').value)||0;
+        const r2_bluff = parseInt(document.getElementById('e-'+p.username+'-r2_bluff').value)||0;
+        const r1_spoon = parseInt(document.getElementById('e-'+p.username+'-r1_spoon').value)||0;
+        const r2_spoon = parseInt(document.getElementById('e-'+p.username+'-r2_spoon').value)||0;
+        const r1_uno   = parseInt(document.getElementById('e-'+p.username+'-r1_uno').value)||0;
+        const r2_uno   = parseInt(document.getElementById('e-'+p.username+'-r2_uno').value)||0;
+        return {
+          username: p.username, display_name: p.display,
+          r1_monopoly: r1_mono, r2_monopoly: r2_mono, monopoly: r1_mono + r2_mono,
+          r1_bluff: r1_bluff, r2_bluff: r2_bluff, bluff: r1_bluff + r2_bluff,
+          r1_spoon: r1_spoon, r2_spoon: r2_spoon, spoon: r1_spoon + r2_spoon,
+          r1_uno: r1_uno, r2_uno: r2_uno, uno: r1_uno + r2_uno,
+          total: r1_mono + r2_mono + r1_bluff + r2_bluff + r1_spoon + r2_spoon + r1_uno + r2_uno
+        };
+      });
       fetch('/api/koc/tournaments/' + _editEdition, {
         method: 'PUT', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({played_on: date, players})

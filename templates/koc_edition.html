@@ -158,9 +158,26 @@
       <div class="section-title" style="margin:0;border:none;">Scoreboard</div>
       <button onclick="shareEdition()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:8px;padding:.4rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">Share</button>
     </div>
+    {% set has_rounds = players_sorted and players_sorted[0].r1_monopoly is defined %}
     <div class="score-table-wrap">
       <table>
         <thead>
+          {% if has_rounds %}
+          <tr>
+            <th rowspan="2">Player</th>
+            <th colspan="2" style="border-bottom:1px solid rgba(255,215,0,.15);">Monopoly</th>
+            <th colspan="2" style="border-bottom:1px solid rgba(255,215,0,.15);">Bluff</th>
+            <th colspan="2" style="border-bottom:1px solid rgba(255,215,0,.15);">Spoon</th>
+            <th colspan="2" style="border-bottom:1px solid rgba(255,215,0,.15);">UNO</th>
+            <th rowspan="2">Total</th>
+          </tr>
+          <tr>
+            <th style="font-size:.62rem;color:var(--muted);">R1</th><th style="font-size:.62rem;color:var(--muted);">R2</th>
+            <th style="font-size:.62rem;color:var(--muted);">R1</th><th style="font-size:.62rem;color:var(--muted);">R2</th>
+            <th style="font-size:.62rem;color:var(--muted);">R1</th><th style="font-size:.62rem;color:var(--muted);">R2</th>
+            <th style="font-size:.62rem;color:var(--muted);">R1</th><th style="font-size:.62rem;color:var(--muted);">R2</th>
+          </tr>
+          {% else %}
           <tr>
             <th>Player</th>
             <th>Monopoly</th>
@@ -169,21 +186,33 @@
             <th>UNO</th>
             <th>Total</th>
           </tr>
+          {% endif %}
         </thead>
         <tbody>
           {% for p in players_sorted %}
           <tr>
             <td>
               {% if p.username %}
-                <a class="player-link" href="/u/{{ p.username }}">{{ p.display_name }}{% if loop.index == 1 %}{% endif %}</a>
+                <a class="player-link" href="/u/{{ p.username }}">{{ p.display_name }}</a>
               {% else %}
-                {{ p.display_name }}{% if loop.index == 1 %}{% endif %}
+                {{ p.display_name }}
               {% endif %}
             </td>
+            {% if has_rounds %}
+            <td class="{{ 'td-zero' if p.r1_monopoly == 0 else '' }}">{{ p.r1_monopoly }}</td>
+            <td class="{{ 'td-zero' if p.r2_monopoly == 0 else '' }}">{{ p.r2_monopoly }}</td>
+            <td class="{{ 'td-zero' if p.r1_bluff == 0 else '' }}">{{ p.r1_bluff }}</td>
+            <td class="{{ 'td-zero' if p.r2_bluff == 0 else '' }}">{{ p.r2_bluff }}</td>
+            <td class="{{ 'td-zero' if p.r1_spoon == 0 else '' }}">{{ p.r1_spoon }}</td>
+            <td class="{{ 'td-zero' if p.r2_spoon == 0 else '' }}">{{ p.r2_spoon }}</td>
+            <td class="{{ 'td-zero' if p.r1_uno == 0 else '' }}">{{ p.r1_uno }}</td>
+            <td class="{{ 'td-zero' if p.r2_uno == 0 else '' }}">{{ p.r2_uno }}</td>
+            {% else %}
             <td class="{{ 'td-zero' if p.monopoly == 0 else '' }}">{{ p.monopoly }}</td>
             <td class="{{ 'td-zero' if p.bluff == 0 else '' }}">{{ p.bluff }}</td>
             <td class="{{ 'td-zero' if p.spoon == 0 else '' }}">{{ p.spoon }}</td>
             <td class="{{ 'td-zero' if p.uno == 0 else '' }}">{{ p.uno }}</td>
+            {% endif %}
             <td class="{{ 'td-gold' if loop.index == 1 else ('td-silver' if loop.index == 2 else '') }}">
               {{ p.total }}
             </td>
