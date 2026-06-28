@@ -54,13 +54,13 @@
 <body>
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
-    <a href="/kingofcards" style="color:var(--gold);font-weight:700;">👑 KOC</a>
+    <a href="/kingofcards" style="color:var(--gold);font-weight:700;">KOC</a>
     {% if username %}<a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>{% endif %}
   </nav>
 
   <div class="content">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.5rem;">
-      <div class="section-title" style="margin:0;border:none;">🃏 Live Tracker</div>
+      <div class="section-title" style="margin:0;border:none;">Live Tracker</div>
       <div style="display:flex;gap:.6rem;align-items:center;">
         <span class="pulse" style="width:8px;height:8px;border-radius:50%;background:#2ed573;display:inline-block;"></span>
         <span style="font-size:.8rem;color:#2ed573;">LIVE</span>
@@ -79,16 +79,16 @@
     <div class="controls">
       <h3>Update Scores</h3>
       <div class="game-tabs">
-        <button class="game-tab active" onclick="setGame('monopoly',this)">🎯 Monopoly</button>
-        <button class="game-tab" onclick="setGame('bluff',this)">🃏 Bluff</button>
-        <button class="game-tab" onclick="setGame('spoon',this)">🥄 Spoon</button>
-        <button class="game-tab" onclick="setGame('uno',this)">🎴 UNO</button>
+        <button class="game-tab active" onclick="setGame('monopoly',this)">Monopoly</button>
+        <button class="game-tab" onclick="setGame('bluff',this)">Bluff</button>
+        <button class="game-tab" onclick="setGame('spoon',this)">Spoon</button>
+        <button class="game-tab" onclick="setGame('uno',this)">UNO</button>
       </div>
       <div class="score-inputs" id="score-inputs"></div>
       <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap;">
         <button class="btn btn-gold" onclick="pushScores()">Save Scores</button>
         <button class="btn btn-muted" onclick="nextRound()">Next Round →</button>
-        <button class="btn btn-gold" onclick="saveAsEdition()" style="background:rgba(255,215,0,.2);">💾 Save as Edition</button>
+        <button class="btn btn-gold" onclick="saveAsEdition()" style="background:rgba(255,215,0,.2);">Save as Edition</button>
         <button class="btn btn-red" onclick="endSession()">End Session</button>
       </div>
     </div>
@@ -139,7 +139,7 @@
           const total = s.total || 0;
           const isLeading = total === maxTotal && total > 0;
           return `<div class="player-card ${isLeading?'leading':''}">
-            <div class="pc-name">${isLeading?'👑 ':''}${p.display}</div>
+            <div class="pc-name">${p.display}</div>
             <div class="pc-total">${total}</div>
             <div class="pc-sub">Total Points</div>
             <div class="pc-games">

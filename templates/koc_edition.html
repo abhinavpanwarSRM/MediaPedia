@@ -83,7 +83,7 @@
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
     <div class="nav-right">
-      <a href="/kingofcards" style="color:var(--gold);font-weight:600;">👑 KOC</a>
+      <a href="/kingofcards" style="color:var(--gold);font-weight:600;">KOC</a>
       {% if username %}
         <a href="/u/{{ username }}" style="color:var(--primary);font-weight:600;">{{ username }}</a>
         <a href="/logout">Logout</a>
@@ -109,8 +109,8 @@
     <a class="back-btn" href="/kingofcards">← Back to KOC</a>
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
-      <div class="section-title" style="margin:0;border:none;">🏆 Scoreboard</div>
-      <button onclick="shareEdition()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:8px;padding:.4rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">📤 Share</button>
+      <div class="section-title" style="margin:0;border:none;">Scoreboard</div>
+      <button onclick="shareEdition()" style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);border-radius:8px;padding:.4rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.4rem;">Share</button>
     </div>
     <div class="score-table-wrap">
       <table>
@@ -129,9 +129,9 @@
           <tr>
             <td>
               {% if p.username %}
-                <a class="player-link" href="/u/{{ p.username }}">{{ p.display_name }}{% if loop.index == 1 %} 👑{% endif %}</a>
+                <a class="player-link" href="/u/{{ p.username }}">{{ p.display_name }}{% if loop.index == 1 %}{% endif %}</a>
               {% else %}
-                {{ p.display_name }}{% if loop.index == 1 %} 👑{% endif %}
+                {{ p.display_name }}{% if loop.index == 1 %}{% endif %}
               {% endif %}
             </td>
             <td class="{{ 'td-zero' if p.monopoly == 0 else '' }}">{{ p.monopoly }}</td>
@@ -156,7 +156,7 @@
       } else {
         navigator.clipboard.writeText(url).then(() => {
           const btn = document.querySelector('button[onclick="shareEdition()"]');
-          if (btn) { btn.textContent = '✅ Copied!'; setTimeout(()=>btn.innerHTML='📤 Share',2000); }
+          if (btn) { btn.textContent = 'Copied!'; setTimeout(()=>btn.innerHTML='Share',2000); }
         });
       }
     }
