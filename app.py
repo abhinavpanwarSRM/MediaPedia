@@ -2539,8 +2539,11 @@ def _koc_leaderboard():
             stats[u]['editions_played'] += 1
             stats[u]['total_points'] += p.get('total', 0)
             for game in ('monopoly', 'bluff', 'spoon', 'uno'):
-                if p.get(game, 0) >= 2:
-                    stats[u]['game_wins'] += 1
+                if p.get('r1_' + game) is not None:
+                    if p.get('r1_' + game, 0) >= 2: stats[u]['game_wins'] += 1
+                    if p.get('r2_' + game, 0) >= 2: stats[u]['game_wins'] += 1
+                else:
+                    if p.get(game, 0) >= 2: stats[u]['game_wins'] += 1
     for u, tw in tournament_winners.items():
         if u in stats:
             stats[u]['tournament_wins'] = tw
@@ -2623,7 +2626,11 @@ def koc_add_tournament():
     last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
     edition = (last['edition'] + 1) if last else 1
     def _wins(p):
-        return sum(1 for g in ('monopoly', 'bluff', 'spoon', 'uno') if p.get(g, 0) >= 2)
+        return sum(
+            (1 if p.get('r1_'+g, p.get(g,0)) >= 2 else 0) +
+            (1 if p.get('r2_'+g, 0) >= 2 else 0)
+            for g in ('monopoly', 'bluff', 'spoon', 'uno')
+        )
     winner = max(players, key=lambda p: (p.get('total', 0), _wins(p)))
     doc = {
         'edition': edition,
@@ -2652,7 +2659,11 @@ def koc_edit_tournament(edition):
     if not players:
         return jsonify({'error': 'Players required'}), 400
     def _wins(p):
-        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)>=2)
+        return sum(
+            (1 if p.get('r1_'+g, p.get(g,0)) >= 2 else 0) +
+            (1 if p.get('r2_'+g, 0) >= 2 else 0)
+            for g in ('monopoly', 'bluff', 'spoon', 'uno')
+        )
     winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
     koc_tournaments_collection.update_one(
         {'edition': edition},
@@ -2796,23 +2807,37 @@ def koc_live_save_as_edition(session_id):
     scores = doc.get('scores', {})
     players = []
     for u, s in scores.items():
-        # support both new r1_/r2_ keys and legacy flat keys
-        mono = (s.get('r1_monopoly',0) or 0) + (s.get('r2_monopoly',0) or 0) or s.get('monopoly',0) or 0
-        blff = (s.get('r1_bluff',0) or 0) + (s.get('r2_bluff',0) or 0) or s.get('bluff',0) or 0
-        spn  = (s.get('r1_spoon',0) or 0) + (s.get('r2_spoon',0) or 0) or s.get('spoon',0) or 0
-        uno  = (s.get('r1_uno',0) or 0) + (s.get('r2_uno',0) or 0) or s.get('uno',0) or 0
+        r1m = s.get('r1_monopoly', 0) or 0
+        r2m = s.get('r2_monopoly', 0) or 0
+        r1b = s.get('r1_bluff', 0) or 0
+        r2b = s.get('r2_bluff', 0) or 0
+        r1s = s.get('r1_spoon', 0) or 0
+        r2s = s.get('r2_spoon', 0) or 0
+        r1u = s.get('r1_uno', 0) or 0
+        r2u = s.get('r2_uno', 0) or 0
+        mono = r1m + r2m or s.get('monopoly', 0) or 0
+        blff = r1b + r2b or s.get('bluff', 0) or 0
+        spn  = r1s + r2s or s.get('spoon', 0) or 0
+        uno  = r1u + r2u or s.get('uno', 0) or 0
         total = mono + blff + spn + uno
         if total > 0:
             players.append({
                 'username': u,
                 'display_name': KOC_DISPLAY.get(u, u),
-                'monopoly': mono, 'bluff': blff, 'spoon': spn, 'uno': uno,
+                'r1_monopoly': r1m, 'r2_monopoly': r2m, 'monopoly': mono,
+                'r1_bluff':    r1b, 'r2_bluff':    r2b, 'bluff':    blff,
+                'r1_spoon':    r1s, 'r2_spoon':    r2s, 'spoon':    spn,
+                'r1_uno':      r1u, 'r2_uno':      r2u, 'uno':      uno,
                 'total': total
             })
     if not players:
         return jsonify({'error': 'No scores recorded'}), 400
     def _wins(p):
-        return sum(1 for g in ('monopoly','bluff','spoon','uno') if p.get(g,0)>=2)
+        return sum(
+            (1 if p.get('r1_'+g, 0) >= 2 else 0) +
+            (1 if p.get('r2_'+g, 0) >= 2 else 0)
+            for g in ('monopoly', 'bluff', 'spoon', 'uno')
+        )
     winner = max(players, key=lambda p: (p.get('total',0), _wins(p)))
     last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
     edition = (last['edition'] + 1) if last else 1
@@ -2933,9 +2958,11 @@ def koc_player_stats(target_username):
         pts = pd.get('total', 0)
         total_points += pts
         for g in ('monopoly', 'bluff', 'spoon', 'uno'):
-            if pd.get(g, 0) >= 2:
-                game_wins += 1
-                best_game_counts[g] += 1
+            if pd.get('r1_' + g) is not None:
+                if pd.get('r1_' + g, 0) >= 2: game_wins += 1; best_game_counts[g] += 1
+                if pd.get('r2_' + g, 0) >= 2: game_wins += 1; best_game_counts[g] += 1
+            else:
+                if pd.get(g, 0) >= 2: game_wins += 1; best_game_counts[g] += 1
         if t.get('winner_username') == target_username:
             tournament_wins += 1
         history.append({
