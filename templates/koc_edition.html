@@ -56,15 +56,15 @@
     }
 
     /* SCORE TABLE */
-    .score-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; min-width: 560px; }
+    .score-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; min-width: 480px; }
     thead tr { background: rgba(255,215,0,0.08); }
-    th { padding: 0.9rem 1rem; font-size: 0.72rem; text-transform: uppercase;
-         letter-spacing: 1px; color: var(--gold2); font-weight: 600; text-align: center; }
-    th:first-child { text-align: left; }
-    td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,215,0,0.06);
-         text-align: center; font-size: 0.9rem; }
-    td:first-child { text-align: left; font-weight: 600; }
+    th { padding: 0.75rem 0.6rem; font-size: 0.68rem; text-transform: uppercase;
+         letter-spacing: 0.8px; color: var(--gold2); font-weight: 600; text-align: center; white-space: nowrap; }
+    th:first-child { text-align: left; padding-left: 0.9rem; }
+    td { padding: 0.75rem 0.6rem; border-bottom: 1px solid rgba(255,215,0,0.06);
+         text-align: center; font-size: 0.88rem; }
+    td:first-child { text-align: left; font-weight: 600; padding-left: 0.9rem; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,215,0,0.03); }
     .td-gold { color: var(--gold); font-weight: 800; font-size: 1.05rem; }
@@ -86,7 +86,21 @@
     .nav-drawer a { padding: 0.75rem 1.5rem; color: var(--muted); text-decoration: none;
                     font-size: 0.9rem; border-bottom: 1px solid var(--border); }
     .nav-drawer a:hover { color: #fff; background: rgba(255,255,255,0.04); }
-    @media (max-width: 600px) { .nav-right { display: none; } .nav-burger { display: flex; } }
+    @media (max-width: 600px) {
+      .nav-right { display: none; }
+      .nav-burger { display: flex; }
+      .hero { padding: 2rem 1rem 1.8rem; }
+      .winner-badge { padding: 0.6rem 1.2rem; font-size: 0.88rem; }
+      .played-date { font-size: 0.75rem; }
+      .content { padding: 1.5rem 1rem; }
+      table { min-width: 380px; }
+      th { padding: 0.6rem 0.4rem; font-size: 0.6rem; }
+      td { padding: 0.6rem 0.4rem; font-size: 0.82rem; }
+      th:first-child, td:first-child { padding-left: 0.6rem; }
+    }
+    .comment-row { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .comment-row input { flex: 1; min-width: 0; }
+    .comment-row button { white-space: nowrap; flex-shrink: 0; }
     .stat-pill { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
                  padding: .8rem 1rem; text-align: center; transition: border-color .2s; }
     .stat-pill:hover { border-color: rgba(255,215,0,.3); }
@@ -230,9 +244,9 @@
     <div class="section-title">Comments</div>
     <div id="comments-list" style="margin-bottom:1rem;"></div>
     {% if username %}
-    <div style="display:flex;gap:.6rem;">
+    <div class="comment-row">
       <input id="comment-input" type="text" placeholder="Add a comment..." maxlength="300"
-        style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
+        style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;"
         onkeydown="if(event.key==='Enter')postComment()" />
       <button onclick="postComment()" style="background:rgba(255,215,0,.12);border:1px solid var(--gold);color:var(--gold);border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;cursor:pointer;">Post</button>
     </div>
