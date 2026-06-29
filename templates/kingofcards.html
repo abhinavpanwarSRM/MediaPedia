@@ -153,24 +153,33 @@
                        color: #fff; cursor: pointer; background: none; border: none; line-height: 1; }
 
     /* ADD TOURNAMENT MODAL */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
                      z-index: 500; align-items: flex-start; justify-content: center;
-                     padding: 2rem 1rem; overflow-y: auto; }
+                     padding: 1rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     .modal-overlay.open { display: flex; }
     .modal { background: #111; border: 1px solid var(--border); border-radius: 16px;
-             width: 100%; max-width: 660px; padding: 2rem; }
+             width: 100%; max-width: 680px; padding: 1.5rem;
+             max-height: calc(100dvh - 2rem); display: flex; flex-direction: column;
+             overflow: hidden; margin: auto; }
+    .modal-header { flex-shrink: 0; }
+    .modal-body { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+                  padding-right: 2px; }
     .modal h2 { color: var(--gold); font-family: 'Cormorant Garamond', serif;
-                font-size: 1.6rem; margin-bottom: 1.5rem; }
+                font-size: 1.5rem; margin-bottom: 1.2rem; }
+    .modal-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                       margin-bottom: 1rem; border-radius: 8px; }
     .modal-grid { display: grid; grid-template-columns: 1fr repeat(4,1fr); gap: 0.5rem;
-                  margin-bottom: 1rem; align-items: center; }
+                  align-items: center; min-width: 380px; }
     .modal-grid .col-header { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;
-                               color: var(--gold2); text-align: center; padding: 0.4rem 0; }
-    .modal-grid .player-name { font-size: 0.88rem; font-weight: 600; padding: 0.4rem 0; }
+                               color: var(--gold2); text-align: center; padding: 0.4rem 0; white-space: nowrap; }
+    .modal-grid .player-name { font-size: 0.85rem; font-weight: 600; padding: 0.4rem 0; white-space: nowrap; }
     .modal-grid input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
                          border-radius: 6px; color: #fff; font-size: 0.88rem;
-                         padding: 0.45rem 0.5rem; text-align: center; width: 100%; }
+                         padding: 0.45rem 0.3rem; text-align: center; width: 100%; min-width: 36px; }
     .modal-grid input:focus { outline: none; border-color: var(--gold); }
-    .modal-footer { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1.2rem; flex-wrap: wrap; }
+    .modal-footer { flex-shrink: 0; display: flex; gap: 0.8rem; justify-content: flex-end;
+                    margin-top: 1rem; flex-wrap: wrap; padding-top: 0.8rem;
+                    border-top: 1px solid var(--border); }
     .modal label { font-size: 0.82rem; color: var(--muted); display: block; margin-bottom: 0.3rem; }
     .modal input.text-inp { width: 100%; background: rgba(255,255,255,0.06);
                              border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
@@ -336,7 +345,7 @@
       <div class="section-title">Editions</div>
       {% if is_koc_player %}
       <div style="margin-bottom:1.2rem;">
-        <button class="btn btn-gold" onclick="document.getElementById('add-modal').classList.add('open')">+ Add New Edition</button>
+        <button class="btn btn-gold" onclick="openModal('add-modal')">+ Add New Edition</button>
       </div>
       {% endif %}
       <div class="editions-grid">
@@ -493,45 +502,47 @@
 
   <!-- ADD EDITION MODAL -->
   {% if is_koc_player %}
-  <div class="modal-overlay" id="add-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeModal('add-modal')">
     <div class="modal">
-      <h2>+ Add New Edition</h2>
-      <label>Date Played</label>
-      <input type="date" class="text-inp" id="m-date" />
-
-      <div class="modal-grid" style="grid-template-columns:1fr repeat(8,1fr);">
-        <div class="col-header">Player</div>
-        <div class="col-header" style="font-size:.6rem;">Mono R1</div>
-        <div class="col-header" style="font-size:.6rem;">Mono R2</div>
-        <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
-        <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
-        <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
-        <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
-        <div class="col-header" style="font-size:.6rem;">UNO R1</div>
-        <div class="col-header" style="font-size:.6rem;">UNO R2</div>
-        {% set koc_players_list = [
-          ('ABHINAV PANWAR','abhinav'),
-          ('ABHISHEK SEHRAWAT','abhishek'),
-          ('AKHIL PANWAR','akhil'),
-          ('SAHIL PANWAR','sahil'),
-          ('SHRUTI SEHRAWAT','shruti'),
-          ('UTKARSH PANWAR','utkarsh')
-        ] %}
-        {% for dname, uname in koc_players_list %}
-        <div class="player-name">{{ dname.split(' ')[0] }}</div>
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_monopoly" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_monopoly" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_bluff" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_bluff" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_spoon" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_spoon" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_uno" />
-        <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_uno" />
-        {% endfor %}
+      <div class="modal-header"><h2>+ Add New Edition</h2></div>
+      <div class="modal-body">
+        <label>Date Played</label>
+        <input type="date" class="text-inp" id="m-date" />
+        <div class="modal-grid-wrap">
+          <div class="modal-grid" style="grid-template-columns:1fr repeat(8,1fr);">
+            <div class="col-header">Player</div>
+            <div class="col-header" style="font-size:.6rem;">Mono R1</div>
+            <div class="col-header" style="font-size:.6rem;">Mono R2</div>
+            <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
+            <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
+            <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
+            <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
+            <div class="col-header" style="font-size:.6rem;">UNO R1</div>
+            <div class="col-header" style="font-size:.6rem;">UNO R2</div>
+            {% set koc_players_list = [
+              ('ABHINAV PANWAR','abhinav'),
+              ('ABHISHEK SEHRAWAT','abhishek'),
+              ('AKHIL PANWAR','akhil'),
+              ('SAHIL PANWAR','sahil'),
+              ('SHRUTI SEHRAWAT','shruti'),
+              ('UTKARSH PANWAR','utkarsh')
+            ] %}
+            {% for dname, uname in koc_players_list %}
+            <div class="player-name">{{ dname.split(' ')[0] }}</div>
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_monopoly" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_monopoly" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_bluff" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_bluff" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_spoon" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_spoon" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r1_uno" />
+            <input type="number" min="0" max="2" value="0" id="s-{{ uname }}-r2_uno" />
+            {% endfor %}
+          </div>
+        </div>
       </div>
-
       <div class="modal-footer">
-        <button class="btn btn-muted" onclick="document.getElementById('add-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-muted" onclick="closeModal('add-modal')">Cancel</button>
         <button class="btn btn-gold" onclick="submitEdition()">Save Edition</button>
       </div>
     </div>
@@ -540,24 +551,28 @@
 
   <!-- EDIT EDITION MODAL -->
   {% if is_koc_player %}
-  <div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal('edit-modal')">
     <div class="modal">
-      <h2>Edit Edition <span id="edit-edition-num" style="color:var(--gold2);"></span></h2>
-      <label>Date Played</label>
-      <input type="date" class="text-inp" id="edit-date" />
-      <div class="modal-grid" id="edit-grid" style="grid-template-columns:1fr repeat(8,1fr);">
-        <div class="col-header">Player</div>
-        <div class="col-header" style="font-size:.6rem;">Mono R1</div>
-        <div class="col-header" style="font-size:.6rem;">Mono R2</div>
-        <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
-        <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
-        <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
-        <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
-        <div class="col-header" style="font-size:.6rem;">UNO R1</div>
-        <div class="col-header" style="font-size:.6rem;">UNO R2</div>
+      <div class="modal-header"><h2>Edit Edition <span id="edit-edition-num" style="color:var(--gold2);"></span></h2></div>
+      <div class="modal-body">
+        <label>Date Played</label>
+        <input type="date" class="text-inp" id="edit-date" />
+        <div class="modal-grid-wrap">
+          <div class="modal-grid" id="edit-grid" style="grid-template-columns:1fr repeat(8,1fr);">
+            <div class="col-header">Player</div>
+            <div class="col-header" style="font-size:.6rem;">Mono R1</div>
+            <div class="col-header" style="font-size:.6rem;">Mono R2</div>
+            <div class="col-header" style="font-size:.6rem;">Bluff R1</div>
+            <div class="col-header" style="font-size:.6rem;">Bluff R2</div>
+            <div class="col-header" style="font-size:.6rem;">Spoon R1</div>
+            <div class="col-header" style="font-size:.6rem;">Spoon R2</div>
+            <div class="col-header" style="font-size:.6rem;">UNO R1</div>
+            <div class="col-header" style="font-size:.6rem;">UNO R2</div>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-muted" onclick="document.getElementById('edit-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-muted" onclick="closeModal('edit-modal')">Cancel</button>
         <button class="btn btn-gold" onclick="submitEdit()">Save Changes</button>
       </div>
     </div>
@@ -587,7 +602,16 @@
       document.getElementById('lightbox').classList.remove('open');
       document.body.style.overflow = '';
     }
-    document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeLightbox(); } });
+    document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeLightbox(); closeModal('add-modal'); closeModal('edit-modal'); } });
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+      document.body.style.overflow = '';
+    }
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -622,7 +646,7 @@
       }).then(r => r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         showToast('Edition ' + d.edition + ' saved!');
-        document.getElementById('add-modal').classList.remove('open');
+        closeModal('add-modal');
         setTimeout(() => window.location.reload(), 1000);
       }).catch(() => showToast('Error saving edition'));
     }
@@ -659,6 +683,7 @@
             <input type="number" min="0" max="2" value="${r2u}" id="e-${p.username}-r2_uno"/>`;
         });
         document.getElementById('edit-modal').classList.add('open');
+        openModal('edit-modal');
       });
     }
 
@@ -689,7 +714,7 @@
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         showToast('Edition updated!');
-        document.getElementById('edit-modal').classList.remove('open');
+        closeModal('edit-modal');
         setTimeout(() => window.location.reload(), 900);
       });
     }
