@@ -420,7 +420,7 @@
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
         <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;">
           <select id="h2h-p1" style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;">
-            {% set koc_list = [('abhinav','ABHINAV'),('abhishek','ABHISHEK'),('akhil','AKHIL'),('sahil','SAHIL'),('shruti','SHRUTI'),('utkarsh','UTKARSH')] %}
+            {% set koc_list = [('abhinav','ABHINAV'),('A3h1','ABHISHEK'),('Akhil','AKHIL'),('sahil','SAHIL'),('shruti','SHRUTI'),('utkarsh','UTKARSH')] %}
             {% for u,d in koc_list %}<option value="{{ u }}">{{ d }}</option>{% endfor %}
           </select>
           <span style="display:flex;align-items:center;color:var(--muted);font-weight:700;">vs</span>
@@ -440,7 +440,7 @@
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
         <p style="color:#aaa;font-size:.85rem;margin-bottom:1rem;">Who do you think will win the next edition?</p>
         <div class="predict-grid" id="predict-grid">
-          {% set koc_players_list2 = [('abhinav','ABHINAV'),('abhishek','ABHISHEK'),('akhil','AKHIL'),('sahil','SAHIL'),('shruti','SHRUTI'),('utkarsh','UTKARSH')] %}
+          {% set koc_players_list2 = [('abhinav','ABHINAV'),('A3h1','ABHISHEK'),('Akhil','AKHIL'),('sahil','SAHIL'),('shruti','SHRUTI'),('utkarsh','UTKARSH')] %}
           {% for u,d in koc_players_list2 %}
           <button class="predict-btn" onclick="submitPrediction('{{ u }}',this)">{{ d }}</button>
           {% endfor %}
@@ -520,8 +520,8 @@
             <div class="col-header" style="font-size:.6rem;">UNO R2</div>
             {% set koc_players_list = [
               ('ABHINAV PANWAR','abhinav'),
-              ('ABHISHEK SEHRAWAT','abhishek'),
-              ('AKHIL PANWAR','akhil'),
+              ('ABHISHEK SEHRAWAT','A3h1'),
+              ('AKHIL PANWAR','Akhil'),
               ('SAHIL PANWAR','sahil'),
               ('SHRUTI SEHRAWAT','shruti'),
               ('UTKARSH PANWAR','utkarsh')
@@ -877,8 +877,8 @@
       fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
         const wrap = document.getElementById('trend-wrap');
         if (!wrap || !tournaments.length) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
-        const players = ['abhinav','abhishek','akhil','sahil','shruti','utkarsh'];
-        const colors = {'abhinav':'#ffd700','abhishek':'#5799ef','akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+        const colors = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
         const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
         // cumulative points per player
         const cum = {}; players.forEach(p => cum[p] = 0);
@@ -919,7 +919,7 @@
         if (!wrap) return;
         if (!tournaments.length) { wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">No data yet.</p>'; return; }
         const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
-        const players = ['abhinav','abhishek','akhil','sahil','shruti','utkarsh'];
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
         const cur = {}, best = {}, names = {};
         players.forEach(p => { cur[p]=0; best[p]=0; });
         sorted.forEach(t => {
