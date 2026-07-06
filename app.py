@@ -2498,12 +2498,12 @@ def push_unsubscribe():
 
 # ===== KING OF CARDS =====
 
-KOC_USERNAMES = {'abhinav', 'abhishek', 'akhil', 'sahil', 'shruti', 'utkarsh'}
+KOC_USERNAMES = {'abhinav', 'A3h1', 'Akhil', 'sahil', 'shruti', 'utkarsh'}
 
 KOC_DISPLAY = {
     'abhinav':  'ABHINAV PANWAR',
-    'abhishek': 'ABHISHEK SEHRAWAT',
-    'akhil':    'AKHIL PANWAR',
+    'A3h1': 'ABHISHEK SEHRAWAT',
+    'Akhil':    'AKHIL PANWAR',
     'sahil':    'SAHIL PANWAR',
     'shruti':   'SHRUTI SEHRAWAT',
     'utkarsh':  'UTKARSH PANWAR',
@@ -3117,9 +3117,9 @@ def koc_seed_players():
     if users_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     new_players = [
-        {'username': 'sahilp',   'password': os.getenv('KOC_PASS_SAHIL', 'koc@sahil'),   'bio': 'King of Cards player — SAHIL PANWAR'},
-        {'username': 'shruti',   'password': os.getenv('KOC_PASS_SHRUTI', 'koc@shruti'),  'bio': 'King of Cards player — SHRUTI SEHRAWAT'},
-        {'username': 'utkarshp','password': os.getenv('KOC_PASS_UTKARSH', 'koc@utkarsh'), 'bio': 'King of Cards player — UTKARSH PANWAR'},
+        {'username': 'sahil',   'password': os.getenv('KOC_PASS_SAHIL', 'koc@sahil'),   'bio': ''},
+        {'username': 'shruti',   'password': os.getenv('KOC_PASS_SHRUTI', 'koc@shruti'),  'bio': ''},
+        {'username': 'utkarsh','password': os.getenv('KOC_PASS_UTKARSH', 'koc@utkarsh'), 'bio': ''},
     ]
     created = []
     for p in new_players:
