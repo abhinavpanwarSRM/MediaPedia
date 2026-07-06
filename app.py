@@ -3117,9 +3117,9 @@ def koc_seed_players():
     if users_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     new_players = [
-        {'username': 'sahil',   'password': os.getenv('KOC_PASS_SAHIL', 'koc@sahil'),   'bio': ''},
-        {'username': 'shruti',   'password': os.getenv('KOC_PASS_SHRUTI', 'koc@shruti'),  'bio': ''},
-        {'username': 'utkarsh','password': os.getenv('KOC_PASS_UTKARSH', 'koc@utkarsh'), 'bio': ''},
+        {'username': 'sahil',   'password': os.getenv('KOC_PASS_SAHIL', '@sahil'),   'bio': ''},
+        {'username': 'shruti',   'password': os.getenv('KOC_PASS_SHRUTI', '@shruti'),  'bio': ''},
+        {'username': 'utkarsh','password': os.getenv('KOC_PASS_UTKARSH', '@utkarsh'), 'bio': ''},
     ]
     created = []
     for p in new_players:
