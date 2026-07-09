@@ -2581,11 +2581,24 @@ def kingofcards():
             except Exception:
                 reign_days = 0
     leaderboard = _koc_leaderboard()
+    # form guide last 5
+    form_guide = {}
+    last5 = tournaments[-5:] if len(tournaments) >= 5 else tournaments
+    for u in KOC_USERNAMES:
+        form_guide[u] = []
+    for t in last5:
+        winner_u = t.get('winner_username', '')
+        ps = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+        positions = {p.get('username',''): i+1 for i, p in enumerate(ps)}
+        for u in KOC_USERNAMES:
+            pos = positions.get(u)
+            if pos == 1: form_guide[u].append('W')
+            elif pos is not None: form_guide[u].append('L')
     return render_template('kingofcards.html',
         username=username, is_koc_player=is_koc,
         tournaments=tournaments, leaderboard=leaderboard,
         current_champion=current_champion, reign_days=reign_days,
-        latest_edition=latest_edition)
+        latest_edition=latest_edition, form_guide=form_guide)
 
 @app.route('/kingofcards/<int:edition>')
 def koc_edition(edition):
@@ -2598,8 +2611,26 @@ def koc_edition(edition):
     winner_u = t.get('winner_username', '')
     t['winner_display'] = KOC_DISPLAY.get(winner_u, winner_u)
     players_sorted = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+    # generate story
+    story = ''
+    if players_sorted:
+        winner = players_sorted[0]
+        runner_up = players_sorted[1] if len(players_sorted) > 1 else None
+        wname = KOC_DISPLAY.get(winner.get('username',''), winner.get('username','')).split()[0]
+        margin = winner.get('total',0) - (runner_up.get('total',0) if runner_up else 0)
+        games = ['monopoly','bluff','spoon','uno']
+        best_game = max(games, key=lambda g: winner.get(g, 0))
+        game_spreads = {g: max((p.get(g,0) for p in players_sorted), default=0) - min((p.get(g,0) for p in players_sorted), default=0) for g in games}
+        closest_game = min(game_spreads, key=game_spreads.get)
+        if margin == 0:
+            story = f"In a stunning Edition {edition}, {wname} claimed the crown in a tiebreaker after finishing level on points."
+        elif margin == 1:
+            rname = KOC_DISPLAY.get(runner_up.get('username',''), runner_up.get('username','')).split()[0] if runner_up else 'the field'
+            story = f"Edition {edition} went down to the wire — {wname} edged out {rname} by just 1 point to claim the title. {wname} was dominant in {best_game.capitalize()}."
+        else:
+            story = f"Edition {edition} belonged to {wname}, who dominated and won by {margin} points. The {closest_game.capitalize()} game was the tensest of the day."
     return render_template('koc_edition.html', tournament=t,
-                           players_sorted=players_sorted, username=username)
+                           players_sorted=players_sorted, username=username, story=story)
 
 @app.route('/kingofcards/live/<session_id>')
 def koc_live_page(session_id):
@@ -3231,6 +3262,185 @@ def koc_next_edition_delete():
     koc_next_edition_collection.delete_many({})
     return jsonify({'success': True})
 
+
+
+# ===== KOC All-Time Records =====
+@app.route('/api/koc/records')
+def koc_records():
+    if koc_tournaments_collection is None:
+        return jsonify({})
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+    if not tournaments:
+        return jsonify({})
+
+    biggest_margin = {'margin': 0, 'winner': '', 'edition': 0}
+    highest_score = {'score': 0, 'player': '', 'edition': 0}
+    most_dominant = {'game_wins': 0, 'player': '', 'edition': 0}
+    perfect_editions = []  # won all 8 games
+    winless_streaks = {u: {'cur': 0, 'best': 0} for u in KOC_USERNAMES}
+
+    for t in tournaments:
+        players = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+        if len(players) >= 2:
+            margin = players[0].get('total', 0) - players[1].get('total', 0)
+            if margin > biggest_margin['margin']:
+                biggest_margin = {'margin': margin, 'winner': KOC_DISPLAY.get(players[0].get('username',''), players[0].get('username','')), 'edition': t['edition']}
+        for p in players:
+            if p.get('total', 0) > highest_score['score']:
+                highest_score = {'score': p['total'], 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
+            gw = sum(1 for g in ('monopoly','bluff','spoon','uno')
+                     for rk in ('r1_','r2_') if p.get(rk+g, p.get(g,0) if rk=='r1_' else 0) >= 2)
+            if gw > most_dominant['game_wins']:
+                most_dominant = {'game_wins': gw, 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
+            if gw == 8:
+                perfect_editions.append({'edition': t['edition'], 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username',''))})
+        winner_u = t.get('winner_username', '')
+        for u in KOC_USERNAMES:
+            if u == winner_u:
+                winless_streaks[u]['cur'] = 0
+            else:
+                winless_streaks[u]['cur'] += 1
+                if winless_streaks[u]['cur'] > winless_streaks[u]['best']:
+                    winless_streaks[u]['best'] = winless_streaks[u]['cur']
+
+    longest_winless = max(winless_streaks.items(), key=lambda x: x[1]['best'])
+
+    return jsonify({
+        'biggest_margin': biggest_margin,
+        'highest_score': highest_score,
+        'most_dominant': most_dominant,
+        'perfect_editions': perfect_editions,
+        'longest_winless': {'player': KOC_DISPLAY.get(longest_winless[0], longest_winless[0]), 'streak': longest_winless[1]['best']},
+        'total_editions': len(tournaments),
+        'first_champion': KOC_DISPLAY.get(tournaments[0].get('winner_username',''), '') if tournaments else ''
+    })
+
+# ===== KOC Form Guide (last 5 editions per player) =====
+@app.route('/api/koc/form')
+def koc_form():
+    if koc_tournaments_collection is None:
+        return jsonify({})
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+    last5 = tournaments[-5:] if len(tournaments) >= 5 else tournaments
+    form = {u: [] for u in KOC_USERNAMES}
+    for t in last5:
+        winner_u = t.get('winner_username', '')
+        players_sorted = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+        positions = {p.get('username',''): i+1 for i, p in enumerate(players_sorted)}
+        for u in KOC_USERNAMES:
+            pos = positions.get(u)
+            if pos == 1: form[u].append('W')
+            elif pos is not None: form[u].append('L')
+    return jsonify(form)
+
+# ===== KOC Rivalry =====
+@app.route('/api/koc/rivalry')
+def koc_rivalry():
+    if koc_tournaments_collection is None:
+        return jsonify({})
+    tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}))
+    players = list(KOC_USERNAMES)
+    best = {'score': -1, 'p1': '', 'p2': '', 'p1_wins': 0, 'p2_wins': 0, 'draws': 0}
+    for i in range(len(players)):
+        for j in range(i+1, len(players)):
+            p1, p2 = players[i], players[j]
+            p1w = p2w = draws = 0
+            for t in tournaments:
+                pd1 = next((p for p in t.get('players',[]) if p.get('username')==p1), None)
+                pd2 = next((p for p in t.get('players',[]) if p.get('username')==p2), None)
+                if not pd1 or not pd2: continue
+                s1, s2 = pd1.get('total',0), pd2.get('total',0)
+                if s1 > s2: p1w += 1
+                elif s2 > s1: p2w += 1
+                else: draws += 1
+            total = p1w + p2w + draws
+            if total == 0: continue
+            # rivalry score = closeness (min wins / max wins) * total games
+            closeness = min(p1w, p2w) / max(max(p1w, p2w), 1)
+            score = closeness * total
+            if score > best['score']:
+                best = {'score': score, 'p1': p1, 'p2': p2,
+                        'p1_wins': p1w, 'p2_wins': p2w, 'draws': draws,
+                        'p1_display': KOC_DISPLAY.get(p1, p1), 'p2_display': KOC_DISPLAY.get(p2, p2)}
+    return jsonify(best)
+
+# ===== KOC Edition Story Generator =====
+@app.route('/api/koc/story/<int:edition>')
+def koc_story(edition):
+    if koc_tournaments_collection is None:
+        return jsonify({'story': ''})
+    t = koc_tournaments_collection.find_one({'edition': edition}, {'_id': 0})
+    if not t:
+        return jsonify({'story': ''})
+    players = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
+    if not players:
+        return jsonify({'story': ''})
+    winner = players[0]
+    runner_up = players[1] if len(players) > 1 else None
+    wname = KOC_DISPLAY.get(winner.get('username',''), winner.get('username','')).split()[0]
+    margin = winner.get('total',0) - (runner_up.get('total',0) if runner_up else 0)
+    games = ['monopoly','bluff','spoon','uno']
+    # find winner's best game
+    best_game = max(games, key=lambda g: winner.get(g, 0))
+    best_score = winner.get(best_game, 0)
+    # find closest game across all players
+    game_spreads = {}
+    for g in games:
+        vals = [p.get(g,0) for p in players]
+        game_spreads[g] = max(vals) - min(vals)
+    closest_game = min(game_spreads, key=game_spreads.get)
+    # build story
+    if margin == 0:
+        opening = f"In a stunning Edition {edition}, {wname} claimed the crown in a tiebreaker after finishing level on points."
+    elif margin == 1:
+        rname = KOC_DISPLAY.get(runner_up.get('username',''), runner_up.get('username','')).split()[0] if runner_up else 'the field'
+        opening = f"Edition {edition} went down to the wire — {wname} edged out {rname} by just 1 point to claim the title."
+    else:
+        opening = f"Edition {edition} belonged to {wname}, who dominated the competition and won by {margin} points."
+    middle = f"{wname.capitalize()} was at their best in {best_game.capitalize()}, scoring {best_score} points in that game alone."
+    if game_spreads[closest_game] <= 1:
+        closing = f"The {closest_game.capitalize()} game was the tensest of the day, with players separated by just {game_spreads[closest_game]} point."
+    else:
+        closing = f"With {winner.get('total',0)} total points, {wname} added another chapter to their KOC legacy."
+    story = f"{opening} {middle} {closing}"
+    return jsonify({'story': story, 'edition': edition})
+
+# ===== KOC Who Can Still Win =====
+@app.route('/api/koc/who_can_win/<session_id>')
+def koc_who_can_win(session_id):
+    if koc_live_collection is None:
+        return jsonify([])
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    if not doc:
+        return jsonify([])
+    scores = doc.get('scores', {})
+    GAMES = ['monopoly','bluff','spoon','uno']
+    # count completed games (both rounds done = r1+r2 > 0 for at least one player)
+    completed = 0
+    for g in GAMES:
+        for rnd in [1,2]:
+            k = f'r{rnd}_{g}'
+            if any(scores.get(u,{}).get(k,0) > 0 for u in scores):
+                completed += 1
+    remaining_pts = (8 - completed) * 2  # max 2pts per remaining game
+    current = {u: scores.get(u,{}).get('total',0) for u in scores}
+    if not current:
+        return jsonify([])
+    leader_score = max(current.values())
+    result = []
+    for u, pts in current.items():
+        can_win = (pts + remaining_pts) >= leader_score
+        needed = max(0, leader_score - pts)
+        result.append({
+            'username': u,
+            'display': KOC_DISPLAY.get(u, u),
+            'current': pts,
+            'can_win': can_win,
+            'needed': needed,
+            'remaining_pts': remaining_pts
+        })
+    result.sort(key=lambda x: -x['current'])
+    return jsonify(result)
 
 if __name__ == "__main__":
     _debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"

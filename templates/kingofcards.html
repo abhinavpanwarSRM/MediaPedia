@@ -57,16 +57,23 @@
     }
     .hero-sub { color: #aaa; font-size: 0.85rem; letter-spacing: 4px; text-transform: uppercase;
                 margin-top: 0.5rem; margin-bottom: 2rem; }
-    .champion-banner {
-      background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(184,134,11,0.12));
-      border: 1px solid rgba(255,215,0,0.3); border-radius: 14px;
-      padding: 1.2rem 2.5rem; text-align: center; margin-top: 0.5rem;
-      backdrop-filter: blur(4px);
+    .throne-card {
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg, rgba(255,215,0,0.13), rgba(184,134,11,0.08));
+      border: 1px solid rgba(255,215,0,0.4); border-radius: 20px;
+      padding: 1.8rem 2.5rem 1.5rem; text-align: center; margin-top: 0.5rem;
+      backdrop-filter: blur(8px); max-width: 420px; width: 100%;
     }
-    .champion-banner .champ-label { font-size: 0.7rem; letter-spacing: 3px; color: var(--gold2); text-transform: uppercase; }
-    .champion-banner .champ-name { font-size: clamp(1.4rem,4vw,2rem); font-weight: 800;
-                                    color: var(--gold); margin: 0.3rem 0; letter-spacing: 1px; }
-    .champion-banner .champ-reign { font-size: 0.82rem; color: #aaa; }
+    .throne-glow { position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(255,215,0,.18),transparent 65%);pointer-events:none; }
+    .throne-crown { font-size: 2.8rem; line-height: 1; margin-bottom: .4rem; animation: throneFloat 3s ease-in-out infinite; }
+    @keyframes throneFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .throne-label { font-size: 0.65rem; letter-spacing: 4px; color: var(--gold2); text-transform: uppercase; margin-bottom: .3rem; }
+    .throne-name { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem,6vw,2.8rem); font-weight: 700;
+                   color: var(--gold); letter-spacing: 2px; line-height: 1.1;
+                   text-shadow: 0 0 40px rgba(255,215,0,.4); margin-bottom: .7rem; }
+    .throne-meta { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+    .throne-pill { background: rgba(255,215,0,.1); border: 1px solid rgba(255,215,0,.2); border-radius: 20px;
+                   padding: .3rem .9rem; font-size: .75rem; color: #ccc; }
 
     /* CONTENT */
     .content { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
@@ -94,6 +101,10 @@
     .lb-stat { text-align: center; font-size: 0.9rem; color: #ccc; }
     .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 1rem; }
     .lb-champion { background: rgba(255,215,0,0.07) !important; border-left: 3px solid var(--gold); }
+    .form-pills { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
+    .form-pill { font-size: .58rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: .5px; }
+    .fp-w { background: rgba(46,213,115,.2); color: #2ed573; border: 1px solid rgba(46,213,115,.3); }
+    .fp-l { background: rgba(255,71,87,.15); color: #ff6b6b; border: 1px solid rgba(255,71,87,.25); }
 
     /* EDITIONS GRID */
     .editions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 1.2rem; }
@@ -277,10 +288,15 @@
     </div>
 
     {% if current_champion %}
-    <div class="champion-banner">
-      <div class="champ-label">Reigning Champion</div>
-      <div class="champ-name">{{ current_champion }}</div>
-      <div class="champ-reign">{{ reign_days }} days on the throne &nbsp;•&nbsp; Edition {{ latest_edition }}</div>
+    <div class="throne-card">
+      <div class="throne-glow"></div>
+      <div class="throne-crown">&#x1F451;</div>
+      <div class="throne-label">Reigning Champion</div>
+      <div class="throne-name">{{ current_champion }}</div>
+      <div class="throne-meta">
+        <span class="throne-pill">&#x23F3; {{ reign_days }} days on the throne</span>
+        <span class="throne-pill">&#x1F3C6; Edition {{ latest_edition }}</span>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -327,6 +343,12 @@
               <a href="/u/{{ p.username }}">{{ p.display_name }}</a>
             {% else %}
               {{ p.display_name }}
+            {% endif %}
+            {% set form = form_guide.get(p.username, []) %}
+            {% if form %}
+            <div class="form-pills">
+              {% for r in form %}<span class="form-pill {{ 'fp-w' if r=='W' else 'fp-l' }}">{{ r }}</span>{% endfor %}
+            </div>
             {% endif %}
           </div>
           <div class="lb-stat">{{ p.editions_played }}</div>
@@ -470,6 +492,30 @@
       </div>
     </section>
     {% endif %}
+
+    <!-- RIVALRY CARD -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Greatest Rivalry</div>
+      <div id="rivalry-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
+
+    <!-- HALL OF FAME -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Hall of Fame</div>
+      <div id="hof-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
+
+    <!-- SEASON RECAP -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Season Recap</div>
+      <div id="recap-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
 
     {% if is_koc_player %}
     <!-- NEXT EDITION -->
@@ -1227,6 +1273,85 @@
       }).catch(()=>{ res.innerHTML = '<p style="color:#ff4757;">Failed to load editions.</p>'; });
     }
 
+    // ===== RIVALRY =====
+    function loadRivalry() {
+      fetch('/api/koc/rivalry').then(r=>r.json()).then(d => {
+        const wrap = document.getElementById('rivalry-wrap');
+        if (!wrap || !d.p1) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
+        const total = d.p1_wins + d.p2_wins + d.draws;
+        const p1pct = total ? Math.round(d.p1_wins/total*100) : 50;
+        wrap.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
+            <div style="text-align:center;flex:1;">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--gold);">${d.p1_wins}</div>
+              <div style="font-size:.82rem;font-weight:700;color:#fff;">${d.p1_display.split(' ')[0]}</div>
+            </div>
+            <div style="text-align:center;padding:0 .8rem;">
+              <div style="font-size:.65rem;letter-spacing:2px;color:var(--gold2);text-transform:uppercase;">Greatest Rivalry</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#ccc;margin:.2rem 0;">VS</div>
+              <div style="font-size:.72rem;color:var(--muted);">${d.draws} draw${d.draws!==1?'s':''}</div>
+            </div>
+            <div style="text-align:center;flex:1;">
+              <div style="font-size:1.8rem;font-weight:800;color:var(--gold);">${d.p2_wins}</div>
+              <div style="font-size:.82rem;font-weight:700;color:#fff;">${d.p2_display.split(' ')[0]}</div>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,.06);border-radius:20px;height:8px;overflow:hidden;margin-bottom:.6rem;">
+            <div style="background:linear-gradient(90deg,var(--gold2),var(--gold));height:100%;width:${p1pct}%;border-radius:20px;transition:width .6s;"></div>
+          </div>
+          <p style="font-size:.75rem;color:var(--muted);text-align:center;">${total} head-to-head encounters</p>`;
+      }).catch(()=>{ const w=document.getElementById('rivalry-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    // ===== HALL OF FAME =====
+    function loadHallOfFame() {
+      fetch('/api/koc/records').then(r=>r.json()).then(d => {
+        const wrap = document.getElementById('hof-wrap');
+        if (!wrap || !d.total_editions) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
+        const records = [
+          { icon:'&#x1F3C6;', label:'Most Titles', val: (() => { const lb = ${JSON.stringify([])}; return '—'; })(), sub:'' },
+          { icon:'&#x1F4A5;', label:'Biggest Margin', val: d.biggest_margin?.margin ? d.biggest_margin.margin+' pts' : '—', sub: d.biggest_margin?.winner ? 'by '+d.biggest_margin.winner.split(' ')[0]+' (Ed.'+d.biggest_margin.edition+')' : '' },
+          { icon:'&#x2B50;', label:'Highest Score', val: d.highest_score?.score ? d.highest_score.score+' pts' : '—', sub: d.highest_score?.player ? d.highest_score.player.split(' ')[0]+' (Ed.'+d.highest_score.edition+')' : '' },
+          { icon:'&#x1F451;', label:'First Champion', val: d.first_champion?.split(' ')[0] || '—', sub: 'Edition 1' },
+          { icon:'&#x1F480;', label:'Longest Winless', val: d.longest_winless?.streak ? d.longest_winless.streak+' editions' : '—', sub: d.longest_winless?.player?.split(' ')[0] || '' },
+          { icon:'&#x1F525;', label:'Most Dominant', val: d.most_dominant?.game_wins ? d.most_dominant.game_wins+' game wins' : '—', sub: d.most_dominant?.player ? d.most_dominant.player.split(' ')[0]+' (Ed.'+d.most_dominant.edition+')' : '' },
+        ];
+        wrap.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem;">' +
+          records.map(r=>`<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:1rem .8rem;text-align:center;">
+            <div style="font-size:1.6rem;margin-bottom:.3rem;">${r.icon}</div>
+            <div style="font-size:.62rem;color:var(--gold2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;">${r.label}</div>
+            <div style="font-size:1rem;font-weight:800;color:var(--gold);">${r.val}</div>
+            ${r.sub?`<div style="font-size:.68rem;color:var(--muted);margin-top:.2rem;">${r.sub}</div>`:''}
+          </div>`).join('') + '</div>';
+      }).catch(()=>{ const w=document.getElementById('hof-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    // ===== SEASON RECAP =====
+    function loadRecap() {
+      fetch('/api/koc/records').then(r=>r.json()).then(d => {
+        const wrap = document.getElementById('recap-wrap');
+        if (!wrap || !d.total_editions) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
+        fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+          if (!tournaments.length) return;
+          const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
+          const last = sorted[sorted.length-1];
+          const winCounts = {};
+          sorted.forEach(t => { const w=t.winner_username; if(w) winCounts[w]=(winCounts[w]||0)+1; });
+          const topWinner = Object.entries(winCounts).sort((a,b)=>b[1]-a[1])[0];
+          const lines = [
+            `&#x1F4C5; <strong>${d.total_editions} editions</strong> played in KOC history.`,
+            topWinner ? `&#x1F451; <strong>${(topWinner[0].charAt(0).toUpperCase()+topWinner[0].slice(1))}</strong> leads all-time with <strong>${topWinner[1]} title${topWinner[1]!==1?'s':''}</strong>.` : '',
+            d.biggest_margin?.margin ? `&#x1F4A5; Biggest ever margin: <strong>${d.biggest_margin.margin} points</strong> by ${d.biggest_margin.winner?.split(' ')[0]} in Edition ${d.biggest_margin.edition}.` : '',
+            d.highest_score?.score ? `&#x2B50; Highest ever score: <strong>${d.highest_score.score} points</strong> by ${d.highest_score.player?.split(' ')[0]} in Edition ${d.highest_score.edition}.` : '',
+            last ? `&#x1F3AE; Most recent: Edition ${last.edition} won by <strong>${(last.winner_display||last.winner_username||'').split(' ')[0]}</strong> on ${last.played_on}.` : '',
+          ].filter(Boolean);
+          wrap.innerHTML = '<div style="display:flex;flex-direction:column;gap:.7rem;">' +
+            lines.map(l=>`<div style="font-size:.88rem;color:#ccc;line-height:1.6;padding:.6rem .8rem;background:rgba(255,255,255,.03);border-radius:8px;border-left:3px solid var(--gold2);">${l}</div>`).join('') +
+            '</div>';
+        });
+      }).catch(()=>{ const w=document.getElementById('recap-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
     // ===== INIT =====
     loadTrend();
     loadStreaks();
@@ -1239,6 +1364,9 @@
     chatInterval = setInterval(pollChat, 5000);
     setInterval(loadNextEdition, 30000);
     {% endif %}
+    loadRivalry();
+    loadHallOfFame();
+    loadRecap();
   </script>
 </body>
 </html>

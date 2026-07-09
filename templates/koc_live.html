@@ -89,6 +89,12 @@
     .wb-actions{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;}
     .wb-sparkle{position:absolute;pointer-events:none;font-size:1.4rem;animation:sparkleFloat 2s ease-in-out infinite;}
     @keyframes sparkleFloat{0%,100%{opacity:0;transform:translateY(0) scale(.5)}50%{opacity:1;transform:translateY(-20px) scale(1)}}
+    .wcw-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;font-size:.82rem;}
+    .wcw-name{width:70px;font-weight:600;flex-shrink:0;}
+    .wcw-bar-wrap{flex:1;background:rgba(255,255,255,.06);border-radius:20px;height:6px;overflow:hidden;}
+    .wcw-bar{height:100%;border-radius:20px;transition:width .4s;}
+    .wcw-pts{width:40px;text-align:right;color:var(--gold);font-weight:700;flex-shrink:0;}
+    .wcw-status{width:20px;text-align:center;flex-shrink:0;}
     @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.tabs-row{gap:.3rem;}.tab-btn{padding:.35rem .6rem;font-size:.76rem;}}
   </style>
 </head>
@@ -123,8 +129,16 @@
     <!-- CURRENT GAME BADGE -->
     <div id="round-info" class="round-badge">Round 1 &nbsp;&bull;&nbsp; Game: <strong id="current-game-label" style="color:var(--gold);margin-left:.3rem;">Monopoly</strong></div>
 
+    <div id="comeback-badge" style="display:none;background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);border-radius:8px;padding:.4rem 1rem;font-size:.8rem;color:#ff6b6b;font-weight:600;margin-bottom:.8rem;"></div>
+
     <!-- PLAYER SCORECARDS -->
     <div class="live-grid" id="player-cards"></div>
+
+    <!-- WHO CAN STILL WIN -->
+    <div id="who-can-win" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
+      <div style="font-size:.7rem;letter-spacing:2px;color:var(--gold2);text-transform:uppercase;margin-bottom:.8rem;">Who Can Still Win</div>
+      <div id="wcw-rows"></div>
+    </div>
 
     {% if is_koc_player %}
     <!-- CONTROLS -->
@@ -468,6 +482,8 @@
         `Round ${cr} &nbsp;&bull;&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${cg.charAt(0).toUpperCase()+cg.slice(1)}</strong>`;
       document.getElementById('session-id-label').textContent = `#${SESSION_ID}`;
       checkCompletion(scores);
+      trackComeback(scores);
+      loadWhoCanWin();
     }
 
     function renderInputs() {
@@ -607,6 +623,60 @@
         navigator.share({title:'KOC Live', text:'Watch the live KOC scoreboard:', url}).catch(()=>{});
       } else {
         navigator.clipboard.writeText(url).then(()=>showToast('Live link copied!')).catch(()=>showToast(url));
+      }
+    }
+
+    function loadWhoCanWin() {
+      fetch(`/api/koc/who_can_win/${SESSION_ID}`).then(r=>r.json()).then(data => {
+        const wrap = document.getElementById('who-can-win');
+        const rows = document.getElementById('wcw-rows');
+        if (!wrap || !rows || !data.length) return;
+        const maxPts = Math.max(...data.map(p=>p.current + p.remaining_pts), 1);
+        const leader = data[0].current;
+        // only show if game is in progress (some scores > 0) and not complete
+        const anyScore = data.some(p=>p.current>0);
+        const complete = data.reduce((s,p)=>s+p.current,0) >= 24;
+        if (!anyScore || complete) { wrap.style.display='none'; return; }
+        wrap.style.display = 'block';
+        rows.innerHTML = data.map(p => {
+          const barPct = Math.round((p.current / maxPts)*100);
+          const color = p.can_win ? 'var(--gold)' : 'rgba(255,255,255,.2)';
+          const status = p.current === leader && data.filter(x=>x.current===leader).length===1 ? '&#x1F451;' :
+                         p.can_win ? '&#x2705;' : '&#x274C;';
+          return `<div class="wcw-row">
+            <div class="wcw-name">${p.display.split(' ')[0]}</div>
+            <div class="wcw-bar-wrap"><div class="wcw-bar" style="width:${barPct}%;background:${color};"></div></div>
+            <div class="wcw-pts">${p.current}</div>
+            <div class="wcw-status">${status}</div>
+          </div>`;
+        }).join('');
+      }).catch(()=>{});
+    }
+
+    // comeback tracker — store lowest score seen per player
+    const _lowestSeen = {};
+    function trackComeback(scores) {
+      const players = KOC_PLAYERS.filter(p => scores[p.username]);
+      players.forEach(p => {
+        const cur = scores[p.username]?.total || 0;
+        if (_lowestSeen[p.username] === undefined || cur < _lowestSeen[p.username]) {
+          _lowestSeen[p.username] = cur;
+        }
+      });
+      // check if winner had a big comeback
+      if (!state) return;
+      const sorted = [...players].sort((a,b)=>(scores[b.username]?.total||0)-(scores[a.username]?.total||0));
+      if (!sorted.length) return;
+      const winner = sorted[0];
+      const winnerLow = _lowestSeen[winner.username] || 0;
+      const winnerCur = scores[winner.username]?.total || 0;
+      const comeback = winnerCur - winnerLow;
+      const el = document.getElementById('comeback-badge');
+      if (el && comeback >= 4 && winnerCur > (scores[sorted[1]?.username]?.total||0)) {
+        el.style.display = 'block';
+        el.textContent = `&#x1F525; ${winner.display.split(' ')[0]} comeback: +${comeback} pts`;
+      } else if (el) {
+        el.style.display = 'none';
       }
     }
 
