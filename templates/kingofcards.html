@@ -93,6 +93,7 @@
     .lb-name a:hover { color: var(--gold); }
     .lb-stat { text-align: center; font-size: 0.9rem; color: #ccc; }
     .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 1rem; }
+    .lb-champion { background: rgba(255,215,0,0.07) !important; border-left: 3px solid var(--gold); }
 
     /* EDITIONS GRID */
     .editions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 1.2rem; }
@@ -313,9 +314,13 @@
           <div style="text-align:center;">Titles</div>
         </div>
         {% for p in leaderboard %}
-        <div class="lb-row">
+        <div class="lb-row{% if current_champion and p.display_name == current_champion %} lb-champion{% endif %}">
           <div class="lb-rank">
-            <span style="color:var(--muted);font-size:1rem;">{{ loop.index }}</span>
+            {% if loop.index == 1 %}
+              <span style="font-size:1.2rem;">&#x1F451;</span>
+            {% else %}
+              <span style="color:var(--muted);font-size:1rem;">{{ loop.index }}</span>
+            {% endif %}
           </div>
           <div class="lb-name">
             {% if p.username %}
@@ -409,6 +414,24 @@
           <button class="btn btn-muted" style="font-size:.78rem;padding:.35rem .8rem;" onclick="showGameLB('uno',this)">UNO</button>
         </div>
         <div id="game-lb-wrap"></div>
+      </div>
+    </section>
+
+    <!-- EDITION COMPARISON -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Edition Comparison</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <select id="cmp-e1" style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;">
+            {% for t in tournaments %}<option value="{{ t.edition }}">Edition {{ t.edition }}</option>{% endfor %}
+          </select>
+          <span style="display:flex;align-items:center;color:var(--muted);font-weight:700;">vs</span>
+          <select id="cmp-e2" style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;">
+            {% for t in tournaments %}<option value="{{ t.edition }}" {% if loop.index==2 %}selected{% endif %}>Edition {{ t.edition }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-gold" onclick="loadComparison()">Compare</button>
+        </div>
+        <div id="cmp-result"></div>
       </div>
     </section>
 
@@ -917,7 +940,7 @@
         const legendItems = players.map((p,i)=>`<text x="${PAD.l + i*((W-PAD.l-PAD.r)/players.length)}" y="${H+18}" font-size="8" fill="${colors[p]}">${p.charAt(0).toUpperCase()+p.slice(1)}</text>`).join('');
         const legend = players.map(p=>`<div class="trend-legend-item"><span class="trend-legend-dot" style="background:${colors[p]}"></span>${p.charAt(0).toUpperCase()+p.slice(1)}</div>`).join('');
         wrap.innerHTML = `<svg width="100%" viewBox="0 0 ${W} ${H+25}" style="overflow:visible;">${ylabels}${paths}${xlabels}</svg><div class="trend-legend">${legend}</div>`;
-      }).catch(()=>{});
+      }).catch(()=>{ const w=document.getElementById('trend-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load trend.</p>'; });
     }
 
     // ===== WIN STREAKS =====
@@ -949,7 +972,7 @@
             <div class="streak-name">${(names[p]||p).split(' ')[0]}</div>
             <div style="font-size:.7rem;color:var(--muted);margin-top:.4rem;">Best: ${best[p]}</div>
           </div>`).join('');
-      }).catch(()=>{});
+      }).catch(()=>{ const w=document.getElementById('streak-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load streaks.</p>'; });
     }
 
     // ===== PER-GAME LEADERBOARD =====
@@ -958,7 +981,7 @@
       fetch('/api/koc/game_heatmap').then(r=>r.json()).then(data => {
         _gameLBData = data;
         showGameLB('monopoly', document.querySelector('.btn-gold[onclick*="monopoly"]'));
-      }).catch(()=>{});
+      }).catch(()=>{ const w=document.getElementById('game-lb-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load rankings.</p>'; });
     }
     function showGameLB(game, btn) {
       document.querySelectorAll('.predict-grid ~ div, section .btn-gold[onclick*="showGameLB"], section .btn-muted[onclick*="showGameLB"]').forEach(()=>{});
@@ -1162,6 +1185,48 @@
       }, 60000);
     }
 
+    // ===== EDITION COMPARISON =====
+    function loadComparison() {
+      const e1 = parseInt(document.getElementById('cmp-e1').value);
+      const e2 = parseInt(document.getElementById('cmp-e2').value);
+      const res = document.getElementById('cmp-result');
+      if (e1 === e2) { res.innerHTML = '<p style="color:var(--muted);">Select two different editions.</p>'; return; }
+      res.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Loading...</p>';
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(all => {
+        const t1 = all.find(t=>t.edition===e1);
+        const t2 = all.find(t=>t.edition===e2);
+        if (!t1 || !t2) { res.innerHTML = '<p style="color:#ff4757;">Edition not found.</p>'; return; }
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+        const rows = players.map(u => {
+          const p1 = (t1.players||[]).find(p=>p.username===u)||{};
+          const p2 = (t2.players||[]).find(p=>p.username===u)||{};
+          const s1 = p1.total||0, s2 = p2.total||0;
+          const name = (p1.display_name||p2.display_name||u).split(' ')[0];
+          const diff = s1 - s2;
+          return `<tr style="border-top:1px solid rgba(255,215,0,.07);">
+            <td style="padding:.55rem .8rem;font-weight:600;font-size:.85rem;">${name}</td>
+            <td style="text-align:center;padding:.55rem .8rem;font-weight:700;color:${s1>s2?'var(--gold)':'#ccc'};">${s1}</td>
+            <td style="text-align:center;padding:.55rem .8rem;font-weight:700;color:${s2>s1?'var(--gold)':'#ccc'};">${s2}</td>
+            <td style="text-align:center;padding:.55rem .8rem;font-size:.82rem;color:${diff>0?'#2ed573':diff<0?'#ff6b6b':'var(--muted)'}">${diff>0?'+'+diff:diff||'—'}</td>
+          </tr>`;
+        }).join('');
+        res.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <table style="width:100%;border-collapse:collapse;min-width:320px;">
+            <thead><tr>
+              <th style="text-align:left;padding:.5rem .8rem;font-size:.7rem;color:var(--gold2);text-transform:uppercase;">Player</th>
+              <th style="text-align:center;padding:.5rem .8rem;font-size:.7rem;color:var(--gold2);">Ed.${e1}</th>
+              <th style="text-align:center;padding:.5rem .8rem;font-size:.7rem;color:var(--gold2);">Ed.${e2}</th>
+              <th style="text-align:center;padding:.5rem .8rem;font-size:.7rem;color:var(--gold2);">Diff</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+          <div style="display:flex;gap:1.5rem;margin-top:.8rem;font-size:.8rem;color:var(--muted);">
+            <span>Ed.${e1} winner: <strong style="color:var(--gold);">${t1.winner_display||t1.winner_username||'—'}</strong></span>
+            <span>Ed.${e2} winner: <strong style="color:var(--gold);">${t2.winner_display||t2.winner_username||'—'}</strong></span>
+          </div>`;
+      }).catch(()=>{ res.innerHTML = '<p style="color:#ff4757;">Failed to load editions.</p>'; });
+    }
+
     // ===== INIT =====
     loadTrend();
     loadStreaks();
@@ -1172,6 +1237,7 @@
     loadPushStatus();
     loadNextEdition();
     chatInterval = setInterval(pollChat, 5000);
+    setInterval(loadNextEdition, 30000);
     {% endif %}
   </script>
 </body>

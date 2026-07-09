@@ -166,6 +166,20 @@
     <button class="btn btn-gold" style="margin-top:1rem;" onclick="document.getElementById('winner-banner').classList.remove('show')">Close</button>
   </div>
 
+  <!-- SAVE AS EDITION MODAL -->
+  <div id="save-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;">
+    <div style="background:#111;border:1px solid var(--border);border-radius:16px;width:100%;max-width:420px;padding:1.5rem;margin:auto;">
+      <h2 style="color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:1.5rem;margin-bottom:1rem;">Save as Edition</h2>
+      <p style="color:#aaa;font-size:.85rem;margin-bottom:1rem;">This will create a new official edition from the current live scores.</p>
+      <label style="font-size:.82rem;color:var(--muted);display:block;margin-bottom:.3rem;">Date Played</label>
+      <input type="date" id="save-date-input" style="width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:.9rem;padding:.55rem .85rem;margin-bottom:1.2rem;font-family:'Poppins',sans-serif;" />
+      <div style="display:flex;gap:.8rem;justify-content:flex-end;flex-wrap:wrap;">
+        <button class="btn btn-muted" onclick="closeSaveModal()">Cancel</button>
+        <button class="btn btn-gold" onclick="confirmSaveAsEdition()">Save Edition</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SESSION_ID = '{{ session_id }}';
     const IS_PLAYER = {{ 'true' if is_koc_player else 'false' }};
@@ -221,6 +235,11 @@
       document.getElementById('winner-banner-name').textContent = winner.display + ' WINS!';
       document.getElementById('winner-banner-sub').textContent = 'Total: ' + (scores[winner.username]?.total||0) + ' points — All 8 games complete';
       banner.classList.add('show');
+      // push notification to all players
+      fetch(`/api/koc/live/${SESSION_ID}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({scores, current_game: currentGame, current_round: currentRound, completed: true, winner_username: winner.username})
+      }).catch(()=>{});
     }
 
     let KOC_PLAYERS = [
@@ -383,15 +402,25 @@
     }
 
     function saveAsEdition() {
-      if (!confirm('Save current scores as a new official edition?')) return;
       const today = new Date().toISOString().slice(0,10);
-      const played_on = prompt('Date played (YYYY-MM-DD):', today) || today;
+      document.getElementById('save-date-input').value = today;
+      const m = document.getElementById('save-modal');
+      m.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSaveModal() {
+      document.getElementById('save-modal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    function confirmSaveAsEdition() {
+      const played_on = document.getElementById('save-date-input').value || new Date().toISOString().slice(0,10);
       fetch(`/api/koc/live/${SESSION_ID}/save_as_edition`, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({played_on})
       }).then(r=>r.json()).then(d=>{
         if (d.error) { showToast(d.error); return; }
+        closeSaveModal();
         clearInterval(pollInterval);
         showToast('Edition ' + d.edition + ' saved!');
         setTimeout(()=>window.location.href='/kingofcards/'+d.edition, 1200);

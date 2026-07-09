@@ -295,8 +295,7 @@
     })();
 
     // ===== REACTIONS =====
-    const REACTIONS = ['fire','clap','goat','gg'];
-    const REACT_LABELS = {fire:'Fire',clap:'Clap',goat:'GOAT',gg:'GG'};
+    const REACTIONS = ['🔥','👏','🐐','🎉','💀','👑'];
 
     function loadReactions() {
       fetch('/api/koc/reactions?edition=' + EDITION_NUM).then(r=>r.json()).then(data => {
@@ -306,12 +305,12 @@
           const count = (data.counts||{})[r] || 0;
           const mine = (data.mine||[]).includes(r);
           return `<button class="reaction-btn ${mine?'active':''}" onclick="toggleReaction('${r}',this)">
-            ${REACT_LABELS[r]} <span style="font-size:.78rem;margin-left:.3rem;opacity:.7;">${count||''}</span>
+            ${r}${count ? ` <span style="font-size:.78rem;margin-left:.2rem;opacity:.8;">${count}</span>` : ''}
           </button>`;
         }).join('');
       }).catch(()=>{
         const wrap = document.getElementById('reactions-wrap');
-        if (wrap) wrap.innerHTML = REACTIONS.map(r=>`<button class="reaction-btn" onclick="toggleReaction('${r}',this)">${REACT_LABELS[r]}</button>`).join('');
+        if (wrap) wrap.innerHTML = REACTIONS.map(r=>`<button class="reaction-btn" onclick="toggleReaction('${r}',this)">${r}</button>`).join('');
       });
     }
 

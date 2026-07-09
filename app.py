@@ -2785,8 +2785,20 @@ def koc_live_update(session_id):
     if 'current_game' in data: update['current_game'] = data['current_game']
     if 'round' in data: update['round'] = data['round']
     if 'current_round' in data: update['current_round'] = data['current_round']
+    if data.get('completed'): update['completed'] = True
     update['updated_at'] = datetime.now(timezone.utc).isoformat()
     koc_live_collection.update_one({'session_id': session_id}, {'$set': update})
+    # Send push to all KOC players when game completes
+    if data.get('completed') and data.get('winner_username'):
+        winner_u = data['winner_username']
+        winner_display = KOC_DISPLAY.get(winner_u, winner_u)
+        for u in KOC_USERNAMES:
+            send_push(u, {
+                'title': f'{winner_display} wins the KOC session!',
+                'body': 'All 8 games complete. Save as edition now.',
+                'url': f'/kingofcards/live/{session_id}',
+                'tag': f'koc-complete-{session_id}'
+            })
     doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
     return jsonify(doc)
 
