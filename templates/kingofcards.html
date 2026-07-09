@@ -1309,7 +1309,7 @@
         const wrap = document.getElementById('hof-wrap');
         if (!wrap || !d.total_editions) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
         const records = [
-          { icon:'&#x1F3C6;', label:'Most Titles', val: (() => { const lb = ${JSON.stringify([])}; return '—'; })(), sub:'' },
+          { icon:'&#x1F3C6;', label:'Most Titles', val: '—', sub:'' },
           { icon:'&#x1F4A5;', label:'Biggest Margin', val: d.biggest_margin?.margin ? d.biggest_margin.margin+' pts' : '—', sub: d.biggest_margin?.winner ? 'by '+d.biggest_margin.winner.split(' ')[0]+' (Ed.'+d.biggest_margin.edition+')' : '' },
           { icon:'&#x2B50;', label:'Highest Score', val: d.highest_score?.score ? d.highest_score.score+' pts' : '—', sub: d.highest_score?.player ? d.highest_score.player.split(' ')[0]+' (Ed.'+d.highest_score.edition+')' : '' },
           { icon:'&#x1F451;', label:'First Champion', val: d.first_champion?.split(' ')[0] || '—', sub: 'Edition 1' },
