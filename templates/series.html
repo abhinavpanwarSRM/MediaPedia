@@ -33,6 +33,15 @@
         color: var(--text-light);
         line-height: 1.6;
         cursor: default;
+        animation: pageFadeIn 0.4s ease-out, kenBurns 25s ease-in-out infinite alternate;
+      }
+      @keyframes pageFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes kenBurns {
+        from { background-size: 110%; }
+        to   { background-size: 120%; }
       }
 
       .overlay {
@@ -49,11 +58,13 @@
       .series-detail {
         max-width: 900px;
         margin: 0 auto;
-        background: var(--card-bg);
+        background: rgba(255,255,255,0.04);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         border-radius: 8px;
         padding: 1.5rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       h1 {
@@ -419,7 +430,7 @@
         <div class="series-info">
           <p>
             <strong>Rating:</strong>
-            <span>{{ series.get("Rating", "N/A") }}</span>
+            <span style="display:inline-flex;align-items:center;"><span style="background:rgba(0,168,225,0.2);border:1px solid rgba(0,168,225,0.5);padding:0.15rem 0.6rem;border-radius:20px;font-weight:700;color:#00a8e1;font-size:0.95rem;">★ {{ series.get("Rating", "N/A") }}</span></span>
           </p>
           <p>
             <strong>Genres:</strong>

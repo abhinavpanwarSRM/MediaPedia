@@ -12,7 +12,8 @@
       --text: #fff; --muted: #888;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; }
+    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
     /* NAV */
     .topnav { display: flex; justify-content: space-between; align-items: center;
@@ -87,7 +88,7 @@
 
     /* LEADERBOARD */
     .leaderboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; }
-    .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 420px; }
+    .leaderboard { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 420px; }
     .lb-row { display: grid; grid-template-columns: 60px 1fr repeat(4,80px); align-items: center;
                padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,215,0,0.07); transition: background 0.2s; gap: 0.5rem; }
     .lb-row:last-child { border-bottom: none; }
@@ -95,9 +96,10 @@
     .lb-row.header { background: rgba(255,215,0,0.08); font-size: 0.72rem; letter-spacing: 1px;
                       text-transform: uppercase; color: var(--gold2); font-weight: 600; }
     .lb-rank { font-size: 1.4rem; text-align: center; }
-    .lb-name { font-weight: 600; font-size: 0.95rem; }
+    .lb-name { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; }
     .lb-name a { color: var(--text); text-decoration: none; transition: color 0.2s; }
     .lb-name a:hover { color: var(--gold); }
+    .player-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
     .lb-stat { text-align: center; font-size: 0.9rem; color: #ccc; }
     .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 1rem; }
     .lb-champion { background: rgba(255,215,0,0.07) !important; border-left: 3px solid var(--gold); }
@@ -111,7 +113,8 @@
     .edition-wrap { position: relative; }
     .edition-card {
       display: block;
-      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border); border-radius: 14px;
       padding: 1.2rem 1.2rem 3.2rem; text-decoration: none; color: var(--text);
       transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
       cursor: pointer; position: relative; overflow: hidden;
@@ -339,6 +342,9 @@
             {% endif %}
           </div>
           <div class="lb-name">
+            {% set av_colors = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'} %}
+            {% set av_color = av_colors.get(p.username, '#888') %}
+            <div class="player-av" style="background:{{ av_color }}20;border:1.5px solid {{ av_color }};color:{{ av_color }};">{{ p.display_name[0]|upper }}</div>
             {% if p.username %}
               <a href="/u/{{ p.username }}">{{ p.display_name }}</a>
             {% else %}

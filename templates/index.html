@@ -53,6 +53,11 @@
         min-height: 100vh;
         cursor: default;
         position: relative;
+        animation: pageFadeIn 0.4s ease-out;
+      }
+      @keyframes pageFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
 
       /* Title section */
@@ -156,29 +161,32 @@
       #tmdb-suggestions,
       #filters,
       #filters2 {
-        background: var(--card-bg);
+        background: rgba(255,255,255,0.04);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         padding: 2rem;
         border-radius: 8px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         width: 100%;
         box-sizing: border-box;
       }
 
       #random-list,
       #random-list2 {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        justify-content: center;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.8rem;
       }
 
       #recently-viewed {
-        background: var(--card-bg);
+        background: rgba(255,255,255,0.04);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         padding: 2rem;
         border-radius: 8px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         width: 100%;
         box-sizing: border-box;
       }
@@ -2839,9 +2847,17 @@
           randomMovies.forEach((movie) => {
             const a = document.createElement("a");
             a.href = `/movie/${movie.ID}`;
-            a.style.cssText = 'display:flex;align-items:center;gap:0.6rem;';
+            a.style.cssText = 'text-decoration:none;color:#fff;';
             const imgId = 'pm_' + movie.ID;
-            a.innerHTML = `<img id="${imgId}" src="" alt="" loading="lazy" style="display:none;width:32px;height:46px;object-fit:cover;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'" /><span>${movie["Movie Name"]}</span>`;
+            a.innerHTML = `
+              <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:2/3;background:#1a1a1a;">
+                <img id="${imgId}" src="" alt="" loading="lazy"
+                  style="display:none;width:100%;height:100%;object-fit:cover;transition:transform 0.3s;"
+                  onerror="this.style.display='none'" />
+                <div style="position:absolute;bottom:0;left:0;right:0;padding:0.5rem 0.4rem;background:linear-gradient(transparent,rgba(0,0,0,0.92));font-size:0.72rem;font-weight:600;line-height:1.3;">${movie["Movie Name"]}</div>
+              </div>`;
+            a.addEventListener('mouseenter', () => { const img = a.querySelector('img'); if(img) img.style.transform='scale(1.06)'; });
+            a.addEventListener('mouseleave', () => { const img = a.querySelector('img'); if(img) img.style.transform='scale(1)'; });
             container.appendChild(a);
             fetch('/api/poster?title=' + encodeURIComponent(movie['Movie Name']) + '&year=' + encodeURIComponent(movie['Year']||'') + '&kind=movie')
               .then(r => r.json()).then(d => { const el = document.getElementById(imgId); if(el && d.poster){el.src=d.poster;el.style.display='block';} }).catch(()=>{});
@@ -2876,9 +2892,17 @@
           randomSeries.forEach((series) => {
             const a = document.createElement("a");
             a.href = `/series/${series.ID}`;
-            a.style.cssText = 'display:flex;align-items:center;gap:0.6rem;';
+            a.style.cssText = 'text-decoration:none;color:#fff;';
             const imgId = 'ps_' + series.ID;
-            a.innerHTML = `<img id="${imgId}" src="" alt="" loading="lazy" style="display:none;width:32px;height:46px;object-fit:cover;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'" /><span>${series["Title"]}</span>`;
+            a.innerHTML = `
+              <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:2/3;background:#1a1a1a;">
+                <img id="${imgId}" src="" alt="" loading="lazy"
+                  style="display:none;width:100%;height:100%;object-fit:cover;transition:transform 0.3s;"
+                  onerror="this.style.display='none'" />
+                <div style="position:absolute;bottom:0;left:0;right:0;padding:0.5rem 0.4rem;background:linear-gradient(transparent,rgba(0,0,0,0.92));font-size:0.72rem;font-weight:600;line-height:1.3;">${series["Title"]}</div>
+              </div>`;
+            a.addEventListener('mouseenter', () => { const img = a.querySelector('img'); if(img) img.style.transform='scale(1.06)'; });
+            a.addEventListener('mouseleave', () => { const img = a.querySelector('img'); if(img) img.style.transform='scale(1)'; });
             container.appendChild(a);
             fetch('/api/poster?title=' + encodeURIComponent(series['Title']) + '&kind=tv')
               .then(r => r.json()).then(d => { const el = document.getElementById(imgId); if(el && d.poster){el.src=d.poster;el.style.display='block';} }).catch(()=>{});

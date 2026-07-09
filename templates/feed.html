@@ -7,7 +7,8 @@
   <style>
     :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --blue: #5799ef; --border: rgba(255,255,255,0.08); --muted: #888; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; }
+    body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .page { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; }
     @media (max-width: 680px) { .page { grid-template-columns: 1fr; } .sidebar { display: none; } }
     .container { max-width: 680px; }
@@ -15,7 +16,8 @@
     .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; }
     h1 { font-size: 1.6rem; }
     .auth-links a { color: var(--primary); text-decoration: none; font-size: 0.88rem; margin-left: 1rem; }
-    .feed-item { background: var(--card); border-left: 3px solid var(--primary); border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1rem; }
+    .feed-item { background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-left: 3px solid var(--primary); border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid var(--primary); transition: transform 0.2s, box-shadow 0.2s; }
+    .feed-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
     .feed-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.4rem; }
     .feed-user { font-weight: 600; color: #fff; text-decoration: none; }
     .feed-user:hover { color: var(--primary); }
