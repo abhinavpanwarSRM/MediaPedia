@@ -2066,9 +2066,15 @@
             <span class="num-text">${n}</span>
             <span class="playing-bars"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>
           </div>
-          <div class="col-info">
-            <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
-            <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a>${addedByLabel}</div>
+          <div class="col-info" style="display:flex;align-items:center;gap:.6rem;">
+            <img class="song-art" data-artist="${escHtml(song.artist_name)}"
+              src="" alt="" loading="lazy"
+              style="display:none;width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;"
+              onerror="this.style.display='none'" />
+            <div style="min-width:0;">
+              <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
+              <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a>${addedByLabel}</div>
+            </div>
           </div>
           <div class="col-dur" id="dur-${song.song_id}">—</div>
           <div class="col-act">
@@ -2078,6 +2084,8 @@
           </div>`;
         list.appendChild(div);
         if (IS_OWNER) attachDrag(div);
+        const newArt = div.querySelector('.song-art');
+        if (newArt) loadArtistPhoto(newArt);
       }
 
       // ── Delete song ───────────────────────────────────────────────────────────
@@ -2164,6 +2172,24 @@
         }
       }
       if (IS_OWNER) document.querySelectorAll('.song-row').forEach(attachDrag);
+
+      // Artist photos
+      const _artistPhotoCache = {};
+      function loadArtistPhoto(img) {
+        const artist = img.dataset.artist;
+        if (!artist) return;
+        if (_artistPhotoCache[artist] !== undefined) {
+          if (_artistPhotoCache[artist]) { img.src = _artistPhotoCache[artist]; img.style.display = 'block'; }
+          return;
+        }
+        fetch('/api/artist_photo?name=' + encodeURIComponent(artist))
+          .then(r => r.json())
+          .then(d => {
+            _artistPhotoCache[artist] = d.photo || '';
+            if (d.photo) { img.src = d.photo; img.style.display = 'block'; }
+          }).catch(() => { _artistPhotoCache[artist] = ''; });
+      }
+      document.querySelectorAll('.song-art').forEach(loadArtistPhoto);
 
       // Artist photos
       const _artistPhotoCache = {};

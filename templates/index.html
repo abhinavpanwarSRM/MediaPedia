@@ -164,19 +164,29 @@
         background: rgba(255,255,255,0.04);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 8px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
         border: 1px solid rgba(255, 255, 255, 0.08);
         width: 100%;
         box-sizing: border-box;
       }
+      #random-movies,
+      #random-series {
+        padding: 1.2rem;
+      }
 
       #random-list,
       #random-list2 {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 0.8rem;
+      }
+      @media (min-width: 900px) {
+        #random-list,
+        #random-list2 {
+          grid-template-columns: repeat(10, 1fr);
+        }
       }
 
       #recently-viewed {
