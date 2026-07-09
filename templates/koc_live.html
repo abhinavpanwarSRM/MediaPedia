@@ -60,13 +60,35 @@
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
     /* CONFETTI */
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998;display:none;}
-    .winner-banner{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-      background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(184,134,11,.18));
-      border:2px solid var(--gold);border-radius:20px;padding:2rem 2.5rem;text-align:center;
-      z-index:9997;backdrop-filter:blur(12px);max-width:90vw;}
-    .winner-banner.show{display:block;}
-    .winner-banner h2{font-family:'Cormorant Garamond',serif;font-size:2rem;color:var(--gold);margin-bottom:.5rem;}
-    .winner-banner p{color:#ccc;font-size:.95rem;}
+    .winner-overlay{display:none;position:fixed;inset:0;z-index:9996;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+    .winner-overlay.show{display:flex;}
+    .winner-banner{
+      background:linear-gradient(135deg,rgba(255,215,0,.22),rgba(184,134,11,.22));
+      border:2px solid var(--gold);border-radius:24px;padding:2.5rem 3rem;text-align:center;
+      max-width:min(92vw,480px);width:100%;position:relative;overflow:hidden;
+      animation:bannerPop .5s cubic-bezier(.175,.885,.32,1.275) both;
+    }
+    @keyframes bannerPop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+    .winner-banner::before{content:'';position:absolute;inset:0;
+      background:radial-gradient(ellipse at 50% 0%,rgba(255,215,0,.18),transparent 70%);
+      pointer-events:none;}
+    .wb-crown{font-size:3.5rem;line-height:1;margin-bottom:.5rem;animation:crownBounce 1s ease-in-out infinite alternate;}
+    @keyframes crownBounce{from{transform:translateY(0) rotate(-8deg)}to{transform:translateY(-10px) rotate(8deg)}}
+    .wb-name{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,8vw,3rem);font-weight:700;
+      color:var(--gold);line-height:1.1;margin-bottom:.4rem;
+      text-shadow:0 0 40px rgba(255,215,0,.6);}
+    .wb-wins{font-size:1rem;color:#fff;font-weight:600;margin-bottom:.3rem;}
+    .wb-pts{font-size:.88rem;color:#aaa;margin-bottom:1.2rem;}
+    .wb-timer{font-size:.75rem;color:var(--gold2);letter-spacing:2px;text-transform:uppercase;margin-bottom:1rem;}
+    .wb-bar{height:4px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden;margin-bottom:1.2rem;}
+    .wb-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold));border-radius:4px;width:100%;transition:width 1s linear;}
+    .wb-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1.2rem;}
+    .wb-score-item{background:rgba(255,255,255,.06);border-radius:10px;padding:.5rem .3rem;}
+    .wb-score-val{font-size:1.1rem;font-weight:800;color:var(--gold);}
+    .wb-score-label{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:.15rem;}
+    .wb-actions{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;}
+    .wb-sparkle{position:absolute;pointer-events:none;font-size:1.4rem;animation:sparkleFloat 2s ease-in-out infinite;}
+    @keyframes sparkleFloat{0%,100%{opacity:0;transform:translateY(0) scale(.5)}50%{opacity:1;transform:translateY(-20px) scale(1)}}
     @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.tabs-row{gap:.3rem;}.tab-btn{padding:.35rem .6rem;font-size:.76rem;}}
   </style>
 </head>
@@ -160,10 +182,23 @@
 
   <div class="toast" id="toast"></div>
   <canvas id="confetti-canvas"></canvas>
-  <div class="winner-banner" id="winner-banner">
-    <h2 id="winner-banner-name"></h2>
-    <p id="winner-banner-sub"></p>
-    <button class="btn btn-gold" style="margin-top:1rem;" onclick="document.getElementById('winner-banner').classList.remove('show')">Close</button>
+  <div class="winner-overlay" id="winner-overlay">
+    <div class="winner-banner" id="winner-banner">
+      <span class="wb-sparkle" style="top:10%;left:8%;animation-delay:0s;">✨</span>
+      <span class="wb-sparkle" style="top:15%;right:10%;animation-delay:.7s;">⭐</span>
+      <span class="wb-sparkle" style="bottom:20%;left:12%;animation-delay:1.3s;">✨</span>
+      <span class="wb-sparkle" style="bottom:15%;right:8%;animation-delay:.4s;">⭐</span>
+      <div class="wb-crown">👑</div>
+      <div class="wb-name" id="wb-name"></div>
+      <div class="wb-wins" id="wb-wins"></div>
+      <div class="wb-pts" id="wb-pts"></div>
+      <div class="wb-timer" id="wb-timer">Celebrating...</div>
+      <div class="wb-bar"><div class="wb-bar-fill" id="wb-bar-fill"></div></div>
+      <div class="wb-scores" id="wb-scores"></div>
+      <div class="wb-actions">
+        <button class="btn btn-gold" onclick="closeCelebration()">Continue</button>
+      </div>
+    </div>
   </div>
 
   <!-- SAVE AS EDITION MODAL -->
@@ -187,39 +222,93 @@
     let _confettiFired = false;
 
     // ===== CONFETTI =====
-    function fireConfetti() {
+    let _confettiRAF = null;
+    let _celebrationTimer = null;
+    const CELEBRATE_SECS = 60;
+
+    function fireConfetti(duration) {
       const canvas = document.getElementById('confetti-canvas');
       canvas.style.display = 'block';
       canvas.width = window.innerWidth; canvas.height = window.innerHeight;
       const ctx = canvas.getContext('2d');
-      const pieces = Array.from({length:160}, () => ({
+      const COLORS = ['#ffd700','#ff6b6b','#2ed573','#5799ef','#ff9f43','#a29bfe','#fff','#ff4757','#eccc68'];
+      const pieces = Array.from({length:220}, () => ({
         x: Math.random()*canvas.width, y: Math.random()*canvas.height - canvas.height,
-        r: Math.random()*6+4, d: Math.random()*160+80,
-        color: ['#ffd700','#ff6b6b','#2ed573','#5799ef','#ff9f43','#a29bfe','#fff'][Math.floor(Math.random()*7)],
-        tilt: Math.random()*10-10, tiltAngle: 0, tiltSpeed: Math.random()*.1+.05
+        r: Math.random()*7+3, d: Math.random()*180+60,
+        color: COLORS[Math.floor(Math.random()*COLORS.length)],
+        tilt: Math.random()*10-10, tiltAngle: 0, tiltSpeed: Math.random()*.12+.04,
+        shape: Math.random()>.5?'rect':'circle',
+        w: Math.random()*10+4, h: Math.random()*6+3
       }));
+      // firework bursts
+      const bursts = [];
+      function addBurst() {
+        const bx = Math.random()*canvas.width;
+        const by = Math.random()*(canvas.height*.5);
+        const bc = COLORS[Math.floor(Math.random()*COLORS.length)];
+        for(let i=0;i<18;i++) {
+          const angle = (i/18)*Math.PI*2;
+          bursts.push({x:bx,y:by,vx:Math.cos(angle)*4,vy:Math.sin(angle)*4,life:1,color:bc,r:3});
+        }
+      }
       let frame = 0;
+      const endTime = Date.now() + duration;
+      if (_confettiRAF) cancelAnimationFrame(_confettiRAF);
       function draw() {
+        if (Date.now() > endTime) {
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+          canvas.style.display='none';
+          return;
+        }
         ctx.clearRect(0,0,canvas.width,canvas.height);
+        // draw pieces
         pieces.forEach(p => {
-          ctx.beginPath(); ctx.lineWidth = p.r;
+          ctx.save();
+          ctx.globalAlpha = .9;
+          ctx.fillStyle = p.color;
           ctx.strokeStyle = p.color;
-          ctx.moveTo(p.x+p.tilt+p.r/4, p.y);
-          ctx.lineTo(p.x+p.tilt, p.y+p.tilt+p.r/4);
-          ctx.stroke();
+          if (p.shape==='circle') {
+            ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+          } else {
+            ctx.translate(p.x,p.y); ctx.rotate(p.tiltAngle);
+            ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+          }
+          ctx.restore();
         });
+        // draw bursts
+        for(let i=bursts.length-1;i>=0;i--) {
+          const b=bursts[i];
+          ctx.globalAlpha=b.life;
+          ctx.fillStyle=b.color;
+          ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+          b.x+=b.vx; b.y+=b.vy; b.vy+=.15; b.life-=.025;
+          if(b.life<=0) bursts.splice(i,1);
+        }
+        ctx.globalAlpha=1;
+        // update pieces
         pieces.forEach(p => {
           p.tiltAngle += p.tiltSpeed;
-          p.y += (Math.cos(frame/20+p.d)+1.2);
-          p.x += Math.sin(frame/100)*2;
+          p.y += (Math.cos(frame/20+p.d)+1.4);
+          p.x += Math.sin(frame/80)*1.5;
           p.tilt = Math.sin(p.tiltAngle)*15;
-          if (p.y > canvas.height) { p.y = -10; p.x = Math.random()*canvas.width; }
+          if (p.y > canvas.height) { p.y = -12; p.x = Math.random()*canvas.width; }
         });
+        // add burst every 90 frames
+        if (frame % 90 === 0) addBurst();
         frame++;
-        if (frame < 300) requestAnimationFrame(draw);
-        else { ctx.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
+        _confettiRAF = requestAnimationFrame(draw);
       }
       draw();
+    }
+
+    function closeCelebration() {
+      document.getElementById('winner-overlay').classList.remove('show');
+      if (_confettiRAF) { cancelAnimationFrame(_confettiRAF); _confettiRAF=null; }
+      if (_celebrationTimer) { clearInterval(_celebrationTimer); _celebrationTimer=null; }
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      canvas.style.display='none';
     }
 
     function checkCompletion(scores) {
@@ -227,14 +316,50 @@
       if (grandTotal < 24) { _confettiFired = false; return; }
       if (_confettiFired) return;
       _confettiFired = true;
-      fireConfetti();
-      // find winner
+
       const players = KOC_PLAYERS.filter(p => scores[p.username]);
-      const winner = players.reduce((a,b) => (scores[b.username]?.total||0) > (scores[a.username]?.total||0) ? b : a);
-      const banner = document.getElementById('winner-banner');
-      document.getElementById('winner-banner-name').textContent = winner.display + ' WINS!';
-      document.getElementById('winner-banner-sub').textContent = 'Total: ' + (scores[winner.username]?.total||0) + ' points — All 8 games complete';
-      banner.classList.add('show');
+      const sorted = [...players].sort((a,b)=>(scores[b.username]?.total||0)-(scores[a.username]?.total||0));
+      const winner = sorted[0];
+      const ws = scores[winner.username] || {};
+      const GAMES = ['monopoly','bluff','spoon','uno'];
+
+      // populate banner
+      document.getElementById('wb-name').textContent = winner.display + ' WINS!';
+      document.getElementById('wb-wins').textContent = '🏆 King of Cards';
+      document.getElementById('wb-pts').textContent = (ws.total||0) + ' points · All 8 games complete';
+      document.getElementById('wb-scores').innerHTML = GAMES.map(g => {
+        const r1 = ws['r1_'+g]||0, r2 = ws['r2_'+g]||0;
+        return `<div class="wb-score-item">
+          <div class="wb-score-val">${r1+r2}</div>
+          <div class="wb-score-label">${g.slice(0,4)}</div>
+        </div>`;
+      }).join('');
+
+      // show overlay
+      document.getElementById('winner-overlay').classList.add('show');
+
+      // countdown bar + timer
+      const startTime = Date.now();
+      const endTime = startTime + CELEBRATE_SECS * 1000;
+      const fill = document.getElementById('wb-bar-fill');
+      const timerEl = document.getElementById('wb-timer');
+      if (_celebrationTimer) clearInterval(_celebrationTimer);
+      _celebrationTimer = setInterval(() => {
+        const remaining = Math.max(0, endTime - Date.now());
+        const pct = (remaining / (CELEBRATE_SECS*1000)) * 100;
+        if (fill) fill.style.width = pct + '%';
+        const secs = Math.ceil(remaining/1000);
+        if (timerEl) timerEl.textContent = secs > 0 ? `Celebrating... ${secs}s` : 'Done!';
+        if (remaining <= 0) {
+          clearInterval(_celebrationTimer);
+          _celebrationTimer = null;
+          closeCelebration();
+        }
+      }, 500);
+
+      // fire confetti for full duration
+      fireConfetti(CELEBRATE_SECS * 1000);
+
       // push notification to all players
       fetch(`/api/koc/live/${SESSION_ID}`, {
         method: 'PUT', headers: {'Content-Type':'application/json'},
