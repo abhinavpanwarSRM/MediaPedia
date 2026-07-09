@@ -79,7 +79,8 @@
     }
 
     /* LEADERBOARD */
-    .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .leaderboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; }
+    .leaderboard { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 420px; }
     .lb-row { display: grid; grid-template-columns: 60px 1fr repeat(4,80px); align-items: center;
                padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,215,0,0.07); transition: background 0.2s; gap: 0.5rem; }
     .lb-row:last-child { border-bottom: none; }
@@ -92,9 +93,6 @@
     .lb-name a:hover { color: var(--gold); }
     .lb-stat { text-align: center; font-size: 0.9rem; color: #ccc; }
     .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 1rem; }
-    @media (max-width: 600px) {
-      .lb-row { grid-template-columns: 48px 1fr repeat(4,60px); padding: 0.8rem; font-size: 0.82rem; }
-    }
 
     /* EDITIONS GRID */
     .editions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 1.2rem; }
@@ -230,11 +228,7 @@
     .predict-btn.selected { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.15); box-shadow: 0 0 12px rgba(255,215,0,.15); }
     /* GAME BADGE — fix font */
     .game-badge { font-family: 'Poppins', sans-serif; font-weight: 600; letter-spacing: .5px; }
-    /* MOBILE LEADERBOARD — prevent overflow at 400px */
-    @media (max-width: 440px) {
-      .lb-row { grid-template-columns: 36px 1fr repeat(4,50px); padding: .6rem .5rem; font-size: .75rem; }
-      .lb-rank { font-size: .9rem; }
-    }
+
   </style>
 </head>
 <body>
@@ -309,7 +303,7 @@
     <!-- ALL-TIME LEADERBOARD -->
     <section style="margin-bottom:3rem;">
       <div class="section-title">All-Time Leaderboard</div>
-      <div class="leaderboard">
+      <div class="leaderboard-wrap"><div class="leaderboard">
         <div class="lb-row header">
           <div>Rank</div>
           <div>Player</div>
@@ -336,7 +330,7 @@
           <div class="lb-stat">{{ p.tournament_wins }}</div>
         </div>
         {% endfor %}
-      </div>
+      </div></div>
     </section>
 
     <!-- EDITIONS -->
@@ -450,6 +444,16 @@
           {% endfor %}
         </div>
         <div id="predict-result" style="margin-top:1rem;"></div>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if is_koc_player %}
+    <!-- NEXT EDITION -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Next Edition</div>
+      <div id="next-edition-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
       </div>
     </section>
     {% endif %}
@@ -1042,7 +1046,123 @@
     }).catch(()=>{});
     {% endif %}
 
-    // ===== INIT KOC-PLAYER SECTIONS =====
+    // ===== NEXT EDITION =====
+    function loadNextEdition() {
+      fetch('/api/koc/next_edition').then(r=>r.json()).then(doc => {
+        const wrap = document.getElementById('next-edition-wrap');
+        if (!wrap) return;
+        if (!doc || !doc.proposed_date) {
+          wrap.innerHTML = renderNextEditionPropose();
+          return;
+        }
+        const agreed = doc.agreed || [];
+        const allAgreed = agreed.length >= 6;
+        const targetDate = new Date(doc.proposed_date + 'T00:00:00');
+        const now = new Date();
+        const diff = targetDate - now;
+        let countdown = '';
+        if (diff > 0) {
+          const d = Math.floor(diff/86400000);
+          const h = Math.floor((diff%86400000)/3600000);
+          const m = Math.floor((diff%3600000)/60000);
+          countdown = `${d}d ${h}h ${m}m`;
+        } else {
+          countdown = 'Today!';
+        }
+        const agreedNames = agreed.map(u => u.charAt(0).toUpperCase()+u.slice(1)).join(', ');
+        const viewer = '{{ username or "" }}';
+        const hasAgreed = agreed.includes(viewer);
+        wrap.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
+            <div>
+              <div style="font-size:.7rem;letter-spacing:2px;color:var(--gold2);text-transform:uppercase;margin-bottom:.3rem;">Proposed Date</div>
+              <div style="font-size:1.4rem;font-weight:800;color:var(--gold);">${doc.proposed_date}</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem;">by ${doc.proposed_by}</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:.7rem;letter-spacing:2px;color:var(--gold2);text-transform:uppercase;margin-bottom:.3rem;">${allAgreed?'CONFIRMED':'Countdown'}</div>
+              <div style="font-size:1.6rem;font-weight:800;color:${allAgreed?'#2ed573':'var(--gold)'}" id="ned-countdown">${countdown}</div>
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem;">Agreed (${agreed.length}/6): <span style="color:#ccc;">${agreedNames||'none'}</span></div>
+            <div style="background:rgba(255,255,255,.06);border-radius:20px;height:6px;overflow:hidden;">
+              <div style="background:${allAgreed?'#2ed573':'var(--gold)'};height:100%;border-radius:20px;width:${Math.round(agreed.length/6*100)}%;transition:width .4s;"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+            ${!hasAgreed ? `<button class="btn btn-gold" onclick="agreeNextEdition()">Agree</button>` : `<span style="color:#2ed573;font-size:.85rem;font-weight:600;">You agreed</span>`}
+            <button class="btn btn-muted" style="font-size:.78rem;" onclick="showNextEditionPropose()">Change Date</button>
+            <button class="btn btn-red" style="font-size:.78rem;" onclick="deleteNextEdition()">Delete</button>
+          </div>
+          <div id="ned-propose-form" style="display:none;margin-top:1rem;">${renderNextEditionProposeForm()}</div>
+        `;
+        startCountdownTick();
+      }).catch(()=>{});
+    }
+
+    function renderNextEditionPropose() {
+      return `<p style="color:#aaa;font-size:.85rem;margin-bottom:1rem;">No next edition date set yet. Propose one!</p>${renderNextEditionProposeForm()}`;
+    }
+    function renderNextEditionProposeForm() {
+      const min = new Date().toISOString().slice(0,10);
+      return `<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+        <input type="date" id="ned-date-input" min="${min}" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;padding:.5rem .8rem;font-size:.88rem;font-family:'Poppins',sans-serif;" />
+        <button class="btn btn-gold" onclick="proposeNextEdition()">Propose</button>
+      </div>`;
+    }
+    function showNextEditionPropose() {
+      const f = document.getElementById('ned-propose-form');
+      if (f) f.style.display = f.style.display==='none' ? 'block' : 'none';
+    }
+    function proposeNextEdition() {
+      const inp = document.getElementById('ned-date-input');
+      if (!inp || !inp.value) { showToast('Pick a date'); return; }
+      fetch('/api/koc/next_edition', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'propose', date: inp.value})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Date proposed: ' + inp.value);
+        loadNextEdition();
+      });
+    }
+    function agreeNextEdition() {
+      fetch('/api/koc/next_edition', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'agree'})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('You agreed!');
+        loadNextEdition();
+      });
+    }
+    function deleteNextEdition() {
+      if (!confirm('Delete the proposed date?')) return;
+      fetch('/api/koc/next_edition', {method:'DELETE'})
+        .then(r=>r.json()).then(() => { showToast('Date cleared'); loadNextEdition(); });
+    }
+    let _countdownTimer = null;
+    function startCountdownTick() {
+      if (_countdownTimer) clearInterval(_countdownTimer);
+      _countdownTimer = setInterval(() => {
+        const el = document.getElementById('ned-countdown');
+        if (!el) { clearInterval(_countdownTimer); return; }
+        const wrap = document.getElementById('next-edition-wrap');
+        const dateEl = wrap && wrap.querySelector('[style*="1.4rem"]');
+        if (!dateEl) return;
+        const dateStr = dateEl.textContent.trim();
+        const target = new Date(dateStr + 'T00:00:00');
+        const diff = target - new Date();
+        if (diff <= 0) { el.textContent = 'Today!'; return; }
+        const d = Math.floor(diff/86400000);
+        const h = Math.floor((diff%86400000)/3600000);
+        const m = Math.floor((diff%3600000)/60000);
+        el.textContent = `${d}d ${h}h ${m}m`;
+      }, 60000);
+    }
+
+    // ===== INIT =====
     loadTrend();
     loadStreaks();
     loadGameLB();
@@ -1050,6 +1170,7 @@
     loadHeatmap();
     loadChat();
     loadPushStatus();
+    loadNextEdition();
     chatInterval = setInterval(pollChat, 5000);
     {% endif %}
   </script>

@@ -58,6 +58,15 @@
     .toast.show{opacity:1;}
     .pulse{animation:pulse 1.5s ease-in-out infinite;}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    /* CONFETTI */
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998;display:none;}
+    .winner-banner{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(184,134,11,.18));
+      border:2px solid var(--gold);border-radius:20px;padding:2rem 2.5rem;text-align:center;
+      z-index:9997;backdrop-filter:blur(12px);max-width:90vw;}
+    .winner-banner.show{display:block;}
+    .winner-banner h2{font-family:'Cormorant Garamond',serif;font-size:2rem;color:var(--gold);margin-bottom:.5rem;}
+    .winner-banner p{color:#ccc;font-size:.95rem;}
     @media(max-width:380px){.score-inputs{grid-template-columns:1fr;}.tabs-row{gap:.3rem;}.tab-btn{padding:.35rem .6rem;font-size:.76rem;}}
   </style>
 </head>
@@ -150,11 +159,70 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <canvas id="confetti-canvas"></canvas>
+  <div class="winner-banner" id="winner-banner">
+    <h2 id="winner-banner-name"></h2>
+    <p id="winner-banner-sub"></p>
+    <button class="btn btn-gold" style="margin-top:1rem;" onclick="document.getElementById('winner-banner').classList.remove('show')">Close</button>
+  </div>
 
   <script>
     const SESSION_ID = '{{ session_id }}';
     const IS_PLAYER = {{ 'true' if is_koc_player else 'false' }};
     const GAMES = ['monopoly','bluff','spoon','uno'];
+    let _confettiFired = false;
+
+    // ===== CONFETTI =====
+    function fireConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      canvas.style.display = 'block';
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+      const ctx = canvas.getContext('2d');
+      const pieces = Array.from({length:160}, () => ({
+        x: Math.random()*canvas.width, y: Math.random()*canvas.height - canvas.height,
+        r: Math.random()*6+4, d: Math.random()*160+80,
+        color: ['#ffd700','#ff6b6b','#2ed573','#5799ef','#ff9f43','#a29bfe','#fff'][Math.floor(Math.random()*7)],
+        tilt: Math.random()*10-10, tiltAngle: 0, tiltSpeed: Math.random()*.1+.05
+      }));
+      let frame = 0;
+      function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        pieces.forEach(p => {
+          ctx.beginPath(); ctx.lineWidth = p.r;
+          ctx.strokeStyle = p.color;
+          ctx.moveTo(p.x+p.tilt+p.r/4, p.y);
+          ctx.lineTo(p.x+p.tilt, p.y+p.tilt+p.r/4);
+          ctx.stroke();
+        });
+        pieces.forEach(p => {
+          p.tiltAngle += p.tiltSpeed;
+          p.y += (Math.cos(frame/20+p.d)+1.2);
+          p.x += Math.sin(frame/100)*2;
+          p.tilt = Math.sin(p.tiltAngle)*15;
+          if (p.y > canvas.height) { p.y = -10; p.x = Math.random()*canvas.width; }
+        });
+        frame++;
+        if (frame < 300) requestAnimationFrame(draw);
+        else { ctx.clearRect(0,0,canvas.width,canvas.height); canvas.style.display='none'; }
+      }
+      draw();
+    }
+
+    function checkCompletion(scores) {
+      const grandTotal = Object.values(scores).reduce((s,p) => s+(p.total||0), 0);
+      if (grandTotal < 24) { _confettiFired = false; return; }
+      if (_confettiFired) return;
+      _confettiFired = true;
+      fireConfetti();
+      // find winner
+      const players = KOC_PLAYERS.filter(p => scores[p.username]);
+      const winner = players.reduce((a,b) => (scores[b.username]?.total||0) > (scores[a.username]?.total||0) ? b : a);
+      const banner = document.getElementById('winner-banner');
+      document.getElementById('winner-banner-name').textContent = winner.display + ' WINS!';
+      document.getElementById('winner-banner-sub').textContent = 'Total: ' + (scores[winner.username]?.total||0) + ' points — All 8 games complete';
+      banner.classList.add('show');
+    }
+
     let KOC_PLAYERS = [
       {username:'abhinav',  display:'ABHINAV'},
       {username:'A3h1', display:'ABHISHEK'},
@@ -255,6 +323,7 @@
       document.getElementById('round-info').innerHTML =
         `Round ${cr} &nbsp;&bull;&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${cg.charAt(0).toUpperCase()+cg.slice(1)}</strong>`;
       document.getElementById('session-id-label').textContent = `#${SESSION_ID}`;
+      checkCompletion(scores);
     }
 
     function renderInputs() {

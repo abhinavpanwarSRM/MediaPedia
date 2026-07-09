@@ -2567,8 +2567,16 @@ def kingofcards():
             last = tournaments[-1]
             latest_edition = last.get('edition', 0)
             current_champion = last.get('winner_display', '')
+            # Find streak start: walk back while winner is the same
+            champ_u = last.get('winner_username', '')
+            streak_start = last
+            for t in reversed(tournaments):
+                if t.get('winner_username', '') == champ_u:
+                    streak_start = t
+                else:
+                    break
             try:
-                played = datetime.fromisoformat(last.get('played_on', ''))
+                played = datetime.fromisoformat(streak_start.get('played_on', ''))
                 reign_days = (datetime.now() - played).days
             except Exception:
                 reign_days = 0
@@ -3132,6 +3140,84 @@ def koc_seed_players():
         })
         created.append(p['username'])
     return jsonify({'created': created, 'message': 'Seed complete'})
+
+
+# ===== KOC Next Edition =====
+koc_next_edition_collection = None
+try:
+    if db is not None:
+        koc_next_edition_collection = db.koc_next_edition
+except Exception as e:
+    log.error('Failed to init koc_next_edition: %s', e)
+
+@app.route('/api/koc/next_edition', methods=['GET'])
+def koc_next_edition_get():
+    if koc_next_edition_collection is None:
+        return jsonify({})
+    doc = koc_next_edition_collection.find_one({}, {'_id': 0})
+    return jsonify(doc or {})
+
+@app.route('/api/koc/next_edition', methods=['POST'])
+def koc_next_edition_post():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_next_edition_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    action = data.get('action', 'propose')
+    if action == 'propose':
+        date_str = data.get('date', '').strip()
+        if not date_str:
+            return jsonify({'error': 'date required'}), 400
+        # Reset: new proposal clears all votes
+        doc = {
+            'proposed_date': date_str,
+            'proposed_by': username,
+            'proposed_at': datetime.now(timezone.utc).isoformat(),
+            'agreed': [username]
+        }
+        koc_next_edition_collection.replace_one({}, doc, upsert=True)
+        # Notify others
+        for u in KOC_USERNAMES:
+            if u != username:
+                send_push(u, {
+                    'title': 'KOC Next Edition Proposed',
+                    'body': f'{KOC_DISPLAY.get(username, username)} proposed {date_str} for the next edition. Agree in the app!',
+                    'url': '/kingofcards',
+                    'tag': 'koc-next-edition'
+                })
+        return jsonify(doc)
+    elif action == 'agree':
+        doc = koc_next_edition_collection.find_one({}, {'_id': 0})
+        if not doc:
+            return jsonify({'error': 'No date proposed yet'}), 404
+        agreed = doc.get('agreed', [])
+        if username not in agreed:
+            agreed.append(username)
+            koc_next_edition_collection.update_one({}, {'$set': {'agreed': agreed}})
+        doc['agreed'] = agreed
+        # If all 6 agreed, push everyone
+        if set(agreed) >= KOC_USERNAMES:
+            for u in KOC_USERNAMES:
+                send_push(u, {
+                    'title': 'KOC Date Confirmed!',
+                    'body': f'All players agreed: next edition on {doc["proposed_date"]}',
+                    'url': '/kingofcards',
+                    'tag': 'koc-next-edition-confirmed'
+                })
+        return jsonify(doc)
+    return jsonify({'error': 'Unknown action'}), 400
+
+@app.route('/api/koc/next_edition', methods=['DELETE'])
+def koc_next_edition_delete():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_next_edition_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    koc_next_edition_collection.delete_many({})
+    return jsonify({'success': True})
 
 
 if __name__ == "__main__":
