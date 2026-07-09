@@ -174,6 +174,7 @@
       #random-movies,
       #random-series {
         padding: 1.2rem;
+        overflow: hidden;
       }
 
       #random-list,
@@ -201,47 +202,15 @@
         box-sizing: border-box;
       }
 
-      #random-list a {
-        background: rgba(36, 36, 36, 0.8);
-        color: var(--text-light);
-        padding: 0.8rem 1.2rem;
-        border-radius: 4px;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: clamp(0.85rem, 2vw, 0.95rem);
-        flex: 1 0 auto;
-        min-width: 150px;
-        max-width: 100%;
-        transition: all 0.3s ease;
-        border-left: 3px solid var(--primary);
-        text-align: center;
-      }
-
+      #random-list a,
       #random-list2 a {
-        background: rgba(36, 36, 36, 0.8);
-        color: var(--text-light);
-        padding: 0.8rem 1.2rem;
-        border-radius: 4px;
         text-decoration: none;
-        font-weight: 500;
-        font-size: clamp(0.85rem, 2vw, 0.95rem);
-        flex: 1 0 auto;
-        min-width: 150px;
-        max-width: 100%;
-        transition: all 0.3s ease;
-        border-left: 3px solid rgba(0, 168, 225, 0.3);
-        text-align: center;
+        color: var(--text-light);
+        min-width: 0;
+        overflow: hidden;
       }
 
-      #random-list a:hover {
-        background: rgba(229, 9, 20, 0.2);
-        transform: translateY(-2px);
-      }
 
-      #random-list2 a:hover {
-        background: rgba(0, 168, 225, 0.2);
-        transform: translateY(-2px);
-      }
 
       /* Filters section */
       #filters,
@@ -502,30 +471,10 @@
           grid-template-columns: 1fr;
         }
 
-        #random-list a,
-        #random-list2 a {
-          min-width: 120px;
-          padding: 0.8rem;
-        }
-
-        td,
-        th {
-          padding: 0.8rem 1rem;
-        }
-      }
-
       @media (max-width: 480px) {
-        #random-list,
-        #random-list2 {
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-
         #random-list a,
         #random-list2 a {
-          width: 90%;
-          max-width: 90%;
+          min-width: 0;
         }
 
         .title::after {
@@ -533,6 +482,14 @@
           height: 1px;
         }
       }
+
+        td,
+        th {
+          padding: 0.8rem 1rem;
+        }
+      }
+
+
 
       /* Recommendation Engine Styles */
       #recommendation-engine {
