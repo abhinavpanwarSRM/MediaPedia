@@ -399,6 +399,9 @@
           </button>
         </div>
 
+        <!-- Series Poster -->
+        <div id="series-poster-wrap" style="display:flex;justify-content:center;margin-bottom:1.2rem;"></div>
+
         <!-- Trailer will be inserted here -->
         <div id="trailer-container" class="trailer-container"></div>
 
@@ -1336,6 +1339,29 @@
 
       // Start fetching trailer with first API key
       fetchTrailerWithKey();
+
+      // ===== TMDB Poster =====
+      (function loadPoster() {
+        const title = {{ series['Title']|tojson }};
+        fetch('/api/poster?title=' + encodeURIComponent(title) + '&kind=tv')
+          .then(r => r.json())
+          .then(d => {
+            if (d.poster) {
+              document.getElementById('series-poster-wrap').innerHTML =
+                `<img src="${d.poster}" alt="Poster" loading="lazy"
+                  style="width:160px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.08);"
+                  onerror="this.parentElement.style.display='none'" />`;
+            }
+            if (d.backdrop) {
+              document.body.style.backgroundImage =
+                `linear-gradient(rgba(0,0,0,0.75),rgba(0,0,0,0.75)),url('${d.backdrop}')`;
+              document.body.style.backgroundSize = 'cover';
+              document.body.style.backgroundPosition = 'center';
+              document.body.style.backgroundAttachment = 'fixed';
+            }
+          })
+          .catch(() => {});
+      })();
     </script>
     <script>
       // Save Manager WITHOUT expiry

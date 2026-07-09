@@ -69,6 +69,95 @@ def _close_mongo():
 
 atexit.register(_close_mongo)
 
+# ===== TMDB Poster Cache =====
+poster_cache_collection = None
+try:
+    if db is not None:
+        poster_cache_collection = db.poster_cache
+        poster_cache_collection.create_index('title')
+except Exception as e:
+    log.error('Failed to init poster_cache: %s', e)
+
+@app.route('/api/poster')
+def get_poster():
+    title = request.args.get('title', '').strip()
+    year  = request.args.get('year', '').strip()
+    kind  = request.args.get('kind', 'movie')   # 'movie' or 'tv'
+    if not title:
+        return jsonify({'poster': ''})
+    cache_key = f"{kind}:{title}:{year}"
+    if poster_cache_collection is not None:
+        cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'poster': 1, 'backdrop': 1})
+        if cached:
+            return jsonify({'poster': cached.get('poster',''), 'backdrop': cached.get('backdrop','')})
+    token = os.getenv('TMDB_TOKEN', '')
+    if not token:
+        return jsonify({'poster': '', 'backdrop': ''})
+    try:
+        endpoint = 'search/movie' if kind == 'movie' else 'search/tv'
+        params = {'query': title, 'language': 'en-US'}
+        if year:
+            params['year' if kind == 'movie' else 'first_air_date_year'] = year
+        resp = http_requests.get(
+            f'https://api.themoviedb.org/3/{endpoint}',
+            headers={'Authorization': f'Bearer {token}'},
+            params=params, timeout=5
+        )
+        resp.raise_for_status()
+        results = resp.json().get('results', [])
+        poster = backdrop = ''
+        if results:
+            r = results[0]
+            p = r.get('poster_path', '')
+            b = r.get('backdrop_path', '')
+            poster   = f'https://image.tmdb.org/t/p/w342{p}'   if p else ''
+            backdrop = f'https://image.tmdb.org/t/p/original{b}' if b else ''
+        if poster_cache_collection is not None:
+            poster_cache_collection.update_one(
+                {'title': cache_key},
+                {'$set': {'title': cache_key, 'poster': poster, 'backdrop': backdrop}},
+                upsert=True
+            )
+        return jsonify({'poster': poster, 'backdrop': backdrop})
+    except Exception as e:
+        log.error('TMDB poster error: %s', e)
+        return jsonify({'poster': '', 'backdrop': ''})
+
+@app.route('/api/person_photo')
+def get_person_photo():
+    name = request.args.get('name', '').strip()
+    if not name:
+        return jsonify({'photo': ''})
+    if poster_cache_collection is not None:
+        cached = poster_cache_collection.find_one({'title': f'person:{name}'}, {'_id': 0, 'photo': 1})
+        if cached:
+            return jsonify({'photo': cached.get('photo', '')})
+    token = os.getenv('TMDB_TOKEN', '')
+    if not token:
+        return jsonify({'photo': ''})
+    try:
+        resp = http_requests.get(
+            'https://api.themoviedb.org/3/search/person',
+            headers={'Authorization': f'Bearer {token}'},
+            params={'query': name, 'language': 'en-US'}, timeout=5
+        )
+        resp.raise_for_status()
+        results = resp.json().get('results', [])
+        photo = ''
+        if results:
+            p = results[0].get('profile_path', '')
+            photo = f'https://image.tmdb.org/t/p/w185{p}' if p else ''
+        if poster_cache_collection is not None:
+            poster_cache_collection.update_one(
+                {'title': f'person:{name}'},
+                {'$set': {'title': f'person:{name}', 'photo': photo}},
+                upsert=True
+            )
+        return jsonify({'photo': photo})
+    except Exception as e:
+        log.error('TMDB person photo error: %s', e)
+        return jsonify({'photo': ''})
+
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
 def tmdb_popular():

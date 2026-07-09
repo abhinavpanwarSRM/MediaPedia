@@ -35,7 +35,12 @@
 <body>
   <div class="container">
     <a href="/" class="back">← Back to Home</a>
-    <h1>{{ actor_name }}</h1>
+
+    <!-- Actor headshot -->
+    <div id="actor-photo-wrap" style="display:flex;align-items:center;gap:1.2rem;margin-bottom:1.5rem;">
+      <div id="actor-img-slot"></div>
+      <h1 style="margin:0;">{{ actor_name }}</h1>
+    </div>
 
     <h2>Movies ({{ movies|length }})</h2>
     <div class="grid">
@@ -68,5 +73,17 @@
     </div>
   </div>
     <script src="/static/pwa.js"></script>
+  <script>
+    fetch('/api/person_photo?name=' + encodeURIComponent({{ actor_name|tojson }}))
+      .then(r => r.json())
+      .then(d => {
+        if (d.photo) {
+          document.getElementById('actor-img-slot').innerHTML =
+            `<img src="${d.photo}" alt="{{ actor_name }}" loading="lazy"
+              style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);flex-shrink:0;"
+              onerror="this.style.display='none'" />`;
+        }
+      }).catch(() => {});
+  </script>
 </body>
 </html>

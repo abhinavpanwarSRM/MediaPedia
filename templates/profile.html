@@ -383,7 +383,11 @@
     <!-- Reviews -->
     <div class="tab-panel" id="tab-reviews">
       {% for c in comments %}
-      <div class="review-card">
+      <div class="review-card" style="display:flex;gap:.9rem;align-items:flex-start;">
+        <img id="rp_{{ loop.index }}" src="" alt="" loading="lazy"
+          style="display:none;width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0;margin-top:.1rem;"
+          onerror="this.style.display='none'" />
+        <div style="flex:1;min-width:0;">
         <div class="review-meta">
           <span>{{ c.get('created_at','')[:10] }}</span>
           {% if c.get('content_type') and c.get('id') %}
@@ -393,7 +397,18 @@
         <div class="review-stars">{{ '★' * c.get('rating',0) }}{{ '☆' * (5 - c.get('rating',0)) }}</div>
         <div class="review-text">{{ c.get('text','') }}</div>
         <div class="review-likes">👍 {{ c.get('likes',0) }}</div>
+        </div>
       </div>
+      <script>
+        (function(){
+          var kind = '{{ c.get("content_type","movie") }}' === 'series' ? 'tv' : 'movie';
+          fetch('/api/poster?title=' + encodeURIComponent('{{ c.get("content_title","")|replace("'","") }}') + '&kind=' + kind)
+            .then(r=>r.json()).then(d=>{
+              var el = document.getElementById('rp_{{ loop.index }}');
+              if(el && d.poster){el.src=d.poster;el.style.display='block';}
+            }).catch(function(){});
+        })();
+      </script>
       {% else %}
       <p class="empty">No reviews yet.</p>
       {% endfor %}
