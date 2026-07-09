@@ -2191,24 +2191,6 @@
       }
       document.querySelectorAll('.song-art').forEach(loadArtistPhoto);
 
-      // Artist photos
-      const _artistPhotoCache = {};
-      function loadArtistPhoto(img) {
-        const artist = img.dataset.artist;
-        if (!artist) return;
-        if (_artistPhotoCache[artist] !== undefined) {
-          if (_artistPhotoCache[artist]) { img.src = _artistPhotoCache[artist]; img.style.display = 'block'; }
-          return;
-        }
-        fetch('/api/artist_photo?name=' + encodeURIComponent(artist))
-          .then(r => r.json())
-          .then(d => {
-            _artistPhotoCache[artist] = d.photo || '';
-            if (d.photo) { img.src = d.photo; img.style.display = 'block'; }
-          }).catch(() => { _artistPhotoCache[artist] = ''; });
-      }
-      document.querySelectorAll('.song-art').forEach(loadArtistPhoto);
-
       // ── Total duration ────────────────────────────────────────────────────────
       function updateTotalDuration() {
         let total = 0;
