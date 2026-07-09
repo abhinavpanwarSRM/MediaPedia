@@ -484,6 +484,9 @@
           padding: 1.5rem;
         }
 
+        #hero-carousel { height: 260px !important; }
+        #hero-info { bottom: 1rem !important; left: 1rem !important; max-width: 80% !important; }
+        #hero-info > div:first-child { display: none; }
         #filters,
         #filters2 {
           grid-template-columns: 1fr;
@@ -1333,9 +1336,27 @@
         <div id="random-list2">Loading...</div>
       </section>
 
-      <section id="tmdb-suggestions">
-        <h2>Suggested Movies</h2>
-        <div id="tmdb-movie-display">Loading suggestions...</div>
+      <section id="tmdb-suggestions" style="padding:0;background:none;border:none;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;overflow:hidden;border-radius:12px;">
+        <div id="hero-carousel" style="position:relative;width:100%;height:420px;border-radius:12px;overflow:hidden;background:#111;">
+          <div id="hero-slides" style="width:100%;height:100%;"></div>
+          <!-- overlay gradient -->
+          <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.2) 60%,transparent 100%);pointer-events:none;"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.6) 0%,transparent 50%);pointer-events:none;"></div>
+          <!-- text overlay -->
+          <div id="hero-info" style="position:absolute;bottom:2rem;left:2rem;max-width:55%;">
+            <div id="hero-badge" style="display:inline-block;background:var(--primary);color:#fff;font-size:0.7rem;font-weight:700;letter-spacing:1px;padding:0.2rem 0.6rem;border-radius:3px;margin-bottom:0.6rem;text-transform:uppercase;">TMDB Popular</div>
+            <div id="hero-title" style="font-size:clamp(1.4rem,4vw,2.2rem);font-weight:700;line-height:1.2;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.6);margin-bottom:0.4rem;"></div>
+            <div id="hero-meta" style="font-size:0.85rem;color:rgba(255,255,255,0.75);margin-bottom:1rem;"></div>
+            <a id="hero-link" href="#" target="_blank" rel="noopener noreferrer"
+              style="display:inline-block;background:var(--primary);color:#fff;padding:0.55rem 1.3rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.88rem;transition:opacity 0.2s;"
+              onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">View on TMDB ↗</a>
+          </div>
+          <!-- nav dots -->
+          <div id="hero-dots" style="position:absolute;bottom:1rem;right:1.5rem;display:flex;gap:0.4rem;"></div>
+          <!-- prev/next -->
+          <button onclick="heroNav(-1)" style="position:absolute;left:0.8rem;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8249;</button>
+          <button onclick="heroNav(1)"  style="position:absolute;right:0.8rem;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8250;</button>
+        </div>
       </section>
 
       <section id="filters">
@@ -3058,55 +3079,51 @@
         });
       }
 
-      // TMDB API via server proxy
-      const tmdbDisplay = document.getElementById("tmdb-movie-display");
-      let tmdbMovies = [];
-      let tmdbIndex = 0;
+      // ===== TMDB Hero Carousel =====
+      let heroMovies = [], heroIdx = 0, heroTimer = null;
 
-      function showTmdbMovie(index) {
-        if (tmdbMovies.length === 0) {
-          tmdbDisplay.textContent = "No TMDb suggestions found.";
-          return;
-        }
-        tmdbDisplay.style.opacity = 0;
-        setTimeout(() => {
-          const movie = tmdbMovies[index];
-          tmdbDisplay.innerHTML = `
-            <a href="https://www.themoviedb.org/movie/${movie.id}" target="_blank">
-              <strong>${movie.title.toUpperCase()}</strong><br/>
-              Release Date: ${movie.release_date}<br/>
-              Rating: ${movie.vote_average}
-            </a>
-          `;
-          tmdbDisplay.style.opacity = 1;
-        }, 500);
+      function heroShow(idx) {
+        if (!heroMovies.length) return;
+        heroIdx = (idx + heroMovies.length) % heroMovies.length;
+        const m = heroMovies[heroIdx];
+        const slides = document.getElementById('hero-slides');
+        const backdrop = m.backdrop_path ? `https://image.tmdb.org/t/p/original${m.backdrop_path}` : '';
+        slides.style.cssText = `width:100%;height:100%;background:${backdrop ? `url('${backdrop}') center/cover no-repeat` : '#1a1a1a'};transition:background-image 0.6s ease;`;
+        document.getElementById('hero-title').textContent = m.title || m.name || '';
+        document.getElementById('hero-meta').textContent = [
+          (m.release_date || m.first_air_date || '').slice(0,4),
+          m.vote_average ? '★ ' + m.vote_average.toFixed(1) : ''
+        ].filter(Boolean).join('  ·  ');
+        document.getElementById('hero-link').href = `https://www.themoviedb.org/movie/${m.id}`;
+        // update dots
+        document.querySelectorAll('.hero-dot').forEach((d, i) => {
+          d.style.opacity = i === heroIdx ? '1' : '0.35';
+          d.style.width = i === heroIdx ? '20px' : '8px';
+        });
       }
 
-      function cycleTmdbMovies() {
-        showTmdbMovie(tmdbIndex);
-        tmdbIndex = (tmdbIndex + 1) % tmdbMovies.length;
+      function heroNav(dir) {
+        clearInterval(heroTimer);
+        heroShow(heroIdx + dir);
+        heroTimer = setInterval(() => heroShow(heroIdx + 1), 6000);
       }
 
       function fetchTmdbMovies() {
-        tmdbDisplay.textContent = "Loading TMDb suggestions...";
-        tmdbDisplay.style.opacity = 1;
         fetch('/api/tmdb/popular')
-          .then((res) => {
-            if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-            return res.json();
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+          .then(data => {
+            heroMovies = (data.results || []).filter(m => m.backdrop_path).slice(0, 10);
+            if (!heroMovies.length) return;
+            // build dots
+            const dotsEl = document.getElementById('hero-dots');
+            dotsEl.innerHTML = heroMovies.map((_, i) =>
+              `<div class="hero-dot" onclick="heroNav(${i} - heroIdx)" style="height:8px;width:8px;border-radius:4px;background:#fff;opacity:0.35;cursor:pointer;transition:all 0.3s;"></div>`
+            ).join('');
+            heroShow(0);
+            heroTimer = setInterval(() => heroShow(heroIdx + 1), 6000);
           })
-          .then((data) => {
-            tmdbMovies = data.results || [];
-            if (tmdbMovies.length > 0) {
-              cycleTmdbMovies();
-              setInterval(cycleTmdbMovies, 5000);
-            } else {
-              tmdbDisplay.textContent = "No TMDb suggestions found.";
-            }
-          })
-          .catch((err) => {
-            console.error("TMDb fetch error:", err);
-            tmdbDisplay.textContent = "Suggestions unavailable.";
+          .catch(() => {
+            document.getElementById('hero-carousel').style.display = 'none';
           });
       }
 

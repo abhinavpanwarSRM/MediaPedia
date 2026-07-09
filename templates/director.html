@@ -7,20 +7,22 @@
   <style>
     :root { --primary: #e50914; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .container { max-width: 900px; margin: 0 auto; }
     .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
     .back:hover { text-decoration: underline; }
     h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); border-bottom: 2px solid rgba(229,9,20,0.3); padding-bottom: 1rem; margin-bottom: 1.5rem; }
     .stats { display: flex; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
-    .stat { background: rgba(255,255,255,0.05); padding: 1rem 1.5rem; border-radius: 8px; border-left: 3px solid var(--primary); }
+    .stat { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); padding: 1rem 1.5rem; border-radius: 10px; border-left: 3px solid var(--primary); transition: all 0.2s; }
+    .stat:hover { border-color: rgba(229,9,20,0.6); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
     .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
     .stat-label { font-size: 0.85rem; color: var(--grey); margin-top: 0.2rem; }
     .signatures { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
     .sig-tag { background: rgba(229,9,20,0.15); border: 1px solid rgba(229,9,20,0.4); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; }
     .movie-grid { display: grid; gap: 0.8rem; }
-    .movie-row { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--primary); transition: background 0.2s; text-decoration: none; color: var(--text); }
-    .movie-row:hover { background: rgba(229,9,20,0.1); }
+    .movie-row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--primary); transition: all 0.2s; text-decoration: none; color: var(--text); }
+    .movie-row:hover { background: rgba(229,9,20,0.08); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
     .movie-title { font-weight: 600; font-size: 1rem; }
     .movie-meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
     .movie-rating { font-size: 1.1rem; font-weight: 700; color: var(--primary); white-space: nowrap; margin-left: 1rem; }

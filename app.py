@@ -123,6 +123,68 @@ def get_poster():
         log.error('TMDB poster error: %s', e)
         return jsonify({'poster': '', 'backdrop': ''})
 
+@app.route('/api/artist_photo')
+def get_artist_photo():
+    name = request.args.get('name', '').strip()
+    if not name:
+        return jsonify({'photo': ''})
+    cache_key = f'artist:{name}'
+    if poster_cache_collection is not None:
+        cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'photo': 1})
+        if cached:
+            return jsonify({'photo': cached.get('photo', '')})
+    photo = ''
+    try:
+        # MusicBrainz: free, no key, 1 req/sec
+        mb_resp = http_requests.get(
+            'https://musicbrainz.org/ws/2/artist/',
+            params={'query': f'artist:{name}', 'fmt': 'json', 'limit': 1},
+            headers={'User-Agent': 'MediaPedia/1.0 (mediapedia@example.com)'},
+            timeout=5
+        )
+        mb_resp.raise_for_status()
+        artists = mb_resp.json().get('artists', [])
+        if artists:
+            rels = artists[0].get('relations', []) or []
+            wikidata_url = next((r['url']['resource'] for r in rels if 'wikidata.org' in r.get('url', {}).get('resource', '')), None)
+            if not wikidata_url:
+                # fallback: try wikidata via artist name directly
+                wd_resp = http_requests.get(
+                    'https://www.wikidata.org/w/api.php',
+                    params={'action': 'wbsearchentities', 'search': name, 'language': 'en', 'format': 'json', 'limit': 1},
+                    timeout=5
+                )
+                wd_resp.raise_for_status()
+                items = wd_resp.json().get('search', [])
+                if items:
+                    wikidata_url = f"https://www.wikidata.org/wiki/{items[0]['id']}"
+            if wikidata_url:
+                qid = wikidata_url.rstrip('/').split('/')[-1]
+                wd_entity = http_requests.get(
+                    f'https://www.wikidata.org/wiki/Special:EntityData/{qid}.json',
+                    timeout=5
+                )
+                wd_entity.raise_for_status()
+                entity = wd_entity.json().get('entities', {}).get(qid, {})
+                # P18 = image property
+                claims = entity.get('claims', {})
+                p18 = claims.get('P18', [])
+                if p18:
+                    img_name = p18[0]['mainsnak']['datavalue']['value']
+                    img_name_encoded = img_name.replace(' ', '_')
+                    import hashlib
+                    md5 = hashlib.md5(img_name_encoded.encode()).hexdigest()
+                    photo = f'https://upload.wikimedia.org/wikipedia/commons/thumb/{md5[0]}/{md5[:2]}/{img_name_encoded}/300px-{img_name_encoded}'
+    except Exception as e:
+        log.error('Artist photo error for %s: %s', name, e)
+    if poster_cache_collection is not None:
+        poster_cache_collection.update_one(
+            {'title': cache_key},
+            {'$set': {'title': cache_key, 'photo': photo}},
+            upsert=True
+        )
+    return jsonify({'photo': photo})
+
 @app.route('/api/person_photo')
 def get_person_photo():
     name = request.args.get('name', '').strip()

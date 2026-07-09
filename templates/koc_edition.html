@@ -12,7 +12,8 @@
       --text: #fff; --muted: #888; --primary: #e50914;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; }
+    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
     .topnav { display: flex; justify-content: space-between; align-items: center;
               padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--border);
@@ -56,7 +57,7 @@
     }
 
     /* SCORE TABLE */
-    .score-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; border: 1px solid var(--border); }
+    .score-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; border: 1px solid var(--border); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     table { width: 100%; border-collapse: collapse; min-width: 480px; }
     thead tr { background: rgba(255,215,0,0.08); }
     th { padding: 0.75rem 0.6rem; font-size: 0.68rem; text-transform: uppercase;
@@ -112,9 +113,9 @@
                     font-family: 'Poppins', sans-serif; font-weight: 600; }
     .reaction-btn:hover { border-color: rgba(255,215,0,.4); color: var(--gold); background: rgba(255,215,0,.07); transform: translateY(-1px); }
     .reaction-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,.12); }
-    .comment-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-                    padding: 1rem 1.2rem; margin-bottom: .7rem; transition: border-color .2s; }
-    .comment-card:hover { border-color: rgba(255,215,0,.2); }
+    .comment-card { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 10px;
+                    padding: 1rem 1.2rem; margin-bottom: .7rem; transition: all .2s; }
+    .comment-card:hover { border-color: rgba(255,215,0,.2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
     .comment-meta { font-size: .72rem; color: var(--muted); margin-bottom: .4rem; display: flex; gap: .5rem; align-items: center; }
     .comment-text { font-size: .88rem; color: #ddd; line-height: 1.6; word-break: break-word; }
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);

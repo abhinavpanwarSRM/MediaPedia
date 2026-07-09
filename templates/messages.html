@@ -8,7 +8,8 @@
   <style>
     :root { --primary:#e50914; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --muted:#888; --blue:#5799ef; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:#fff; font-family:'Poppins','Segoe UI',sans-serif; min-height:100vh; }
+    body { background:var(--bg); color:#fff; font-family:'Poppins','Segoe UI',sans-serif; min-height:100vh; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .topnav { display:flex; justify-content:space-between; align-items:center;
               padding:0.9rem 1.5rem; border-bottom:1px solid var(--border);
               position:sticky; top:0; background:rgba(20,20,20,0.97);
@@ -45,10 +46,11 @@
     .new-msg-bar button:hover { background:#c0000e; }
 
     .conv-list { display:flex; flex-direction:column; gap:0.5rem; }
-    .conv-item { display:flex; align-items:center; gap:0.9rem; background:var(--card);
+    .conv-item { display:flex; align-items:center; gap:0.9rem; background:rgba(255,255,255,0.04);
+                 backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
                  border:1px solid var(--border); border-radius:10px; padding:0.9rem 1.1rem;
                  text-decoration:none; color:#fff; transition:all 0.2s; cursor:pointer; }
-    .conv-item:hover { border-color:rgba(229,9,20,0.4); background:rgba(229,9,20,0.05); }
+    .conv-item:hover { border-color:rgba(229,9,20,0.4); background:rgba(229,9,20,0.05); transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.4); }
     .conv-item.unread { border-color:rgba(229,9,20,0.5); background:rgba(229,9,20,0.07); }
     .conv-av { width:44px; height:44px; border-radius:50%; flex-shrink:0;
                background:linear-gradient(135deg,var(--primary),#ff6b6b);

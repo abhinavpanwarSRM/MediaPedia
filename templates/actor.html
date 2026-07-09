@@ -7,17 +7,18 @@
   <style>
     :root { --primary: #e50914; --series: #00a8e1; --bg: #141414; --card: rgba(20,20,20,0.9); --text: #fff; --grey: #ccc; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding: 2rem 1rem; animation: pageFadeIn 0.4s ease-out; }
+    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .container { max-width: 900px; margin: 0 auto; }
     .back { display: inline-block; margin-bottom: 1.5rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
     .back:hover { text-decoration: underline; }
     h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); border-bottom: 2px solid rgba(229,9,20,0.3); padding-bottom: 1rem; margin-bottom: 2rem; }
     h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; margin-top: 2rem; }
     .grid { display: grid; gap: 0.8rem; }
-    .row { background: rgba(255,255,255,0.04); border-radius: 6px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text); transition: background 0.2s; }
+    .row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text); transition: all 0.2s; }
     .row.movie { border-left: 3px solid var(--primary); }
     .row.series { border-left: 3px solid var(--series); }
-    .row:hover { background: rgba(255,255,255,0.08); }
+    .row:hover { background: rgba(255,255,255,0.08); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
     .title { font-weight: 600; }
     .meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
     .rating { font-weight: 700; font-size: 1.1rem; white-space: nowrap; margin-left: 1rem; }

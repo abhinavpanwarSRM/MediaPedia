@@ -32,6 +32,11 @@
         color: var(--text-light);
         line-height: 1.6;
         cursor: default;
+        animation: pageFadeIn 0.4s ease-out;
+      }
+      @keyframes pageFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
 
       .overlay {
@@ -48,11 +53,13 @@
       .artist-detail {
         max-width: 900px;
         margin: 0 auto;
-        background: var(--card-bg);
+        background: rgba(255,255,255,0.04);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-radius: 8px;
         padding: 1.5rem;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       h1 {
@@ -340,6 +347,11 @@
       </div>
       {% endif %}
       <div class="artist-detail" style="margin-top:3.5rem;">
+        <div style="text-align:center;margin-bottom:1rem;">
+          <img id="artist-headshot" src="" alt="{{ artist['artist_name'] }}" loading="lazy"
+            style="display:none;width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);box-shadow:0 4px 20px rgba(29,185,84,0.35);"
+            onerror="this.style.display='none'" />
+        </div>
         <h1>{{ artist["artist_name"] }}</h1>
 
         <!-- Artist video will be inserted here -->
@@ -507,6 +519,14 @@
 
       fetchArtistVideo();
       fetchBestSongsPlaylist();
+
+      // Load artist photo from MusicBrainz/Wikidata
+      fetch('/api/artist_photo?name=' + encodeURIComponent(artistName))
+        .then(r => r.json())
+        .then(d => {
+          const el = document.getElementById('artist-headshot');
+          if (el && d.photo) { el.src = d.photo; el.style.display = 'block'; }
+        }).catch(() => {});
     </script>
 
     <!-- Sync Button -->
