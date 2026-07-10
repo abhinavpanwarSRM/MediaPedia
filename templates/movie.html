@@ -625,6 +625,9 @@
       .saved-counter { position:fixed; top:52px; right:12px; background:var(--card-bg); padding:6px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,0.4); z-index:900; }
       .view-saved-btn { padding:6px 14px; background:var(--primary); color:#fff; border:none; border-radius:999px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:background 0.25s,transform 0.15s; }
       .view-saved-btn:hover { background:#c0000e; transform:scale(1.05); }
+      @media (max-width: 480px) {
+        .saved-counter { top:auto; bottom:16px; right:16px; }
+      }
     </style>
 
       <link rel="manifest" href="/static/manifest.json" />
