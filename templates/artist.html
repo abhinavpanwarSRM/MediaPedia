@@ -47,6 +47,7 @@
         );
         min-height: 100vh;
         padding: 1rem;
+        padding-top: 56px;
         backdrop-filter: blur(5px);
       }
 
@@ -346,7 +347,7 @@
         <a href="/register" style="color:var(--primary);text-decoration:none;font-size:0.85rem;font-weight:600;">Register</a>
       </div>
       {% endif %}
-      <div class="artist-detail" style="margin-top:3.5rem;">
+      <div class="artist-detail">
         <div style="text-align:center;margin-bottom:1rem;">
           <img id="artist-headshot" src="" alt="{{ artist['artist_name'] }}" loading="lazy"
             style="display:none;width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);box-shadow:0 4px 20px rgba(29,185,84,0.35);"
@@ -444,6 +445,7 @@
                  onclick="playVideo('${videoId}', 'video-container')">
             </div>
           `;
+              loadHeadshot(videoId);
             } else {
               throw new Error("No items found in response");
             }
@@ -520,13 +522,20 @@
       fetchArtistVideo();
       fetchBestSongsPlaylist();
 
-      // Load artist photo from MusicBrainz/Wikidata
-      fetch('/api/artist_photo?name=' + encodeURIComponent(artistName))
-        .then(r => r.json())
-        .then(d => {
-          const el = document.getElementById('artist-headshot');
-          if (el && d.photo) { el.src = d.photo; el.style.display = 'block'; }
-        }).catch(() => {});
+      // Load artist photo — fast path uses YouTube thumbnail, slow path uses MusicBrainz
+      function loadHeadshot(videoId) {
+        const el = document.getElementById('artist-headshot');
+        if (!el) return;
+        if (videoId) {
+          el.src = 'https://img.youtube.com/vi/' + videoId + '/mqdefault.jpg';
+          el.style.display = 'block';
+          return;
+        }
+        fetch('/api/artist_photo?name=' + encodeURIComponent(artistName))
+          .then(r => r.json())
+          .then(d => { if (d.photo) { el.src = d.photo; el.style.display = 'block'; } })
+          .catch(() => {});
+      }
     </script>
 
     <!-- Sync Button -->

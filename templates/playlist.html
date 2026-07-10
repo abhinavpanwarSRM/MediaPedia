@@ -44,7 +44,7 @@
         font-family:
           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
           Arial, sans-serif;
-        padding: 1rem 0.75rem 5rem;
+        padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px));
         min-height: 100vh;
         line-height: 1.5;
       }
@@ -663,6 +663,7 @@
         background: rgba(18, 18, 18, 0.98);
         border-top: 1px solid var(--border);
         padding: 0.75rem 1rem;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
         z-index: 600;
         display: none;
         flex-direction: column;
@@ -2182,6 +2183,19 @@
           if (_artistPhotoCache[artist]) { img.src = _artistPhotoCache[artist]; img.style.display = 'block'; }
           return;
         }
+        // Fast path: use YouTube thumbnail from the song row's video ID
+        const row = img.closest('.song-row');
+        if (row && row.dataset.query) {
+          const q = row.dataset.query.replace(/#t=\d+$/, '');
+          if (/^[a-zA-Z0-9_-]{11}$/.test(q)) {
+            const thumb = 'https://img.youtube.com/vi/' + q + '/default.jpg';
+            _artistPhotoCache[artist] = thumb;
+            img.src = thumb;
+            img.style.display = 'block';
+            return;
+          }
+        }
+        // Slow path: MusicBrainz/Wikidata
         fetch('/api/artist_photo?name=' + encodeURIComponent(artist))
           .then(r => r.json())
           .then(d => {
