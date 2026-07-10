@@ -478,7 +478,7 @@
           <div class="preview-countdown" id="preview-countdown"></div>
           <div class="host-controls-preview" id="host-controls-preview">
             <button id="play-pause-btn" onclick="togglePreviewPlay()">⏸ Pause</button>
-            <button id="skip-preview-btn" onclick="skipPreviewSong()" disabled>⏭ Skip (Vote First)</button>
+            <button id="skip-preview-btn" onclick="skipPreviewSong()">⏭ Skip</button>
             <button id="skip-all-btn" onclick="skipAllPreview()" style="border-color:var(--gold);color:var(--gold);">⏭ Skip All</button>
           </div>
           <div style="margin-top:0.3rem;font-size:0.7rem;color:var(--muted);" id="host-controls-hint">Only the host can control playback</div>
@@ -542,6 +542,9 @@
     let hasVotedThisRound = false;
     let lastRound = 0;
     let voteLocked = false;
+    let isGameFinished = false;
+    let allSongs = [];
+    let currentIndex = 0;
 
     // YouTube player
     let ytPlayer = null;
@@ -558,7 +561,10 @@
           onStateChange: function(e) {
             if (e.data === YT.PlayerState.ENDED) {
               if (document.getElementById('screen-preview').classList.contains('active')) {
-                previewSeconds = previewDuration;
+                // Auto-advance in preview
+                if (isHost) {
+                  previewSeconds = previewDuration;
+                }
               }
             }
             if (e.data === YT.PlayerState.PLAYING) {
@@ -571,7 +577,6 @@
             }
           },
           onError: function() {
-            // If video fails, skip to next
             if (isHost) {
               setTimeout(skipPreviewSong, 1000);
             }
@@ -662,7 +667,7 @@
       });
 
       socket.on('game_play', function(data) {
-        if (ytReady && data.position !== undefined) {
+        if (ytReady && data.position !== undefined && !isGameFinished) {
           ytPlayer.seekTo(data.position, true);
           ytPlayer.playVideo();
           isPlaying = true;
@@ -671,7 +676,7 @@
       });
 
       socket.on('game_pause', function(data) {
-        if (ytReady && data.position !== undefined) {
+        if (ytReady && data.position !== undefined && !isGameFinished) {
           ytPlayer.seekTo(data.position, true);
           ytPlayer.pauseVideo();
           isPlaying = false;
@@ -680,9 +685,11 @@
       });
 
       socket.on('game_next_song', function(data) {
-        if (data.index !== undefined) {
+        if (data.index !== undefined && !isGameFinished) {
           previewIndex = data.index;
-          playPreviewSong(previewIndex);
+          if (document.getElementById('screen-preview').classList.contains('active')) {
+            playPreviewSong(previewIndex);
+          }
         }
       });
 
@@ -697,19 +704,19 @@
     }
 
     function syncPlay() {
-      if (!isHost || !ytReady || !socket) return;
+      if (!isHost || !ytReady || !socket || isGameFinished) return;
       const pos = ytPlayer.getCurrentTime() || 0;
       socket.emit('game_play', { room_code: roomCode, position: pos });
     }
 
     function syncPause() {
-      if (!isHost || !ytReady || !socket) return;
+      if (!isHost || !ytReady || !socket || isGameFinished) return;
       const pos = ytPlayer.getCurrentTime() || 0;
       socket.emit('game_pause', { room_code: roomCode, position: pos });
     }
 
     function syncNextSong() {
-      if (!isHost || !socket) return;
+      if (!isHost || !socket || isGameFinished) return;
       socket.emit('game_next_song', { room_code: roomCode });
     }
 
@@ -739,7 +746,17 @@
       const btn = document.getElementById('ready-btn');
       btn.disabled = true;
       document.getElementById('ready-status').textContent = '⏳ Waiting for others...';
-      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+      
+      const res = await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.started) {
+        document.getElementById('ready-status').textContent = '✅ Starting game...';
+        setTimeout(fetchRoomState, 1000);
+      } else if (data.started === false) {
+        document.getElementById('ready-status').textContent = '⚠️ Host must set songs per player or more players needed';
+        btn.disabled = false;
+      }
     }
 
     async function markReadyAdd() {
@@ -759,7 +776,13 @@
       renderAddedSongs();
       document.getElementById('add-status').textContent = 'Waiting for others...';
 
-      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+      const res = await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.started) {
+        document.getElementById('add-status').textContent = '✅ Starting preview...';
+        setTimeout(fetchRoomState, 1000);
+      }
     }
 
     // ---- YouTube Search ----
@@ -875,8 +898,12 @@
 
     // ---- Preview ----
     function startPreview(room) {
+      isGameFinished = false;
       showScreen('preview');
       previewSongs = room.data?.songs || [];
+      allSongs = previewSongs;
+      currentIndex = 0;
+      
       if (previewSongs.length === 0) {
         document.getElementById('preview-status').textContent = 'No songs in the pool!';
         return;
@@ -895,7 +922,6 @@
 
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
       isPlaying = true;
-      updatePreviewSkipButtons();
       playPreviewSong(0);
     }
 
@@ -912,6 +938,7 @@
         return;
       }
 
+      previewIndex = idx;
       const song = previewSongs[idx];
       document.getElementById('preview-song-title').textContent = song.title || 'Untitled';
       document.getElementById('preview-song-artist').textContent = song.artist || 'Unknown Artist';
@@ -938,32 +965,28 @@
 
         if (previewSeconds >= previewDuration) {
           clearInterval(previewInterval);
-          setTimeout(() => playPreviewSong(idx + 1), 500);
+          if (isHost) {
+            setTimeout(() => {
+              const nextIdx = previewIndex + 1;
+              if (nextIdx < previewSongs.length) {
+                playPreviewSong(nextIdx);
+                syncNextSong();
+              } else {
+                playPreviewSong(previewSongs.length);
+              }
+            }, 500);
+          }
         }
       }, 1000);
 
       ytPlayer.playVideo();
       isPlaying = true;
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
-      hasVotedThisRound = false;
-      voteLocked = false;
-      updatePreviewSkipButtons();
-    }
-
-    function updatePreviewSkipButtons() {
-      const skipBtn = document.getElementById('skip-preview-btn');
-      if (!isHost) {
-        skipBtn.disabled = true;
-        return;
-      }
-      // Skip button: only enabled after user has voted
-      skipBtn.disabled = !hasVotedThisRound;
-      skipBtn.textContent = hasVotedThisRound ? '⏭ Skip' : '⏭ Vote First';
     }
 
     function togglePreviewPlay() {
       if (!isHost) { showToast('Only the host can control playback'); return; }
-      if (!ytReady) return;
+      if (!ytReady || isGameFinished) return;
 
       if (isPlaying) {
         ytPlayer.pauseVideo();
@@ -980,9 +1003,8 @@
 
     function skipPreviewSong() {
       if (!isHost) { showToast('Only the host can skip'); return; }
-      if (!hasVotedThisRound) { showToast('You must vote first before skipping!'); return; }
+      if (isGameFinished) return;
       
-      voteLocked = true;
       clearInterval(previewInterval);
       if (ytPlayer) ytPlayer.stopVideo();
       const idx = previewIndex + 1;
@@ -997,6 +1019,8 @@
 
     function skipAllPreview() {
       if (!isHost) { showToast('Only the host can skip all'); return; }
+      if (isGameFinished) return;
+      
       clearInterval(previewInterval);
       if (ytPlayer) ytPlayer.stopVideo();
       playPreviewSong(previewSongs.length);
@@ -1004,7 +1028,7 @@
 
     // ---- Voting ----
     async function vote(songId) {
-      if (myVote || hasVotedThisRound || voteLocked) return;
+      if (myVote || hasVotedThisRound || voteLocked || isGameFinished) return;
 
       hasVotedThisRound = true;
       myVote = songId;
@@ -1017,11 +1041,6 @@
         body: JSON.stringify({ action: 'vote', song_id: songId })
       });
       
-      // Update preview skip button if in preview
-      if (document.getElementById('screen-preview').classList.contains('active')) {
-        updatePreviewSkipButtons();
-      }
-      
       fetchRoomState();
     }
 
@@ -1029,6 +1048,7 @@
     function handleRoomState(room) {
       if (!room || room.error) return;
       gameState = room;
+      isHost = room.host === ME;
 
       // Update players
       const pl = document.getElementById('players-list');
@@ -1038,15 +1058,15 @@
         ).join('');
       }
 
-      // Check if host
-      isHost = room.host === ME;
-
       // State transitions
       if (room.state === 'lobby') {
         const allReady = (room.players || []).length >= 2 && (room.players || []).every(p => p.ready);
         if (allReady && !document.getElementById('screen-add-songs').classList.contains('active')) {
-          showScreen('add-songs');
-          document.getElementById('ready-status').textContent = '';
+          // Check if we should transition to add-songs
+          if (room.data?.songs_per_player !== undefined || room.data?.preview_duration) {
+            showScreen('add-songs');
+            document.getElementById('ready-status').textContent = '';
+          }
         } else if (allReady) {
           document.getElementById('ready-status').textContent = '⏳ Starting...';
         }
@@ -1063,6 +1083,9 @@
 
         if (previewDone) {
           showScreen('playing');
+          // Update songs list
+          allSongs = room.data?.songs || [];
+          
           if (room.round !== lastRound) {
             myVote = null;
             hasVotedThisRound = false;
@@ -1098,6 +1121,7 @@
         return;
       }
 
+      // Don't show vote counts - just the songs
       c.innerHTML = songs.map(s => {
         const iVoted = myVote === s.id;
         return `<div class="song-item ${iVoted?'my-vote':''}">
@@ -1112,7 +1136,7 @@
         </div>`;
       }).join('');
 
-      // Vote status
+      // Vote status - show who voted but not what they voted for
       const bar = document.getElementById('vote-status-bar');
       if (bar) {
         const votes = data.votes || {};
@@ -1131,6 +1155,7 @@
     }
 
     function showFinished(room) {
+      isGameFinished = true;
       clearInterval(previewInterval);
       clearTimeout(pollTimer);
       if (ytPlayer) ytPlayer.stopVideo();
@@ -1139,20 +1164,31 @@
       const data = room.data || {};
       const winner = data.winner_song || data.songs?.[0];
       const allSongs = data.all_songs || data.songs || [];
-      document.getElementById('winner-banner').innerHTML = winner
-        ? `🏆 Winner: <strong>${esc(winner.title)}</strong> — ${esc(winner.artist)}<small>Added by ${esc(winner.addedBy||'')}</small>`
-        : '🏆 Game Over!';
+      
+      // Find all winners (in case of tie, though Music Survivor usually has 1 winner)
+      let winnerHtml = '';
+      if (winner) {
+        winnerHtml = `🏆 Winner: <strong>${esc(winner.title)}</strong> — ${esc(winner.artist)}<small>Added by ${esc(winner.addedBy||'')}</small>`;
+      } else {
+        winnerHtml = '🏆 Game Over!';
+      }
+      document.getElementById('winner-banner').innerHTML = winnerHtml;
 
-      document.getElementById('final-songs').innerHTML = allSongs.map((s, i) =>
-        `<div class="song-item ${i===0?'winner':''}">
+      // Show elimination order
+      const eliminatedSongs = allSongs.filter(s => s.id !== data.winner_song?.id);
+      const finalSongs = [...eliminatedSongs, data.winner_song].filter(Boolean);
+      
+      document.getElementById('final-songs').innerHTML = finalSongs.map((s, i) => {
+        const isWinner = i === finalSongs.length - 1;
+        return `<div class="song-item ${isWinner?'winner':''}">
           ${s.thumbnail ? `<img src="${s.thumbnail}" class="song-thumb" alt="" />` : ''}
           <div class="song-info">
-            <div class="song-name">${i===0?'🏆 ':''}${esc(s.title)}</div>
+            <div class="song-name">${isWinner ? '🏆 ' : ''}${esc(s.title)}</div>
             <div class="song-artist">${esc(s.artist)} <span class="song-added-by">· by ${esc(s.addedBy||'')}</span></div>
           </div>
-          ${i===0 ? '<span style="color:var(--gold);font-size:0.8rem;font-weight:700;">WINNER</span>' : ''}
-        </div>`
-      ).join('');
+          ${isWinner ? '<span style="color:var(--gold);font-size:0.8rem;font-weight:700;">WINNER</span>' : `<span style="color:var(--muted);font-size:0.7rem;">Eliminated</span>`}
+        </div>`;
+      }).join('');
     }
 
     // ---- Polling ----
@@ -1181,7 +1217,7 @@
     });
 
     // ---- Init ----
-    showScreen('lobby');
+    showScreen('screen-lobby');
 
     // Clean up on page unload
     window.addEventListener('beforeunload', function() {
@@ -1190,5 +1226,6 @@
       }
     });
   </script>
+  <script src="/static/pwa.js"></script>
 </body>
 </html>
