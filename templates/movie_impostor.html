@@ -15,6 +15,8 @@
     .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
     .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
+    .topnav .user-link { color:var(--purple); font-weight:600; }
+    
     .container { max-width:720px; margin:0 auto; padding:2rem 1.2rem 5rem; }
     h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
     .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
@@ -43,8 +45,9 @@
     .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
     .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
     .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
+    .player-chip.host { border-color:var(--gold); color:var(--gold); background:rgba(255,215,0,0.08); }
     
-    /* Movie Reveal with Trailer & Details */
+    /* Movie Reveal with Full Details */
     .movie-reveal { border-radius:14px; padding:1.4rem; text-align:center; margin-bottom:1.2rem; }
     .movie-reveal.normal { background:rgba(156,111,228,0.07); border:1px solid rgba(156,111,228,0.25); }
     .movie-reveal.impostor { background:rgba(229,9,20,0.07); border:1px solid rgba(229,9,20,0.3); }
@@ -52,13 +55,10 @@
     .movie-title { font-size:clamp(1.4rem,4vw,1.8rem); font-weight:800; margin:0.4rem 0; }
     .movie-genre { font-size:0.85rem; color:var(--muted); }
     .movie-year { font-size:0.82rem; color:var(--muted); }
-    .movie-plot { font-size:0.88rem; color:#ccc; margin:0.6rem 0; line-height:1.6; text-align:left; }
-    .movie-stars { font-size:0.82rem; color:var(--muted); }
-    .movie-stars a { color:var(--purple); text-decoration:none; }
-    .movie-stars a:hover { text-decoration:underline; }
     
     .impostor-tag { display:inline-block; background:rgba(229,9,20,0.15); color:#ff6b6b; border:1px solid rgba(229,9,20,0.3); border-radius:20px; padding:0.2rem 0.8rem; font-size:0.75rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:0.6rem; }
     
+    /* Trailer */
     .trailer-container { margin:1rem 0; border-radius:8px; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,0.6); }
     .trailer-thumbnail { width:100%; height:0; padding-bottom:56.25%; background-size:cover; background-position:center; position:relative; cursor:pointer; transition:transform 0.3s ease; border-radius:8px; }
     .trailer-thumbnail:hover { transform:scale(1.02); }
@@ -68,7 +68,18 @@
     .trailer-thumbnail:hover::before { transform:translate(-50%,-50%) scale(1.1); opacity:1; }
     iframe { width:100%; height:auto; aspect-ratio:16/9; border:none; border-radius:8px; }
     
-    .movie-poster { width:120px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.08); margin:0.5rem auto; display:block; }
+    /* Movie Details - Like movie.html */
+    .movie-details-grid { margin:1rem 0; }
+    .movie-detail-item { display:flex; padding:0.7rem 0; border-bottom:1px solid var(--border); gap:1rem; font-size:0.9rem; }
+    .movie-detail-item:last-child { border-bottom:none; }
+    .movie-detail-label { min-width:100px; color:var(--muted); font-weight:500; flex-shrink:0; }
+    .movie-detail-value { color:#ccc; }
+    .movie-detail-value a { color:var(--purple); text-decoration:none; }
+    .movie-detail-value a:hover { text-decoration:underline; }
+    .movie-detail-value .rating-badge { background:rgba(156,111,228,0.15); border:1px solid rgba(156,111,228,0.3); padding:0.1rem 0.6rem; border-radius:20px; font-weight:700; color:var(--purple); font-size:0.9rem; }
+    
+    .movie-poster { width:140px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.08); margin:0.5rem auto; display:block; }
+    .poster-wrapper { display:flex; justify-content:center; margin:0.5rem 0; }
     
     .question-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; }
     .question-text { font-size:0.9rem; font-weight:600; margin-bottom:0.6rem; color:#ddd; }
@@ -91,6 +102,10 @@
     .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
     .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
     
+    .vote-status-bar { display:flex; align-items:center; justify-content:center; gap:0.8rem; margin:0.8rem 0; flex-wrap:wrap; }
+    .vote-status-bar .voter-chip { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:20px; padding:0.15rem 0.6rem; font-size:0.7rem; color:var(--muted); transition:all 0.3s; }
+    .vote-status-bar .voter-chip.done { border-color:#2ed573; color:#2ed573; background:rgba(46,213,115,0.08); }
+    
     #screen-lobby, #screen-waiting, #screen-movie, #screen-questions, #screen-vote, #screen-result { display:none; }
     #screen-lobby.active, #screen-waiting.active, #screen-movie.active, #screen-questions.active, #screen-vote.active, #screen-result.active { display:block; }
     
@@ -101,6 +116,8 @@
       .input-row { flex-direction:column; }
       .input-row input, .input-row .btn { width:100%; }
       .movie-poster { width:80px; }
+      .movie-detail-item { flex-direction:column; gap:0.2rem; }
+      .movie-detail-label { min-width:unset; }
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
@@ -109,7 +126,7 @@
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
     <a href="/games" style="color:var(--purple);font-weight:600;">← Games</a>
-    <a href="/u/{{ username }}" style="color:var(--purple);">{{ username }}</a>
+    <a href="/u/{{ username }}" class="user-link">{{ username }}</a>
   </nav>
 
   <div class="container">
@@ -144,11 +161,21 @@
       </div>
     </div>
 
-    <!-- Movie reveal with full details -->
+    <!-- Movie reveal with full details like movie.html -->
     <div id="screen-movie">
       <div id="movie-reveal-box"></div>
+      
+      <!-- Poster -->
+      <div class="poster-wrapper" id="poster-wrapper"></div>
+      
+      <!-- Trailer -->
       <div id="movie-trailer-container" class="trailer-container"></div>
-      <div id="movie-details-container"></div>
+      
+      <!-- Full Movie Details -->
+      <div class="panel" style="margin-top:0.5rem;">
+        <div class="movie-details-grid" id="movie-details-grid"></div>
+      </div>
+      
       <div class="panel" style="margin-top:0.5rem;">
         <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.8rem;">Watch the trailer, read the details, then answer the questions without revealing the title directly. The impostor has a <em>different</em> movie — blend in or catch them!</p>
         <button class="btn btn-purple" onclick="showScreen('screen-questions')">Answer Questions →</button>
@@ -176,6 +203,7 @@
         <h2>Who is the Impostor?</h2>
         <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Based on the answers above, who do you think got a different movie?</p>
         <div class="suspect-list" id="suspect-list"></div>
+        <div class="vote-status-bar" id="vote-status-bar"></div>
         <button class="btn btn-red" style="margin-top:1rem;" onclick="submitVote()" id="cast-vote-btn">Cast Vote</button>
         <div class="status-msg" id="vote-status"></div>
       </div>
@@ -207,6 +235,8 @@
     let currentKeyIndex = 0;
     let moviePosterUrl = '';
     let movieBackdropUrl = '';
+    let fullMovieData = null;
+    let hasVoted = false;
 
     // ---- Screen Management ----
     function showScreen(id) {
@@ -221,7 +251,6 @@
       navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
     }
 
-    // ---- Toast ----
     function showToast(msg) {
       let t = document.getElementById('_toast');
       if (!t) { 
@@ -290,13 +319,27 @@
     function handleRoomState(room) {
       if (!room || room.error) return;
       const pl = document.getElementById('players-list');
-      if (pl) pl.innerHTML = (room.players||[]).map(p =>
-        `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
-      ).join('');
+      if (pl) {
+        pl.innerHTML = (room.players||[]).map(p =>
+          `<span class="player-chip ${p.ready?'ready':''} ${room.host === p.username ? 'host' : ''}">${esc(p.username)}${p.ready?' ✓':''}${room.host === p.username ? ' 👑' : ''}</span>`
+        ).join('');
+      }
+      
       if (room.state === 'playing' && room.round >= 1) { 
         revealMovie(room); 
       } else if (room.state === 'finished') { 
         showResult(room); 
+      }
+    }
+
+    // ---- Fetch Full Movie Data ----
+    async function fetchFullMovieData(title, year) {
+      try {
+        const res = await fetch('/api/movie_data?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || ''));
+        const data = await res.json();
+        return data;
+      } catch(e) {
+        return null;
       }
     }
 
@@ -315,18 +358,21 @@
       if (amImpostor) {
         box.className = 'movie-reveal impostor';
         box.innerHTML = `<div class="impostor-tag">🕵️ You are the Impostor</div>
-          <div style="color:#ff6b6b;font-size:1.2rem;font-weight:700;">${esc(myMovie?.title || '')}</div>
+          <div style="color:#ff6b6b;font-size:1.4rem;font-weight:700;">${esc(myMovie?.title || '')}</div>
           <div style="color:#ff6b6b;font-size:0.9rem;margin-top:0.3rem;">${esc(myMovie?.genre || '')}</div>
           <div style="color:#ff6b6b;font-size:0.82rem;margin-top:0.8rem;opacity:0.8;">Others have a different movie. Blend in!</div>`;
       } else {
         box.className = 'movie-reveal normal';
         box.innerHTML = `<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">Your Movie</div>
-          <div style="font-size:1.2rem;font-weight:700;color:var(--purple);">${esc(myMovie?.title || '')}</div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--purple);">${esc(myMovie?.title || '')}</div>
           <div style="color:var(--muted);font-size:0.9rem;margin-top:0.3rem;">${esc(myMovie?.genre || '')}</div>
           <div style="color:var(--muted);font-size:0.82rem;margin-top:0.6rem;">One player has a different movie — find them!</div>`;
       }
 
-      // Fetch and display poster + backdrop
+      // Fetch full movie details
+      fetchMovieDetails(myMovie?.title || '', myMovie?.year || '');
+
+      // Fetch poster + backdrop
       fetchMovieMedia(myMovie?.title || '', myMovie?.year || '');
 
       // Build questions
@@ -346,6 +392,103 @@
       }
     }
 
+    function fetchMovieDetails(title, year) {
+      const container = document.getElementById('movie-details-grid');
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:1rem;">Loading details...</div>';
+      
+      // Fetch from TMDB via our proxy
+      fetch('/api/poster?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || '') + '&kind=movie')
+        .then(r => r.json())
+        .then(d => {
+          // We need more details - fetch from TMDB search
+          const token = '{{ tmdb_token }}' || '';
+          if (!token) {
+            showBasicDetails(container);
+            return;
+          }
+          
+          return fetch(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(title)}&year=${encodeURIComponent(year || '')}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.results && data.results.length > 0) {
+              const movie = data.results[0];
+              fullMovieData = movie;
+              renderMovieDetails(container, movie);
+            } else {
+              showBasicDetails(container);
+            }
+          });
+        })
+        .catch(() => showBasicDetails(container));
+    }
+
+    function showBasicDetails(container) {
+      container.innerHTML = `
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Title</span>
+          <span class="movie-detail-value">${esc(myMovie?.title || '')}</span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Genre</span>
+          <span class="movie-detail-value">${esc(myMovie?.genre || 'N/A')}</span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Year</span>
+          <span class="movie-detail-value">${esc(myMovie?.year || 'N/A')}</span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Rating</span>
+          <span class="movie-detail-value"><span class="rating-badge">★ ${myMovie?.rating || 'N/A'}</span></span>
+        </div>
+      `;
+    }
+
+    function renderMovieDetails(container, movie) {
+      const genres = movie.genre_ids ? movie.genre_ids.map(id => genreMap[id] || id).join(', ') : myMovie?.genre || 'N/A';
+      const releaseDate = movie.release_date ? movie.release_date.split('-')[0] : myMovie?.year || 'N/A';
+      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : myMovie?.rating || 'N/A';
+      
+      container.innerHTML = `
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Title</span>
+          <span class="movie-detail-value">${esc(movie.title || myMovie?.title || '')}</span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Rating</span>
+          <span class="movie-detail-value"><span class="rating-badge">★ ${rating}</span></span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Genre</span>
+          <span class="movie-detail-value">${esc(genres)}</span>
+        </div>
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Release Year</span>
+          <span class="movie-detail-value">${esc(releaseDate)}</span>
+        </div>
+        ${movie.overview ? `
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Plot</span>
+          <span class="movie-detail-value">${esc(movie.overview)}</span>
+        </div>` : ''}
+        ${movie.runtime ? `
+        <div class="movie-detail-item">
+          <span class="movie-detail-label">Runtime</span>
+          <span class="movie-detail-value">${movie.runtime} min</span>
+        </div>` : ''}
+      `;
+    }
+
+    // Genre map for TMDB
+    const genreMap = {
+      28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
+      80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
+      14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
+      9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie',
+      53: 'Thriller', 10752: 'War', 37: 'Western'
+    };
+
     function fetchMovieMedia(title, year) {
       fetch('/api/poster?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || '') + '&kind=movie')
         .then(r => r.json())
@@ -353,21 +496,11 @@
           moviePosterUrl = d.poster || '';
           movieBackdropUrl = d.backdrop || '';
           
-          // Add poster and details to the page
-          const container = document.getElementById('movie-details-container');
-          if (container) {
-            let html = '';
-            if (moviePosterUrl) {
-              html += `<img src="${moviePosterUrl}" class="movie-poster" alt="Poster" onerror="this.style.display='none'" />`;
-            }
-            // Add plot and other details if available from TMDB
-            html += `<div style="text-align:left;margin-top:0.5rem;">`;
-            html += `<div style="font-size:0.82rem;color:var(--muted);">${esc(myMovie?.genre || '')}${myMovie?.year ? ' · ' + myMovie.year : ''}</div>`;
-            html += `</div>`;
-            container.innerHTML = html;
+          const posterWrapper = document.getElementById('poster-wrapper');
+          if (posterWrapper && moviePosterUrl) {
+            posterWrapper.innerHTML = `<img src="${moviePosterUrl}" class="movie-poster" alt="Poster" onerror="this.parentElement.style.display='none'" />`;
           }
 
-          // Set background
           if (movieBackdropUrl) {
             document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),url('${movieBackdropUrl}')`;
             document.body.style.backgroundSize = 'cover';
@@ -384,7 +517,7 @@
       
       function tryKey(index) {
         if (index >= API_KEYS.length) {
-          trailerContainer.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.85rem;">Trailer unavailable</p>';
+          trailerContainer.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.85rem;padding:0.5rem;">Trailer unavailable</p>';
           return;
         }
         const key = API_KEYS[index];
@@ -457,9 +590,9 @@
     // ---- Voting ----
     function buildVoteScreen(room) {
       clearTimeout(pollTimer);
+      hasVoted = false;
       const data = room.data || {};
       const answers = data.answers || {};
-      const qList = data.questions || questions;
 
       document.getElementById('answers-review').innerHTML = Object.entries(answers).map(([user, ans]) =>
         `<div class="answer-block">
@@ -472,7 +605,21 @@
       document.getElementById('suspect-list').innerHTML = suspects.map(p =>
         `<button class="suspect-btn" onclick="selectSuspect(this,'${esc(p.username)}')">${esc(p.username)}</button>`
       ).join('');
+      
+      // Reset vote status bar
+      updateVoteStatus(room);
       showScreen('screen-vote');
+    }
+
+    function updateVoteStatus(room) {
+      const bar = document.getElementById('vote-status-bar');
+      if (!bar) return;
+      const votes = room.data?.impostor_votes || {};
+      const players = room.players || [];
+      bar.innerHTML = players.map(p => {
+        const hasVoted = !!votes[p.username];
+        return `<span class="voter-chip ${hasVoted ? 'done' : ''}">${esc(p.username)} ${hasVoted ? '✅' : '⏳'}</span>`;
+      }).join('');
     }
 
     function selectSuspect(btn, username) {
@@ -482,19 +629,27 @@
     }
 
     async function submitVote() {
+      if (hasVoted) { showToast('You already voted!'); return; }
       if (!selectedSuspect) { showToast('Select a suspect first!'); return; }
+      
+      hasVoted = true;
       const btn = document.getElementById('cast-vote-btn');
       btn.disabled = true;
       document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
+      
       const res = await fetch('/api/games/room/' + roomCode + '/action', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({action:'vote_impostor', suspect:selectedSuspect})
       });
       const room = await res.json();
+      updateVoteStatus(room);
+      
       if (room.state === 'finished') { showResult(room); return; }
+      
       pollTimer = setTimeout(async function poll() {
         if (document.hidden) { pollTimer = setTimeout(poll, 2500); return; }
         const r = await (await fetch('/api/games/room/' + roomCode)).json();
+        updateVoteStatus(r);
         if (r.state === 'finished') { showResult(r); return; }
         pollTimer = setTimeout(poll, 2500);
       }, 2500);
@@ -527,14 +682,15 @@
           <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;">
             <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Most players had</div>
             <div style="font-weight:700;">${esc(pair[0]?.title||'')}</div>
-            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[0]?.genre||'')}</div>
+            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[0]?.genre||'')} ${pair[0]?.year ? '· ' + pair[0].year : ''}</div>
           </div>
           <div style="background:rgba(229,9,20,0.06);border:1px solid rgba(229,9,20,0.2);border-radius:8px;padding:0.8rem 1rem;">
             <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Impostor had</div>
             <div style="font-weight:700;color:#ff6b6b;">${esc(pair[1]?.title||'')}</div>
-            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[1]?.genre||'')}</div>
+            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[1]?.genre||'')} ${pair[1]?.year ? '· ' + pair[1].year : ''}</div>
           </div>
-          <div style="font-size:0.82rem;color:var(--muted);">Group accused: <strong style="color:var(--purple);">${esc(accused)}</strong></div>
+          <div style="font-size:0.82rem;color:var(--muted);">Group accused: <strong style="color:var(--purple);">${esc(accused)}</strong> ${correct ? '✅ Correct!' : '❌ Wrong!'}</div>
+          <div style="font-size:0.82rem;color:var(--muted);">${amImpostor ? 'You were the impostor!' : 'You were not the impostor.'}</div>
         </div>`;
       showScreen('screen-result');
     }

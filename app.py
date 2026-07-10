@@ -3776,6 +3776,7 @@ def koc_who_can_win(session_id):
 
 # ===== MULTIPLAYER GAMES =====
 import random as _random
+from collections import Counter
 
 game_rooms_collection = None
 game_stats_collection = None
@@ -3814,8 +3815,8 @@ def _get_movie_pair():
         same_genre = pool[pool['ID'] != m1['ID']]
     m2 = same_genre.sample(1).iloc[0]
     return (
-        {'id': int(m1['ID']), 'title': m1['Movie Name'], 'genre': m1.get('Genre', ''), 'year': m1.get('Year', '')},
-        {'id': int(m2['ID']), 'title': m2['Movie Name'], 'genre': m2.get('Genre', ''), 'year': m2.get('Year', '')}
+        {'id': int(m1['ID']), 'title': m1['Movie Name'], 'genre': m1.get('Genre', ''), 'year': m1.get('Year', ''), 'rating': m1.get('Rating', '')},
+        {'id': int(m2['ID']), 'title': m2['Movie Name'], 'genre': m2.get('Genre', ''), 'year': m2.get('Year', ''), 'rating': m2.get('Rating', '')}
     )
 
 def _save_game_stats(username, game_type, won):
@@ -3870,6 +3871,48 @@ def song_detective_page():
         api_key_4=os.getenv('YOUTUBE_API_KEY_4',''),
         api_key_5=os.getenv('YOUTUBE_API_KEY_5',''))
 
+@app.route('/api/movie_data')
+def get_movie_data():
+    """Fetch full movie details from TMDB for Movie Impostor."""
+    title = request.args.get('title', '').strip()
+    year = request.args.get('year', '').strip()
+    
+    if not title:
+        return jsonify({'error': 'Title required'}), 400
+    
+    token = os.getenv('TMDB_TOKEN', '')
+    if not token:
+        return jsonify({'error': 'TMDB token not configured'}), 500
+    
+    try:
+        params = {'query': title, 'language': 'en-US'}
+        if year:
+            params['year'] = year
+        
+        resp = http_requests.get(
+            'https://api.themoviedb.org/3/search/movie',
+            headers={'Authorization': f'Bearer {token}'},
+            params=params, timeout=5
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        
+        if data.get('results') and len(data['results']) > 0:
+            movie = data['results'][0]
+            detail_resp = http_requests.get(
+                f"https://api.themoviedb.org/3/movie/{movie['id']}",
+                headers={'Authorization': f'Bearer {token}'},
+                params={'language': 'en-US'}, timeout=5
+            )
+            detail_resp.raise_for_status()
+            full_data = detail_resp.json()
+            return jsonify(full_data)
+        
+        return jsonify({'error': 'Movie not found'}), 404
+    except Exception as e:
+        log.error('Movie data error: %s', e)
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/games/room', methods=['POST'])
 def create_game_room():
     username = current_user()
@@ -3878,7 +3921,7 @@ def create_game_room():
     if game_rooms_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json or {}
-    game_type = data.get('game_type', '')  # music_survivor | movie_impostor | song_detective
+    game_type = data.get('game_type', '')
     if game_type not in ('music_survivor', 'movie_impostor', 'song_detective'):
         return jsonify({'error': 'Invalid game type'}), 400
     code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
@@ -3887,7 +3930,7 @@ def create_game_room():
         'game_type': game_type,
         'host': username,
         'players': [{'username': username, 'ready': False, 'score': 0}],
-        'state': 'lobby',  # lobby | playing | finished
+        'state': 'lobby',
         'round': 0,
         'data': {},
         'created_at': datetime.now(timezone.utc).isoformat()
@@ -3901,6 +3944,7 @@ def create_game_room():
         room['data']['all_songs'] = []
         room['data']['votes'] = {}
         room['data']['preview_done'] = False
+        room['data']['preview_duration'] = 30  # default 30 seconds
     elif game_type == 'song_detective':
         room['data']['songs_per_player'] = 2
         room['data']['player_songs'] = {}
@@ -3965,7 +4009,6 @@ def ready_game_room(code):
             impostor = _random.choice(players)['username']
             update['data.impostor'] = impostor
         elif room['game_type'] == 'song_detective':
-            # Pre-populate player_songs for each player
             player_songs = {}
             for p in room['players']:
                 player_songs[p['username']] = []
@@ -3993,7 +4036,6 @@ def game_action(code):
     if game_type == 'song_detective':
         
         if action == 'set_song_count':
-            # Host sets number of songs per player
             if room.get('host') != username:
                 return jsonify({'error': 'Only host can set song count'}), 403
             count = int(data.get('count', 2))
@@ -4002,22 +4044,18 @@ def game_action(code):
             update['data.songs_per_player'] = count
         
         elif action == 'submit_song':
-            # Player submits a song with YouTube data
             song = data.get('song', {})
             if not song or not song.get('youtube_query'):
                 return jsonify({'error': 'Invalid song data'}), 400
             
-            # Get or create player's song list
             player_songs = room.get('data', {}).get('player_songs', {})
             if username not in player_songs:
                 player_songs[username] = []
             
-            # Check if player has reached their limit
             songs_per_player = room.get('data', {}).get('songs_per_player', 2)
             if len(player_songs[username]) >= songs_per_player:
                 return jsonify({'error': f'You can only submit {songs_per_player} songs'}), 400
             
-            # Add song to player's list
             song_entry = {
                 'id': str(uuid.uuid4())[:8],
                 'youtube_query': song.get('youtube_query'),
@@ -4030,14 +4068,12 @@ def game_action(code):
             player_songs[username].append(song_entry)
             update['data.player_songs'] = player_songs
             
-            # Check if all players have submitted their songs
             all_players = [p['username'] for p in room['players']]
             all_submitted = all(
                 len(player_songs.get(p, [])) >= room.get('data', {}).get('songs_per_player', 2)
                 for p in all_players
             )
             if all_submitted and len(all_players) >= 2:
-                # Collect all songs, shuffle them
                 all_songs = []
                 for p, songs in player_songs.items():
                     all_songs.extend(songs)
@@ -4050,7 +4086,6 @@ def game_action(code):
                 update['data.votes'] = {}
         
         elif action == 'vote':
-            # Player guesses who submitted a song
             song_id = data.get('song_id')
             guess = data.get('guess')
             if not song_id or not guess:
@@ -4062,7 +4097,6 @@ def game_action(code):
             votes[username][song_id] = guess
             update['data.votes'] = votes
             
-            # Check if all players have voted on current song
             all_songs = room.get('data', {}).get('songs', [])
             if all_songs:
                 current_index = room.get('data', {}).get('current_index', 0)
@@ -4070,18 +4104,17 @@ def game_action(code):
                     current_song = all_songs[current_index]
                     song_id = current_song.get('id')
                     if song_id:
-                        all_voted = all(
-                            votes.get(p['username'], {}).get(song_id)
-                            for p in room['players']
+                        voted_count = sum(
+                            1 for p in room['players']
+                            if votes.get(p['username'], {}).get(song_id)
                         )
+                        all_voted = voted_count >= len(room['players'])
+                        
                         if all_voted:
-                            # Move to next song
                             next_index = current_index + 1
                             if next_index >= len(all_songs):
-                                # All songs played - finish
                                 update['data.current_index'] = next_index
                                 update['state'] = 'finished'
-                                # Calculate scores
                                 scores = {}
                                 for p in room['players']:
                                     scores[p['username']] = 0
@@ -4100,7 +4133,6 @@ def game_action(code):
                                 update['data.votes'] = {}
         
         elif action == 'finish':
-            # Force finish (host only)
             if room.get('host') != username:
                 return jsonify({'error': 'Only host can finish'}), 403
             all_songs = room.get('data', {}).get('songs', [])
@@ -4123,7 +4155,15 @@ def game_action(code):
     # ============ MUSIC SURVIVOR ============
     elif game_type == 'music_survivor':
         
-        if action == 'add_song':
+        if action == 'set_duration':
+            if room.get('host') != username:
+                return jsonify({'error': 'Only host can set duration'}), 403
+            duration = int(data.get('duration', 30))
+            if duration < 5 or duration > 120:
+                return jsonify({'error': 'Duration must be between 5 and 120 seconds'}), 400
+            update['data.preview_duration'] = duration
+        
+        elif action == 'add_song':
             song = data.get('song', {})
             if song and song.get('id') and song.get('title'):
                 songs = room.get('data', {}).get('songs', [])
@@ -4153,9 +4193,7 @@ def game_action(code):
             votes[username] = song_id
             update['data.votes'] = votes
             
-            # Check if all players voted
             if len(votes) >= len(room['players']):
-                # Eliminate most-voted song
                 eliminated = Counter(votes.values()).most_common(1)[0][0]
                 songs = room.get('data', {}).get('songs', [])
                 songs = [s for s in songs if s.get('id') != eliminated]
@@ -4222,8 +4260,7 @@ def get_game_stats(target_username):
     doc = game_stats_collection.find_one({'username': target_username}, {'_id': 0})
     return jsonify(doc or {})
 
-# ===== GAME CLEANUP (Optional but recommended) =====
-# Remove stale rooms older than 24 hours
+# ===== GAME CLEANUP =====
 @app.route('/api/games/cleanup', methods=['POST'])
 def cleanup_game_rooms():
     username = current_user()

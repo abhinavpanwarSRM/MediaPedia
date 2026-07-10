@@ -1,39 +1,300 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Games</title>
+  <title>Games — MediaPedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --purple: #9c6fe4; --bg: #141414; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --text: #fff; --muted: #888; }
+    :root {
+      --purple: #9c6fe4;
+      --purple-dark: #7a4fc4;
+      --purple-glow: rgba(156, 111, 228, 0.25);
+      --bg: #141414;
+      --card-bg: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #fff;
+      --text-secondary: #aaa;
+      --muted: #888;
+      --radius: 16px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; animation: fadeIn 0.4s ease-out; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; min-height:57px; }
-    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; }
-    .topnav a:hover { color:#fff; }
-    .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
-    .nav-right { display:flex; gap:1rem; align-items:center; }
-    .nav-burger { display:none; flex-direction:column; gap:4px; background:none; border:none; cursor:pointer; padding:4px; }
-    .nav-burger span { display:block; width:22px; height:2px; background:#fff; border-radius:2px; }
-    .nav-drawer { display:none; flex-direction:column; background:rgba(20,20,20,0.98); border-bottom:1px solid var(--border); position:sticky; top:57px; z-index:99; }
-    .nav-drawer.open { display:flex; }
-    .nav-drawer a { padding:0.75rem 1.5rem; color:var(--muted); text-decoration:none; font-size:0.9rem; border-bottom:1px solid var(--border); }
-    .nav-drawer a:hover { color:#fff; }
-    @media(max-width:600px) { .nav-right{display:none;} .nav-burger{display:flex;} }
+    
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      animation: fadeIn 0.4s ease-out;
+      overflow-x: hidden;
+    }
 
-    .hero { text-align:center; padding:4rem 1.5rem 2rem; }
-    .hero h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(2.2rem,6vw,3.5rem); color:var(--purple); margin-bottom:0.5rem; }
-    .hero p { color:var(--muted); font-size:0.95rem; max-width:480px; margin:0 auto; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-    .games-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5rem; max-width:960px; margin:2rem auto; padding:0 1.5rem 3rem; }
-    .game-card { background:rgba(156,111,228,0.06); border:1px solid rgba(156,111,228,0.2); border-radius:16px; padding:2rem 1.5rem; text-align:center; transition:all 0.25s; cursor:pointer; text-decoration:none; color:var(--text); display:block; }
-    .game-card:hover { border-color:var(--purple); background:rgba(156,111,228,0.12); transform:translateY(-4px); box-shadow:0 12px 32px rgba(156,111,228,0.15); }
-    .game-icon { font-size:3rem; margin-bottom:1rem; }
-    .game-card h2 { font-size:1.2rem; font-weight:700; margin-bottom:0.6rem; color:var(--purple); }
-    .game-card p { font-size:0.85rem; color:var(--muted); line-height:1.6; }
-    .game-badge { display:inline-block; margin-top:1rem; background:rgba(156,111,228,0.2); color:var(--purple); font-size:0.72rem; font-weight:700; letter-spacing:0.5px; padding:0.25rem 0.7rem; border-radius:20px; text-transform:uppercase; }
+    /* ---- Navbar (unchanged for consistency) ---- */
+    .topnav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      min-height: 57px;
+    }
+    .topnav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s;
+    }
+    .topnav a:hover { color: #fff; }
+    .topnav .brand { color: #e50914; font-weight: 700; font-size: 1rem; }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+    .nav-burger {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .nav-burger span { display: block; width: 22px; height: 2px; background: #fff; border-radius: 2px; }
+    .nav-drawer {
+      display: none;
+      flex-direction: column;
+      background: rgba(20, 20, 20, 0.98);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 57px;
+      z-index: 99;
+    }
+    .nav-drawer.open { display: flex; }
+    .nav-drawer a {
+      padding: 0.75rem 1.5rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-drawer a:hover { color: #fff; }
+
+    @media(max-width: 600px) {
+      .nav-right { display: none; }
+      .nav-burger { display: flex; }
+    }
+
+    /* ---- Hero Section ---- */
+    .hero {
+      text-align: center;
+      padding: 3rem 1.5rem 1.5rem;
+      position: relative;
+    }
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.4rem, 6vw, 3.5rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--purple) 0%, #c084fc 50%, var(--purple-dark) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      max-width: 500px;
+      margin: 0 auto;
+      font-weight: 300;
+      line-height: 1.7;
+    }
+    .hero .decor-line {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--purple), transparent);
+      margin: 0.8rem auto 0;
+      border-radius: 4px;
+    }
+
+    /* ---- Games Grid ---- */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      max-width: 960px;
+      margin: 2.5rem auto 4rem;
+      padding: 0 1.5rem;
+    }
+
+    .game-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: all var(--transition);
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Card glow effect */
+    .game-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(ellipse at 50% 0%, var(--purple-glow), transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition);
+      pointer-events: none;
+      border-radius: var(--radius);
+    }
+
+    .game-card:hover {
+      border-color: rgba(156, 111, 228, 0.3);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 60px rgba(156, 111, 228, 0.08);
+    }
+    .game-card:hover::before { opacity: 1; }
+
+    .game-icon-wrap {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 1.2rem;
+    }
+    .game-icon {
+      font-size: 3rem;
+      display: block;
+      position: relative;
+      z-index: 1;
+      transition: transform var(--transition);
+    }
+    .game-card:hover .game-icon { transform: scale(1.1) rotate(-3deg); }
+
+    .game-icon-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 65px;
+      height: 65px;
+      border-radius: 50%;
+      background: rgba(156, 111, 228, 0.06);
+      border: 1px solid rgba(156, 111, 228, 0.08);
+      opacity: 0;
+      transition: all var(--transition);
+    }
+    .game-card:hover .game-icon-ring {
+      opacity: 1;
+      width: 75px;
+      height: 75px;
+      border-color: rgba(156, 111, 228, 0.15);
+    }
+
+    .game-card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: var(--purple);
+      letter-spacing: -0.2px;
+      position: relative;
+    }
+
+    .game-card p {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      font-weight: 300;
+      position: relative;
+    }
+
+    .game-meta {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 1.2rem;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    .game-badge {
+      background: rgba(156, 111, 228, 0.12);
+      color: var(--purple);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 0.25rem 0.9rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      border: 1px solid rgba(156, 111, 228, 0.1);
+      transition: all var(--transition);
+    }
+    .game-card:hover .game-badge {
+      background: rgba(156, 111, 228, 0.2);
+      border-color: rgba(156, 111, 228, 0.2);
+    }
+
+    .game-status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    .game-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2ed573;
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ---- Card-specific accent colors ---- */
+    .game-card.music .game-badge { color: #ff6b9d; border-color: rgba(255, 107, 157, 0.2); background: rgba(255, 107, 157, 0.08); }
+    .game-card.music:hover { border-color: rgba(255, 107, 157, 0.25); }
+    .game-card.music h2 { color: #ff6b9d; }
+
+    .game-card.movie .game-badge { color: #ffd93d; border-color: rgba(255, 217, 61, 0.2); background: rgba(255, 217, 61, 0.08); }
+    .game-card.movie:hover { border-color: rgba(255, 217, 61, 0.25); }
+    .game-card.movie h2 { color: #ffd93d; }
+
+    .game-card.detective .game-badge { color: #6bcbff; border-color: rgba(107, 203, 255, 0.2); background: rgba(107, 203, 255, 0.08); }
+    .game-card.detective:hover { border-color: rgba(107, 203, 255, 0.25); }
+    .game-card.detective h2 { color: #6bcbff; }
+
+    /* ---- Responsive ---- */
+    @media(min-width: 768px) {
+      .games-grid { gap: 2rem; }
+      .game-card { padding: 2.2rem 2rem; }
+    }
+
+    @media(max-width: 480px) {
+      .hero { padding: 2rem 1rem 0.5rem; }
+      .games-grid { grid-template-columns: 1fr; gap: 1.2rem; padding: 0 1rem; }
+      .game-card { padding: 1.5rem 1.2rem; }
+    }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
 </head>
@@ -67,29 +328,51 @@
 
   <div class="hero">
     <h1>🎮 Games</h1>
-    <p>Multiplayer games to play with friends. Pick a game, share the room code, and compete.</p>
+    <p>Multiplayer games to play with friends. Share a room code and compete.</p>
+    <div class="decor-line"></div>
   </div>
 
   <div class="games-grid">
-    <a href="/games/music-survivor" class="game-card">
-      <div class="game-icon">🎵</div>
+    <a href="/games/music-survivor" class="game-card music">
+      <div class="game-icon-wrap">
+        <span class="game-icon">🎵</span>
+        <span class="game-icon-ring"></span>
+      </div>
       <h2>Music Survivor</h2>
-      <p>Everyone votes to eliminate songs one by one. The last song standing wins. Defend your favourites!</p>
-      <span class="game-badge">2–8 players</span>
+      <p>Everyone adds songs from YouTube, then votes to eliminate them one by one. Last song standing wins.</p>
+      <div class="game-meta">
+        <span class="game-badge">2–8 players</span>
+        <span class="game-status"><span class="dot"></span> Live</span>
+      </div>
     </a>
-    <a href="/games/movie-impostor" class="game-card">
-      <div class="game-icon">🎬</div>
+
+    <a href="/games/movie-impostor" class="game-card movie">
+      <div class="game-icon-wrap">
+        <span class="game-icon">🎬</span>
+        <span class="game-icon-ring"></span>
+      </div>
       <h2>Movie Impostor</h2>
-      <p>One player gets a different movie. Answer questions about your movie — then vote to find the impostor.</p>
-      <span class="game-badge">3–8 players</span>
+      <p>One player gets a different movie. Answer questions, then vote to find the impostor among your friends.</p>
+      <div class="game-meta">
+        <span class="game-badge">3–8 players</span>
+        <span class="game-status"><span class="dot"></span> Live</span>
+      </div>
     </a>
-    <a href="/games/song-detective" class="game-card">
-      <div class="game-icon">🕵️</div>
+
+    <a href="/games/song-detective" class="game-card detective">
+      <div class="game-icon-wrap">
+        <span class="game-icon">🕵️</span>
+        <span class="game-icon-ring"></span>
+      </div>
       <h2>Song Detective</h2>
-      <p>Everyone submits a song anonymously. Then guess who submitted each one. Most correct guesses wins!</p>
-      <span class="game-badge">2–8 players</span>
+      <p>Everyone submits songs from YouTube. All songs are shuffled and played — guess who submitted each one!</p>
+      <div class="game-meta">
+        <span class="game-badge">2–8 players</span>
+        <span class="game-status"><span class="dot"></span> Live</span>
+      </div>
     </a>
   </div>
+
   <script src="/static/pwa.js"></script>
 </body>
 </html>
