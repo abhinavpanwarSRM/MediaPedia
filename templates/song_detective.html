@@ -1,62 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Song Detective — MediaPedia</title>
+  <title>Song Detective</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; --gold:#ffd700; --red:#e50914; --green:#1db954; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; animation:fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; }
+    
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; flex-wrap:wrap; }
     .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
     .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
-    .container { max-width:680px; margin:0 auto; padding:2rem 1.2rem 5rem; }
-    h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
+    
+    .container { max-width:720px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+    h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.2rem; }
     .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
+    
     .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
-    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; }
+    
     .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
-    input[type=text] { flex:1; min-width:120px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
+    input[type=text], input[type=number] { flex:1; min-width:80px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-family:'Poppins',sans-serif; }
     input:focus { outline:none; border-color:var(--purple); }
-    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    input[type=number] { max-width:100px; }
+    
+    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; font-family:'Poppins',sans-serif; }
     .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
-    .btn-purple:hover { background:rgba(156,111,228,0.3); }
+    .btn-purple:hover:not(:disabled) { background:rgba(156,111,228,0.3); }
     .btn-purple:disabled { opacity:0.45; cursor:not-allowed; }
+    .btn-gold { background:rgba(255,215,0,0.12); border-color:var(--gold); color:var(--gold); }
+    .btn-gold:hover:not(:disabled) { background:rgba(255,215,0,0.2); }
+    .btn-green { background:rgba(29,185,84,0.12); border-color:var(--green); color:var(--green); }
+    .btn-green:hover:not(:disabled) { background:rgba(29,185,84,0.2); }
+    .btn-red { background:rgba(229,9,20,0.12); border-color:var(--red); color:var(--red); }
+    .btn-red:hover:not(:disabled) { background:rgba(229,9,20,0.2); }
+    
     .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--purple); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
     .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
+    
     .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
     .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
     .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
-    .song-card { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; transition:border-color 0.2s; }
-    .song-card:hover { border-color:rgba(156,111,228,0.3); }
-    .song-card h3 { font-size:0.95rem; font-weight:700; margin-bottom:0.2rem; }
-    .song-card .artist { font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem; }
-    .guess-select { width:100%; padding:0.6rem 0.8rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.88rem; appearance:auto; }
-    .guess-select:focus { outline:none; border-color:var(--purple); }
-    .score-row { display:flex; justify-content:space-between; align-items:center; padding:0.65rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
-    .score-row:last-child { border-bottom:none; }
-    .score-row .rank { font-size:0.8rem; color:var(--muted); min-width:24px; }
-    .score-val { font-weight:700; color:var(--purple); }
-    .score-row.first .score-val { color:#ffd700; }
-    .winner-banner { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:12px; padding:1.1rem; font-size:1rem; font-weight:700; color:#ffd700; text-align:center; margin-bottom:1rem; }
+    .player-chip.host { border-color:var(--gold); color:var(--gold); background:rgba(255,215,0,0.08); }
+    
+    .song-item { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.6rem 1rem; transition:border-color 0.2s; margin-bottom:0.5rem; }
+    .song-item .thumb { width:48px; height:36px; border-radius:4px; object-fit:cover; flex-shrink:0; background:#222; }
+    .song-info { flex:1; min-width:0; }
+    .song-title { font-size:0.9rem; font-weight:600; }
+    .song-artist { font-size:0.76rem; color:var(--muted); }
+    .song-added-by { font-size:0.7rem; color:var(--muted); opacity:0.6; }
+    
+    .search-results { display:flex; flex-direction:column; gap:0.4rem; max-height:300px; overflow-y:auto; margin-top:0.5rem; }
+    .search-result-item { display:flex; align-items:center; gap:0.8rem; padding:0.5rem 0.8rem; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer; transition:background 0.2s; border:1px solid transparent; }
+    .search-result-item:hover { background:rgba(255,255,255,0.08); border-color:var(--border); }
+    .search-result-item img { width:56px; height:42px; border-radius:4px; object-fit:cover; flex-shrink:0; background:#222; }
+    .search-result-info { flex:1; min-width:0; }
+    .search-result-title { font-size:0.82rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .search-result-artist { font-size:0.72rem; color:var(--muted); }
+    .search-result-add { padding:0.2rem 0.8rem; border-radius:4px; font-size:0.72rem; font-weight:600; cursor:pointer; border:1px solid var(--purple); background:rgba(156,111,228,0.1); color:var(--purple); flex-shrink:0; font-family:'Poppins',sans-serif; }
+    .search-result-add:hover { background:rgba(156,111,228,0.2); }
+    
+    .guess-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:0.5rem; }
+    .guess-btn { padding:0.5rem 0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:0.8rem; font-weight:500; cursor:pointer; transition:all 0.2s; font-family:'Poppins',sans-serif; text-align:center; }
+    .guess-btn:hover { border-color:var(--purple); background:rgba(156,111,228,0.08); }
+    .guess-btn.selected { border-color:var(--purple); background:rgba(156,111,228,0.2); color:var(--purple); }
+    .guess-btn.correct-guess { border-color:var(--green); background:rgba(29,185,84,0.15); color:var(--green); }
+    .guess-btn.wrong-guess { border-color:var(--red); background:rgba(229,9,20,0.1); color:var(--red); }
+    
+    .player-song { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; margin-bottom:0.5rem; }
+    .player-song .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; }
+    .player-song .submitter { font-weight:700; font-size:0.85rem; color:var(--purple); }
+    .player-song .song-title { font-weight:600; font-size:0.9rem; }
+    .player-song .song-artist { font-size:0.78rem; color:var(--muted); }
+    .player-song .guesses { font-size:0.78rem; color:var(--muted); margin-top:0.3rem; }
+    .player-song .guesses .correct { color:var(--green); }
+    .player-song .guesses .wrong { color:var(--red); }
+    
     .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
-    .reveal-item { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; margin-bottom:0.5rem; }
-    .reveal-item .song-info { font-weight:700; font-size:0.9rem; margin-bottom:0.3rem; }
-    .reveal-item .reveal-meta { font-size:0.78rem; color:var(--muted); margin-bottom:0.2rem; }
-    .reveal-item .guess-result { font-size:0.78rem; }
-    .correct { color:#1db954; font-weight:600; }
-    .wrong { color:#ff6b6b; }
     .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
     .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
-    #screen-lobby, #screen-waiting, #screen-submit, #screen-guess, #screen-result { display:none; }
-    #screen-lobby.active, #screen-waiting.active, #screen-submit.active, #screen-guess.active, #screen-result.active { display:block; }
+    
+    .winner-banner { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:12px; padding:1.2rem; font-size:1.1rem; font-weight:700; color:var(--gold); text-align:center; margin-bottom:1rem; }
+    .winner-banner small { display:block; font-weight:400; font-size:0.8rem; color:var(--muted); margin-top:0.3rem; }
+    
+    .score-row { display:flex; justify-content:space-between; align-items:center; padding:0.65rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+    .score-row:last-child { border-bottom:none; }
+    .score-row .rank { font-size:0.8rem; color:var(--muted); min-width:28px; }
+    .score-val { font-weight:700; color:var(--purple); }
+    .score-row.first .score-val { color:var(--gold); }
+    
+    .round-badge { display:inline-block; background:rgba(156,111,228,0.15); border:1px solid rgba(156,111,228,0.3); border-radius:20px; padding:0.2rem 0.8rem; font-size:0.75rem; font-weight:700; color:var(--purple); margin-bottom:0.8rem; }
+    
+    #screen-lobby, #screen-waiting, #screen-add-songs, #screen-playing, #screen-result { display:none; }
+    #screen-lobby.active, #screen-waiting.active, #screen-add-songs.active, #screen-playing.active, #screen-result.active { display:block; }
+    
+    .hidden { display:none !important; }
+    
     @media(max-width:480px) {
+      .topnav { padding:0.6rem 1rem; }
       .input-row { flex-direction:column; }
       .input-row input, .input-row .btn { width:100%; }
+      .guess-grid { grid-template-columns:1fr; }
+      .song-item { flex-wrap:wrap; }
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
@@ -70,7 +119,7 @@
 
   <div class="container">
     <h1>🕵️ Song Detective</h1>
-    <p class="sub">Everyone submits a song anonymously. Then guess who submitted each one. Most correct guesses wins!</p>
+    <p class="sub">Each player adds songs from YouTube. Then all songs are shuffled and played one by one. Guess who submitted each song — most correct guesses wins!</p>
 
     <!-- Lobby -->
     <div id="screen-lobby" class="active">
@@ -88,42 +137,76 @@
       </div>
     </div>
 
-    <!-- Waiting -->
+    <!-- Waiting / Setup -->
     <div id="screen-waiting">
       <div class="panel">
-        <h2>Waiting for Players</h2>
+        <h2>🎯 Room Setup</h2>
         <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
         <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
-        <button class="btn btn-purple" id="ready-btn" onclick="markReady()">Ready ✓</button>
+        
+        <div id="host-controls">
+          <div style="margin:1rem 0;border-top:1px solid var(--border);padding-top:1rem;">
+            <label style="color:var(--muted);font-size:0.82rem;display:block;margin-bottom:0.4rem;">Songs per player:</label>
+            <div class="input-row">
+              <input type="number" id="songs-per-player" value="2" min="1" max="5" />
+              <button class="btn btn-gold" onclick="setSongCount()">Set</button>
+            </div>
+          </div>
+        </div>
+        
+        <button class="btn btn-purple" id="ready-btn" onclick="markReady()">✅ Ready</button>
         <div class="status-msg" id="ready-status"></div>
       </div>
     </div>
 
-    <!-- Submit song -->
-    <div id="screen-submit">
+    <!-- Add Songs (with YouTube search) -->
+    <div id="screen-add-songs">
       <div class="panel">
-        <h2>Submit Your Song</h2>
-        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem;">Pick a song that represents you. Others will try to guess it's yours — choose wisely!</p>
-        <div class="input-row">
-          <input type="text" id="song-title" placeholder="Song title" onkeydown="if(event.key==='Enter')document.getElementById('song-artist').focus()" />
+        <h2>🎵 Add Your Songs</h2>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:0.8rem;">
+          You need to add <strong id="needed-count" style="color:var(--purple);">2</strong> songs.
+          <span id="added-progress" style="color:var(--muted);">Added: <span id="added-count">0</span></span>
         </div>
+        
         <div class="input-row">
-          <input type="text" id="song-artist" placeholder="Artist name" onkeydown="if(event.key==='Enter')submitSong()" />
+          <input type="text" id="youtube-search-input" placeholder="Search for a song on YouTube..." onkeydown="if(event.key==='Enter')searchYouTube()" />
+          <button class="btn btn-purple" onclick="searchYouTube()">Search</button>
         </div>
-        <button class="btn btn-purple" onclick="submitSong()" id="submit-song-btn">Submit Song</button>
-        <div class="status-msg" id="submit-status"></div>
+        <div id="search-results" class="search-results"></div>
+        <div class="status-msg" id="search-status"></div>
+      </div>
+
+      <div class="panel">
+        <h2>📋 Your Songs</h2>
+        <div id="added-songs-list"></div>
+        <button class="btn btn-green" id="done-adding-btn" onclick="doneAdding()" style="margin-top:0.8rem;">✅ Done — Start Game</button>
+        <div class="status-msg" id="add-status"></div>
       </div>
     </div>
 
-    <!-- Guess screen -->
-    <div id="screen-guess">
+    <!-- Playing / Guessing -->
+    <div id="screen-playing">
       <div class="panel">
-        <h2>Who submitted each song?</h2>
-        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem;">For each song below, pick which player you think submitted it.</p>
-        <div id="guess-list"></div>
-        <button class="btn btn-purple" style="margin-top:0.8rem;" onclick="submitGuesses()" id="submit-guesses-btn">Submit Guesses</button>
-        <div class="status-msg" id="guess-status"></div>
+        <div class="round-badge">Song <span id="song-index">1</span> of <span id="total-songs">0</span></div>
+        
+        <div id="player-container" style="margin:0.5rem 0;text-align:center;">
+          <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;">
+            <iframe id="youtube-player" src="" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+        </div>
+        
+        <div style="margin:0.8rem 0;">
+          <div style="font-size:0.95rem;font-weight:600;" id="current-song-title">Loading...</div>
+          <div style="font-size:0.82rem;color:var(--muted);" id="current-song-artist"></div>
+        </div>
+        
+        <div style="margin-top:0.8rem;border-top:1px solid var(--border);padding-top:0.8rem;">
+          <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem;">Who submitted this song?</div>
+          <div class="guess-grid" id="guess-grid"></div>
+          <button class="btn btn-purple" id="vote-btn" onclick="submitVote()" style="margin-top:0.8rem;width:100%;" disabled>Submit Guess</button>
+          <div class="status-msg" id="vote-status"></div>
+        </div>
       </div>
     </div>
 
@@ -131,11 +214,11 @@
     <div id="screen-result">
       <div class="winner-banner" id="winner-banner"></div>
       <div class="panel">
-        <h2>Scores</h2>
+        <h2>🏆 Final Scores</h2>
         <div id="scores-list"></div>
       </div>
       <div class="panel">
-        <h2>Reveals</h2>
+        <h2>📋 Full Reveal</h2>
         <div id="reveals-list"></div>
         <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
           <button class="btn btn-purple" onclick="location.href='/games/song-detective'">Play Again</button>
@@ -147,12 +230,22 @@
 
   <script>
     const ME = '{{ username }}';
+    const API_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}', '{{ api_key_3 }}', '{{ api_key_4 }}', '{{ api_key_5 }}'];
     let roomCode = null;
     let pollTimer = null;
-    let players = [];
+    let isHost = false;
+    let songsPerPlayer = 2;
+    let mySongs = [];
+    let searchKeyIndex = 0;
+    
+    let allSongs = [];
+    let currentSongIndex = 0;
+    let selectedGuess = null;
+    let guesses = {};
 
+    // ---- Screen Management ----
     function showScreen(id) {
-      ['screen-lobby','screen-waiting','screen-submit','screen-guess','screen-result'].forEach(s =>
+      ['screen-lobby','screen-waiting','screen-add-songs','screen-playing','screen-result'].forEach(s =>
         document.getElementById(s).classList.remove('active')
       );
       document.getElementById(id).classList.add('active');
@@ -163,34 +256,78 @@
       navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
     }
 
+    function showToast(msg) {
+      let t = document.getElementById('_toast');
+      if (!t) { 
+        t = document.createElement('div'); 
+        t.id = '_toast'; 
+        t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;'; 
+        document.body.appendChild(t); 
+      }
+      t.textContent = msg; 
+      t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ---- Room Management ----
     async function createRoom() {
-      const btn = event.target; btn.disabled = true; btn.textContent = 'Creating...';
+      const btn = event.target; 
+      btn.disabled = true; 
+      btn.textContent = 'Creating...';
       try {
         const res = await fetch('/api/games/room', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+          method:'POST', 
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify({game_type:'song_detective'})
         });
         const d = await res.json();
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = d.code;
+        isHost = true;
         enterWaiting();
-      } finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
+      } catch(e) { showToast('Error creating room'); } 
+      finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
 
     async function joinRoom() {
       const code = document.getElementById('join-code').value.trim().toUpperCase();
-      if (!code) return;
-      const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
-      const d = await res.json();
-      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
-      roomCode = code;
-      enterWaiting();
+      if (!code) { showToast('Enter a room code'); return; }
+      try {
+        const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = code;
+        isHost = false;
+        enterWaiting();
+      } catch(e) { showToast('Error joining room'); }
     }
 
     function enterWaiting() {
       document.getElementById('room-code-display').textContent = roomCode;
+      
+      // Show/hide host controls
+      document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
+      
       showScreen('screen-waiting');
+      fetchRoomState();
       startPolling();
+    }
+
+    async function setSongCount() {
+      if (!isHost) return;
+      const val = parseInt(document.getElementById('songs-per-player').value) || 2;
+      if (val < 1 || val > 5) { showToast('Please enter 1-5 songs per player'); return; }
+      songsPerPlayer = val;
+      showToast('Set to ' + val + ' songs per player');
+      // Store in room data
+      await fetch('/api/games/room/' + roomCode + '/action', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'set_song_count', count: val})
+      });
     }
 
     async function markReady() {
@@ -198,161 +335,408 @@
       btn.disabled = true;
       document.getElementById('ready-status').textContent = 'Waiting for others...';
       await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
-      // Poll will detect when all ready and transition
+      // Poll will handle transition
     }
 
-    async function submitSong() {
-      const title = document.getElementById('song-title').value.trim();
-      const artist = document.getElementById('song-artist').value.trim();
-      if (!title || !artist) { showToast('Enter both song title and artist.'); return; }
-      const btn = document.getElementById('submit-song-btn');
-      btn.disabled = true;
-      document.getElementById('submit-status').textContent = 'Submitting...';
-      const res = await fetch('/api/games/room/' + roomCode + '/action', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'submit_song', song_title:title, artist})
+    // ---- YouTube Search ----
+    async function searchYouTube() {
+      const input = document.getElementById('youtube-search-input');
+      const query = input.value.trim();
+      if (!query) { showToast('Enter a search term'); return; }
+      
+      const resultsEl = document.getElementById('search-results');
+      const statusEl = document.getElementById('search-status');
+      resultsEl.innerHTML = '';
+      statusEl.textContent = 'Searching...';
+      
+      const key = getNextKey();
+      if (!key) { statusEl.textContent = 'No API keys available'; return; }
+      
+      try {
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + ' song audio')}&key=${key}&maxResults=12&type=video`
+        );
+        if (!res.ok) throw new Error('API error: ' + res.status);
+        const data = await res.json();
+        if (!data.items || data.items.length === 0) {
+          statusEl.textContent = 'No results found. Try a different search.';
+          return;
+        }
+        statusEl.textContent = '';
+        resultsEl.innerHTML = data.items.map(item => {
+          const thumb = item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url || '';
+          const title = item.snippet.title || 'Untitled';
+          const videoId = item.id.videoId;
+          const parts = title.split(/\s[-–]\s/);
+          const artist = parts.length > 1 ? parts[parts.length-1] : 'Unknown Artist';
+          const songTitle = parts.length > 1 ? parts.slice(0,-1).join(' - ') : title;
+          const alreadyAdded = mySongs.some(s => s.youtube_query === videoId);
+          return `<div class="search-result-item" style="${alreadyAdded ? 'opacity:0.5;' : ''}" onclick="${alreadyAdded ? '' : `addSong('${videoId}', '${esc(songTitle)}', '${esc(artist)}', '${thumb}')`}">
+            <img src="${thumb}" alt="" loading="lazy" />
+            <div class="search-result-info">
+              <div class="search-result-title">${esc(songTitle)}</div>
+              <div class="search-result-artist">${esc(artist)}</div>
+            </div>
+            <button class="search-result-add" ${alreadyAdded ? 'disabled style="opacity:0.4;"' : ''}>${alreadyAdded ? 'Added' : '+ Add'}</button>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        statusEl.textContent = 'Search failed: ' + e.message;
+        searchKeyIndex++;
+        if (searchKeyIndex < API_KEYS.length) {
+          setTimeout(searchYouTube, 500);
+        }
+      }
+    }
+
+    function getNextKey() {
+      while (searchKeyIndex < API_KEYS.length) {
+        const key = API_KEYS[searchKeyIndex];
+        if (key && key.length > 5) return key;
+        searchKeyIndex++;
+      }
+      return null;
+    }
+
+    function addSong(videoId, title, artist, thumb) {
+      if (mySongs.some(s => s.youtube_query === videoId)) {
+        showToast('Already added this song');
+        return;
+      }
+      if (mySongs.length >= songsPerPlayer) {
+        showToast(`You can only add ${songsPerPlayer} songs`);
+        return;
+      }
+      mySongs.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+        youtube_query: videoId,
+        title: title || 'Untitled',
+        artist: artist || 'Unknown Artist',
+        thumbnail: thumb || '',
+        addedBy: ME
       });
-      const room = await res.json();
-      document.getElementById('submit-status').textContent = 'Song submitted! Waiting for others...';
-      if (room.state === 'playing') { buildGuessScreen(room); return; }
-      startPollingForGuessing();
+      renderAddedSongs();
+      showToast('Added: ' + title);
+      document.getElementById('youtube-search-input').value = '';
+      document.getElementById('search-results').innerHTML = '';
+      document.getElementById('search-status').textContent = '';
+      updateProgress();
     }
 
-    function startPollingForGuessing() {
-      clearTimeout(pollTimer);
-      pollTimer = setTimeout(pollForGuessing, 2500);
+    function removeSong(id) {
+      mySongs = mySongs.filter(s => s.id !== id);
+      renderAddedSongs();
+      updateProgress();
     }
 
-    async function pollForGuessing() {
-      if (document.hidden) { startPollingForGuessing(); return; }
-      const res = await fetch('/api/games/room/' + roomCode);
-      const room = await res.json();
-      if (room.state === 'playing') { buildGuessScreen(room); return; }
-      if (room.state === 'finished') { showResult(room); return; }
-      startPollingForGuessing();
-    }
-
-    function buildGuessScreen(room) {
-      clearTimeout(pollTimer);
-      players = (room.players||[]).map(p => p.username);
-      const submissions = (room.data||{}).submissions || [];
-      document.getElementById('guess-list').innerHTML = submissions.map(s =>
-        `<div class="song-card">
-          <h3>${esc(s.song_title)}</h3>
-          <div class="artist">${esc(s.artist)}</div>
-          <select class="guess-select" id="guess-${s.id}">
-            <option value="">— Who submitted this? —</option>
-            ${players.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
-          </select>
+    function renderAddedSongs() {
+      const c = document.getElementById('added-songs-list');
+      if (!mySongs.length) { 
+        c.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:0.5rem;">No songs added yet. Search and add from YouTube!</div>'; 
+        return; 
+      }
+      c.innerHTML = mySongs.map(s =>
+        `<div class="song-item">
+          ${s.thumbnail ? `<img src="${s.thumbnail}" class="thumb" alt="" />` : ''}
+          <div class="song-info">
+            <div class="song-title">${esc(s.title)}</div>
+            <div class="song-artist">${esc(s.artist)}</div>
+          </div>
+          <button onclick="removeSong('${s.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;" title="Remove">✕</button>
         </div>`
       ).join('');
-      showScreen('screen-guess');
     }
 
-    async function submitGuesses() {
-      const room = await (await fetch('/api/games/room/' + roomCode)).json();
-      const submissions = (room.data||{}).submissions || [];
-      for (const s of submissions) {
-        const guess = document.getElementById('guess-' + s.id)?.value;
-        if (!guess) { showToast('Make a guess for every song!'); return; }
+    function updateProgress() {
+      document.getElementById('added-count').textContent = mySongs.length;
+      document.getElementById('needed-count').textContent = songsPerPlayer;
+      const btn = document.getElementById('done-adding-btn');
+      btn.disabled = mySongs.length < songsPerPlayer;
+      btn.textContent = mySongs.length >= songsPerPlayer ? '✅ Done — Start Game' : `Add ${songsPerPlayer - mySongs.length} more song${songsPerPlayer - mySongs.length > 1 ? 's' : ''}`;
+    }
+
+    async function doneAdding() {
+      if (mySongs.length < songsPerPlayer) { 
+        showToast(`Add ${songsPerPlayer - mySongs.length} more song${songsPerPlayer - mySongs.length > 1 ? 's' : ''}`); 
+        return; 
       }
-      const btn = document.getElementById('submit-guesses-btn');
+      const btn = document.getElementById('done-adding-btn');
       btn.disabled = true;
-      for (const s of submissions) {
-        const guess = document.getElementById('guess-' + s.id).value;
+      document.getElementById('add-status').textContent = 'Uploading songs...';
+      
+      for (const s of mySongs) {
         await fetch('/api/games/room/' + roomCode + '/action', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'guess', song_id:s.id, guess})
+          body: JSON.stringify({action:'submit_song', song: s})
         });
       }
-      document.getElementById('guess-status').textContent = 'Guesses submitted! Waiting for others...';
-      startPollingForResult();
+      mySongs = [];
+      renderAddedSongs();
+      updateProgress();
+      document.getElementById('add-status').textContent = 'Songs submitted! Waiting for others...';
+      
+      // Mark ready
+      await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
+      // Poll will transition to playing
     }
 
-    function startPollingForResult() {
-      clearTimeout(pollTimer);
-      pollTimer = setTimeout(pollForResult, 2500);
+    // ---- Playing / Guessing ----
+    function startPlaying(room) {
+      showScreen('screen-playing');
+      allSongs = room.data?.songs || [];
+      if (!allSongs.length) { 
+        document.getElementById('vote-status').textContent = 'No songs available!';
+        return; 
+      }
+      
+      // Shuffle songs
+      allSongs = shuffleArray(allSongs);
+      
+      currentSongIndex = 0;
+      guesses = {};
+      showSong(0);
     }
 
-    async function pollForResult() {
-      if (document.hidden) { startPollingForResult(); return; }
-      const res = await fetch('/api/games/room/' + roomCode);
-      const room = await res.json();
-      if (room.state === 'finished') { showResult(room); return; }
-      startPollingForResult();
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
     }
 
+    function showSong(index) {
+      if (index >= allSongs.length) {
+        // All songs played — finish
+        finishGame();
+        return;
+      }
+      
+      const song = allSongs[index];
+      document.getElementById('song-index').textContent = index + 1;
+      document.getElementById('total-songs').textContent = allSongs.length;
+      document.getElementById('current-song-title').textContent = song.title || 'Untitled';
+      document.getElementById('current-song-artist').textContent = song.artist || 'Unknown Artist';
+      
+      // Load YouTube video
+      const player = document.getElementById('youtube-player');
+      if (song.youtube_query) {
+        player.src = `https://www.youtube.com/embed/${song.youtube_query}?autoplay=1&controls=1&rel=0&modestbranding=1`;
+      } else {
+        player.src = '';
+      }
+      
+      // Build guess grid
+      const grid = document.getElementById('guess-grid');
+      const players = getOtherPlayers();
+      if (players.length === 0) {
+        grid.innerHTML = '<div style="color:var(--muted);text-align:center;padding:0.5rem;">Waiting for other players...</div>';
+        return;
+      }
+      grid.innerHTML = players.map(p =>
+        `<button class="guess-btn" onclick="selectGuess(this, '${esc(p)}')">${esc(p)}</button>`
+      ).join('');
+      
+      selectedGuess = null;
+      document.getElementById('vote-btn').disabled = true;
+      document.getElementById('vote-status').textContent = '';
+    }
+
+    function getOtherPlayers() {
+      // Get players from room state
+      const room = window._roomState || { players: [] };
+      return (room.players || []).filter(p => p.username !== ME).map(p => p.username);
+    }
+
+    function selectGuess(btn, username) {
+      document.querySelectorAll('.guess-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedGuess = username;
+      document.getElementById('vote-btn').disabled = false;
+    }
+
+    async function submitVote() {
+      if (!selectedGuess) { showToast('Select a player first!'); return; }
+      const song = allSongs[currentSongIndex];
+      const btn = document.getElementById('vote-btn');
+      btn.disabled = true;
+      document.getElementById('vote-status').textContent = 'Submitting vote...';
+      
+      await fetch('/api/games/room/' + roomCode + '/action', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          action:'vote',
+          song_id: song.id || song.song_id,
+          guess: selectedGuess
+        })
+      });
+      
+      guesses[song.id || song.song_id] = selectedGuess;
+      document.getElementById('vote-status').textContent = 'Vote submitted!';
+      
+      // Move to next song after delay
+      setTimeout(() => {
+        currentSongIndex++;
+        showSong(currentSongIndex);
+      }, 1000);
+    }
+
+    async function finishGame() {
+      document.getElementById('vote-status').textContent = 'All songs played! Calculating results...';
+      
+      // Trigger finish
+      await fetch('/api/games/room/' + roomCode + '/action', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'finish'})
+      });
+      
+      // Poll for result
+      setTimeout(() => {
+        fetchRoomState();
+      }, 2000);
+    }
+
+    // ---- Results ----
     function showResult(room) {
       clearTimeout(pollTimer);
+      showScreen('screen-result');
+      
       const data = room.data || {};
       const scores = data.scores || {};
-      const winner = data.winner;
-      const submissions = data.submissions || [];
-      const guesses = data.guesses || {};
-
+      const allSongsData = data.all_songs || data.songs || [];
+      const votes = data.votes || {};
+      
+      // Find winner
+      let winner = '';
+      let maxScore = -1;
+      for (const [u, score] of Object.entries(scores)) {
+        if (score > maxScore) {
+          maxScore = score;
+          winner = u;
+        }
+      }
+      
       document.getElementById('winner-banner').innerHTML = winner
-        ? `🏆 Winner: <strong>${esc(winner)}</strong> — ${scores[winner]||0} correct guess${scores[winner]!==1?'es':''}`
+        ? `🏆 Winner: <strong>${esc(winner)}</strong> — ${maxScore} correct guess${maxScore !== 1 ? 'es' : ''}<small>Out of ${allSongsData.length} songs</small>`
         : '🏆 Game Over!';
-
+      
+      // Scores
       const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
       document.getElementById('scores-list').innerHTML = sorted.map(([u, s], i) =>
         `<div class="score-row ${i===0?'first':''}">
           <span class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.'}</span>
           <span style="flex:1;font-weight:${i===0?'700':'400'};">${esc(u)}</span>
-          <span class="score-val">${s} / ${submissions.length}</span>
+          <span class="score-val">${s} / ${allSongsData.length}</span>
         </div>`
       ).join('');
-
-      document.getElementById('reveals-list').innerHTML = submissions.map(s => {
-        const myGuess = (guesses[ME]||{})[s.id] || '?';
+      
+      // Full reveal
+      document.getElementById('reveals-list').innerHTML = allSongsData.map(s => {
+        const songId = s.id || s.song_id;
+        const myGuess = (votes[ME] || {})[songId] || 'No guess';
         const correct = myGuess === s.submitter;
-        return `<div class="reveal-item">
-          <div class="song-info">${esc(s.song_title)} <span style="font-weight:400;color:var(--muted);">— ${esc(s.artist)}</span></div>
-          <div class="reveal-meta">Submitted by: <strong>${esc(s.submitter)}</strong></div>
-          <div class="guess-result">Your guess: <span class="${correct?'correct':'wrong'}">${esc(myGuess)} ${correct?'✓':'✗'}</span></div>
+        const allGuesses = Object.entries(votes || {})
+          .filter(([u, gs]) => gs[songId])
+          .map(([u, gs]) => ({ player: u, guess: gs[songId] }));
+        
+        return `<div class="player-song">
+          <div class="header">
+            <span class="submitter">${esc(s.submitter)}</span>
+            <span style="font-size:0.72rem;color:var(--muted);">${s.addedAt || ''}</span>
+          </div>
+          <div class="song-title">${esc(s.title)}</div>
+          <div class="song-artist">${esc(s.artist)}</div>
+          <div class="guesses">
+            Your guess: <span class="${correct ? 'correct' : 'wrong'}">${esc(myGuess)} ${correct ? '✓' : '✗'}</span>
+            ${allGuesses.length > 0 ? ' · Votes: ' + allGuesses.map(g => 
+              `<span style="font-size:0.72rem;color:var(--muted);">${esc(g.player)} → ${esc(g.guess)}</span>`
+            ).join(' ') : ''}
+          </div>
         </div>`;
       }).join('');
-
-      showScreen('screen-result');
     }
 
+    // ---- Polling ----
     function startPolling() {
       clearTimeout(pollTimer);
       pollTimer = setTimeout(pollRoom, 2000);
     }
 
-    async function pollRoom() {
-      if (!roomCode || document.hidden) { startPolling(); return; }
+    async function fetchRoomState() {
       try {
         const res = await fetch('/api/games/room/' + roomCode);
         const room = await res.json();
-        // Update player chips
-        const pl = document.getElementById('players-list');
-        if (pl) pl.innerHTML = (room.players||[]).map(p =>
-          `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
-        ).join('');
-
-        const allReady = (room.players||[]).length >= 2 && (room.players||[]).every(p => p.ready);
-        if (room.state === 'lobby' && allReady) { showScreen('screen-submit'); return; }
-        if (room.state === 'playing') { buildGuessScreen(room); return; }
-        if (room.state === 'finished') { showResult(room); return; }
+        window._roomState = room;
+        handleRoomState(room);
       } catch(e) {}
+    }
+
+    async function pollRoom() {
+      if (!roomCode || document.hidden) { startPolling(); return; }
+      await fetchRoomState();
       startPolling();
+    }
+
+    function handleRoomState(room) {
+      if (!room || room.error) return;
+      
+      // Update players
+      const pl = document.getElementById('players-list');
+      if (pl) {
+        pl.innerHTML = (room.players||[]).map(p =>
+          `<span class="player-chip ${p.ready?'ready':''} ${room.host === p.username ? 'host' : ''}">${esc(p.username)}${p.ready?' ✓':''}${room.host === p.username ? ' 👑' : ''}</span>`
+        ).join('');
+      }
+      
+      // Check state
+      if (room.state === 'lobby') {
+        // Check if all ready and we should transition to add songs
+        const allReady = (room.players||[]).length >= 2 && (room.players||[]).every(p => p.ready);
+        if (allReady) {
+          // Check if we have songs per player count
+          const count = room.data?.songs_per_player || 2;
+          songsPerPlayer = count;
+          document.getElementById('needed-count').textContent = songsPerPlayer;
+          updateProgress();
+          showScreen('screen-add-songs');
+        }
+      } else if (room.state === 'playing') {
+        if (room.data?.songs && room.data.songs.length > 0) {
+          // Check if we already have guesses for all songs
+          const total = room.data.songs.length;
+          const myVotes = Object.keys(room.data.votes?.[ME] || {}).length;
+          if (myVotes >= total && total > 0) {
+            // All voted, wait for result
+            document.getElementById('vote-status').textContent = 'Waiting for others...';
+          } else if (!document.getElementById('screen-playing').classList.contains('active')) {
+            startPlaying(room);
+          } else {
+            // Update current song if needed
+            const current = room.data.current_index || 0;
+            if (current !== currentSongIndex) {
+              currentSongIndex = current;
+              showSong(currentSongIndex);
+            }
+          }
+        }
+      } else if (room.state === 'finished') {
+        showResult(room);
+      }
     }
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
     });
 
-    function showToast(msg) {
-      let t = document.getElementById('_toast');
-      if (!t) { t = document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;'; document.body.appendChild(t); }
-      t.textContent = msg; t.style.opacity = '1';
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
-    }
+    // ---- Enter key for search ----
+    document.getElementById('youtube-search-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') searchYouTube();
+    });
 
-    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // ---- Init ----
+    showScreen('screen-lobby');
   </script>
   <script src="/static/pwa.js"></script>
 </body>

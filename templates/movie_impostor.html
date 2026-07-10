@@ -1,67 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Movie Impostor — MediaPedia</title>
+  <title>Movie Impostor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; --red:#e50914; --gold:#ffd700; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; animation:fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; }
+    
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; flex-wrap:wrap; }
     .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
     .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
-    .container { max-width:680px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+    .container { max-width:720px; margin:0 auto; padding:2rem 1.2rem 5rem; }
     h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
     .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
+    
     .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
-    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; }
+    
     .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
     input[type=text] { flex:1; min-width:120px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
     input:focus { outline:none; border-color:var(--purple); }
     textarea { width:100%; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; resize:vertical; min-height:72px; font-family:inherit; line-height:1.5; }
     textarea:focus { outline:none; border-color:var(--purple); }
-    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    
+    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; font-family:'Poppins',sans-serif; }
     .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
-    .btn-purple:hover { background:rgba(156,111,228,0.3); }
+    .btn-purple:hover:not(:disabled) { background:rgba(156,111,228,0.3); }
     .btn-purple:disabled { opacity:0.45; cursor:not-allowed; }
     .btn-red { background:rgba(229,9,20,0.15); border-color:#e50914; color:#e50914; }
-    .btn-red:hover { background:rgba(229,9,20,0.3); }
+    .btn-red:hover:not(:disabled) { background:rgba(229,9,20,0.3); }
+    .btn-gold { background:rgba(255,215,0,0.12); border-color:var(--gold); color:var(--gold); }
+    .btn-gold:hover:not(:disabled) { background:rgba(255,215,0,0.2); }
+    
     .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--purple); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
     .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
+    
     .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
     .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
     .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
+    
+    /* Movie Reveal with Trailer & Details */
     .movie-reveal { border-radius:14px; padding:1.4rem; text-align:center; margin-bottom:1.2rem; }
     .movie-reveal.normal { background:rgba(156,111,228,0.07); border:1px solid rgba(156,111,228,0.25); }
     .movie-reveal.impostor { background:rgba(229,9,20,0.07); border:1px solid rgba(229,9,20,0.3); }
-    .movie-title { font-size:clamp(1.2rem,4vw,1.6rem); font-weight:800; margin:0.4rem 0; }
-    .movie-genre { font-size:0.82rem; color:var(--muted); }
+    
+    .movie-title { font-size:clamp(1.4rem,4vw,1.8rem); font-weight:800; margin:0.4rem 0; }
+    .movie-genre { font-size:0.85rem; color:var(--muted); }
+    .movie-year { font-size:0.82rem; color:var(--muted); }
+    .movie-plot { font-size:0.88rem; color:#ccc; margin:0.6rem 0; line-height:1.6; text-align:left; }
+    .movie-stars { font-size:0.82rem; color:var(--muted); }
+    .movie-stars a { color:var(--purple); text-decoration:none; }
+    .movie-stars a:hover { text-decoration:underline; }
+    
     .impostor-tag { display:inline-block; background:rgba(229,9,20,0.15); color:#ff6b6b; border:1px solid rgba(229,9,20,0.3); border-radius:20px; padding:0.2rem 0.8rem; font-size:0.75rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:0.6rem; }
+    
+    .trailer-container { margin:1rem 0; border-radius:8px; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,0.6); }
+    .trailer-thumbnail { width:100%; height:0; padding-bottom:56.25%; background-size:cover; background-position:center; position:relative; cursor:pointer; transition:transform 0.3s ease; border-radius:8px; }
+    .trailer-thumbnail:hover { transform:scale(1.02); }
+    .trailer-thumbnail::after { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.3); transition:background 0.3s ease; }
+    .trailer-thumbnail:hover::after { background:rgba(0,0,0,0.1); }
+    .trailer-thumbnail::before { content:'▶'; font-size:clamp(3rem,8vw,4rem); color:#fff; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-shadow:0 0 20px rgba(0,0,0,0.7); opacity:0.9; transition:all 0.3s ease; }
+    .trailer-thumbnail:hover::before { transform:translate(-50%,-50%) scale(1.1); opacity:1; }
+    iframe { width:100%; height:auto; aspect-ratio:16/9; border:none; border-radius:8px; }
+    
+    .movie-poster { width:120px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.08); margin:0.5rem auto; display:block; }
+    
     .question-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; }
     .question-text { font-size:0.9rem; font-weight:600; margin-bottom:0.6rem; color:#ddd; }
+    
     .suspect-list { display:flex; flex-direction:column; gap:0.5rem; }
-    .suspect-btn { padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:left; transition:all 0.2s; }
+    .suspect-btn { padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:left; transition:all 0.2s; font-family:'Poppins',sans-serif; }
     .suspect-btn:hover { border-color:var(--purple); background:rgba(156,111,228,0.08); }
     .suspect-btn.selected { border-color:var(--purple); background:rgba(156,111,228,0.18); color:var(--purple); }
+    
     .result-banner { border-radius:12px; padding:1.2rem; text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:1rem; }
     .result-win { background:rgba(29,185,84,0.08); border:1px solid rgba(29,185,84,0.35); color:#1db954; }
     .result-lose { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.35); color:#ff6b6b; }
+    
     .answer-block { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; margin-bottom:0.6rem; }
     .answer-block .player-name { font-weight:700; font-size:0.85rem; color:var(--purple); margin-bottom:0.4rem; }
     .answer-line { font-size:0.8rem; color:#ccc; margin-bottom:0.25rem; line-height:1.5; }
     .answer-line .q-label { color:var(--muted); }
+    
     .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
     .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
     .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
+    
     #screen-lobby, #screen-waiting, #screen-movie, #screen-questions, #screen-vote, #screen-result { display:none; }
     #screen-lobby.active, #screen-waiting.active, #screen-movie.active, #screen-questions.active, #screen-vote.active, #screen-result.active { display:block; }
+    
+    .hidden { display:none !important; }
+    
     @media(max-width:480px) {
+      .topnav { padding:0.6rem 1rem; }
       .input-row { flex-direction:column; }
       .input-row input, .input-row .btn { width:100%; }
+      .movie-poster { width:80px; }
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
@@ -105,11 +144,13 @@
       </div>
     </div>
 
-    <!-- Movie reveal -->
+    <!-- Movie reveal with full details -->
     <div id="screen-movie">
       <div id="movie-reveal-box"></div>
-      <div class="panel">
-        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Remember your movie. Answer the questions without revealing the title directly. The impostor has a <em>different</em> movie — blend in or catch them!</p>
+      <div id="movie-trailer-container" class="trailer-container"></div>
+      <div id="movie-details-container"></div>
+      <div class="panel" style="margin-top:0.5rem;">
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.8rem;">Watch the trailer, read the details, then answer the questions without revealing the title directly. The impostor has a <em>different</em> movie — blend in or catch them!</p>
         <button class="btn btn-purple" onclick="showScreen('screen-questions')">Answer Questions →</button>
       </div>
     </div>
@@ -156,13 +197,18 @@
 
   <script>
     const ME = '{{ username }}';
+    const API_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}', '{{ api_key_3 }}', '{{ api_key_4 }}', '{{ api_key_5 }}'];
     let roomCode = null;
     let myMovie = null;
     let amImpostor = false;
     let questions = [];
     let selectedSuspect = null;
     let pollTimer = null;
+    let currentKeyIndex = 0;
+    let moviePosterUrl = '';
+    let movieBackdropUrl = '';
 
+    // ---- Screen Management ----
     function showScreen(id) {
       ['screen-lobby','screen-waiting','screen-movie','screen-questions','screen-vote','screen-result'].forEach(s =>
         document.getElementById(s).classList.remove('active')
@@ -175,6 +221,24 @@
       navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
     }
 
+    // ---- Toast ----
+    function showToast(msg) {
+      let t = document.getElementById('_toast');
+      if (!t) { 
+        t = document.createElement('div'); 
+        t.id = '_toast'; 
+        t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;'; 
+        document.body.appendChild(t); 
+      }
+      t.textContent = msg; 
+      t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ---- Room Management ----
     async function createRoom() {
       const btn = event.target; btn.disabled = true; btn.textContent = 'Creating...';
       try {
@@ -186,17 +250,20 @@
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = d.code;
         enterWaiting();
-      } finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
+      } catch(e) { showToast('Error creating room'); }
+      finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
 
     async function joinRoom() {
       const code = document.getElementById('join-code').value.trim().toUpperCase();
-      if (!code) return;
-      const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
-      const d = await res.json();
-      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
-      roomCode = code;
-      enterWaiting();
+      if (!code) { showToast('Enter a room code'); return; }
+      try {
+        const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = code;
+        enterWaiting();
+      } catch(e) { showToast('Error joining room'); }
     }
 
     function enterWaiting() {
@@ -214,6 +281,9 @@
       if (d.started) {
         const room = await (await fetch('/api/games/room/' + roomCode)).json();
         handleRoomState(room);
+      } else {
+        document.getElementById('ready-status').textContent = 'Waiting for all players to ready up...';
+        btn.disabled = false;
       }
     }
 
@@ -223,10 +293,14 @@
       if (pl) pl.innerHTML = (room.players||[]).map(p =>
         `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
       ).join('');
-      if (room.state === 'playing' && room.round >= 1) { revealMovie(room); }
-      else if (room.state === 'finished') { showResult(room); }
+      if (room.state === 'playing' && room.round >= 1) { 
+        revealMovie(room); 
+      } else if (room.state === 'finished') { 
+        showResult(room); 
+      }
     }
 
+    // ---- Movie Details with Trailer ----
     function revealMovie(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
@@ -236,21 +310,26 @@
       questions = data.questions || [];
       myMovie = amImpostor ? pair[1] : pair[0];
 
+      // Build the movie reveal box
       const box = document.getElementById('movie-reveal-box');
       if (amImpostor) {
         box.className = 'movie-reveal impostor';
         box.innerHTML = `<div class="impostor-tag">🕵️ You are the Impostor</div>
-          <div class="movie-title" style="color:#ff6b6b;">${esc(myMovie?.title || '')}</div>
-          <div class="movie-genre">${esc(myMovie?.genre || '')}</div>
-          <div style="color:#ff6b6b;font-size:0.82rem;margin-top:0.8rem;">Others have a different movie. Blend in!</div>`;
+          <div style="color:#ff6b6b;font-size:1.2rem;font-weight:700;">${esc(myMovie?.title || '')}</div>
+          <div style="color:#ff6b6b;font-size:0.9rem;margin-top:0.3rem;">${esc(myMovie?.genre || '')}</div>
+          <div style="color:#ff6b6b;font-size:0.82rem;margin-top:0.8rem;opacity:0.8;">Others have a different movie. Blend in!</div>`;
       } else {
         box.className = 'movie-reveal normal';
         box.innerHTML = `<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">Your Movie</div>
-          <div class="movie-title" style="color:var(--purple);">${esc(myMovie?.title || '')}</div>
-          <div class="movie-genre">${esc(myMovie?.genre || '')}</div>
-          <div style="color:var(--muted);font-size:0.8rem;margin-top:0.6rem;">One player has a different movie — find them!</div>`;
+          <div style="font-size:1.2rem;font-weight:700;color:var(--purple);">${esc(myMovie?.title || '')}</div>
+          <div style="color:var(--muted);font-size:0.9rem;margin-top:0.3rem;">${esc(myMovie?.genre || '')}</div>
+          <div style="color:var(--muted);font-size:0.82rem;margin-top:0.6rem;">One player has a different movie — find them!</div>`;
       }
 
+      // Fetch and display poster + backdrop
+      fetchMovieMedia(myMovie?.title || '', myMovie?.year || '');
+
+      // Build questions
       const ql = document.getElementById('questions-list');
       ql.innerHTML = questions.map((q, i) =>
         `<div class="question-card">
@@ -260,8 +339,87 @@
       ).join('');
 
       showScreen('screen-movie');
+
+      // Fetch trailer
+      if (myMovie?.title) {
+        fetchTrailer(myMovie.title, myMovie.genre);
+      }
     }
 
+    function fetchMovieMedia(title, year) {
+      fetch('/api/poster?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || '') + '&kind=movie')
+        .then(r => r.json())
+        .then(d => {
+          moviePosterUrl = d.poster || '';
+          movieBackdropUrl = d.backdrop || '';
+          
+          // Add poster and details to the page
+          const container = document.getElementById('movie-details-container');
+          if (container) {
+            let html = '';
+            if (moviePosterUrl) {
+              html += `<img src="${moviePosterUrl}" class="movie-poster" alt="Poster" onerror="this.style.display='none'" />`;
+            }
+            // Add plot and other details if available from TMDB
+            html += `<div style="text-align:left;margin-top:0.5rem;">`;
+            html += `<div style="font-size:0.82rem;color:var(--muted);">${esc(myMovie?.genre || '')}${myMovie?.year ? ' · ' + myMovie.year : ''}</div>`;
+            html += `</div>`;
+            container.innerHTML = html;
+          }
+
+          // Set background
+          if (movieBackdropUrl) {
+            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),url('${movieBackdropUrl}')`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundAttachment = 'fixed';
+          }
+        })
+        .catch(() => {});
+    }
+
+    function fetchTrailer(title, genre) {
+      const query = encodeURIComponent(title + ' ' + (genre || '') + ' movie - official trailer');
+      const trailerContainer = document.getElementById('movie-trailer-container');
+      
+      function tryKey(index) {
+        if (index >= API_KEYS.length) {
+          trailerContainer.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.85rem;">Trailer unavailable</p>';
+          return;
+        }
+        const key = API_KEYS[index];
+        if (!key || key.length < 10) { tryKey(index + 1); return; }
+        
+        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query}&key=${key}&maxResults=1&type=video`)
+          .then(res => res.ok ? res.json() : Promise.reject('API error'))
+          .then(data => {
+            if (data?.items?.length > 0) {
+              const videoId = data.items[0].id.videoId;
+              const thumbnail = data.items[0].snippet.thumbnails.high?.url || 
+                               data.items[0].snippet.thumbnails.medium?.url || '';
+              trailerContainer.innerHTML = `
+                <div class="trailer-thumbnail" style="background-image:url('${thumbnail}')" onclick="playTrailer('${videoId}')"></div>
+              `;
+            } else {
+              tryKey(index + 1);
+            }
+          })
+          .catch(() => tryKey(index + 1));
+      }
+      
+      tryKey(0);
+    }
+
+    function playTrailer(videoId) {
+      const container = document.getElementById('movie-trailer-container');
+      container.innerHTML = `
+        <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen></iframe>
+      `;
+    }
+
+    // ---- Questions ----
     async function submitAnswers() {
       const answers = questions.map((_, i) => (document.getElementById('ans-'+i)?.value||'').trim());
       if (answers.some(a => !a)) { showToast('Please answer all questions.'); return; }
@@ -296,6 +454,7 @@
       startPollingForVoting();
     }
 
+    // ---- Voting ----
     function buildVoteScreen(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
@@ -341,6 +500,7 @@
       }, 2500);
     }
 
+    // ---- Results ----
     function showResult(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
@@ -379,6 +539,7 @@
       showScreen('screen-result');
     }
 
+    // ---- Polling ----
     function startPolling() {
       clearTimeout(pollTimer);
       pollTimer = setTimeout(pollRoom, 2000);
@@ -399,15 +560,8 @@
       if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
     });
 
-    function showToast(msg) {
-      let t = document.getElementById('_toast');
-      if (!t) { t = document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;'; document.body.appendChild(t); }
-      t.textContent = msg; t.style.opacity = '1';
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
-    }
-
-    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // ---- Init ----
+    showScreen('screen-lobby');
   </script>
   <script src="/static/pwa.js"></script>
 </body>
