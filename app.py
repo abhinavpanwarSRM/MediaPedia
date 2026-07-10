@@ -580,7 +580,7 @@ def ac_seed():
     inserted = 0
     for item in seed:
         result = ac_collection.update_one(
-            {'type': item['type'], 'id': item['id']},
+            {'type': item['type'], 'id': item['id'], 'title': item['title']},
             {'$setOnInsert': item},
             upsert=True
         )

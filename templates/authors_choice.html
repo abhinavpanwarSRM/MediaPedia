@@ -202,12 +202,7 @@
     {% endif %}
   </div>
 
-  {% if username == 'abhinav' %}
-  <div id="seed-banner" style="background:rgba(229,9,20,0.12);border-bottom:1px solid rgba(229,9,20,0.3);padding:0.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-    <span style="font-size:0.82rem;color:#ccc;">⚠️ If the page is empty, seed the original data first.</span>
-    <button onclick="seedData()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:0.4rem 1rem;font-size:0.82rem;font-weight:600;cursor:pointer;">Seed Original Data</button>
-  </div>
-  {% endif %}
+  <div class="hero">
     {% if author_avatar %}
       <img src="{{ author_avatar }}" alt="abhinav" class="author-avatar" />
     {% else %}
@@ -262,17 +257,23 @@
         <option value="anime">Anime</option>
         <option value="korean">Korean</option>
       </select>
-      <label>Title</label>
-      <input type="text" id="m-title" placeholder="Exact title from MediaPedia" />
-      <label>MediaPedia ID</label>
-      <input type="number" id="m-id" placeholder="e.g. 1389" min="1" />
+      <label>Search Title</label>
+      <div style="position:relative;margin-bottom:0.9rem;">
+        <input type="text" id="m-search" placeholder="Type to search…" autocomplete="off"
+               style="width:100%;background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.88rem;padding:0.5rem 0.75rem;margin-bottom:0;"
+               oninput="acSearch(this.value)" />
+        <div id="ac-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#222;border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:600;"></div>
+      </div>
+      <input type="hidden" id="m-title" />
+      <input type="hidden" id="m-id" />
+      <div id="m-selected" style="display:none;font-size:0.8rem;color:#aaa;margin-bottom:0.9rem;padding:0.4rem 0.75rem;background:rgba(255,255,255,0.05);border-radius:6px;"></div>
       <div class="modal-footer">
         <button class="btn btn-muted" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" onclick="submitAdd()">Add</button>
       </div>
     </div>
   </div>
-  <button class="add-fab" onclick="document.getElementById('add-modal').classList.add('open')" title="Add item">+</button>
+  <button class="add-fab" onclick="openModal()" title="Add item">+</button>
   {% endif %}
 
   <div class="toast" id="toast"></div>
@@ -425,6 +426,15 @@
     });
 
     // ── Admin: add ─────────────────────────────────────────────────────────────
+    function openModal() {
+      document.getElementById('m-search').value = '';
+      document.getElementById('m-title').value = '';
+      document.getElementById('m-id').value = '';
+      document.getElementById('m-selected').style.display = 'none';
+      document.getElementById('ac-list').style.display = 'none';
+      document.getElementById('add-modal').classList.add('open');
+    }
+
     function updateCategoryOptions() {
       const type = document.getElementById('m-type').value;
       const sel = document.getElementById('m-category');
@@ -436,18 +446,58 @@
           <option value="anime">Anime</option>
           <option value="korean">Korean</option>`;
       }
+      document.getElementById('m-search').value = '';
+      document.getElementById('m-title').value = '';
+      document.getElementById('m-id').value = '';
+      document.getElementById('m-selected').style.display = 'none';
     }
 
     function closeModal() {
       document.getElementById('add-modal').classList.remove('open');
     }
 
+    let acTimer;
+    async function acSearch(q) {
+      const list = document.getElementById('ac-list');
+      clearTimeout(acTimer);
+      if (q.length < 2) { list.style.display = 'none'; return; }
+      const type = document.getElementById('m-type').value;
+      acTimer = setTimeout(async () => {
+        const r = await fetch(`/api/ac_search?q=${encodeURIComponent(q)}&type=${type}`);
+        const results = await r.json();
+        list.innerHTML = '';
+        if (!results.length) { list.style.display = 'none'; return; }
+        results.forEach(item => {
+          const div = document.createElement('div');
+          div.style.cssText = 'padding:0.5rem 0.75rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.05);';
+          div.textContent = `${item.title} (ID: ${item.id})`;
+          div.onmouseenter = () => div.style.background = 'rgba(255,255,255,0.08)';
+          div.onmouseleave = () => div.style.background = '';
+          div.onclick = () => {
+            document.getElementById('m-title').value = item.title;
+            document.getElementById('m-id').value = item.id;
+            document.getElementById('m-search').value = item.title;
+            const sel = document.getElementById('m-selected');
+            sel.textContent = `✓ ${item.title} — ID: ${item.id}`;
+            sel.style.display = 'block';
+            list.style.display = 'none';
+          };
+          list.appendChild(div);
+        });
+        list.style.display = 'block';
+      }, 250);
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#ac-list') && e.target.id !== 'm-search')
+        document.getElementById('ac-list').style.display = 'none';
+    });
+
     async function submitAdd() {
       const type     = document.getElementById('m-type').value;
       const category = document.getElementById('m-category').value;
       const title    = document.getElementById('m-title').value.trim();
       const id       = parseInt(document.getElementById('m-id').value);
-      if (!title || !id) { showToast('Title and ID required'); return; }
+      if (!title) { showToast('Select a title from suggestions'); return; }
       const r = await fetch('/api/authors_choice', {
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ type, category, title, id })
@@ -458,6 +508,8 @@
       closeModal();
       document.getElementById('m-title').value = '';
       document.getElementById('m-id').value = '';
+      document.getElementById('m-search').value = '';
+      document.getElementById('m-selected').style.display = 'none';
       loadData();
     }
 
@@ -477,17 +529,6 @@
       const t = document.getElementById('toast');
       t.textContent = msg; t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    async function seedData() {
-      const btn = document.querySelector('#seed-banner button');
-      btn.textContent = 'Seeding...';
-      btn.disabled = true;
-      const r = await fetch('/api/authors_choice/seed', {method:'POST'});
-      const d = await r.json();
-      showToast(`Seeded ${d.seeded} items!`);
-      document.getElementById('seed-banner').style.display = 'none';
-      loadData();
     }
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
