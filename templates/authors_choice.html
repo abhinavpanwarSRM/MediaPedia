@@ -306,8 +306,10 @@
     }
 
     function makeCard(item) {
-      const href = item.type === 'series' ? `/series/${item.id}` : `/movie/${item.id}`;
       const kind = item.type === 'series' ? 'tv' : 'movie';
+      const href = item.id === 0
+        ? `https://www.themoviedb.org/search?query=${encodeURIComponent(item.title)}`
+        : (item.type === 'series' ? `/series/${item.id}` : `/movie/${item.id}`);
       const cardClass = item.type === 'series' ? 'series-card' : 'movie-card';
       const badge = badgeClass(item.category);
       const label = badgeLabel(item.category);
@@ -315,6 +317,7 @@
       const card = document.createElement('a');
       card.className = `media-card ${cardClass}`;
       card.href = href;
+      if (item.id === 0) card.target = '_blank';
       card.dataset.id = item.id;
       card.dataset.type = item.type;
       card.innerHTML = `

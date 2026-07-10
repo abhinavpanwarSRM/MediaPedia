@@ -472,6 +472,19 @@ def ac_remove(item_id):
     ac_collection.delete_one({'id': item_id, 'type': item_type})
     return jsonify({'success': True})
 
+@app.route('/api/ac_search')
+def ac_search():
+    q = request.args.get('q', '').strip().lower()
+    kind = request.args.get('type', 'movie')  # 'movie' or 'series'
+    if not q or len(q) < 2:
+        return jsonify([])
+    if kind == 'series':
+        hits = series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(8)
+        return jsonify([{'id': int(r['ID']), 'title': r['Title']} for _, r in hits.iterrows()])
+    else:
+        hits = df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(8)
+        return jsonify([{'id': int(r['ID']), 'title': r['Movie Name']} for _, r in hits.iterrows()])
+
 @app.route('/api/authors_choice/seed', methods=['POST'])
 def ac_seed():
     if current_user() != 'abhinav':
@@ -566,8 +579,6 @@ def ac_seed():
     ]
     inserted = 0
     for item in seed:
-        if item['id'] == 0:
-            continue
         result = ac_collection.update_one(
             {'type': item['type'], 'id': item['id']},
             {'$setOnInsert': item},
