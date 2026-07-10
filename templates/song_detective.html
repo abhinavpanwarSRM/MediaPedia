@@ -1005,7 +1005,8 @@
       allSongs = room.data?.songs || [];
       myVotes = {};
       
-      if (allSongs.length > 0 && !room.data?._shuffled) {
+      // Only host shuffles — non-hosts use the order already stored in the backend
+      if (allSongs.length > 0 && !room.data?._shuffled && isHost) {
         allSongs = shuffleArray(allSongs);
         fetch('/api/games/room/' + roomCode + '/action', {
           method: 'POST',
@@ -1037,6 +1038,7 @@
       voteLocked = false;
       votes = room.data?.votes || {};
       songStates = room.data?.song_states || {};
+      songsPerPlayer = room.data?.songs_per_player || songsPerPlayer;
 
       updateSkipButtons();
       renderQueue();
@@ -1312,25 +1314,7 @@
         return votes[p.username] && votes[p.username][song.id];
       });
 
-      if (allVoted && isHost && (room.players || []).length > 1 && !isGameFinished) {
-        showToast('✅ All players voted! Moving to next song...');
-        setTimeout(function() {
-          var nextIdx = currentIndex + 1;
-          if (nextIdx < allSongs.length) {
-            fetch('/api/games/room/' + roomCode + '/action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'next_song' })
-            });
-            currentIndex = nextIdx;
-            playSong(currentIndex);
-            syncNextSong();
-          } else {
-            finishGame();
-          }
-        }, 2000);
-      }
-
+      // Let polling + backend drive advancement — no frontend auto-advance
       fetchRoomState();
     }
 
