@@ -334,7 +334,6 @@
     .host-controls label { color: var(--muted); font-size: 0.82rem; display: block; margin-bottom: 0.3rem; }
     .host-controls .input-row { margin-bottom: 0; }
 
-    /* Queue/Playlist display - hide submitters during gameplay */
     .queue-list {
       display: flex;
       flex-direction: column;
@@ -361,7 +360,6 @@
     .queue-item .q-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .queue-item .q-artist { color: var(--muted); font-size: 0.7rem; }
 
-    /* Audio Player */
     .audio-player {
       background: rgba(0,0,0,0.3);
       border-radius: 12px;
@@ -373,9 +371,7 @@
     .audio-player .album-art { font-size: 3rem; margin-bottom: 0.5rem; }
     .audio-player .song-name { font-size: 1rem; font-weight: 600; }
     .audio-player .song-artist { font-size: 0.85rem; color: var(--muted); }
-    .audio-player .song-submitter { font-size: 0.7rem; color: #555; margin-top: 0.2rem; display: none; }
 
-    /* Progress bar */
     .progress-wrap {
       display: flex;
       align-items: center;
@@ -513,7 +509,6 @@
           <div class="album-art">🎵</div>
           <div class="song-name" id="current-song-title">Loading...</div>
           <div class="song-artist" id="current-song-artist"></div>
-          <div class="song-submitter" id="current-song-submitter"></div>
         </div>
 
         <div class="progress-wrap">
@@ -595,6 +590,7 @@
     let songStates = {};
     let allVotedForCurrentSong = false;
     let voteLocked = false;
+    let myVotes = {}; // Track my votes per song
 
     // YouTube player
     let ytPlayer = null;
@@ -818,12 +814,6 @@
       socket.emit('game_next_song', { room_code: roomCode });
     }
 
-    function requestSync() {
-      if (!socket) return;
-      socket.emit('game_sync_request', { room_code: roomCode });
-      showToast('🔄 Syncing...');
-    }
-
     // ---- Set Song Count ----
     async function setSongCount() {
       if (!isHost) return;
@@ -1013,6 +1003,7 @@
       isGameFinished = false;
       showScreen('playing');
       allSongs = room.data?.songs || [];
+      myVotes = {};
       
       if (allSongs.length > 0 && !room.data?._shuffled) {
         allSongs = shuffleArray(allSongs);
@@ -1078,13 +1069,11 @@
 
       var titleEl = document.getElementById('current-song-title');
       var artistEl = document.getElementById('current-song-artist');
-      var submitterEl = document.getElementById('current-song-submitter');
       var indexEl = document.getElementById('song-index');
       var totalEl = document.getElementById('total-songs');
 
       if (titleEl) titleEl.textContent = song.title || 'Untitled';
       if (artistEl) artistEl.textContent = song.artist || 'Unknown Artist';
-      if (submitterEl) submitterEl.textContent = '';
       if (indexEl) indexEl.textContent = index + 1;
       if (totalEl) totalEl.textContent = allSongs.length;
 
@@ -1304,11 +1293,17 @@
         })
       });
 
+      // Store my vote locally
+      myVotes[song.id] = selectedGuess;
       votes[ME] = votes[ME] || {};
       votes[ME][song.id] = selectedGuess;
 
       if (statusEl) statusEl.textContent = '✅ Vote submitted!';
       if (btn) btn.textContent = '✅ Voted';
+      
+      // Disable all guess buttons
+      document.querySelectorAll('.guess-btn').forEach(function(b) { b.disabled = true; });
+      
       updateVoteStatus();
       updateSkipButtons();
 
@@ -1369,6 +1364,7 @@
       var allSongsData = data.all_songs || data.songs || [];
       var votesData = data.votes || {};
 
+      // Find winners (handle ties)
       var maxScore = -1;
       var winners = [];
       for (var u in scores) {
@@ -1383,6 +1379,7 @@
         }
       }
 
+      // Build winner banner
       var winnerHtml = '';
       if (winners.length === 1) {
         winnerHtml = '🏆 Winner: <strong>' + esc(winners[0]) + '</strong> — ' + maxScore + ' correct guess' + (maxScore !== 1 ? 'es' : '');
@@ -1397,6 +1394,7 @@
         banner.innerHTML = winnerHtml + '<small>Out of ' + allSongsData.length + ' songs</small>';
       }
 
+      // Scores with tie indicators
       var sorted = Object.entries(scores).sort(function(a, b) { return b[1] - a[1]; });
       var scoresList = document.getElementById('scores-list');
       if (scoresList) {
@@ -1413,17 +1411,19 @@
         }).join('');
       }
 
+      // Full reveal - using myVotes to show correct guesses
       var revealsList = document.getElementById('reveals-list');
       if (revealsList) {
         revealsList.innerHTML = allSongsData.map(function(s) {
           var songId = s.id;
-          var myGuess = (votesData[ME] || {})[songId] || 'No guess';
+          // Use myVotes to get my guess, fallback to votesData
+          var myGuess = myVotes[songId] || (votesData[ME] ? votesData[ME][songId] : null) || 'No guess';
           var correct = myGuess === s.submitter;
           var allGuesses = Object.entries(votesData || {})
             .filter(function(item) {
               var u = item[0];
               var gs = item[1];
-              return gs[songId];
+              return gs && gs[songId];
             })
             .map(function(item) {
               var u = item[0];

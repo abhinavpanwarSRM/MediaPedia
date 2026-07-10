@@ -254,7 +254,7 @@
         <h2>The Truth</h2>
         <div id="result-details"></div>
         <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
-          <button class="btn btn-purple" onclick="location.href='/games/movie-impostor'">Play Again</button>
+          <button class="btn btn-purple" onclick="document.body.style.cssText='';location.href='/games/movie-impostor'">Play Again</button>
           <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="location.href='/games'">Back to Games</button>
         </div>
       </div>
@@ -647,15 +647,13 @@
       if (!room) return;
       const allAnswered = (room.players||[]).every(p => {
         const ans = (room.data||{}).answers || {};
-        return ans[p.username] && ans[p.username].length >= questions.length;
+        const qCount = (room.data||{}).questions?.length || questions.length;
+        return ans[p.username] && ans[p.username].length >= qCount;
       });
       
       if (allAnswered && !document.getElementById('screen-vote').classList.contains('active')) {
         document.getElementById('answers-status').textContent = '✅ All players answered!';
-        setTimeout(() => {
-          const roomData = gameState || {};
-          buildVoteScreen(roomData);
-        }, 1000);
+        setTimeout(() => buildVoteScreen(room), 1000);
       }
     }
 
@@ -670,9 +668,10 @@
       const room = await res.json();
       if (room.state === 'finished') { showResult(room); return; }
       
-      const allAnswered = (room.players||[]).every(p => {
+      const qCount = (room.data||{}).questions?.length || questions.length;
+      const allAnswered = qCount > 0 && (room.players||[]).every(p => {
         const ans = (room.data||{}).answers || {};
-        return ans[p.username] && ans[p.username].length >= questions.length;
+        return ans[p.username] && ans[p.username].length >= qCount;
       });
       
       if (allAnswered) { 
@@ -808,7 +807,7 @@
         const res = await fetch('/api/games/room/' + roomCode);
         const room = await res.json();
         handleRoomState(room);
-        if (room.state === 'finished' || room.state === 'playing') return;
+        if (room.state === 'finished') return;
       } catch(e) {}
       startPolling();
     }

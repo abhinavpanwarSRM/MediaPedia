@@ -523,6 +523,7 @@
     let socket = null;
     let pollTimer = null;
     let isGameFinished = false;
+    let _previewAdvancing = false;
 
     // Game state
     let gameState = null;
@@ -899,8 +900,12 @@
       playPreviewSong(0);
     }
 
+    let _previewDoneSent = false;
     function playPreviewSong(idx) {
       if (idx >= previewSongs.length) {
+        if (!isHost) return;
+        if (_previewDoneSent) return;
+        _previewDoneSent = true;
         document.getElementById('preview-status').textContent = '✅ Preview complete! Starting voting...';
         if (ytPlayer) ytPlayer.stopVideo();
         fetch('/api/games/room/' + roomCode + '/action', {
@@ -939,8 +944,10 @@
 
         if (previewSeconds >= previewDuration) {
           clearInterval(previewInterval);
-          if (isHost) {
+          if (isHost && !_previewAdvancing) {
+            _previewAdvancing = true;
             setTimeout(() => {
+              _previewAdvancing = false;
               const nextIdx = previewIndex + 1;
               if (nextIdx < previewSongs.length) {
                 playPreviewSong(nextIdx);
@@ -1046,6 +1053,11 @@
         if (!previewDone && hasSongs) {
           if (!document.getElementById('screen-preview')?.classList?.contains('active')) {
             startPreview(room);
+          } else {
+            // Re-evaluate host controls visibility on every poll (isHost may have changed)
+            document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
+            document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
+            document.getElementById('host-badge-preview').classList.toggle('hidden', !isHost);
           }
           return;
         }
