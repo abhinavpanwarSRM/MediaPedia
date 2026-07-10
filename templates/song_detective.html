@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Song Detective — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+    .topnav a:hover { color:#fff; }
+    .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
+    .container { max-width:700px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+    h1 { font-size:1.8rem; font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
+    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.5rem; margin-bottom:1.2rem; }
+    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
+    input[type=text] { flex:1; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; min-width:0; }
+    input:focus { outline:none; border-color:var(--purple); }
+    .btn { padding:0.6rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
+    .btn-purple:hover { background:rgba(156,111,228,0.3); }
+    .code-display { font-size:2rem; font-weight:800; letter-spacing:6px; color:var(--purple); text-align:center; margin:0.5rem 0; }
+    .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .player-chip { background:rgba(156,111,228,0.12); border:1px solid rgba(156,111,228,0.25); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; }
+    .player-chip.ready { border-color:var(--purple); color:var(--purple); }
+    .song-card { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; margin-bottom:0.8rem; }
+    .song-card h3 { font-size:0.95rem; font-weight:700; margin-bottom:0.3rem; }
+    .song-card .artist { font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem; }
+    .guess-select { width:100%; padding:0.55rem 0.8rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.88rem; }
+    .guess-select:focus { outline:none; border-color:var(--purple); }
+    .score-row { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.9rem; }
+    .score-row:last-child { border-bottom:none; }
+    .score-val { font-weight:700; color:var(--purple); }
+    .winner-banner { background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.4); border-radius:12px; padding:1rem; font-size:1.1rem; font-weight:700; color:#ffd700; text-align:center; margin-bottom:1rem; }
+    .status-msg { text-align:center; color:var(--muted); font-size:0.88rem; margin:0.8rem 0; }
+    .reveal-item { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.7rem 1rem; margin-bottom:0.5rem; font-size:0.85rem; }
+    .reveal-item .correct { color:#1db954; font-weight:600; }
+    .reveal-item .wrong { color:#ff6b6b; }
+    #screen-lobby, #screen-waiting, #screen-submit, #screen-guess, #screen-result { display:none; }
+    #screen-lobby.active, #screen-waiting.active, #screen-submit.active, #screen-guess.active, #screen-result.active { display:block; }
+  </style>
+  <link rel="manifest" href="/static/manifest.json" />
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <a href="/games" style="color:var(--purple);font-weight:600;">← Games</a>
+    <a href="/u/{{ username }}" style="color:var(--purple);">{{ username }}</a>
+  </nav>
+
+  <div class="container">
+    <h1>🕵️ Song Detective</h1>
+    <p class="sub">Everyone submits a song anonymously. Then guess who submitted each one. Most correct guesses wins!</p>
+
+    <!-- Lobby -->
+    <div id="screen-lobby" class="active">
+      <div class="panel">
+        <h2>Create or Join a Room</h2>
+        <div class="input-row">
+          <button class="btn btn-purple" onclick="createRoom()">Create Room</button>
+        </div>
+        <div style="color:var(--muted);font-size:0.82rem;margin:0.5rem 0;">— or join existing —</div>
+        <div class="input-row">
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" />
+          <button class="btn btn-purple" onclick="joinRoom()">Join</button>
+        </div>
+        <div id="lobby-error" style="color:#ff6b6b;font-size:0.82rem;margin-top:0.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- Waiting -->
+    <div id="screen-waiting">
+      <div class="panel">
+        <h2>Waiting for Players</h2>
+        <div class="code-display" id="room-code-display"></div>
+        <div class="status-msg">Share this code with friends</div>
+        <div class="players-row" id="players-list"></div>
+        <button class="btn btn-purple" id="ready-btn" onclick="markReady()">Ready ✓</button>
+        <div class="status-msg" id="ready-status"></div>
+      </div>
+    </div>
+
+    <!-- Submit song -->
+    <div id="screen-submit">
+      <div class="panel">
+        <h2>Submit Your Song</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Pick a song that represents you. Others will try to guess it's yours!</p>
+        <div class="input-row">
+          <input type="text" id="song-title" placeholder="Song title" />
+        </div>
+        <div class="input-row">
+          <input type="text" id="song-artist" placeholder="Artist name" />
+        </div>
+        <button class="btn btn-purple" onclick="submitSong()">Submit Song</button>
+        <div class="status-msg" id="submit-status"></div>
+      </div>
+    </div>
+
+    <!-- Guess screen -->
+    <div id="screen-guess">
+      <div class="panel">
+        <h2>Who submitted each song?</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem;">For each song, guess which player submitted it.</p>
+        <div id="guess-list"></div>
+        <button class="btn btn-purple" style="margin-top:0.8rem;" onclick="submitGuesses()">Submit Guesses</button>
+        <div class="status-msg" id="guess-status"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="screen-result">
+      <div class="winner-banner" id="winner-banner"></div>
+      <div class="panel">
+        <h2>Scores</h2>
+        <div id="scores-list"></div>
+      </div>
+      <div class="panel">
+        <h2>Reveals</h2>
+        <div id="reveals-list"></div>
+        <button class="btn btn-purple" style="margin-top:1rem;" onclick="location.href='/games/song-detective'">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ME = '{{ username }}';
+    let roomCode = null;
+    let pollTimer = null;
+    let players = [];
+
+    function showScreen(id) {
+      ['screen-lobby','screen-waiting','screen-submit','screen-guess','screen-result'].forEach(s => {
+        document.getElementById(s).classList.remove('active');
+      });
+      document.getElementById(id).classList.add('active');
+    }
+
+    async function createRoom() {
+      const res = await fetch('/api/games/room', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({game_type:'song_detective'})
+      });
+      const d = await res.json();
+      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+      roomCode = d.code;
+      enterWaiting();
+    }
+
+    async function joinRoom() {
+      const code = document.getElementById('join-code').value.trim();
+      if (!code) return;
+      const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+      const d = await res.json();
+      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+      roomCode = code;
+      enterWaiting();
+    }
+
+    function enterWaiting() {
+      document.getElementById('room-code-display').textContent = roomCode;
+      showScreen('screen-waiting');
+      pollRoom();
+    }
+
+    async function markReady() {
+      document.getElementById('ready-btn').disabled = true;
+      document.getElementById('ready-status').textContent = 'Waiting for others...';
+      await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
+    }
+
+    async function submitSong() {
+      const title = document.getElementById('song-title').value.trim();
+      const artist = document.getElementById('song-artist').value.trim();
+      if (!title || !artist) { alert('Enter both song title and artist.'); return; }
+      document.getElementById('submit-status').textContent = 'Submitting...';
+      const res = await fetch('/api/games/room/' + roomCode + '/action', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'submit_song', song_title: title, artist})
+      });
+      const room = await res.json();
+      document.getElementById('submit-status').textContent = 'Song submitted! Waiting for others...';
+      if (room.state === 'playing') { buildGuessScreen(room); return; }
+      pollForGuessing();
+    }
+
+    async function pollForGuessing() {
+      const res = await fetch('/api/games/room/' + roomCode);
+      const room = await res.json();
+      if (room.state === 'playing') { buildGuessScreen(room); return; }
+      if (room.state === 'finished') { showResult(room); return; }
+      pollTimer = setTimeout(pollForGuessing, 2500);
+    }
+
+    function buildGuessScreen(room) {
+      clearTimeout(pollTimer);
+      players = (room.players||[]).map(p => p.username);
+      const submissions = (room.data||{}).submissions || [];
+      // Show songs without revealing submitter
+      const gl = document.getElementById('guess-list');
+      gl.innerHTML = submissions.map(s =>
+        `<div class="song-card">
+          <h3>${esc(s.song_title)}</h3>
+          <div class="artist">${esc(s.artist)}</div>
+          <select class="guess-select" id="guess-${s.id}">
+            <option value="">— Who submitted this? —</option>
+            ${players.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+          </select>
+        </div>`
+      ).join('');
+      showScreen('screen-guess');
+    }
+
+    async function submitGuesses() {
+      const room = await (await fetch('/api/games/room/' + roomCode)).json();
+      const submissions = (room.data||{}).submissions || [];
+      for (const s of submissions) {
+        const guess = document.getElementById('guess-' + s.id)?.value;
+        if (!guess) { alert('Guess for every song!'); return; }
+        await fetch('/api/games/room/' + roomCode + '/action', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'guess', song_id: s.id, guess})
+        });
+      }
+      document.getElementById('guess-status').textContent = 'Guesses submitted! Waiting for others...';
+      pollForResult();
+    }
+
+    async function pollForResult() {
+      const res = await fetch('/api/games/room/' + roomCode);
+      const room = await res.json();
+      if (room.state === 'finished') { showResult(room); return; }
+      pollTimer = setTimeout(pollForResult, 2500);
+    }
+
+    function showResult(room) {
+      clearTimeout(pollTimer);
+      const data = room.data || {};
+      const scores = data.scores || {};
+      const winner = data.winner;
+      const submissions = data.submissions || [];
+      const guesses = data.guesses || {};
+
+      document.getElementById('winner-banner').textContent = winner
+        ? `🏆 Winner: ${winner} (${scores[winner] || 0} correct guesses)`
+        : '🏆 Game Over!';
+
+      // Scores
+      const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+      document.getElementById('scores-list').innerHTML = sorted.map(([u, s]) =>
+        `<div class="score-row"><span>${esc(u)}</span><span class="score-val">${s} / ${submissions.length}</span></div>`
+      ).join('');
+
+      // Reveals
+      document.getElementById('reveals-list').innerHTML = submissions.map(s => {
+        const myGuess = (guesses[ME] || {})[s.id] || '?';
+        const correct = myGuess === s.submitter;
+        return `<div class="reveal-item">
+          <strong>${esc(s.song_title)}</strong> — ${esc(s.artist)}<br>
+          <span style="color:var(--muted);font-size:0.78rem;">Submitted by: <strong>${esc(s.submitter)}</strong></span><br>
+          <span style="font-size:0.78rem;">Your guess: <span class="${correct?'correct':'wrong'}">${esc(myGuess)} ${correct?'✓':'✗'}</span></span>
+        </div>`;
+      }).join('');
+
+      showScreen('screen-result');
+    }
+
+    async function pollRoom() {
+      if (!roomCode) return;
+      try {
+        const res = await fetch('/api/games/room/' + roomCode);
+        const room = await res.json();
+        const pl = document.getElementById('players-list');
+        if (pl) pl.innerHTML = (room.players||[]).map(p =>
+          `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
+        ).join('');
+        if (room.state === 'lobby' && (room.players||[]).every(p => p.ready) && room.players.length >= 2) {
+          showScreen('screen-submit');
+          return;
+        }
+        if (room.state === 'playing') { buildGuessScreen(room); return; }
+        if (room.state === 'finished') { showResult(room); return; }
+      } catch(e) {}
+      pollTimer = setTimeout(pollRoom, 2500);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+  <script src="/static/pwa.js"></script>
+</body>
+</html>

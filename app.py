@@ -3774,6 +3774,299 @@ def koc_who_can_win(session_id):
     result.sort(key=lambda x: -x['current'])
     return jsonify(result)
 
+# ===== MULTIPLAYER GAMES =====
+import random as _random
+
+game_rooms_collection = None
+game_stats_collection = None
+try:
+    if db is not None:
+        game_rooms_collection = db.game_rooms
+        game_rooms_collection.create_index('code', unique=True)
+        game_stats_collection = db.game_stats
+        game_stats_collection.create_index('username', unique=True)
+except Exception as e:
+    log.error('Failed to init game collections: %s', e)
+
+IMPOSTOR_QUESTIONS = [
+    "What's the most iconic scene in this movie?",
+    "Who is the best character and why?",
+    "What genre best describes this movie?",
+    "Would you recommend this movie to a friend?",
+    "What's the mood of this movie?",
+    "Name one word that describes this movie.",
+    "Is this movie more action or drama?",
+    "What year do you think this movie was released?",
+]
+
+def _get_movie_pair():
+    """Return two similar-but-different movies for Movie Impostor."""
+    pool = df[pd.to_numeric(df['Rating'], errors='coerce') >= 7.5].copy()
+    if len(pool) < 2:
+        pool = df.copy()
+    m1 = pool.sample(1).iloc[0]
+    genre1 = str(m1.get('Genre', '')).split(',')[0].strip().lower()
+    same_genre = pool[
+        (pool['Genre'].str.lower().str.contains(genre1, na=False)) &
+        (pool['ID'] != m1['ID'])
+    ]
+    if same_genre.empty:
+        same_genre = pool[pool['ID'] != m1['ID']]
+    m2 = same_genre.sample(1).iloc[0]
+    return (
+        {'id': int(m1['ID']), 'title': m1['Movie Name'], 'genre': m1.get('Genre', '')},
+        {'id': int(m2['ID']), 'title': m2['Movie Name'], 'genre': m2.get('Genre', '')}
+    )
+
+def _save_game_stats(username, game_type, won):
+    if game_stats_collection is None or not username:
+        return
+    game_stats_collection.update_one(
+        {'username': username},
+        {'$inc': {f'{game_type}_played': 1, f'{game_type}_wins': 1 if won else 0}},
+        upsert=True
+    )
+
+@app.route('/games')
+def games_hub():
+    return render_template('games.html', username=current_user())
+
+@app.route('/games/music-survivor')
+def music_survivor_page():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('music_survivor.html', username=username)
+
+@app.route('/games/movie-impostor')
+def movie_impostor_page():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('movie_impostor.html', username=username)
+
+@app.route('/games/song-detective')
+def song_detective_page():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('song_detective.html', username=username)
+
+@app.route('/api/games/room', methods=['POST'])
+def create_game_room():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if game_rooms_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    game_type = data.get('game_type', '')  # music_survivor | movie_impostor | song_detective
+    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective'):
+        return jsonify({'error': 'Invalid game type'}), 400
+    code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
+    room = {
+        'code': code,
+        'game_type': game_type,
+        'host': username,
+        'players': [{'username': username, 'ready': False, 'score': 0}],
+        'state': 'lobby',  # lobby | playing | finished
+        'round': 0,
+        'data': {},
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    if game_type == 'movie_impostor':
+        m1, m2 = _get_movie_pair()
+        room['data']['movie_pair'] = [m1, m2]
+        room['data']['questions'] = _random.sample(IMPOSTOR_QUESTIONS, min(5, len(IMPOSTOR_QUESTIONS)))
+    game_rooms_collection.insert_one(room)
+    return jsonify({'code': code}), 201
+
+@app.route('/api/games/room/<code>', methods=['GET'])
+def get_game_room(code):
+    if game_rooms_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = game_rooms_collection.find_one({'code': code}, {'_id': 0})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    return jsonify(room)
+
+@app.route('/api/games/room/<code>/join', methods=['POST'])
+def join_game_room(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if game_rooms_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = game_rooms_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if room['state'] != 'lobby':
+        return jsonify({'error': 'Game already started'}), 400
+    if any(p['username'] == username for p in room['players']):
+        return jsonify({'code': code})
+    if len(room['players']) >= 8:
+        return jsonify({'error': 'Room full'}), 400
+    game_rooms_collection.update_one(
+        {'code': code},
+        {'$push': {'players': {'username': username, 'ready': False, 'score': 0}}}
+    )
+    return jsonify({'code': code})
+
+@app.route('/api/games/room/<code>/ready', methods=['POST'])
+def ready_game_room(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if game_rooms_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    game_rooms_collection.update_one(
+        {'code': code, 'players.username': username},
+        {'$set': {'players.$.ready': True}}
+    )
+    room = game_rooms_collection.find_one({'code': code}, {'_id': 0})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    all_ready = all(p['ready'] for p in room['players']) and len(room['players']) >= 2
+    if all_ready and room['state'] == 'lobby':
+        # Assign impostor for movie_impostor
+        update = {'state': 'playing', 'round': 1}
+        if room['game_type'] == 'movie_impostor':
+            players = room['players']
+            impostor = _random.choice(players)['username']
+            update['data.impostor'] = impostor
+        game_rooms_collection.update_one({'code': code}, {'$set': update})
+    return jsonify({'started': all_ready})
+
+@app.route('/api/games/room/<code>/action', methods=['POST'])
+def game_action(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if game_rooms_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    action = data.get('action')
+    room = game_rooms_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+
+    game_type = room['game_type']
+    update = {}
+
+    if game_type == 'music_survivor' and action == 'vote':
+        # vote to eliminate a song: data = {song_id: str}
+        song_id = data.get('song_id', '')
+        votes = room.get('data', {}).get('votes', {})
+        votes[username] = song_id
+        update['data.votes'] = votes
+        # Check if all players voted
+        if len(votes) >= len(room['players']):
+            # Eliminate most-voted song
+            from collections import Counter
+            eliminated = Counter(votes.values()).most_common(1)[0][0]
+            songs = room.get('data', {}).get('songs', [])
+            songs = [s for s in songs if s.get('id') != eliminated]
+            update['data.songs'] = songs
+            update['data.votes'] = {}
+            update['data.eliminated'] = eliminated
+            update['round'] = room.get('round', 1) + 1
+            if len(songs) <= 1:
+                update['state'] = 'finished'
+                update['data.winner_song'] = songs[0] if songs else None
+                for p in room['players']:
+                    _save_game_stats(p['username'], 'music_survivor', False)
+
+    elif game_type == 'movie_impostor' and action == 'answer':
+        # Store answer: data = {question_idx: int, answer: str}
+        answers = room.get('data', {}).get('answers', {})
+        if username not in answers:
+            answers[username] = []
+        answers[username].append({'q': data.get('question_idx'), 'a': data.get('answer', '')[:200]})
+        update['data.answers'] = answers
+
+    elif game_type == 'movie_impostor' and action == 'vote_impostor':
+        # Vote who is the impostor: data = {suspect: str}
+        votes = room.get('data', {}).get('impostor_votes', {})
+        votes[username] = data.get('suspect', '')
+        update['data.impostor_votes'] = votes
+        if len(votes) >= len(room['players']):
+            from collections import Counter
+            accused = Counter(votes.values()).most_common(1)[0][0]
+            real_impostor = room.get('data', {}).get('impostor', '')
+            correct = accused == real_impostor
+            update['state'] = 'finished'
+            update['data.accused'] = accused
+            update['data.correct_guess'] = correct
+            for p in room['players']:
+                won = (p['username'] != real_impostor and correct) or (p['username'] == real_impostor and not correct)
+                _save_game_stats(p['username'], 'movie_impostor', won)
+
+    elif game_type == 'song_detective' and action == 'submit_song':
+        # Submit a song anonymously: data = {song_title: str, artist: str}
+        submissions = room.get('data', {}).get('submissions', [])
+        submissions.append({
+            'id': str(uuid.uuid4())[:8],
+            'submitter': username,
+            'song_title': data.get('song_title', '')[:100],
+            'artist': data.get('artist', '')[:100]
+        })
+        update['data.submissions'] = submissions
+        if len(submissions) >= len(room['players']):
+            update['state'] = 'playing'
+            update['round'] = 1
+
+    elif game_type == 'song_detective' and action == 'guess':
+        # Guess who submitted a song: data = {song_id: str, guess: str}
+        guesses = room.get('data', {}).get('guesses', {})
+        if username not in guesses:
+            guesses[username] = {}
+        guesses[username][data.get('song_id', '')] = data.get('guess', '')
+        update['data.guesses'] = guesses
+        # Check if all guesses done
+        submissions = room.get('data', {}).get('submissions', [])
+        all_done = all(
+            len(guesses.get(p['username'], {})) >= len(submissions)
+            for p in room['players']
+        )
+        if all_done:
+            # Score: 1 point per correct guess
+            scores = {p['username']: 0 for p in room['players']}
+            sub_map = {s['id']: s['submitter'] for s in submissions}
+            for guesser, gs in guesses.items():
+                for sid, guess in gs.items():
+                    if sub_map.get(sid) == guess:
+                        scores[guesser] = scores.get(guesser, 0) + 1
+            update['data.scores'] = scores
+            update['state'] = 'finished'
+            winner = max(scores, key=scores.get) if scores else None
+            update['data.winner'] = winner
+            for p in room['players']:
+                _save_game_stats(p['username'], 'song_detective', p['username'] == winner)
+
+    if update:
+        game_rooms_collection.update_one({'code': code}, {'$set': update})
+    room = game_rooms_collection.find_one({'code': code}, {'_id': 0})
+    return jsonify(room)
+
+@app.route('/api/games/room/<code>/leave', methods=['POST'])
+def leave_game_room(code):
+    username = current_user()
+    if not username or game_rooms_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    game_rooms_collection.update_one(
+        {'code': code},
+        {'$pull': {'players': {'username': username}}}
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/games/stats/<target_username>')
+def get_game_stats(target_username):
+    if game_stats_collection is None:
+        return jsonify({})
+    doc = game_stats_collection.find_one({'username': target_username}, {'_id': 0})
+    return jsonify(doc or {})
+
+
 if __name__ == "__main__":
     _debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     socketio.run(app, host="0.0.0.0", port=5000, debug=_debug)

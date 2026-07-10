@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Music Survivor — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+    .topnav a:hover { color:#fff; }
+    .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
+    .container { max-width:700px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+    h1 { font-size:1.8rem; font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
+    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.5rem; margin-bottom:1.2rem; }
+    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
+    input[type=text], input[type=number] { flex:1; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; min-width:0; }
+    input:focus { outline:none; border-color:var(--purple); }
+    .btn { padding:0.6rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
+    .btn-purple:hover { background:rgba(156,111,228,0.3); }
+    .btn-red { background:rgba(229,9,20,0.15); border-color:#e50914; color:#e50914; }
+    .btn-red:hover { background:rgba(229,9,20,0.3); }
+    .song-list { display:flex; flex-direction:column; gap:0.5rem; }
+    .song-item { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.7rem 1rem; }
+    .song-item.eliminated { opacity:0.35; text-decoration:line-through; }
+    .song-item.winner { border-color:#ffd700; background:rgba(255,215,0,0.08); }
+    .song-name { flex:1; font-size:0.9rem; font-weight:600; }
+    .song-artist { font-size:0.78rem; color:var(--muted); }
+    .vote-btn { padding:0.3rem 0.8rem; border-radius:6px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid #e50914; background:rgba(229,9,20,0.1); color:#e50914; transition:all 0.2s; }
+    .vote-btn:hover { background:rgba(229,9,20,0.25); }
+    .vote-btn:disabled { opacity:0.4; cursor:not-allowed; }
+    .vote-count { font-size:0.75rem; color:var(--muted); min-width:24px; text-align:center; }
+    .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .player-chip { background:rgba(156,111,228,0.12); border:1px solid rgba(156,111,228,0.25); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; }
+    .player-chip.ready { border-color:var(--purple); color:var(--purple); }
+    .code-display { font-size:2rem; font-weight:800; letter-spacing:6px; color:var(--purple); text-align:center; margin:0.5rem 0; }
+    .status-msg { text-align:center; color:var(--muted); font-size:0.88rem; margin:0.8rem 0; }
+    .eliminated-banner { background:rgba(229,9,20,0.1); border:1px solid rgba(229,9,20,0.3); border-radius:8px; padding:0.7rem 1rem; font-size:0.88rem; color:#ff6b6b; margin-bottom:0.8rem; text-align:center; }
+    .winner-banner { background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.4); border-radius:8px; padding:1rem; font-size:1rem; font-weight:700; color:#ffd700; text-align:center; margin-bottom:1rem; }
+    #screen-lobby, #screen-add-songs, #screen-playing, #screen-finished { display:none; }
+    #screen-lobby.active, #screen-add-songs.active, #screen-playing.active, #screen-finished.active { display:block; }
+  </style>
+  <link rel="manifest" href="/static/manifest.json" />
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <a href="/games" style="color:var(--purple);font-weight:600;">← Games</a>
+    <a href="/u/{{ username }}" style="color:var(--purple);">{{ username }}</a>
+  </nav>
+
+  <div class="container">
+    <h1>🎵 Music Survivor</h1>
+    <p class="sub">Add songs to the pool, then vote to eliminate them one by one. Last song standing wins!</p>
+
+    <!-- Lobby / Join -->
+    <div id="screen-lobby" class="active">
+      <div class="panel">
+        <h2>Create or Join a Room</h2>
+        <div class="input-row">
+          <button class="btn btn-purple" onclick="createRoom()">Create Room</button>
+        </div>
+        <div style="color:var(--muted);font-size:0.82rem;margin:0.5rem 0;">— or join existing —</div>
+        <div class="input-row">
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" />
+          <button class="btn btn-purple" onclick="joinRoom()">Join</button>
+        </div>
+        <div id="lobby-error" style="color:#ff6b6b;font-size:0.82rem;margin-top:0.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- Add Songs (lobby state) -->
+    <div id="screen-add-songs">
+      <div class="panel">
+        <h2>Room Code</h2>
+        <div class="code-display" id="room-code-display"></div>
+        <div class="status-msg">Share this code with friends to join</div>
+        <div class="players-row" id="players-list"></div>
+        <div class="input-row" style="margin-top:0.5rem;">
+          <input type="text" id="song-title-input" placeholder="Song title" />
+          <input type="text" id="song-artist-input" placeholder="Artist" />
+          <button class="btn btn-purple" onclick="addSong()">Add Song</button>
+        </div>
+        <div id="added-songs" class="song-list" style="margin-top:0.8rem;"></div>
+        <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+          <button class="btn btn-purple" id="ready-btn" onclick="markReady()">Ready ✓</button>
+          <div class="status-msg" id="ready-status" style="margin:0;align-self:center;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playing -->
+    <div id="screen-playing">
+      <div class="panel">
+        <h2>Round <span id="round-num">1</span> — Vote to Eliminate</h2>
+        <div id="eliminated-banner" class="eliminated-banner" style="display:none;"></div>
+        <div class="song-list" id="voting-songs"></div>
+        <div class="status-msg" id="vote-status"></div>
+      </div>
+    </div>
+
+    <!-- Finished -->
+    <div id="screen-finished">
+      <div class="winner-banner" id="winner-banner"></div>
+      <div class="panel">
+        <h2>Final Standings</h2>
+        <div class="song-list" id="final-songs"></div>
+        <div style="margin-top:1rem;">
+          <button class="btn btn-purple" onclick="location.href='/games/music-survivor'">Play Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ME = '{{ username }}';
+    let roomCode = null;
+    let pollTimer = null;
+    let myVote = null;
+    let localSongs = []; // songs added locally before game starts
+
+    function showScreen(name) {
+      ['lobby','add-songs','playing','finished'].forEach(s => {
+        document.getElementById('screen-' + s).classList.remove('active');
+      });
+      document.getElementById('screen-' + name).classList.add('active');
+    }
+
+    async function createRoom() {
+      const res = await fetch('/api/games/room', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({game_type: 'music_survivor'})
+      });
+      const d = await res.json();
+      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+      roomCode = d.code;
+      enterAddSongs();
+    }
+
+    async function joinRoom() {
+      const code = document.getElementById('join-code').value.trim();
+      if (!code) return;
+      const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+      const d = await res.json();
+      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+      roomCode = code;
+      enterAddSongs();
+    }
+
+    function enterAddSongs() {
+      document.getElementById('room-code-display').textContent = roomCode;
+      showScreen('add-songs');
+      pollRoom();
+    }
+
+    function addSong() {
+      const title = document.getElementById('song-title-input').value.trim();
+      const artist = document.getElementById('song-artist-input').value.trim();
+      if (!title || !artist) return;
+      localSongs.push({id: Date.now().toString(), title, artist, addedBy: ME});
+      document.getElementById('song-title-input').value = '';
+      document.getElementById('song-artist-input').value = '';
+      renderAddedSongs();
+    }
+
+    function renderAddedSongs() {
+      const c = document.getElementById('added-songs');
+      c.innerHTML = localSongs.map(s =>
+        `<div class="song-item"><div><div class="song-name">${esc(s.title)}</div><div class="song-artist">${esc(s.artist)}</div></div></div>`
+      ).join('');
+    }
+
+    async function markReady() {
+      if (localSongs.length === 0) { alert('Add at least one song first!'); return; }
+      // Push songs into room data first
+      for (const s of localSongs) {
+        await fetch('/api/games/room/' + roomCode + '/action', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({action: 'add_song', song: s})
+        });
+      }
+      localSongs = [];
+      const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
+      const d = await res.json();
+      document.getElementById('ready-btn').disabled = true;
+      document.getElementById('ready-status').textContent = 'Waiting for others...';
+      if (d.started) startPlaying();
+    }
+
+    async function vote(songId) {
+      if (myVote) return;
+      myVote = songId;
+      document.querySelectorAll('.vote-btn').forEach(b => b.disabled = true);
+      document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
+      const res = await fetch('/api/games/room/' + roomCode + '/action', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({action: 'vote', song_id: songId})
+      });
+      const room = await res.json();
+      renderRoom(room);
+    }
+
+    function renderRoom(room) {
+      if (!room || room.error) return;
+      // Update players
+      const pl = document.getElementById('players-list');
+      if (pl) {
+        pl.innerHTML = (room.players || []).map(p =>
+          `<span class="player-chip ${p.ready ? 'ready' : ''}">${esc(p.username)}${p.ready ? ' ✓' : ''}</span>`
+        ).join('');
+      }
+      if (room.state === 'playing') {
+        startPlaying(room);
+      } else if (room.state === 'finished') {
+        showFinished(room);
+      }
+    }
+
+    function startPlaying(room) {
+      showScreen('playing');
+      if (room) renderPlaying(room);
+    }
+
+    function renderPlaying(room) {
+      const data = room.data || {};
+      const songs = data.songs || [];
+      const votes = data.votes || {};
+      const eliminated = data.eliminated;
+      document.getElementById('round-num').textContent = room.round || 1;
+      const banner = document.getElementById('eliminated-banner');
+      if (eliminated) {
+        const elSong = (data.all_songs || songs).find(s => s.id === eliminated);
+        banner.style.display = 'block';
+        banner.textContent = `❌ Eliminated: ${elSong ? elSong.title + ' — ' + elSong.artist : eliminated}`;
+        myVote = null;
+      } else {
+        banner.style.display = 'none';
+      }
+      const c = document.getElementById('voting-songs');
+      c.innerHTML = songs.map(s => {
+        const voteCount = Object.values(votes).filter(v => v === s.id).length;
+        const iVoted = votes[ME] === s.id;
+        return `<div class="song-item ${iVoted ? 'voted' : ''}">
+          <div style="flex:1;">
+            <div class="song-name">${esc(s.title)}</div>
+            <div class="song-artist">${esc(s.artist)} · added by ${esc(s.addedBy || '')}</div>
+          </div>
+          <span class="vote-count">${voteCount}</span>
+          <button class="vote-btn" onclick="vote('${s.id}')" ${myVote ? 'disabled' : ''}>Eliminate</button>
+        </div>`;
+      }).join('');
+      const vs = document.getElementById('vote-status');
+      const totalVotes = Object.keys(votes).length;
+      vs.textContent = myVote ? `${totalVotes}/${room.players.length} votes cast` : 'Vote to eliminate a song';
+    }
+
+    function showFinished(room) {
+      showScreen('finished');
+      const data = room.data || {};
+      const winner = data.winner_song;
+      document.getElementById('winner-banner').textContent = winner
+        ? `🏆 Winner: ${winner.title} — ${winner.artist}`
+        : '🏆 Game Over!';
+      const allSongs = data.songs || [];
+      document.getElementById('final-songs').innerHTML = allSongs.map((s, i) =>
+        `<div class="song-item ${i === 0 ? 'winner' : ''}">
+          <div class="song-name">${i === 0 ? '🏆 ' : ''}${esc(s.title)}</div>
+          <div class="song-artist">${esc(s.artist)}</div>
+        </div>`
+      ).join('');
+    }
+
+    async function pollRoom() {
+      if (!roomCode) return;
+      try {
+        const res = await fetch('/api/games/room/' + roomCode);
+        const room = await res.json();
+        if (room.state === 'playing') { startPlaying(room); renderPlaying(room); return; }
+        if (room.state === 'finished') { showFinished(room); return; }
+        renderRoom(room);
+      } catch(e) {}
+      pollTimer = setTimeout(pollRoom, 2500);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+  <script src="/static/pwa.js"></script>
+</body>
+</html>

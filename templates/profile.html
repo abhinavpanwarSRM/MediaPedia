@@ -344,6 +344,7 @@
     </div>
 
     <div id="koc-section" style="display:none;margin-bottom:2rem;"></div>
+    <div id="games-section" style="display:none;margin-bottom:2rem;"></div>
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('lists',this)">Lists</button>
@@ -794,6 +795,41 @@
             ${d.best_game ? `<div style="font-size:0.8rem;color:#b8860b;margin-bottom:1rem;">Best game: <strong style="color:#ffd700;">${gameEmoji[d.best_game]||''} ${d.best_game.charAt(0).toUpperCase()+d.best_game.slice(1)}</strong></div>` : ''}
             ${historyRows ? `<div>${historyRows}</div>` : ''}
             <a href="/kingofcards" style="display:inline-block;margin-top:1rem;font-size:0.8rem;color:#b8860b;text-decoration:none;">View full tournament →</a>
+          </div>`;
+      })
+      .catch(() => {});
+  </script>
+  <script>
+    // ===== GAMES PROFILE SECTION =====
+    fetch('/api/games/stats/{{ username }}')
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.username) return;
+        const games = [
+          {key:'music_survivor', label:'Music Survivor', emoji:'🎵'},
+          {key:'movie_impostor', label:'Movie Impostor', emoji:'🎬'},
+          {key:'song_detective', label:'Song Detective', emoji:'🕵️'},
+        ];
+        const hasAny = games.some(g => d[g.key + '_played'] > 0);
+        if (!hasAny) return;
+        const sec = document.getElementById('games-section');
+        sec.style.display = 'block';
+        sec.innerHTML = `
+          <div style="background:rgba(156,111,228,0.04);border:1px solid rgba(156,111,228,0.15);border-radius:14px;padding:1.4rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
+              <span style="font-size:1.1rem;font-weight:700;color:#9c6fe4;letter-spacing:1px;">🎮 Games</span>
+              <a href="/games" style="font-size:0.75rem;color:#9c6fe4;text-decoration:none;margin-left:auto;">Play →</a>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.6rem;">
+              ${games.filter(g => d[g.key+'_played'] > 0).map(g => {
+                const played = d[g.key+'_played'] || 0;
+                const wins = d[g.key+'_wins'] || 0;
+                return `<div style="background:rgba(156,111,228,0.06);border:1px solid rgba(156,111,228,0.15);border-radius:10px;padding:0.7rem;">
+                  <div style="font-size:0.75rem;color:#888;margin-bottom:0.3rem;">${g.emoji} ${g.label}</div>
+                  <div style="font-size:1.1rem;font-weight:700;color:#9c6fe4;">${wins}W / ${played}P</div>
+                </div>`;
+              }).join('')}
+            </div>
           </div>`;
       })
       .catch(() => {});

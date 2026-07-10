@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Games — MediaPedia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <style>
+    :root { --purple: #9c6fe4; --bg: #141414; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --text: #fff; --muted: #888; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; min-height: 100vh; animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; min-height:57px; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; }
+    .topnav a:hover { color:#fff; }
+    .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
+    .nav-right { display:flex; gap:1rem; align-items:center; }
+    .nav-burger { display:none; flex-direction:column; gap:4px; background:none; border:none; cursor:pointer; padding:4px; }
+    .nav-burger span { display:block; width:22px; height:2px; background:#fff; border-radius:2px; }
+    .nav-drawer { display:none; flex-direction:column; background:rgba(20,20,20,0.98); border-bottom:1px solid var(--border); position:sticky; top:57px; z-index:99; }
+    .nav-drawer.open { display:flex; }
+    .nav-drawer a { padding:0.75rem 1.5rem; color:var(--muted); text-decoration:none; font-size:0.9rem; border-bottom:1px solid var(--border); }
+    .nav-drawer a:hover { color:#fff; }
+    @media(max-width:600px) { .nav-right{display:none;} .nav-burger{display:flex;} }
+
+    .hero { text-align:center; padding:4rem 1.5rem 2rem; }
+    .hero h1 { font-family:'Cormorant Garamond',serif; font-size:clamp(2.2rem,6vw,3.5rem); color:var(--purple); margin-bottom:0.5rem; }
+    .hero p { color:var(--muted); font-size:0.95rem; max-width:480px; margin:0 auto; }
+
+    .games-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1.5rem; max-width:960px; margin:2rem auto; padding:0 1.5rem 3rem; }
+    .game-card { background:rgba(156,111,228,0.06); border:1px solid rgba(156,111,228,0.2); border-radius:16px; padding:2rem 1.5rem; text-align:center; transition:all 0.25s; cursor:pointer; text-decoration:none; color:var(--text); display:block; }
+    .game-card:hover { border-color:var(--purple); background:rgba(156,111,228,0.12); transform:translateY(-4px); box-shadow:0 12px 32px rgba(156,111,228,0.15); }
+    .game-icon { font-size:3rem; margin-bottom:1rem; }
+    .game-card h2 { font-size:1.2rem; font-weight:700; margin-bottom:0.6rem; color:var(--purple); }
+    .game-card p { font-size:0.85rem; color:var(--muted); line-height:1.6; }
+    .game-badge { display:inline-block; margin-top:1rem; background:rgba(156,111,228,0.2); color:var(--purple); font-size:0.72rem; font-weight:700; letter-spacing:0.5px; padding:0.25rem 0.7rem; border-radius:20px; text-transform:uppercase; }
+  </style>
+  <link rel="manifest" href="/static/manifest.json" />
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <div class="nav-right">
+      {% if username %}
+        <a href="/u/{{ username }}" style="color:var(--purple);font-weight:600;">{{ username }}</a>
+        <a href="/feed">Feed</a>
+        <a href="/logout">Logout</a>
+      {% else %}
+        <a href="/login">Login</a>
+        <a href="/register" style="color:#e50914;font-weight:600;">Register</a>
+      {% endif %}
+    </div>
+    <button class="nav-burger" onclick="document.getElementById('nd').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+  <div class="nav-drawer" id="nd">
+    {% if username %}
+      <a href="/u/{{ username }}" style="color:var(--purple);font-weight:600;">{{ username }}</a>
+      <a href="/feed">Feed</a>
+      <a href="/logout">Logout</a>
+    {% else %}
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    {% endif %}
+  </div>
+
+  <div class="hero">
+    <h1>🎮 Games</h1>
+    <p>Multiplayer games to play with friends. Pick a game, share the room code, and compete.</p>
+  </div>
+
+  <div class="games-grid">
+    <a href="/games/music-survivor" class="game-card">
+      <div class="game-icon">🎵</div>
+      <h2>Music Survivor</h2>
+      <p>Everyone votes to eliminate songs one by one. The last song standing wins. Defend your favourites!</p>
+      <span class="game-badge">2–8 players</span>
+    </a>
+    <a href="/games/movie-impostor" class="game-card">
+      <div class="game-icon">🎬</div>
+      <h2>Movie Impostor</h2>
+      <p>One player gets a different movie. Answer questions about your movie — then vote to find the impostor.</p>
+      <span class="game-badge">3–8 players</span>
+    </a>
+    <a href="/games/song-detective" class="game-card">
+      <div class="game-icon">🕵️</div>
+      <h2>Song Detective</h2>
+      <p>Everyone submits a song anonymously. Then guess who submitted each one. Most correct guesses wins!</p>
+      <span class="game-badge">2–8 players</span>
+    </a>
+  </div>
+  <script src="/static/pwa.js"></script>
+</body>
+</html>
