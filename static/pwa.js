@@ -30,8 +30,11 @@
       'padding:0.35rem 0.9rem;font-weight:700;cursor:pointer;color:#000;font-size:0.82rem;white-space:nowrap;">Install</button>' +
       '<button id="pwa-dismiss-btn" style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.2rem;">&times;</button>';
     document.body.appendChild(banner);
-    document.getElementById('pwa-install-btn').onclick = installPWA;
-    document.getElementById('pwa-dismiss-btn').onclick = function() { banner.remove(); };
+    
+    var installBtn = document.getElementById('pwa-install-btn');
+    var dismissBtn = document.getElementById('pwa-dismiss-btn');
+    if (installBtn) installBtn.onclick = installPWA;
+    if (dismissBtn) dismissBtn.onclick = function() { banner.remove(); };
   }
 
   function installPWA() {
@@ -42,37 +45,51 @@
     _deferredInstallPrompt.userChoice.then(function(result) {
       if (result.outcome === 'accepted') {
         showPwaToast('MediaPedia installed! 🎉');
-        // After installation, try to register for push again with better permissions
         setTimeout(initPushNotifications, 2000);
       }
       _deferredInstallPrompt = null;
-    });
+    }).catch(function() {});
   }
 
   // ── Service Worker ──
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(regs) {
-      var stale = regs.filter(function(r) { return r.scope !== window.location.origin + '/'; });
-      return Promise.all(stale.map(function(r) { return r.unregister(); }));
-    }).then(function() {
-      return navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    }).then(function(reg) {
-      _swReg = reg;
-      reg.ready.then(function() {
-        // Check if we already have permission
-        if ('Notification' in window) {
-          if (Notification.permission === 'granted') {
-            initPushNotifications(reg);
-          } else if (Notification.permission === 'default') {
-            // Auto-request permission after a delay
-            setTimeout(requestNotificationPermission, 3000);
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+
+    navigator.serviceWorker.getRegistrations()
+      .then(function(regs) {
+        if (!regs || !regs.length) return Promise.resolve();
+        var stale = regs.filter(function(r) { 
+          return r.scope !== window.location.origin + '/'; 
+        });
+        return Promise.all(stale.map(function(r) { return r.unregister(); }));
+      })
+      .then(function() {
+        return navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      })
+      .then(function(reg) {
+        _swReg = reg;
+        reg.ready.then(function() {
+          if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+              initPushNotifications(reg);
+            } else if (Notification.permission === 'default') {
+              setTimeout(requestNotificationPermission, 3000);
+            }
           }
-        }
-        registerPeriodicSync(reg);
-        // Listen for push subscription changes
-        setupPushSubscriptionListener(reg);
+          registerPeriodicSync(reg);
+          setupPushSubscriptionListener(reg);
+        }).catch(function() {});
+      })
+      .catch(function(err) { 
+        console.warn('SW registration failed:', err); 
       });
-    }).catch(function(err) { console.warn('SW reg failed:', err); });
+  }
+
+  // Run SW registration after a small delay to ensure DOM is ready
+  if (document.readyState === 'complete') {
+    registerServiceWorker();
+  } else {
+    document.addEventListener('DOMContentLoaded', registerServiceWorker);
   }
 
   // ── Request Notification Permission with Better UX ──
@@ -102,83 +119,88 @@
       '</div>';
     document.body.appendChild(dialog);
     
-    document.getElementById('notif-yes').onclick = function() {
-      dialog.remove();
-      Notification.requestPermission().then(function(perm) {
-        if (perm === 'granted' && _swReg) {
-          initPushNotifications(_swReg);
-          showPwaToast('Notifications enabled! 🔔');
-        }
-      });
-    };
-    document.getElementById('notif-no').onclick = function() {
-      dialog.remove();
-    };
+    var yesBtn = document.getElementById('notif-yes');
+    var noBtn = document.getElementById('notif-no');
+    
+    if (yesBtn) {
+      yesBtn.onclick = function() {
+        dialog.remove();
+        Notification.requestPermission().then(function(perm) {
+          if (perm === 'granted' && _swReg) {
+            initPushNotifications(_swReg);
+            showPwaToast('Notifications enabled! 🔔');
+          }
+        }).catch(function() {});
+      };
+    }
+    if (noBtn) {
+      noBtn.onclick = function() {
+        dialog.remove();
+      };
+    }
   }
 
   // ── Initialize Push Notifications ──
   function initPushNotifications(reg) {
     if (!reg || !('PushManager' in window)) return;
     
-    // Check if already subscribed
-    reg.pushManager.getSubscription().then(function(sub) {
-      if (sub) {
-        _subscription = sub;
-        // Ensure subscription is up to date
-        sendSubscriptionToServer(sub);
-        return;
-      }
-      
-      // Not subscribed, get VAPID key and subscribe
-      fetch('/api/push/vapid_public_key')
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (!d.key) {
-            console.warn('No VAPID public key from server');
-            return;
-          }
-          return reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(d.key)
+    reg.pushManager.getSubscription()
+      .then(function(sub) {
+        if (sub) {
+          _subscription = sub;
+          sendSubscriptionToServer(sub);
+          return;
+        }
+        
+        return fetch('/api/push/vapid_public_key')
+          .then(function(r) { 
+            if (!r.ok) throw new Error('Failed to fetch VAPID key');
+            return r.json(); 
+          })
+          .then(function(d) {
+            if (!d || !d.key) {
+              console.warn('No VAPID public key from server');
+              return;
+            }
+            return reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(d.key)
+            });
+          })
+          .then(function(sub) {
+            if (sub) {
+              _subscription = sub;
+              return sendSubscriptionToServer(sub);
+            }
           });
-        })
-        .then(function(sub) {
-          if (sub) {
-            _subscription = sub;
-            return sendSubscriptionToServer(sub);
-          }
-        })
-        .catch(function(err) {
-          console.warn('Push subscription failed:', err);
-          // Retry after a delay if it was a network issue
-          if (err.message && err.message.includes('network')) {
-            setTimeout(function() { initPushNotifications(reg); }, 5000);
-          }
-        });
-    }).catch(function(err) {
-      console.warn('Push getSubscription failed:', err);
-    });
+      })
+      .catch(function(err) {
+        console.warn('Push subscription failed:', err);
+        if (err.message && err.message.includes('network')) {
+          setTimeout(function() { initPushNotifications(reg); }, 5000);
+        }
+      });
   }
 
   function sendSubscriptionToServer(sub) {
+    if (!sub) return Promise.resolve();
     return fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sub.toJSON())
-    }).then(function(res) {
-      if (res.ok) {
-        console.log('Push subscription sent to server');
-        return res.json();
-      }
+    })
+    .then(function(res) {
+      if (res.ok) return res.json();
       throw new Error('Server returned ' + res.status);
-    }).catch(function(err) {
+    })
+    .catch(function(err) {
       console.warn('Failed to send subscription to server:', err);
     });
   }
 
   // ── Listen for subscription changes ──
   function setupPushSubscriptionListener(reg) {
-    // Re-subscribe if the push service changes
+    if (!reg) return;
     navigator.serviceWorker.addEventListener('pushsubscriptionchange', function(e) {
       e.waitUntil(
         reg.pushManager.subscribe({
@@ -187,33 +209,26 @@
         }).then(function(newSub) {
           _subscription = newSub;
           return sendSubscriptionToServer(newSub);
-        })
+        }).catch(function() {})
       );
     });
   }
 
   // ── Periodic Sync ──
   function registerPeriodicSync(reg) {
-    if (!('periodicSync' in reg)) return;
+    if (!reg || !('periodicSync' in reg)) return;
     
-    // Check if we have permission for periodic sync
     navigator.permissions.query({ name: 'periodic-background-sync' })
       .then(function(status) {
         if (status.state === 'granted') {
-          // Unregister existing sync first
           reg.periodicSync.unregister('check-invites').catch(function() {});
-          // Register with 15-minute interval
           return reg.periodicSync.register('check-invites', { 
             minInterval: 15 * 60 * 1000 
           });
         } else if (status.state === 'prompt') {
-          // Request permission for periodic sync
-          // This usually happens when the user has never allowed it
           requestPeriodicSyncPermission(reg);
         }
-      })
-      .then(function() {
-        console.log('Periodic sync registered');
+        return Promise.resolve();
       })
       .catch(function(err) {
         console.warn('Periodic sync registration failed:', err);
@@ -221,7 +236,6 @@
   }
 
   function requestPeriodicSyncPermission(reg) {
-    // Show a dialog explaining periodic sync
     var dialog = document.createElement('div');
     dialog.style.cssText = 
       'position:fixed;bottom:20%;left:50%;transform:translateX(-50%);' +
@@ -240,19 +254,26 @@
       '</div>';
     document.body.appendChild(dialog);
     
-    document.getElementById('periodic-yes').onclick = function() {
-      dialog.remove();
-      // Try to register periodic sync again after permission is granted
-      navigator.permissions.query({ name: 'periodic-background-sync' })
-        .then(function(status) {
-          if (status.state === 'granted') {
-            registerPeriodicSync(reg);
-          }
-        });
-    };
-    document.getElementById('periodic-no').onclick = function() {
-      dialog.remove();
-    };
+    var yesBtn = document.getElementById('periodic-yes');
+    var noBtn = document.getElementById('periodic-no');
+    
+    if (yesBtn) {
+      yesBtn.onclick = function() {
+        dialog.remove();
+        navigator.permissions.query({ name: 'periodic-background-sync' })
+          .then(function(status) {
+            if (status.state === 'granted') {
+              registerPeriodicSync(reg);
+            }
+          })
+          .catch(function() {});
+      };
+    }
+    if (noBtn) {
+      noBtn.onclick = function() {
+        dialog.remove();
+      };
+    }
   }
 
   // ── Badge Management ──
@@ -268,22 +289,26 @@
   // ── Check pending invites on page load ──
   function checkPendingInvites() {
     fetch('/api/party/pending_invites')
-      .then(function(r) { return r.json(); })
+      .then(function(r) { 
+        if (!r.ok) throw new Error('Failed to fetch invites');
+        return r.json(); 
+      })
       .then(function(invites) {
         if (!Array.isArray(invites)) return;
         updateBadge(invites.length);
         if (invites.length > 0) {
-          // Show a subtle notification banner
           showInviteBanner(invites);
         }
-        return invites;
       })
-      .catch(function() {});
+      .catch(function(err) {
+        console.warn('Failed to check pending invites:', err);
+      });
   }
 
   function showInviteBanner(invites) {
     var existing = document.getElementById('invite-banner');
     if (existing) return;
+    if (!invites || !invites.length) return;
     
     var banner = document.createElement('div');
     banner.id = 'invite-banner';
@@ -297,7 +322,6 @@
       window.location.href = '/party';
     };
     document.body.prepend(banner);
-    // Auto-remove after 10 seconds
     setTimeout(function() {
       if (banner.parentNode) banner.remove();
     }, 10000);
@@ -306,47 +330,42 @@
   // ── Visibility change handler ──
   document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible') {
-      // Check for new invites when tab becomes visible
       checkPendingInvites();
-      // Re-subscribe if needed
       if (_swReg && 'PushManager' in window) {
-        _swReg.pushManager.getSubscription().then(function(sub) {
-          if (!sub) {
-            // Subscription was lost, re-subscribe
-            initPushNotifications(_swReg);
-          }
-        }).catch(function() {});
+        _swReg.pushManager.getSubscription()
+          .then(function(sub) {
+            if (!sub) {
+              initPushNotifications(_swReg);
+            }
+          })
+          .catch(function() {});
       }
     }
   });
 
   // ── Network status handling ──
   window.addEventListener('online', function() {
-    // Re-sync when coming back online
     if (_swReg && 'sync' in _swReg) {
       _swReg.sync.register('sync-pending-actions').catch(function() {});
     }
-    // Re-check invites
     checkPendingInvites();
   });
 
   // ── Initial setup ──
-  // Check for invites on page load
   checkPendingInvites();
 
-  // Check for push notification support
   if ('Notification' in window && Notification.permission === 'granted' && _swReg) {
     initPushNotifications(_swReg);
   }
 
   // ── URL helpers ──
-  function urlBase64ToUint8Array(b) {
-    var pad = '='.repeat((4 - b.length % 4) % 4);
-    var base64 = (b + pad).replace(/-/g, '+').replace(/_/g, '/');
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     var raw = atob(base64);
-    var out = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-    return out;
+    var output = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; ++i) output[i] = raw.charCodeAt(i);
+    return output;
   }
 
   function showPwaToast(msg) {
@@ -356,7 +375,9 @@
       'font-weight:700;font-size:0.85rem;z-index:99999;pointer-events:none;font-family:sans-serif;';
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(function() { t.remove(); }, 3000);
+    setTimeout(function() { 
+      if (t.parentNode) t.remove(); 
+    }, 3000);
   }
 
   // ── Expose globally ──

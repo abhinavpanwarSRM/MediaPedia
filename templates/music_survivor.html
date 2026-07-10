@@ -359,8 +359,8 @@
     
     .hidden { display: none !important; }
     
-    #screen-lobby, #screen-waiting, #screen-add-songs, #screen-preview, #screen-playing, #screen-finished { display: none; }
-    #screen-lobby.active, #screen-waiting.active, #screen-add-songs.active, #screen-preview.active, #screen-playing.active, #screen-finished.active { display: block; }
+    #screen-lobby, #screen-add-songs, #screen-preview, #screen-playing, #screen-finished { display: none; }
+    #screen-lobby.active, #screen-add-songs.active, #screen-preview.active, #screen-playing.active, #screen-finished.active { display: block; }
     
     .toast {
       position: fixed;
@@ -420,10 +420,10 @@
       </div>
     </div>
 
-    <!-- Waiting -->
-    <div id="screen-waiting">
+    <!-- Add Songs -->
+    <div id="screen-add-songs">
       <div class="panel">
-        <h2>🎯 Waiting for Players</h2>
+        <h2>🎯 Room Code</h2>
         <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
         <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
@@ -434,13 +434,8 @@
             <button class="btn btn-gold" onclick="setPreviewDuration()">Set Duration</button>
           </div>
         </div>
-        <button class="btn btn-purple" id="ready-btn" onclick="markReady()">✅ Ready</button>
-        <div class="status-msg" id="ready-status"></div>
       </div>
-    </div>
 
-    <!-- Add Songs -->
-    <div id="screen-add-songs">
       <div class="panel">
         <h2>🎵 Add Your Songs</h2>
         <div style="color:var(--muted);font-size:0.82rem;margin-bottom:0.8rem;">
@@ -527,6 +522,7 @@
     let isHost = false;
     let socket = null;
     let pollTimer = null;
+    let isGameFinished = false;
 
     // Game state
     let gameState = null;
@@ -542,9 +538,6 @@
     let hasVotedThisRound = false;
     let lastRound = 0;
     let voteLocked = false;
-    let isGameFinished = false;
-    let allSongs = [];
-    let currentIndex = 0;
 
     // YouTube player
     let ytPlayer = null;
@@ -560,8 +553,7 @@
           onReady: function() { ytReady = true; },
           onStateChange: function(e) {
             if (e.data === YT.PlayerState.ENDED) {
-              if (document.getElementById('screen-preview').classList.contains('active')) {
-                // Auto-advance in preview
+              if (document.getElementById('screen-preview')?.classList?.contains('active')) {
                 if (isHost) {
                   previewSeconds = previewDuration;
                 }
@@ -598,10 +590,17 @@
 
     // ---- Screen Management ----
     function showScreen(name) {
-      ['lobby','waiting','add-songs','preview','playing','finished'].forEach(s =>
-        document.getElementById('screen-' + s).classList.remove('active')
-      );
-      document.getElementById('screen-' + name).classList.add('active');
+      const screens = ['lobby','add-songs','preview','playing','finished'];
+      screens.forEach(s => {
+        const el = document.getElementById('screen-' + s);
+        if (el) {
+          el.classList.remove('active');
+        }
+      });
+      const target = document.getElementById('screen-' + name);
+      if (target) {
+        target.classList.add('active');
+      }
     }
 
     function copyCode() {
@@ -624,7 +623,7 @@
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = d.code;
         isHost = true;
-        enterWaiting();
+        enterAddSongs();
       } catch(e) { showToast('Error creating room'); }
       finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
@@ -638,14 +637,14 @@
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = code;
         isHost = false;
-        enterWaiting();
+        enterAddSongs();
       } catch(e) { showToast('Error joining room'); }
     }
 
-    function enterWaiting() {
+    function enterAddSongs() {
       document.getElementById('room-code-display').textContent = roomCode;
       document.getElementById('host-controls').classList.toggle('hidden', !isHost);
-      showScreen('waiting');
+      showScreen('add-songs');
       connectSocket();
       fetchRoomState();
       startPolling();
@@ -687,7 +686,7 @@
       socket.on('game_next_song', function(data) {
         if (data.index !== undefined && !isGameFinished) {
           previewIndex = data.index;
-          if (document.getElementById('screen-preview').classList.contains('active')) {
+          if (document.getElementById('screen-preview')?.classList?.contains('active')) {
             playPreviewSong(previewIndex);
           }
         }
@@ -720,12 +719,6 @@
       socket.emit('game_next_song', { room_code: roomCode });
     }
 
-    function requestSync() {
-      if (!socket) return;
-      socket.emit('game_sync_request', { room_code: roomCode });
-      showToast('🔄 Syncing...');
-    }
-
     // ---- Set Duration ----
     async function setPreviewDuration() {
       if (!isHost) return;
@@ -741,24 +734,7 @@
       showToast('Preview duration set to ' + val + ' seconds');
     }
 
-    // ---- Ready ----
-    async function markReady() {
-      const btn = document.getElementById('ready-btn');
-      btn.disabled = true;
-      document.getElementById('ready-status').textContent = '⏳ Waiting for others...';
-      
-      const res = await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
-      const data = await res.json();
-      
-      if (data.started) {
-        document.getElementById('ready-status').textContent = '✅ Starting game...';
-        setTimeout(fetchRoomState, 1000);
-      } else if (data.started === false) {
-        document.getElementById('ready-status').textContent = '⚠️ Host must set songs per player or more players needed';
-        btn.disabled = false;
-      }
-    }
-
+    // ---- Ready Add ----
     async function markReadyAdd() {
       if (localSongs.length === 0) { showToast('Add at least one song first!'); return; }
       const btn = document.getElementById('ready-btn-add');
@@ -901,8 +877,6 @@
       isGameFinished = false;
       showScreen('preview');
       previewSongs = room.data?.songs || [];
-      allSongs = previewSongs;
-      currentIndex = 0;
       
       if (previewSongs.length === 0) {
         document.getElementById('preview-status').textContent = 'No songs in the pool!';
@@ -1060,22 +1034,17 @@
 
       // State transitions
       if (room.state === 'lobby') {
-        const allReady = (room.players || []).length >= 2 && (room.players || []).every(p => p.ready);
-        if (allReady && !document.getElementById('screen-add-songs').classList.contains('active')) {
-          // Check if we should transition to add-songs
-          if (room.data?.songs_per_player !== undefined || room.data?.preview_duration) {
-            showScreen('add-songs');
-            document.getElementById('ready-status').textContent = '';
-          }
-        } else if (allReady) {
-          document.getElementById('ready-status').textContent = '⏳ Starting...';
+        // Check if we should transition to add-songs
+        if (!document.getElementById('screen-add-songs').classList.contains('active')) {
+          showScreen('add-songs');
+          document.getElementById('ready-status')?.remove();
         }
       } else if (room.state === 'playing') {
         const previewDone = room.data?.preview_done;
         const hasSongs = room.data?.songs && room.data.songs.length > 0;
 
         if (!previewDone && hasSongs) {
-          if (!document.getElementById('screen-preview').classList.contains('active')) {
+          if (!document.getElementById('screen-preview')?.classList?.contains('active')) {
             startPreview(room);
           }
           return;
@@ -1083,9 +1052,6 @@
 
         if (previewDone) {
           showScreen('playing');
-          // Update songs list
-          allSongs = room.data?.songs || [];
-          
           if (room.round !== lastRound) {
             myVote = null;
             hasVotedThisRound = false;
@@ -1106,22 +1072,25 @@
       document.getElementById('round-num').textContent = room.round || 1;
 
       const banner = document.getElementById('eliminated-banner');
-      if (eliminated) {
-        const allSongs = data.all_songs || [];
-        const elSong = allSongs.find(s => s.id === eliminated);
-        banner.classList.remove('hidden');
-        banner.textContent = `❌ Eliminated: ${elSong ? elSong.title + ' — ' + elSong.artist : eliminated}`;
-      } else {
-        banner.classList.add('hidden');
+      if (banner) {
+        if (eliminated) {
+          const allSongs = data.all_songs || [];
+          const elSong = allSongs.find(s => s.id === eliminated);
+          banner.classList.remove('hidden');
+          banner.textContent = `❌ Eliminated: ${elSong ? elSong.title + ' — ' + elSong.artist : eliminated}`;
+        } else {
+          banner.classList.add('hidden');
+        }
       }
 
       const c = document.getElementById('voting-songs');
+      if (!c) return;
+      
       if (!songs.length) {
         c.innerHTML = '<div style="color:var(--muted);text-align:center;padding:1rem;">No songs remaining.</div>';
         return;
       }
 
-      // Don't show vote counts - just the songs
       c.innerHTML = songs.map(s => {
         const iVoted = myVote === s.id;
         return `<div class="song-item ${iVoted?'my-vote':''}">
@@ -1136,7 +1105,7 @@
         </div>`;
       }).join('');
 
-      // Vote status - show who voted but not what they voted for
+      // Vote status
       const bar = document.getElementById('vote-status-bar');
       if (bar) {
         const votes = data.votes || {};
@@ -1149,9 +1118,12 @@
 
       const totalVotes = Object.keys(data.votes || {}).length;
       const total = (room.players || []).length;
-      document.getElementById('vote-status').textContent = myVote || hasVotedThisRound
-        ? `${totalVotes}/${total} votes cast — waiting for others...`
-        : `${songs.length} songs remaining · vote to eliminate one`;
+      const statusEl = document.getElementById('vote-status');
+      if (statusEl) {
+        statusEl.textContent = myVote || hasVotedThisRound
+          ? `${totalVotes}/${total} votes cast — waiting for others...`
+          : `${songs.length} songs remaining · vote to eliminate one`;
+      }
     }
 
     function showFinished(room) {
@@ -1165,30 +1137,33 @@
       const winner = data.winner_song || data.songs?.[0];
       const allSongs = data.all_songs || data.songs || [];
       
-      // Find all winners (in case of tie, though Music Survivor usually has 1 winner)
       let winnerHtml = '';
       if (winner) {
         winnerHtml = `🏆 Winner: <strong>${esc(winner.title)}</strong> — ${esc(winner.artist)}<small>Added by ${esc(winner.addedBy||'')}</small>`;
       } else {
         winnerHtml = '🏆 Game Over!';
       }
-      document.getElementById('winner-banner').innerHTML = winnerHtml;
-
-      // Show elimination order
-      const eliminatedSongs = allSongs.filter(s => s.id !== data.winner_song?.id);
-      const finalSongs = [...eliminatedSongs, data.winner_song].filter(Boolean);
       
-      document.getElementById('final-songs').innerHTML = finalSongs.map((s, i) => {
-        const isWinner = i === finalSongs.length - 1;
-        return `<div class="song-item ${isWinner?'winner':''}">
-          ${s.thumbnail ? `<img src="${s.thumbnail}" class="song-thumb" alt="" />` : ''}
-          <div class="song-info">
-            <div class="song-name">${isWinner ? '🏆 ' : ''}${esc(s.title)}</div>
-            <div class="song-artist">${esc(s.artist)} <span class="song-added-by">· by ${esc(s.addedBy||'')}</span></div>
-          </div>
-          ${isWinner ? '<span style="color:var(--gold);font-size:0.8rem;font-weight:700;">WINNER</span>' : `<span style="color:var(--muted);font-size:0.7rem;">Eliminated</span>`}
-        </div>`;
-      }).join('');
+      const banner = document.getElementById('winner-banner');
+      if (banner) banner.innerHTML = winnerHtml;
+
+      const finalList = document.getElementById('final-songs');
+      if (finalList) {
+        const eliminatedSongs = allSongs.filter(s => s.id !== data.winner_song?.id);
+        const finalSongs = [...eliminatedSongs, data.winner_song].filter(Boolean);
+        
+        finalList.innerHTML = finalSongs.map((s, i) => {
+          const isWinner = i === finalSongs.length - 1;
+          return `<div class="song-item ${isWinner?'winner':''}">
+            ${s.thumbnail ? `<img src="${s.thumbnail}" class="song-thumb" alt="" />` : ''}
+            <div class="song-info">
+              <div class="song-name">${isWinner ? '🏆 ' : ''}${esc(s.title)}</div>
+              <div class="song-artist">${esc(s.artist)} <span class="song-added-by">· by ${esc(s.addedBy||'')}</span></div>
+            </div>
+            ${isWinner ? '<span style="color:var(--gold);font-size:0.8rem;font-weight:700;">WINNER</span>' : `<span style="color:var(--muted);font-size:0.7rem;">Eliminated</span>`}
+          </div>`;
+        }).join('');
+      }
     }
 
     // ---- Polling ----
@@ -1217,7 +1192,7 @@
     });
 
     // ---- Init ----
-    showScreen('screen-lobby');
+    showScreen('lobby');
 
     // Clean up on page unload
     window.addEventListener('beforeunload', function() {
