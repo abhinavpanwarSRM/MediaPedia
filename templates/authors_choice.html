@@ -284,8 +284,24 @@
     let allData = { series: [], movies: {} };
     let currentTab = 'all';
 
-    // ── TMDB poster fetch ──────────────────────────────────────────────────────
-    async function getPoster(title, kind) {
+    // ── TMDB poster fetch (FIXED: uses ID first, then falls back to title) ──
+    async function getPoster(title, kind, tmdbId) {
+      // If we have a valid TMDB ID, use it directly (much more accurate!)
+      if (tmdbId && tmdbId !== 0) {
+        const key = kind + ':' + tmdbId;
+        if (TMDB_CACHE[key] !== undefined) return TMDB_CACHE[key];
+        try {
+          const r = await fetch(`/api/poster?id=${tmdbId}&kind=${kind}`);
+          const d = await r.json();
+          TMDB_CACHE[key] = d.poster || '';
+          return TMDB_CACHE[key];
+        } catch { 
+          TMDB_CACHE[key] = ''; 
+          return ''; 
+        }
+      }
+      
+      // Fallback: search by title (for items with id: 0)
       const key = kind + ':' + title;
       if (TMDB_CACHE[key] !== undefined) return TMDB_CACHE[key];
       try {
@@ -293,7 +309,10 @@
         const d = await r.json();
         TMDB_CACHE[key] = d.poster || '';
         return TMDB_CACHE[key];
-      } catch { TMDB_CACHE[key] = ''; return ''; }
+      } catch { 
+        TMDB_CACHE[key] = ''; 
+        return ''; 
+      }
     }
 
     // ── Build card HTML ────────────────────────────────────────────────────────
@@ -330,8 +349,8 @@
         ${IS_ADMIN ? `<button class="del-btn" onclick="removeItem(event,${item.id},'${item.type}')" title="Remove">✕</button>` : ''}
       `;
 
-      // lazy-load poster
-      getPoster(item.title, kind).then(url => {
+      // lazy-load poster - PASS THE ID TOO!
+      getPoster(item.title, kind, item.id).then(url => {
         const ph = document.getElementById(`ph-${item.type}-${item.id}`);
         if (ph && url) {
           const img = document.createElement('img');
