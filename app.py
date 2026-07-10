@@ -3994,26 +3994,53 @@ def ready_game_room(code):
         return jsonify({'error': 'Login required'}), 401
     if game_rooms_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
+    
+    room = game_rooms_collection.find_one({'code': code}, {'_id': 0})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    # If game already started, just return
+    if room['state'] != 'lobby':
+        return jsonify({'started': True, 'already_started': True})
+    
+    # Mark this player as ready
     game_rooms_collection.update_one(
         {'code': code, 'players.username': username},
         {'$set': {'players.$.ready': True}}
     )
+    
     room = game_rooms_collection.find_one({'code': code}, {'_id': 0})
-    if not room:
-        return jsonify({'error': 'Room not found'}), 404
     all_ready = all(p['ready'] for p in room['players']) and len(room['players']) >= 2
+    
+    # For song_detective, check if songs_per_player is set
+    if room['game_type'] == 'song_detective':
+        songs_per_player = room.get('data', {}).get('songs_per_player', 0)
+        if all_ready and songs_per_player > 0:
+            # Move to playing state
+            player_songs = {}
+            for p in room['players']:
+                player_songs[p['username']] = []
+            game_rooms_collection.update_one(
+                {'code': code},
+                {'$set': {
+                    'state': 'playing', 
+                    'round': 1,
+                    'data.player_songs': player_songs
+                }}
+            )
+            return jsonify({'started': True, 'song_count_set': True})
+        elif all_ready and songs_per_player == 0:
+            return jsonify({'started': False, 'song_count_set': False})
+    
+    # Original logic for other game types or if song_detective but not all ready
     if all_ready and room['state'] == 'lobby':
         update = {'state': 'playing', 'round': 1}
         if room['game_type'] == 'movie_impostor':
             players = room['players']
             impostor = _random.choice(players)['username']
             update['data.impostor'] = impostor
-        elif room['game_type'] == 'song_detective':
-            player_songs = {}
-            for p in room['players']:
-                player_songs[p['username']] = []
-            update['data.player_songs'] = player_songs
         game_rooms_collection.update_one({'code': code}, {'$set': update})
+    
     return jsonify({'started': all_ready})
 
 @app.route('/api/games/room/<code>/action', methods=['POST'])
