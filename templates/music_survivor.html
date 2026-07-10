@@ -6,6 +6,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <link rel="manifest" href="/static/manifest.json" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
   <style>
     :root { 
       --purple: #9c6fe4; 
@@ -16,6 +17,7 @@
       --muted: #888; 
       --red: #e50914;
       --gold: #ffd700;
+      --green: #1db954;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -111,6 +113,12 @@
       color: var(--gold); 
     }
     .btn-gold:hover:not(:disabled) { background: rgba(255,215,0,0.2); }
+    .btn-green { 
+      background: rgba(29,185,84,0.12); 
+      border-color: var(--green); 
+      color: var(--green); 
+    }
+    .btn-green:hover:not(:disabled) { background: rgba(29,185,84,0.2); }
     
     .code-display { 
       font-size: clamp(1.6rem, 6vw, 2.2rem); 
@@ -137,7 +145,7 @@
     }
     .player-chip.ready { border-color: var(--purple); color: var(--purple); background: rgba(156,111,228,0.15); }
     .player-chip.host { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.08); }
-    .player-chip.voted { border-color: #2ed573; color: #2ed573; background: rgba(46,213,115,0.1); }
+    .player-chip.voted { border-color: var(--green); color: var(--green); background: rgba(29,185,84,0.1); }
     
     .status-msg { text-align: center; color: var(--muted); font-size: 0.85rem; margin: 0.8rem 0; }
     .error-msg { color: #ff6b6b; font-size: 0.82rem; margin-top: 0.5rem; min-height: 1.2em; }
@@ -214,7 +222,6 @@
     }
     .winner-banner small { display: block; font-weight: 400; font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
     
-    /* YouTube Search Results */
     .search-results { 
       display: flex; 
       flex-direction: column; 
@@ -253,7 +260,7 @@
     }
     .search-result-add:hover { background: rgba(156,111,228,0.2); }
     
-    /* Preview Player - Host Controls Only */
+    /* Preview Player */
     .preview-player { 
       background: rgba(0,0,0,0.5); 
       border-radius: 12px; 
@@ -282,7 +289,6 @@
     .preview-player .timer { font-size: 0.78rem; color: var(--muted); }
     .preview-countdown { font-size: 1.4rem; font-weight: 700; color: var(--purple); margin: 0.4rem 0; }
     
-    /* Host controls - only visible to host */
     .host-controls-preview { 
       display: flex;
       justify-content: center; 
@@ -317,7 +323,6 @@
       margin-left: 0.3rem;
     }
     
-    /* Host controls in lobby */
     .host-controls { 
       background: rgba(255,215,0,0.04); 
       border: 1px solid rgba(255,215,0,0.15); 
@@ -327,11 +332,6 @@
     }
     .host-controls label { color: var(--muted); font-size: 0.82rem; display: block; margin-bottom: 0.3rem; }
     .host-controls .input-row { margin-bottom: 0; }
-    
-    .hidden { display: none !important; }
-    
-    #screen-lobby, #screen-add-songs, #screen-preview, #screen-playing, #screen-finished { display: none; }
-    #screen-lobby.active, #screen-add-songs.active, #screen-preview.active, #screen-playing.active, #screen-finished.active { display: block; }
     
     .vote-status-bar {
       display: flex;
@@ -351,10 +351,72 @@
       transition: all 0.3s;
     }
     .vote-status-bar .voter-chip.done {
-      border-color: #2ed573;
-      color: #2ed573;
-      background: rgba(46,213,115,0.08);
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(29,185,84,0.08);
     }
+    
+    .hidden { display: none !important; }
+    
+    #screen-lobby, #screen-waiting, #screen-add-songs, #screen-preview, #screen-playing, #screen-finished { display: none; }
+    #screen-lobby.active, #screen-waiting.active, #screen-add-songs.active, #screen-preview.active, #screen-playing.active, #screen-finished.active { display: block; }
+    
+    /* Queue list */
+    .queue-list { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 0.4rem; 
+      max-height: 200px; 
+      overflow-y: auto; 
+    }
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.8rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+    .queue-item.active {
+      background: rgba(156,111,228,0.12);
+      border-left: 2px solid var(--purple);
+    }
+    .queue-item .q-num {
+      color: var(--muted);
+      font-size: 0.7rem;
+      min-width: 24px;
+    }
+    .queue-item .q-title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .queue-item .q-artist {
+      color: var(--muted);
+      font-size: 0.7rem;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--purple);
+      color: #fff;
+      padding: 0.6rem 1.5rem;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; }
     
     @media(max-width:480px) {
       .topnav { padding: 0.6rem 1rem; }
@@ -394,15 +456,13 @@
       </div>
     </div>
 
-    <!-- Add Songs (with YouTube search) -->
-    <div id="screen-add-songs">
+    <!-- Waiting -->
+    <div id="screen-waiting">
       <div class="panel">
-        <h2>🎯 Room Code</h2>
+        <h2>🎯 Waiting for Players</h2>
         <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
         <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
-        
-        <!-- Host Controls for Duration -->
         <div id="host-controls" class="host-controls hidden">
           <label>⏱ Preview Duration (seconds):</label>
           <div class="input-row">
@@ -410,10 +470,18 @@
             <button class="btn btn-gold" onclick="setPreviewDuration()">Set Duration</button>
           </div>
         </div>
+        <button class="btn btn-purple" id="ready-btn" onclick="markReady()">✅ Ready</button>
+        <div class="status-msg" id="ready-status"></div>
       </div>
+    </div>
 
+    <!-- Add Songs -->
+    <div id="screen-add-songs">
       <div class="panel">
-        <h2>🔍 Search & Add Songs</h2>
+        <h2>🎵 Add Your Songs</h2>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:0.8rem;">
+          Add songs from YouTube. Everyone adds songs before we start.
+        </div>
         <div class="input-row">
           <input type="text" id="youtube-search-input" placeholder="Search for a song on YouTube..." onkeydown="if(event.key==='Enter')searchYouTube()" />
           <button class="btn btn-purple" onclick="searchYouTube()">Search</button>
@@ -423,22 +491,19 @@
       </div>
 
       <div class="panel">
-        <h2>📋 Your Added Songs (<span id="added-count">0</span>)</h2>
+        <h2>📋 Your Songs (<span id="added-count">0</span>)</h2>
         <div id="added-songs" class="song-list"></div>
-        <div style="margin-top:1rem;display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;">
-          <button class="btn btn-purple" id="ready-btn" onclick="markReady()">✅ Ready — Start Preview</button>
-          <span class="status-msg" id="ready-status" style="margin:0;text-align:left;"></span>
-        </div>
+        <button class="btn btn-green" id="ready-btn-add" onclick="markReadyAdd()" style="margin-top:0.8rem;" disabled>✅ Ready — Start Preview</button>
+        <div class="status-msg" id="add-status"></div>
       </div>
     </div>
 
-    <!-- Preview Phase -->
+    <!-- Preview -->
     <div id="screen-preview">
       <div class="panel">
-        <h2>🎧 Preview All Songs</h2>
+        <h2>🎧 Preview <span id="host-badge-preview" class="host-badge hidden">👑 Host Controls</span></h2>
         <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">
-          Each song will play for <strong id="preview-duration-display">30</strong> seconds.
-          <span id="host-badge-preview" class="host-badge hidden">👑 Host Controls</span>
+          Each song plays for <strong id="preview-duration-display">30</strong> seconds.
         </p>
         <div class="preview-player">
           <div class="now-playing" id="preview-song-title">Loading...</div>
@@ -446,12 +511,10 @@
           <div class="progress"><div class="progress-fill" id="preview-progress"></div></div>
           <div class="timer" id="preview-timer">0:00 / 0:30</div>
           <div class="preview-countdown" id="preview-countdown"></div>
-          
-          <!-- Host Controls - Only visible to host -->
           <div class="host-controls-preview" id="host-controls-preview">
             <button id="play-pause-btn" onclick="togglePreviewPlay()">⏸ Pause</button>
-            <button onclick="skipToNextPreview()">⏭ Skip</button>
-            <button id="skip-all-btn" onclick="skipPreview()" style="border-color:var(--gold);color:var(--gold);">⏭ Skip All</button>
+            <button onclick="skipPreviewSong()">⏭ Skip</button>
+            <button id="skip-all-btn" onclick="skipAllPreview()" style="border-color:var(--gold);color:var(--gold);">⏭ Skip All</button>
           </div>
           <div style="margin-top:0.3rem;font-size:0.7rem;color:var(--muted);" id="host-controls-hint">Only the host can control playback</div>
         </div>
@@ -459,7 +522,7 @@
       </div>
     </div>
 
-    <!-- Playing (Voting) -->
+    <!-- Playing / Voting -->
     <div id="screen-playing">
       <div class="panel">
         <div class="round-badge">Round <span id="round-num">1</span></div>
@@ -485,27 +548,73 @@
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
+
+  <!-- Hidden YouTube player -->
+  <div id="yt-div" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;"></div>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
   <script>
+    // ===== CONFIG =====
     const ME = '{{ username }}';
     const API_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}', '{{ api_key_3 }}', '{{ api_key_4 }}', '{{ api_key_5 }}'];
     let roomCode = null;
+    let isHost = false;
+    let socket = null;
     let pollTimer = null;
-    let myVote = null;
-    let lastRound = 0;
+
+    // Game state
+    let gameState = null;
     let localSongs = [];
     let searchKeyIndex = 0;
-    let isHost = false;
-    let previewInterval = null;
-    let previewIndex = 0;
-    let previewSongs = [];
     let previewDuration = 30;
     let isPlaying = false;
     let previewSeconds = 0;
+    let previewInterval = null;
+    let previewIndex = 0;
+    let previewSongs = [];
+    let myVote = null;
     let hasVotedThisRound = false;
+    let lastRound = 0;
+
+    // YouTube player
+    let ytPlayer = null;
+    let ytReady = false;
+
+    // ---- YouTube IFrame API ----
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('yt-div', {
+        height: '1',
+        width: '1',
+        playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1 },
+        events: {
+          onReady: function() { ytReady = true; },
+          onStateChange: function(e) {
+            if (e.data === YT.PlayerState.ENDED) {
+              // Song ended - move to next if in preview
+              if (document.getElementById('screen-preview').classList.contains('active')) {
+                previewSeconds = previewDuration;
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ---- Toast ----
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
     // ---- Screen Management ----
     function showScreen(name) {
-      ['lobby','add-songs','preview','playing','finished'].forEach(s =>
+      ['lobby','waiting','add-songs','preview','playing','finished'].forEach(s =>
         document.getElementById('screen-' + s).classList.remove('active')
       );
       document.getElementById('screen-' + name).classList.add('active');
@@ -516,39 +625,23 @@
       navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
     }
 
-    function showToast(msg) {
-      let t = document.getElementById('_toast');
-      if (!t) { 
-        t = document.createElement('div'); 
-        t.id = '_toast'; 
-        t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;'; 
-        document.body.appendChild(t); 
-      }
-      t.textContent = msg; 
-      t.style.opacity = '1';
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
-    }
-
-    function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
     // ---- Room Management ----
     async function createRoom() {
-      const btn = event.target; 
-      btn.disabled = true; 
+      const btn = event.target;
+      btn.disabled = true;
       btn.textContent = 'Creating...';
       try {
         const res = await fetch('/api/games/room', {
-          method:'POST', 
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({game_type:'music_survivor'})
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game_type: 'music_survivor' })
         });
         const d = await res.json();
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = d.code;
         isHost = true;
-        enterAddSongs();
-      } catch(e) { showToast('Error creating room'); } 
+        enterWaiting();
+      } catch(e) { showToast('Error creating room'); }
       finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
 
@@ -556,47 +649,137 @@
       const code = document.getElementById('join-code').value.trim().toUpperCase();
       if (!code) { showToast('Enter a room code'); return; }
       try {
-        const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+        const res = await fetch('/api/games/room/' + code + '/join', { method: 'POST' });
         const d = await res.json();
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = code;
         isHost = false;
-        enterAddSongs();
+        enterWaiting();
       } catch(e) { showToast('Error joining room'); }
     }
 
-    function enterAddSongs() {
+    function enterWaiting() {
       document.getElementById('room-code-display').textContent = roomCode;
-      showScreen('add-songs');
-      fetch('/api/games/room/' + roomCode).then(r => r.json()).then(room => {
-        isHost = room.host === ME;
-        document.getElementById('host-controls').classList.toggle('hidden', !isHost);
-        // Show host badge in preview
-        document.getElementById('host-badge-preview').classList.toggle('hidden', !isHost);
-        document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
-        document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
-        updatePlayers(room);
-        if (room.data?.preview_duration) {
-          previewDuration = room.data.preview_duration;
-          document.getElementById('preview-duration-display').textContent = previewDuration;
-          document.getElementById('duration-input').value = previewDuration;
-        }
-      });
+      document.getElementById('host-controls').classList.toggle('hidden', !isHost);
+      showScreen('waiting');
+      connectSocket();
+      fetchRoomState();
       startPolling();
     }
 
-    function setPreviewDuration() {
+    // ---- Socket.IO ----
+    function connectSocket() {
+      if (socket) return;
+      socket = io();
+
+      socket.on('connect', function() {
+        socket.emit('game_join', { room_code: roomCode, username: ME });
+      });
+
+      socket.on('game_state', function(data) {
+        if (data.room) {
+          handleRoomState(data.room);
+        }
+      });
+
+      socket.on('game_play', function(data) {
+        if (ytReady && data.position !== undefined) {
+          ytPlayer.seekTo(data.position, true);
+          ytPlayer.playVideo();
+          isPlaying = true;
+          document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+        }
+      });
+
+      socket.on('game_pause', function(data) {
+        if (ytReady && data.position !== undefined) {
+          ytPlayer.seekTo(data.position, true);
+          ytPlayer.pauseVideo();
+          isPlaying = false;
+          document.getElementById('play-pause-btn').textContent = '▶ Play';
+        }
+      });
+
+      socket.on('game_next_song', function(data) {
+        if (data.index !== undefined) {
+          previewIndex = data.index;
+          playPreviewSong(previewIndex);
+        }
+      });
+
+      socket.on('disconnect', function() {
+        showToast('Disconnected — reconnecting...');
+      });
+
+      socket.on('reconnect', function() {
+        showToast('Reconnected!');
+        socket.emit('game_join', { room_code: roomCode, username: ME });
+      });
+    }
+
+    function syncPlay() {
+      if (!isHost || !ytReady || !socket) return;
+      const pos = ytPlayer.getCurrentTime() || 0;
+      socket.emit('game_play', { room_code: roomCode, position: pos });
+    }
+
+    function syncPause() {
+      if (!isHost || !ytReady || !socket) return;
+      const pos = ytPlayer.getCurrentTime() || 0;
+      socket.emit('game_pause', { room_code: roomCode, position: pos });
+    }
+
+    function syncNextSong() {
+      if (!isHost || !socket) return;
+      socket.emit('game_next_song', { room_code: roomCode });
+    }
+
+    function requestSync() {
+      if (!socket) return;
+      socket.emit('game_sync_request', { room_code: roomCode });
+    }
+
+    // ---- Set Duration ----
+    async function setPreviewDuration() {
       if (!isHost) return;
       const val = parseInt(document.getElementById('duration-input').value) || 30;
       if (val < 5 || val > 120) { showToast('Duration must be 5-120 seconds'); return; }
       previewDuration = val;
       document.getElementById('preview-duration-display').textContent = previewDuration;
-      fetch('/api/games/room/' + roomCode + '/action', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'set_duration', duration: val})
+      await fetch('/api/games/room/' + roomCode + '/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_duration', duration: val })
       });
       showToast('Preview duration set to ' + val + ' seconds');
+    }
+
+    // ---- Ready ----
+    async function markReady() {
+      const btn = document.getElementById('ready-btn');
+      btn.disabled = true;
+      document.getElementById('ready-status').textContent = '⏳ Waiting for others...';
+      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+    }
+
+    async function markReadyAdd() {
+      if (localSongs.length === 0) { showToast('Add at least one song first!'); return; }
+      const btn = document.getElementById('ready-btn-add');
+      btn.disabled = true;
+      document.getElementById('add-status').textContent = 'Uploading songs...';
+
+      for (const s of localSongs) {
+        await fetch('/api/games/room/' + roomCode + '/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add_song', song: s })
+        });
+      }
+      localSongs = [];
+      renderAddedSongs();
+      document.getElementById('add-status').textContent = 'Waiting for others...';
+
+      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
     }
 
     // ---- YouTube Search ----
@@ -604,15 +787,15 @@
       const input = document.getElementById('youtube-search-input');
       const query = input.value.trim();
       if (!query) { showToast('Enter a search term'); return; }
-      
+
       const resultsEl = document.getElementById('search-results');
       const statusEl = document.getElementById('search-status');
       resultsEl.innerHTML = '';
       statusEl.textContent = 'Searching...';
-      
+
       const key = getNextKey();
       if (!key) { statusEl.textContent = 'No API keys available'; return; }
-      
+
       try {
         const res = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&key=${key}&maxResults=10&type=video`
@@ -631,13 +814,14 @@
           const parts = title.split(/\s[-–]\s/);
           const artist = parts.length > 1 ? parts[parts.length-1] : 'Unknown Artist';
           const songTitle = parts.length > 1 ? parts.slice(0,-1).join(' - ') : title;
-          return `<div class="search-result-item" onclick="addYouTubeSong('${videoId}', '${esc(songTitle)}', '${esc(artist)}', '${thumb}')">
+          const alreadyAdded = localSongs.some(s => s.youtube_query === videoId);
+          return `<div class="search-result-item" style="${alreadyAdded ? 'opacity:0.5;' : ''}" onclick="${alreadyAdded ? '' : `addYouTubeSong('${videoId}', '${esc(songTitle)}', '${esc(artist)}', '${thumb}')`}">
             <img src="${thumb}" alt="" loading="lazy" />
             <div class="search-result-info">
               <div class="search-result-title">${esc(songTitle)}</div>
               <div class="search-result-artist">${esc(artist)}</div>
             </div>
-            <button class="search-result-add">+ Add</button>
+            <button class="search-result-add" ${alreadyAdded ? 'disabled style="opacity:0.4;"' : ''}>${alreadyAdded ? 'Added' : '+ Add'}</button>
           </div>`;
         }).join('');
       } catch(e) {
@@ -675,17 +859,23 @@
       showToast('Added: ' + title);
       document.getElementById('youtube-search-input').value = '';
       document.getElementById('search-results').innerHTML = '';
+      document.getElementById('search-status').textContent = '';
+      updateAddProgress();
     }
 
     function removeSong(id) {
       localSongs = localSongs.filter(s => s.id !== id);
       renderAddedSongs();
+      updateAddProgress();
     }
 
     function renderAddedSongs() {
       const c = document.getElementById('added-songs');
       document.getElementById('added-count').textContent = localSongs.length;
-      if (!localSongs.length) { c.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:0.5rem;">No songs added yet. Search and add from YouTube above!</div>'; return; }
+      if (!localSongs.length) {
+        c.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:0.5rem;">No songs added yet. Search and add from YouTube above!</div>';
+        return;
+      }
       c.innerHTML = localSongs.map(s =>
         `<div class="song-item">
           ${s.thumbnail ? `<img src="${s.thumbnail}" class="song-thumb" alt="" />` : ''}
@@ -698,39 +888,12 @@
       ).join('');
     }
 
-    // ---- Ready / Start Preview ----
-    async function markReady() {
-      if (localSongs.length === 0) { showToast('Add at least one song first!'); return; }
-      const btn = document.getElementById('ready-btn');
-      btn.disabled = true;
-      document.getElementById('ready-status').textContent = 'Uploading songs...';
-      
-      for (const s of localSongs) {
-        await fetch('/api/games/room/' + roomCode + '/action', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'add_song', song: s})
-        });
-      }
-      localSongs = [];
-      renderAddedSongs();
-      document.getElementById('ready-status').textContent = 'Waiting for others...';
-      
-      const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
-      const d = await res.json();
-      if (d.started) {
-        const room = await (await fetch('/api/games/room/' + roomCode)).json();
-        if (room.state === 'playing' && !room.data?.preview_done) {
-          startPreview(room);
-        } else {
-          handleRoom(room);
-        }
-      } else {
-        document.getElementById('ready-status').textContent = 'Waiting for others to ready up...';
-        btn.disabled = false;
-      }
+    function updateAddProgress() {
+      const btn = document.getElementById('ready-btn-add');
+      btn.disabled = localSongs.length === 0;
     }
 
-    // ---- Preview Phase ----
+    // ---- Preview ----
     function startPreview(room) {
       showScreen('preview');
       previewSongs = room.data?.songs || [];
@@ -743,12 +906,11 @@
         document.getElementById('preview-duration-display').textContent = previewDuration;
       }
       previewIndex = 0;
-      
-      // Show/hide host controls
+
       document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
       document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
       document.getElementById('host-badge-preview').classList.toggle('hidden', !isHost);
-      
+
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
       isPlaying = true;
       playPreviewSong(0);
@@ -757,17 +919,13 @@
     function playPreviewSong(idx) {
       if (idx >= previewSongs.length) {
         document.getElementById('preview-status').textContent = '✅ Preview complete! Starting voting...';
-        if (document.getElementById('preview-iframe')) {
-          document.getElementById('preview-iframe').src = '';
-        }
+        if (ytPlayer) ytPlayer.stopVideo();
         fetch('/api/games/room/' + roomCode + '/action', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'preview_done'})
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'preview_done' })
         });
-        setTimeout(async () => {
-          const room = await (await fetch('/api/games/room/' + roomCode)).json();
-          handleRoom(room);
-        }, 1500);
+        setTimeout(() => fetchRoomState(), 1500);
         return;
       }
 
@@ -779,83 +937,54 @@
       document.getElementById('preview-countdown').textContent = `${idx+1} / ${previewSongs.length}`;
       document.getElementById('preview-status').textContent = `Playing ${idx+1} of ${previewSongs.length}`;
 
-      if (!song.youtube_query) {
+      if (!song.youtube_query || !ytReady) {
         setTimeout(() => playPreviewSong(idx + 1), 2000);
         return;
       }
 
-      const videoId = song.youtube_query;
-      let iframe = document.getElementById('preview-iframe');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'preview-iframe';
-        iframe.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:none;';
-        iframe.allow = 'autoplay';
-        document.body.appendChild(iframe);
-      }
-      
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&disablekb=1&modestbranding=1&rel=0&playsinline=1`;
-      
+      ytPlayer.loadVideoById({ videoId: song.youtube_query, startSeconds: 0 });
+
       previewSeconds = 0;
       clearInterval(previewInterval);
       previewInterval = setInterval(() => {
         previewSeconds++;
         const progress = Math.min(100, (previewSeconds / previewDuration) * 100);
         document.getElementById('preview-progress').style.width = progress + '%';
-        document.getElementById('preview-timer').textContent = 
+        document.getElementById('preview-timer').textContent =
           `${Math.floor(previewSeconds/60)}:${String(previewSeconds%60).padStart(2,'0')} / ${previewDuration}s`;
-        
+
         if (previewSeconds >= previewDuration) {
           clearInterval(previewInterval);
           setTimeout(() => playPreviewSong(idx + 1), 500);
         }
       }, 1000);
 
-      setTimeout(() => {
-        try {
-          iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        } catch(e) {}
-      }, 500);
+      ytPlayer.playVideo();
+      isPlaying = true;
+      document.getElementById('play-pause-btn').textContent = '⏸ Pause';
     }
 
     function togglePreviewPlay() {
       if (!isHost) { showToast('Only the host can control playback'); return; }
-      
-      const iframe = document.getElementById('preview-iframe');
-      const btn = document.getElementById('play-pause-btn');
-      if (!iframe) return;
-      
-      try {
-        if (isPlaying) {
-          iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-          btn.textContent = '▶ Play';
-          isPlaying = false;
-          clearInterval(previewInterval);
-        } else {
-          iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-          btn.textContent = '⏸ Pause';
-          isPlaying = true;
-          clearInterval(previewInterval);
-          previewInterval = setInterval(() => {
-            previewSeconds++;
-            const progress = Math.min(100, (previewSeconds / previewDuration) * 100);
-            document.getElementById('preview-progress').style.width = progress + '%';
-            document.getElementById('preview-timer').textContent = 
-              `${Math.floor(previewSeconds/60)}:${String(previewSeconds%60).padStart(2,'0')} / ${previewDuration}s`;
-            if (previewSeconds >= previewDuration) {
-              clearInterval(previewInterval);
-              setTimeout(() => playPreviewSong(previewIndex + 1), 500);
-            }
-          }, 1000);
-        }
-      } catch(e) {
-        showToast('Use the video player controls');
+      if (!ytReady) return;
+
+      if (isPlaying) {
+        ytPlayer.pauseVideo();
+        isPlaying = false;
+        document.getElementById('play-pause-btn').textContent = '▶ Play';
+        syncPause();
+      } else {
+        ytPlayer.playVideo();
+        isPlaying = true;
+        document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+        syncPlay();
       }
     }
 
-    function skipToNextPreview() {
+    function skipPreviewSong() {
       if (!isHost) { showToast('Only the host can skip'); return; }
       clearInterval(previewInterval);
+      if (ytPlayer) ytPlayer.stopVideo();
       const idx = previewIndex + 1;
       if (idx < previewSongs.length) {
         previewIndex = idx;
@@ -865,79 +994,78 @@
       }
     }
 
-    function skipPreview() {
+    function skipAllPreview() {
       if (!isHost) { showToast('Only the host can skip all'); return; }
       clearInterval(previewInterval);
-      if (document.getElementById('preview-iframe')) {
-        document.getElementById('preview-iframe').src = '';
-      }
+      if (ytPlayer) ytPlayer.stopVideo();
       playPreviewSong(previewSongs.length);
     }
 
-    // ---- Voting Phase ----
+    // ---- Voting ----
     async function vote(songId) {
       if (myVote || hasVotedThisRound) return;
-      
+
       hasVotedThisRound = true;
       myVote = songId;
       document.querySelectorAll('.vote-btn').forEach(b => b.disabled = true);
       document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
-      
-      const res = await fetch('/api/games/room/' + roomCode + '/action', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'vote', song_id: songId})
+
+      await fetch('/api/games/room/' + roomCode + '/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'vote', song_id: songId })
       });
-      const room = await res.json();
-      handleRoom(room);
+      fetchRoomState();
     }
 
-    // ---- Room State Handling ----
-    function handleRoom(room) {
+    // ---- Room State ----
+    function handleRoomState(room) {
       if (!room || room.error) return;
-      
-      updatePlayers(room);
-      updateVoteStatus(room);
-      
-      if (room.state === 'playing' && !room.data?.preview_done && room.data?.songs?.length > 0) {
-        showScreen('preview');
-        if (!previewInterval || previewSongs.length === 0) {
-          startPreview(room);
-        }
-        return;
-      }
 
-      if (room.state === 'finished') { showFinished(room); return; }
-      if (room.state === 'playing') {
-        showScreen('playing');
-        if (room.round !== lastRound) { 
-          myVote = null; 
-          hasVotedThisRound = false;
-          lastRound = room.round; 
-          document.querySelectorAll('.vote-btn').forEach(b => b.disabled = false);
-        }
-        renderPlaying(room);
-      }
-    }
-
-    function updatePlayers(room) {
+      // Update players
       const pl = document.getElementById('players-list');
       if (pl) {
-        pl.innerHTML = (room.players || []).map(p => {
-          const isVoted = room.data?.votes?.[p.username];
-          return `<span class="player-chip ${p.ready?'ready':''} ${room.host === p.username ? 'host' : ''} ${isVoted ? 'voted' : ''}">${esc(p.username)}${p.ready?' ✓':''}${room.host === p.username ? ' 👑' : ''}${isVoted ? ' ✅' : ''}</span>`;
-        }).join('');
+        pl.innerHTML = (room.players || []).map(p =>
+          `<span class="player-chip ${p.ready?'ready':''} ${room.host === p.username ? 'host' : ''} ${room.data?.votes?.[p.username] ? 'voted' : ''}">${esc(p.username)}${p.ready?' ✓':''}${room.host === p.username ? ' 👑' : ''}${room.data?.votes?.[p.username] ? ' ✅' : ''}</span>`
+        ).join('');
       }
-    }
 
-    function updateVoteStatus(room) {
-      const bar = document.getElementById('vote-status-bar');
-      if (!bar) return;
-      const votes = room.data?.votes || {};
-      const players = room.players || [];
-      bar.innerHTML = players.map(p => {
-        const hasVoted = !!votes[p.username];
-        return `<span class="voter-chip ${hasVoted ? 'done' : ''}">${esc(p.username)} ${hasVoted ? '✅' : '⏳'}</span>`;
-      }).join('');
+      // Check if host
+      isHost = room.host === ME;
+
+      // State transitions
+      if (room.state === 'lobby') {
+        const allReady = (room.players || []).length >= 2 && (room.players || []).every(p => p.ready);
+        if (allReady && !document.getElementById('screen-add-songs').classList.contains('active')) {
+          showScreen('add-songs');
+          document.getElementById('ready-status').textContent = '';
+        } else if (allReady) {
+          document.getElementById('ready-status').textContent = '⏳ Starting...';
+        }
+      } else if (room.state === 'playing') {
+        const previewDone = room.data?.preview_done;
+        const hasSongs = room.data?.songs && room.data.songs.length > 0;
+
+        if (!previewDone && hasSongs) {
+          if (!document.getElementById('screen-preview').classList.contains('active')) {
+            startPreview(room);
+          }
+          return;
+        }
+
+        if (previewDone) {
+          showScreen('playing');
+          if (room.round !== lastRound) {
+            myVote = null;
+            hasVotedThisRound = false;
+            lastRound = room.round;
+            document.querySelectorAll('.vote-btn').forEach(b => b.disabled = false);
+          }
+          renderPlaying(room);
+        }
+      } else if (room.state === 'finished') {
+        showFinished(room);
+      }
     }
 
     function renderPlaying(room) {
@@ -961,7 +1089,7 @@
         c.innerHTML = '<div style="color:var(--muted);text-align:center;padding:1rem;">No songs remaining.</div>';
         return;
       }
-      
+
       c.innerHTML = songs.map(s => {
         const iVoted = myVote === s.id;
         return `<div class="song-item ${iVoted?'my-vote':''}">
@@ -976,6 +1104,17 @@
         </div>`;
       }).join('');
 
+      // Vote status
+      const bar = document.getElementById('vote-status-bar');
+      if (bar) {
+        const votes = data.votes || {};
+        const players = room.players || [];
+        bar.innerHTML = players.map(p => {
+          const hasVoted = !!votes[p.username];
+          return `<span class="voter-chip ${hasVoted ? 'done' : ''}">${esc(p.username)} ${hasVoted ? '✅' : '⏳'}</span>`;
+        }).join('');
+      }
+
       const totalVotes = Object.keys(data.votes || {}).length;
       const total = (room.players || []).length;
       document.getElementById('vote-status').textContent = myVote || hasVotedThisRound
@@ -986,16 +1125,16 @@
     function showFinished(room) {
       clearInterval(previewInterval);
       clearTimeout(pollTimer);
-      if (document.getElementById('preview-iframe')) {
-        document.getElementById('preview-iframe').src = '';
-      }
+      if (ytPlayer) ytPlayer.stopVideo();
       showScreen('finished');
+
       const data = room.data || {};
       const winner = data.winner_song || data.songs?.[0];
       const allSongs = data.all_songs || data.songs || [];
       document.getElementById('winner-banner').innerHTML = winner
         ? `🏆 Winner: <strong>${esc(winner.title)}</strong> — ${esc(winner.artist)}<small>Added by ${esc(winner.addedBy||'')}</small>`
         : '🏆 Game Over!';
+
       document.getElementById('final-songs').innerHTML = allSongs.map((s, i) =>
         `<div class="song-item ${i===0?'winner':''}">
           ${s.thumbnail ? `<img src="${s.thumbnail}" class="song-thumb" alt="" />` : ''}
@@ -1014,27 +1153,34 @@
       pollTimer = setTimeout(pollRoom, 2000);
     }
 
-    async function pollRoom() {
-      if (!roomCode || document.hidden) { startPolling(); return; }
+    async function fetchRoomState() {
       try {
         const res = await fetch('/api/games/room/' + roomCode);
         const room = await res.json();
-        handleRoom(room);
-        if (room.state === 'finished') return;
+        handleRoomState(room);
       } catch(e) {}
+    }
+
+    async function pollRoom() {
+      if (!roomCode || document.hidden) { startPolling(); return; }
+      await fetchRoomState();
       startPolling();
     }
 
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
-    });
-
+    // ---- Enter key for search ----
     document.getElementById('youtube-search-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') searchYouTube();
     });
 
+    // ---- Init ----
     showScreen('lobby');
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+      if (socket && roomCode) {
+        socket.emit('game_leave', { room_code: roomCode });
+      }
+    });
   </script>
-  <script src="/static/pwa.js"></script>
 </body>
 </html>
