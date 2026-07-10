@@ -339,37 +339,25 @@
         box-shadow: 0 5px 15px #0088b6;
       }
 
-      .saved-counter {
-        position: fixed;
-        top: 52px;
-        right: 12px;
-        background: var(--card-bg);
-        padding: 6px;
-        border-radius: 999px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        z-index: 900;
-      }
-      @media (max-width: 480px) {
-        .saved-counter { top: auto; bottom: 16px; right: 16px; }
-      }
-
       .view-saved-btn {
-        padding: 6px 14px;
-        background: var(--primary);
-        color: #fff;
-        border: none;
-        border-radius: 999px;
+        background: rgba(20, 20, 20, 0.8);
+        border: 2px solid var(--primary);
+        color: white;
+        border-radius: 50px;
+        padding: 0.6rem 1.4rem;
+        font-size: 1rem;
         cursor: pointer;
-        font-size: 0.9rem;
-        font-weight: 600;
-        transition:
-          background-color 0.25s ease,
-          transform 0.15s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s ease;
+        white-space: nowrap;
       }
 
       .view-saved-btn:hover {
-        background: #0088b6;
-        transform: scale(1.05);
+        background: rgba(1, 43, 74, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px #0088b6;
       }
     </style>
       <link rel="manifest" href="/static/manifest.json" />
@@ -405,11 +393,8 @@
           <button class="btn" onclick="openAddToList()">
             <span>+ List</span>
           </button>
-        </div>
-
-        <div class="saved-counter">
           <button id="saved-count" class="view-saved-btn" onclick="viewSaved()">
-            0
+            🗂 0 Saved
           </button>
         </div>
 
@@ -1451,7 +1436,8 @@
               const items = this.getSavedItems();
 
               // Update counter
-              document.getElementById('saved-count').textContent = items.length;
+              const countEl = document.getElementById('saved-count');
+              countEl.textContent = '\uD83D\uDDC2 ' + items.length + ' Saved';
 
               // Update current series's heart button if on series page
               const seriesId = {{ series.get('ID', 0) }};
