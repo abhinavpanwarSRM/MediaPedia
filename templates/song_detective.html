@@ -365,6 +365,33 @@
     .queue-item .q-artist { color: var(--muted); font-size: 0.7rem; }
     .queue-item .q-submitter { color: #555; font-size: 0.65rem; margin-left: 0.5rem; }
 
+    /* Audio Player - No video, just controls */
+    .audio-player {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 0.5rem 0;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .audio-player .album-art {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+    .audio-player .song-name {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .audio-player .song-artist {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .audio-player .song-submitter {
+      font-size: 0.7rem;
+      color: #555;
+      margin-top: 0.2rem;
+    }
+
     /* Progress bar */
     .progress-wrap {
       display: flex;
@@ -506,25 +533,13 @@
           <span id="host-badge" class="host-badge hidden">👑 Host Controls</span>
         </div>
 
-        <div style="margin:0.5rem 0;text-align:center;">
-          <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;">
-            <iframe id="youtube-player" src="" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-          </div>
+        <!-- Audio Player (no video) -->
+        <div class="audio-player">
+          <div class="album-art">🎵</div>
+          <div class="song-name" id="current-song-title">Loading...</div>
+          <div class="song-artist" id="current-song-artist"></div>
+          <div class="song-submitter" id="current-song-submitter"></div>
         </div>
-
-        <div style="margin:0.8rem 0;">
-          <div style="font-size:0.95rem;font-weight:600;" id="current-song-title">Loading...</div>
-          <div style="font-size:0.82rem;color:var(--muted);" id="current-song-artist"></div>
-          <div style="font-size:0.7rem;color:#555;margin-top:0.2rem;" id="current-song-submitter"></div>
-        </div>
-
-        <!-- Host Controls -->
-        <div class="host-controls-playing" id="host-controls-playing">
-          <button id="play-pause-btn" onclick="togglePlay()">⏸ Pause</button>
-          <button onclick="skipSong()">⏭ Skip</button>
-          <button id="next-song-btn" onclick="nextSong()" style="border-color:var(--gold);color:var(--gold);">⏭ Next Song</button>
-        </div>
-        <div class="player-controls-hint" id="player-controls-hint">Only the host can control playback</div>
 
         <!-- Progress -->
         <div class="progress-wrap">
@@ -534,6 +549,14 @@
           </div>
           <span id="duration">0:00</span>
         </div>
+
+        <!-- Host Controls -->
+        <div class="host-controls-playing" id="host-controls-playing">
+          <button id="play-pause-btn" onclick="togglePlay()">⏸ Pause</button>
+          <button id="skip-btn" onclick="skipSong()" disabled>⏭ Skip (Vote First)</button>
+          <button id="next-song-btn" onclick="nextSong()" style="border-color:var(--gold);color:var(--gold);" disabled>⏭ Next Song</button>
+        </div>
+        <div class="player-controls-hint" id="player-controls-hint">Only the host can control playback</div>
 
         <!-- Queue / Playlist -->
         <div style="margin-top:0.8rem;border-top:1px solid var(--border);padding-top:0.8rem;">
@@ -571,7 +594,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- Hidden YouTube player -->
+  <!-- Hidden YouTube player for audio -->
   <div id="yt-div" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;"></div>
   <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -597,6 +620,8 @@
     let selectedGuess = null;
     let votes = {};
     let songStates = {};
+    let allVotedForCurrentSong = false;
+    let voteLocked = false;
 
     // YouTube player
     let ytPlayer = null;
@@ -623,14 +648,17 @@
             }
             if (e.data === YT.PlayerState.ENDED) {
               clearInterval(progTimer);
-              // Auto-advance if host
-              if (isHost) {
+              // Auto-advance if host and all voted
+              if (isHost && allVotedForCurrentSong) {
                 setTimeout(nextSong, 1500);
               }
             }
           },
           onError: function() {
-            setTimeout(nextSong, 1000);
+            // If video fails, just move on
+            if (isHost) {
+              setTimeout(nextSong, 1000);
+            }
           }
         }
       });
@@ -977,8 +1005,13 @@
       document.getElementById('player-controls-hint').style.display = isHost ? 'none' : 'block';
 
       hasVoted = false;
+      allVotedForCurrentSong = false;
+      voteLocked = false;
       votes = room.data?.votes || {};
       songStates = room.data?.song_states || {};
+
+      // Enable/disable skip buttons
+      updateSkipButtons();
 
       renderQueue();
       playSong(currentIndex);
@@ -991,6 +1024,10 @@
       }
 
       currentIndex = index;
+      hasVoted = false;
+      voteLocked = false;
+      allVotedForCurrentSong = false;
+
       const song = allSongs[index];
 
       document.getElementById('song-index').textContent = index + 1;
@@ -999,7 +1036,7 @@
       document.getElementById('current-song-artist').textContent = song.artist || 'Unknown Artist';
       document.getElementById('current-song-submitter').textContent = '🎵 added by ' + (song.submitter || 'Unknown');
 
-      // Load song
+      // Load song in hidden player
       if (song.youtube_query && ytReady) {
         ytPlayer.loadVideoById({ videoId: song.youtube_query, startSeconds: 0 });
         ytPlayer.playVideo();
@@ -1008,7 +1045,6 @@
       }
 
       // Reset voting
-      hasVoted = false;
       selectedGuess = null;
       document.getElementById('vote-btn').disabled = true;
       document.getElementById('vote-btn').textContent = 'Submit Guess';
@@ -1028,6 +1064,9 @@
       // Update vote status
       updateVoteStatus();
 
+      // Update skip buttons
+      updateSkipButtons();
+
       // Render queue
       renderQueue();
     }
@@ -1038,7 +1077,7 @@
     }
 
     function selectGuess(btn, username) {
-      if (hasVoted) return;
+      if (hasVoted || voteLocked) return;
       document.querySelectorAll('.guess-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedGuess = username;
@@ -1057,6 +1096,44 @@
         const hasVoted = votes[p.username] && votes[p.username][songId];
         return `<span class="voter-chip ${hasVoted ? 'done' : ''}">${esc(p.username)} ${hasVoted ? '✅' : '⏳'}</span>`;
       }).join('');
+
+      // Check if all players have voted
+      const allVoted = (room.players || []).every(p =>
+        votes[p.username] && votes[p.username][songId]
+      );
+      allVotedForCurrentSong = allVoted;
+
+      // Update skip buttons
+      updateSkipButtons();
+    }
+
+    function updateSkipButtons() {
+      const skipBtn = document.getElementById('skip-btn');
+      const nextBtn = document.getElementById('next-song-btn');
+
+      if (!isHost) {
+        skipBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+      }
+
+      // Skip button: only enabled after user has voted
+      skipBtn.disabled = !hasVoted;
+      skipBtn.textContent = hasVoted ? '⏭ Skip' : '⏭ Vote First';
+
+      // Next button: only enabled when all players have voted
+      const room = gameState || { players: [] };
+      const currentSong = allSongs[currentIndex];
+      if (currentSong) {
+        const songId = currentSong.id;
+        const allVoted = (room.players || []).every(p =>
+          votes[p.username] && votes[p.username][songId]
+        );
+        nextBtn.disabled = !allVoted || (room.players || []).length < 2;
+        nextBtn.textContent = nextBtn.disabled ? '⏳ Waiting for votes' : '⏭ Next Song';
+      } else {
+        nextBtn.disabled = true;
+      }
     }
 
     function renderQueue() {
@@ -1098,7 +1175,10 @@
 
     function skipSong() {
       if (!isHost) { showToast('Only the host can skip'); return; }
+      if (!hasVoted) { showToast('You must vote first before skipping!'); return; }
       if (!ytReady) return;
+
+      voteLocked = true;
       ytPlayer.stopVideo();
       const nextIdx = currentIndex + 1;
       if (nextIdx < allSongs.length) {
@@ -1107,6 +1187,7 @@
         syncNextSong();
       } else {
         showToast('End of playlist');
+        finishGame();
       }
     }
 
@@ -1128,6 +1209,7 @@
         return;
       }
 
+      voteLocked = true;
       const nextIdx = currentIndex + 1;
       if (nextIdx >= allSongs.length) {
         finishGame();
@@ -1150,6 +1232,7 @@
     async function submitVote() {
       if (hasVoted) { showToast('You already voted for this song!'); return; }
       if (!selectedGuess) { showToast('Select a player first!'); return; }
+      if (voteLocked) { showToast('Voting is locked for this song!'); return; }
 
       const song = allSongs[currentIndex];
       const btn = document.getElementById('vote-btn');
@@ -1174,13 +1257,18 @@
       document.getElementById('vote-btn').textContent = '✅ Voted';
       updateVoteStatus();
 
-      // Check if all voted - if host, auto-advance
+      // Update skip buttons
+      updateSkipButtons();
+
+      // Check if all voted - if host, enable next button
       const room = gameState || { players: [] };
       const allVoted = (room.players || []).every(p =>
         votes[p.username] && votes[p.username][song.id]
       );
 
       if (allVoted && isHost && (room.players || []).length > 1) {
+        showToast('✅ All players voted! Click "Next Song" to continue');
+        // Auto-advance after delay
         setTimeout(() => {
           const nextIdx = currentIndex + 1;
           if (nextIdx < allSongs.length) {
@@ -1195,7 +1283,7 @@
           } else {
             finishGame();
           }
-        }, 1500);
+        }, 3000);
       }
 
       fetchRoomState();
@@ -1332,6 +1420,8 @@
           }
           // Update vote status
           updateVoteStatus();
+          // Update skip buttons
+          updateSkipButtons();
         }
       } else if (room.state === 'finished') {
         showResult(room);

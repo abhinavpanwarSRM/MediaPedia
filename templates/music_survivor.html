@@ -260,15 +260,16 @@
     }
     .search-result-add:hover { background: rgba(156,111,228,0.2); }
     
-    /* Preview Player */
+    /* Preview Player - Audio Only */
     .preview-player { 
-      background: rgba(0,0,0,0.5); 
+      background: rgba(0,0,0,0.3); 
       border-radius: 12px; 
       padding: 1.5rem; 
       margin: 1rem 0; 
       text-align: center; 
       border: 1px solid var(--border);
     }
+    .preview-player .album-art { font-size: 3rem; margin-bottom: 0.5rem; }
     .preview-player .now-playing { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.2rem; }
     .preview-player .now-playing .artist { font-weight: 400; font-size: 0.85rem; color: var(--muted); }
     .preview-player .progress { 
@@ -360,43 +361,6 @@
     
     #screen-lobby, #screen-waiting, #screen-add-songs, #screen-preview, #screen-playing, #screen-finished { display: none; }
     #screen-lobby.active, #screen-waiting.active, #screen-add-songs.active, #screen-preview.active, #screen-playing.active, #screen-finished.active { display: block; }
-    
-    /* Queue list */
-    .queue-list { 
-      display: flex; 
-      flex-direction: column; 
-      gap: 0.4rem; 
-      max-height: 200px; 
-      overflow-y: auto; 
-    }
-    .queue-item {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.4rem 0.8rem;
-      background: rgba(255,255,255,0.03);
-      border-radius: 6px;
-      font-size: 0.82rem;
-    }
-    .queue-item.active {
-      background: rgba(156,111,228,0.12);
-      border-left: 2px solid var(--purple);
-    }
-    .queue-item .q-num {
-      color: var(--muted);
-      font-size: 0.7rem;
-      min-width: 24px;
-    }
-    .queue-item .q-title {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .queue-item .q-artist {
-      color: var(--muted);
-      font-size: 0.7rem;
-    }
     
     .toast {
       position: fixed;
@@ -506,6 +470,7 @@
           Each song plays for <strong id="preview-duration-display">30</strong> seconds.
         </p>
         <div class="preview-player">
+          <div class="album-art">🎵</div>
           <div class="now-playing" id="preview-song-title">Loading...</div>
           <div class="now-playing"><span class="artist" id="preview-song-artist"></span></div>
           <div class="progress"><div class="progress-fill" id="preview-progress"></div></div>
@@ -513,7 +478,7 @@
           <div class="preview-countdown" id="preview-countdown"></div>
           <div class="host-controls-preview" id="host-controls-preview">
             <button id="play-pause-btn" onclick="togglePreviewPlay()">⏸ Pause</button>
-            <button onclick="skipPreviewSong()">⏭ Skip</button>
+            <button id="skip-preview-btn" onclick="skipPreviewSong()" disabled>⏭ Skip (Vote First)</button>
             <button id="skip-all-btn" onclick="skipAllPreview()" style="border-color:var(--gold);color:var(--gold);">⏭ Skip All</button>
           </div>
           <div style="margin-top:0.3rem;font-size:0.7rem;color:var(--muted);" id="host-controls-hint">Only the host can control playback</div>
@@ -550,7 +515,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- Hidden YouTube player -->
+  <!-- Hidden YouTube player for audio -->
   <div id="yt-div" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;"></div>
   <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -576,6 +541,7 @@
     let myVote = null;
     let hasVotedThisRound = false;
     let lastRound = 0;
+    let voteLocked = false;
 
     // YouTube player
     let ytPlayer = null;
@@ -591,10 +557,23 @@
           onReady: function() { ytReady = true; },
           onStateChange: function(e) {
             if (e.data === YT.PlayerState.ENDED) {
-              // Song ended - move to next if in preview
               if (document.getElementById('screen-preview').classList.contains('active')) {
                 previewSeconds = previewDuration;
               }
+            }
+            if (e.data === YT.PlayerState.PLAYING) {
+              isPlaying = true;
+              document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+            }
+            if (e.data === YT.PlayerState.PAUSED) {
+              isPlaying = false;
+              document.getElementById('play-pause-btn').textContent = '▶ Play';
+            }
+          },
+          onError: function() {
+            // If video fails, skip to next
+            if (isHost) {
+              setTimeout(skipPreviewSong, 1000);
             }
           }
         }
@@ -737,6 +716,7 @@
     function requestSync() {
       if (!socket) return;
       socket.emit('game_sync_request', { room_code: roomCode });
+      showToast('🔄 Syncing...');
     }
 
     // ---- Set Duration ----
@@ -906,6 +886,8 @@
         document.getElementById('preview-duration-display').textContent = previewDuration;
       }
       previewIndex = 0;
+      hasVotedThisRound = false;
+      voteLocked = false;
 
       document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
       document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
@@ -913,6 +895,7 @@
 
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
       isPlaying = true;
+      updatePreviewSkipButtons();
       playPreviewSong(0);
     }
 
@@ -962,6 +945,20 @@
       ytPlayer.playVideo();
       isPlaying = true;
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
+      hasVotedThisRound = false;
+      voteLocked = false;
+      updatePreviewSkipButtons();
+    }
+
+    function updatePreviewSkipButtons() {
+      const skipBtn = document.getElementById('skip-preview-btn');
+      if (!isHost) {
+        skipBtn.disabled = true;
+        return;
+      }
+      // Skip button: only enabled after user has voted
+      skipBtn.disabled = !hasVotedThisRound;
+      skipBtn.textContent = hasVotedThisRound ? '⏭ Skip' : '⏭ Vote First';
     }
 
     function togglePreviewPlay() {
@@ -983,12 +980,16 @@
 
     function skipPreviewSong() {
       if (!isHost) { showToast('Only the host can skip'); return; }
+      if (!hasVotedThisRound) { showToast('You must vote first before skipping!'); return; }
+      
+      voteLocked = true;
       clearInterval(previewInterval);
       if (ytPlayer) ytPlayer.stopVideo();
       const idx = previewIndex + 1;
       if (idx < previewSongs.length) {
         previewIndex = idx;
         playPreviewSong(idx);
+        syncNextSong();
       } else {
         playPreviewSong(previewSongs.length);
       }
@@ -1003,7 +1004,7 @@
 
     // ---- Voting ----
     async function vote(songId) {
-      if (myVote || hasVotedThisRound) return;
+      if (myVote || hasVotedThisRound || voteLocked) return;
 
       hasVotedThisRound = true;
       myVote = songId;
@@ -1015,12 +1016,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'vote', song_id: songId })
       });
+      
+      // Update preview skip button if in preview
+      if (document.getElementById('screen-preview').classList.contains('active')) {
+        updatePreviewSkipButtons();
+      }
+      
       fetchRoomState();
     }
 
     // ---- Room State ----
     function handleRoomState(room) {
       if (!room || room.error) return;
+      gameState = room;
 
       // Update players
       const pl = document.getElementById('players-list');
