@@ -3878,6 +3878,10 @@ def create_game_room():
         m1, m2 = _get_movie_pair()
         room['data']['movie_pair'] = [m1, m2]
         room['data']['questions'] = _random.sample(IMPOSTOR_QUESTIONS, min(5, len(IMPOSTOR_QUESTIONS)))
+    elif game_type == 'music_survivor':
+        room['data']['songs'] = []
+        room['data']['all_songs'] = []
+        room['data']['votes'] = {}
     game_rooms_collection.insert_one(room)
     return jsonify({'code': code}), 201
 
@@ -3953,7 +3957,18 @@ def game_action(code):
     game_type = room['game_type']
     update = {}
 
-    if game_type == 'music_survivor' and action == 'vote':
+    if game_type == 'music_survivor' and action == 'add_song':
+        song = data.get('song', {})
+        if song and song.get('id') and song.get('title'):
+            songs = room.get('data', {}).get('songs', [])
+            all_songs = room.get('data', {}).get('all_songs', [])
+            if not any(s.get('id') == song['id'] for s in songs):
+                songs.append(song)
+                all_songs.append(song)
+                update['data.songs'] = songs
+                update['data.all_songs'] = all_songs
+
+    elif game_type == 'music_survivor' and action == 'vote':
         # vote to eliminate a song: data = {song_id: str}
         song_id = data.get('song_id', '')
         votes = room.get('data', {}).get('votes', {})

@@ -8,43 +8,52 @@
   <style>
     :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; }
-    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; }
-    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; animation:fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
     .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
-    .container { max-width:700px; margin:0 auto; padding:2rem 1.5rem 4rem; }
-    h1 { font-size:1.8rem; font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
-    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; }
-    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.5rem; margin-bottom:1.2rem; }
+    .container { max-width:680px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+    h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
+    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
     .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
     .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
-    input[type=text], input[type=number] { flex:1; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; min-width:0; }
+    input[type=text] { flex:1; min-width:120px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
     input:focus { outline:none; border-color:var(--purple); }
-    .btn { padding:0.6rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
     .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
     .btn-purple:hover { background:rgba(156,111,228,0.3); }
-    .btn-red { background:rgba(229,9,20,0.15); border-color:#e50914; color:#e50914; }
-    .btn-red:hover { background:rgba(229,9,20,0.3); }
+    .btn-purple:disabled { opacity:0.45; cursor:not-allowed; }
     .song-list { display:flex; flex-direction:column; gap:0.5rem; }
-    .song-item { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.7rem 1rem; }
-    .song-item.eliminated { opacity:0.35; text-decoration:line-through; }
-    .song-item.winner { border-color:#ffd700; background:rgba(255,215,0,0.08); }
-    .song-name { flex:1; font-size:0.9rem; font-weight:600; }
-    .song-artist { font-size:0.78rem; color:var(--muted); }
-    .vote-btn { padding:0.3rem 0.8rem; border-radius:6px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid #e50914; background:rgba(229,9,20,0.1); color:#e50914; transition:all 0.2s; }
-    .vote-btn:hover { background:rgba(229,9,20,0.25); }
+    .song-item { display:flex; align-items:center; gap:0.8rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; transition:border-color 0.2s; }
+    .song-item.winner { border-color:#ffd700; background:rgba(255,215,0,0.07); }
+    .song-item.my-vote { border-color:rgba(229,9,20,0.5); }
+    .song-name { font-size:0.9rem; font-weight:600; }
+    .song-artist { font-size:0.76rem; color:var(--muted); margin-top:0.1rem; }
+    .vote-btn { padding:0.35rem 0.85rem; border-radius:6px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid #e50914; background:rgba(229,9,20,0.1); color:#e50914; transition:all 0.2s; flex-shrink:0; }
+    .vote-btn:hover:not(:disabled) { background:rgba(229,9,20,0.25); }
     .vote-btn:disabled { opacity:0.4; cursor:not-allowed; }
-    .vote-count { font-size:0.75rem; color:var(--muted); min-width:24px; text-align:center; }
+    .vote-count { font-size:0.78rem; color:var(--muted); min-width:28px; text-align:center; flex-shrink:0; }
     .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
-    .player-chip { background:rgba(156,111,228,0.12); border:1px solid rgba(156,111,228,0.25); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; }
-    .player-chip.ready { border-color:var(--purple); color:var(--purple); }
-    .code-display { font-size:2rem; font-weight:800; letter-spacing:6px; color:var(--purple); text-align:center; margin:0.5rem 0; }
-    .status-msg { text-align:center; color:var(--muted); font-size:0.88rem; margin:0.8rem 0; }
-    .eliminated-banner { background:rgba(229,9,20,0.1); border:1px solid rgba(229,9,20,0.3); border-radius:8px; padding:0.7rem 1rem; font-size:0.88rem; color:#ff6b6b; margin-bottom:0.8rem; text-align:center; }
-    .winner-banner { background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.4); border-radius:8px; padding:1rem; font-size:1rem; font-weight:700; color:#ffd700; text-align:center; margin-bottom:1rem; }
+    .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
+    .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
+    .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--purple); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
+    .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
+    .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
+    .eliminated-banner { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.25); border-radius:8px; padding:0.7rem 1rem; font-size:0.88rem; color:#ff6b6b; margin-bottom:0.8rem; text-align:center; }
+    .winner-banner { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.35); border-radius:12px; padding:1.1rem; font-size:1rem; font-weight:700; color:#ffd700; text-align:center; margin-bottom:1rem; }
+    .round-badge { display:inline-block; background:rgba(156,111,228,0.15); border:1px solid rgba(156,111,228,0.3); border-radius:20px; padding:0.2rem 0.8rem; font-size:0.75rem; font-weight:700; color:var(--purple); margin-bottom:0.8rem; }
+    .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
+    .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
     #screen-lobby, #screen-add-songs, #screen-playing, #screen-finished { display:none; }
     #screen-lobby.active, #screen-add-songs.active, #screen-playing.active, #screen-finished.active { display:block; }
+    @media(max-width:480px) {
+      .input-row { flex-direction:column; }
+      .input-row input, .input-row .btn { width:100%; }
+      .song-item { flex-wrap:wrap; gap:0.5rem; }
+    }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
 </head>
@@ -57,40 +66,43 @@
 
   <div class="container">
     <h1>🎵 Music Survivor</h1>
-    <p class="sub">Add songs to the pool, then vote to eliminate them one by one. Last song standing wins!</p>
+    <p class="sub">Everyone adds songs to the pool, then vote to eliminate them one by one. Last song standing wins!</p>
 
-    <!-- Lobby / Join -->
+    <!-- Lobby -->
     <div id="screen-lobby" class="active">
       <div class="panel">
         <h2>Create or Join a Room</h2>
         <div class="input-row">
-          <button class="btn btn-purple" onclick="createRoom()">Create Room</button>
+          <button class="btn btn-purple" onclick="createRoom()" style="width:100%;">+ Create New Room</button>
         </div>
-        <div style="color:var(--muted);font-size:0.82rem;margin:0.5rem 0;">— or join existing —</div>
+        <div class="divider">— or join existing —</div>
         <div class="input-row">
-          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" />
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')joinRoom()" />
           <button class="btn btn-purple" onclick="joinRoom()">Join</button>
         </div>
-        <div id="lobby-error" style="color:#ff6b6b;font-size:0.82rem;margin-top:0.5rem;"></div>
+        <div class="error-msg" id="lobby-error"></div>
       </div>
     </div>
 
-    <!-- Add Songs (lobby state) -->
+    <!-- Add Songs -->
     <div id="screen-add-songs">
       <div class="panel">
         <h2>Room Code</h2>
-        <div class="code-display" id="room-code-display"></div>
-        <div class="status-msg">Share this code with friends to join</div>
+        <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
+        <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
-        <div class="input-row" style="margin-top:0.5rem;">
-          <input type="text" id="song-title-input" placeholder="Song title" />
-          <input type="text" id="song-artist-input" placeholder="Artist" />
-          <button class="btn btn-purple" onclick="addSong()">Add Song</button>
+        <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.2rem;">
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.6rem;">Add your songs (add as many as you like):</div>
+          <div class="input-row">
+            <input type="text" id="song-title-input" placeholder="Song title" onkeydown="if(event.key==='Enter')document.getElementById('song-artist-input').focus()" />
+            <input type="text" id="song-artist-input" placeholder="Artist" onkeydown="if(event.key==='Enter')addSong()" />
+            <button class="btn btn-purple" onclick="addSong()">Add</button>
+          </div>
+          <div id="added-songs" class="song-list"></div>
         </div>
-        <div id="added-songs" class="song-list" style="margin-top:0.8rem;"></div>
-        <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+        <div style="margin-top:1.2rem;display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;">
           <button class="btn btn-purple" id="ready-btn" onclick="markReady()">Ready ✓</button>
-          <div class="status-msg" id="ready-status" style="margin:0;align-self:center;"></div>
+          <span class="status-msg" id="ready-status" style="margin:0;text-align:left;"></span>
         </div>
       </div>
     </div>
@@ -98,7 +110,8 @@
     <!-- Playing -->
     <div id="screen-playing">
       <div class="panel">
-        <h2>Round <span id="round-num">1</span> — Vote to Eliminate</h2>
+        <div class="round-badge">Round <span id="round-num">1</span></div>
+        <h2>Vote to Eliminate</h2>
         <div id="eliminated-banner" class="eliminated-banner" style="display:none;"></div>
         <div class="song-list" id="voting-songs"></div>
         <div class="status-msg" id="vote-status"></div>
@@ -111,8 +124,9 @@
       <div class="panel">
         <h2>Final Standings</h2>
         <div class="song-list" id="final-songs"></div>
-        <div style="margin-top:1rem;">
+        <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
           <button class="btn btn-purple" onclick="location.href='/games/music-survivor'">Play Again</button>
+          <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="location.href='/games'">Back to Games</button>
         </div>
       </div>
     </div>
@@ -123,29 +137,37 @@
     let roomCode = null;
     let pollTimer = null;
     let myVote = null;
-    let localSongs = []; // songs added locally before game starts
+    let lastRound = 0;
+    let localSongs = [];
 
     function showScreen(name) {
-      ['lobby','add-songs','playing','finished'].forEach(s => {
-        document.getElementById('screen-' + s).classList.remove('active');
-      });
+      ['lobby','add-songs','playing','finished'].forEach(s =>
+        document.getElementById('screen-' + s).classList.remove('active')
+      );
       document.getElementById('screen-' + name).classList.add('active');
     }
 
+    function copyCode() {
+      if (!roomCode) return;
+      navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
+    }
+
     async function createRoom() {
-      const res = await fetch('/api/games/room', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({game_type: 'music_survivor'})
-      });
-      const d = await res.json();
-      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
-      roomCode = d.code;
-      enterAddSongs();
+      const btn = event.target; btn.disabled = true; btn.textContent = 'Creating...';
+      try {
+        const res = await fetch('/api/games/room', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({game_type:'music_survivor'})
+        });
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = d.code;
+        enterAddSongs();
+      } finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
 
     async function joinRoom() {
-      const code = document.getElementById('join-code').value.trim();
+      const code = document.getElementById('join-code').value.trim().toUpperCase();
       if (!code) return;
       const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
       const d = await res.json();
@@ -157,42 +179,60 @@
     function enterAddSongs() {
       document.getElementById('room-code-display').textContent = roomCode;
       showScreen('add-songs');
-      pollRoom();
+      startPolling();
     }
 
     function addSong() {
-      const title = document.getElementById('song-title-input').value.trim();
-      const artist = document.getElementById('song-artist-input').value.trim();
-      if (!title || !artist) return;
-      localSongs.push({id: Date.now().toString(), title, artist, addedBy: ME});
-      document.getElementById('song-title-input').value = '';
-      document.getElementById('song-artist-input').value = '';
+      const titleEl = document.getElementById('song-title-input');
+      const artistEl = document.getElementById('song-artist-input');
+      const title = titleEl.value.trim();
+      const artist = artistEl.value.trim();
+      if (!title || !artist) { showToast('Enter both title and artist'); return; }
+      localSongs.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), title, artist, addedBy: ME});
+      titleEl.value = ''; artistEl.value = '';
+      titleEl.focus();
+      renderAddedSongs();
+    }
+
+    function removeSong(id) {
+      localSongs = localSongs.filter(s => s.id !== id);
       renderAddedSongs();
     }
 
     function renderAddedSongs() {
       const c = document.getElementById('added-songs');
+      if (!localSongs.length) { c.innerHTML = ''; return; }
       c.innerHTML = localSongs.map(s =>
-        `<div class="song-item"><div><div class="song-name">${esc(s.title)}</div><div class="song-artist">${esc(s.artist)}</div></div></div>`
+        `<div class="song-item">
+          <div style="flex:1;min-width:0;">
+            <div class="song-name">${esc(s.title)}</div>
+            <div class="song-artist">${esc(s.artist)}</div>
+          </div>
+          <button onclick="removeSong('${s.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;" title="Remove">✕</button>
+        </div>`
       ).join('');
     }
 
     async function markReady() {
-      if (localSongs.length === 0) { alert('Add at least one song first!'); return; }
-      // Push songs into room data first
+      if (localSongs.length === 0) { showToast('Add at least one song first!'); return; }
+      const btn = document.getElementById('ready-btn');
+      btn.disabled = true;
+      document.getElementById('ready-status').textContent = 'Uploading songs...';
       for (const s of localSongs) {
         await fetch('/api/games/room/' + roomCode + '/action', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({action: 'add_song', song: s})
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'add_song', song: s})
         });
       }
       localSongs = [];
+      renderAddedSongs();
+      document.getElementById('ready-status').textContent = 'Waiting for others...';
       const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
       const d = await res.json();
-      document.getElementById('ready-btn').disabled = true;
-      document.getElementById('ready-status').textContent = 'Waiting for others...';
-      if (d.started) startPlaying();
+      if (d.started) {
+        const room = await (await fetch('/api/games/room/' + roomCode)).json();
+        handleRoom(room);
+      }
     }
 
     async function vote(songId) {
@@ -201,33 +241,28 @@
       document.querySelectorAll('.vote-btn').forEach(b => b.disabled = true);
       document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
       const res = await fetch('/api/games/room/' + roomCode + '/action', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({action: 'vote', song_id: songId})
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({action:'vote', song_id: songId})
       });
       const room = await res.json();
-      renderRoom(room);
+      handleRoom(room);
     }
 
-    function renderRoom(room) {
+    function handleRoom(room) {
       if (!room || room.error) return;
-      // Update players
+      // Update player chips
       const pl = document.getElementById('players-list');
-      if (pl) {
-        pl.innerHTML = (room.players || []).map(p =>
-          `<span class="player-chip ${p.ready ? 'ready' : ''}">${esc(p.username)}${p.ready ? ' ✓' : ''}</span>`
-        ).join('');
-      }
-      if (room.state === 'playing') {
-        startPlaying(room);
-      } else if (room.state === 'finished') {
-        showFinished(room);
-      }
-    }
+      if (pl) pl.innerHTML = (room.players||[]).map(p =>
+        `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
+      ).join('');
 
-    function startPlaying(room) {
-      showScreen('playing');
-      if (room) renderPlaying(room);
+      if (room.state === 'finished') { showFinished(room); return; }
+      if (room.state === 'playing') {
+        showScreen('playing');
+        // Reset vote if new round started
+        if (room.round !== lastRound) { myVote = null; lastRound = room.round; }
+        renderPlaying(room);
+      }
     }
 
     function renderPlaying(room) {
@@ -236,59 +271,84 @@
       const votes = data.votes || {};
       const eliminated = data.eliminated;
       document.getElementById('round-num').textContent = room.round || 1;
+
       const banner = document.getElementById('eliminated-banner');
       if (eliminated) {
-        const elSong = (data.all_songs || songs).find(s => s.id === eliminated);
+        const allSongs = data.all_songs || [];
+        const elSong = allSongs.find(s => s.id === eliminated);
         banner.style.display = 'block';
         banner.textContent = `❌ Eliminated: ${elSong ? elSong.title + ' — ' + elSong.artist : eliminated}`;
-        myVote = null;
       } else {
         banner.style.display = 'none';
       }
+
       const c = document.getElementById('voting-songs');
       c.innerHTML = songs.map(s => {
         const voteCount = Object.values(votes).filter(v => v === s.id).length;
-        const iVoted = votes[ME] === s.id;
-        return `<div class="song-item ${iVoted ? 'voted' : ''}">
-          <div style="flex:1;">
+        const iVoted = votes[ME] === s.id || myVote === s.id;
+        return `<div class="song-item ${iVoted?'my-vote':''}">
+          <div style="flex:1;min-width:0;">
             <div class="song-name">${esc(s.title)}</div>
-            <div class="song-artist">${esc(s.artist)} · added by ${esc(s.addedBy || '')}</div>
+            <div class="song-artist">${esc(s.artist)} · by ${esc(s.addedBy||'')}</div>
           </div>
-          <span class="vote-count">${voteCount}</span>
-          <button class="vote-btn" onclick="vote('${s.id}')" ${myVote ? 'disabled' : ''}>Eliminate</button>
+          <span class="vote-count">${voteCount > 0 ? voteCount+'🗳' : ''}</span>
+          <button class="vote-btn" onclick="vote('${s.id}')" ${myVote?'disabled':''}>Eliminate</button>
         </div>`;
       }).join('');
-      const vs = document.getElementById('vote-status');
+
       const totalVotes = Object.keys(votes).length;
-      vs.textContent = myVote ? `${totalVotes}/${room.players.length} votes cast` : 'Vote to eliminate a song';
+      const total = (room.players||[]).length;
+      document.getElementById('vote-status').textContent = myVote
+        ? `${totalVotes}/${total} votes cast — waiting...`
+        : `${songs.length} songs remaining · vote to eliminate one`;
     }
 
     function showFinished(room) {
+      clearTimeout(pollTimer);
       showScreen('finished');
       const data = room.data || {};
       const winner = data.winner_song;
-      document.getElementById('winner-banner').textContent = winner
-        ? `🏆 Winner: ${winner.title} — ${winner.artist}`
+      document.getElementById('winner-banner').innerHTML = winner
+        ? `🏆 Winner: <strong>${esc(winner.title)}</strong> — ${esc(winner.artist)}`
         : '🏆 Game Over!';
-      const allSongs = data.songs || [];
+      const allSongs = data.all_songs || data.songs || [];
       document.getElementById('final-songs').innerHTML = allSongs.map((s, i) =>
-        `<div class="song-item ${i === 0 ? 'winner' : ''}">
-          <div class="song-name">${i === 0 ? '🏆 ' : ''}${esc(s.title)}</div>
-          <div class="song-artist">${esc(s.artist)}</div>
+        `<div class="song-item ${i===0?'winner':''}">
+          <div style="flex:1;min-width:0;">
+            <div class="song-name">${i===0?'🏆 ':''}${esc(s.title)}</div>
+            <div class="song-artist">${esc(s.artist)}</div>
+          </div>
+          ${i===0?'<span style="color:#ffd700;font-size:0.8rem;font-weight:700;">WINNER</span>':''}
         </div>`
       ).join('');
     }
 
+    function startPolling() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollRoom, 2000);
+    }
+
     async function pollRoom() {
-      if (!roomCode) return;
+      if (!roomCode || document.hidden) { startPolling(); return; }
       try {
         const res = await fetch('/api/games/room/' + roomCode);
         const room = await res.json();
-        if (room.state === 'playing') { startPlaying(room); renderPlaying(room); return; }
-        if (room.state === 'finished') { showFinished(room); return; }
-        renderRoom(room);
+        handleRoom(room);
+        if (room.state === 'finished') return;
       } catch(e) {}
-      pollTimer = setTimeout(pollRoom, 2500);
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
+    });
+
+    function showToast(msg) {
+      let t = document.getElementById('_toast');
+      if (!t) { t = document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;'; document.body.appendChild(t); }
+      t.textContent = msg; t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

@@ -8,46 +8,61 @@
   <style>
     :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; }
-    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; }
-    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; }
+    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; animation:fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; white-space:nowrap; }
     .topnav a:hover { color:#fff; }
     .topnav .brand { color:#e50914; font-weight:700; font-size:1rem; }
-    .container { max-width:700px; margin:0 auto; padding:2rem 1.5rem 4rem; }
-    h1 { font-size:1.8rem; font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
-    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; }
-    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.5rem; margin-bottom:1.2rem; }
+    .container { max-width:680px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+    h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--purple); margin-bottom:0.4rem; }
+    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
     .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
     .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
-    input[type=text] { flex:1; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; min-width:0; }
+    input[type=text] { flex:1; min-width:120px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
     input:focus { outline:none; border-color:var(--purple); }
-    textarea { width:100%; padding:0.6rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; resize:vertical; min-height:80px; font-family:inherit; }
+    textarea { width:100%; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; resize:vertical; min-height:72px; font-family:inherit; line-height:1.5; }
     textarea:focus { outline:none; border-color:var(--purple); }
-    .btn { padding:0.6rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
+    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; }
     .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
     .btn-purple:hover { background:rgba(156,111,228,0.3); }
+    .btn-purple:disabled { opacity:0.45; cursor:not-allowed; }
     .btn-red { background:rgba(229,9,20,0.15); border-color:#e50914; color:#e50914; }
     .btn-red:hover { background:rgba(229,9,20,0.3); }
-    .code-display { font-size:2rem; font-weight:800; letter-spacing:6px; color:var(--purple); text-align:center; margin:0.5rem 0; }
+    .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--purple); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
+    .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
     .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
-    .player-chip { background:rgba(156,111,228,0.12); border:1px solid rgba(156,111,228,0.25); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; }
-    .player-chip.ready { border-color:var(--purple); color:var(--purple); }
-    .movie-reveal { background:rgba(156,111,228,0.08); border:1px solid rgba(156,111,228,0.3); border-radius:12px; padding:1.2rem; text-align:center; margin-bottom:1.2rem; }
-    .movie-reveal .movie-title { font-size:1.4rem; font-weight:800; color:var(--purple); }
-    .movie-reveal .movie-genre { font-size:0.82rem; color:var(--muted); margin-top:0.3rem; }
-    .impostor-warning { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.3); border-radius:12px; padding:1rem; text-align:center; margin-bottom:1.2rem; color:#ff6b6b; font-weight:600; }
-    .question-card { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; margin-bottom:0.8rem; }
-    .question-text { font-size:0.92rem; font-weight:600; margin-bottom:0.6rem; }
+    .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
+    .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
+    .movie-reveal { border-radius:14px; padding:1.4rem; text-align:center; margin-bottom:1.2rem; }
+    .movie-reveal.normal { background:rgba(156,111,228,0.07); border:1px solid rgba(156,111,228,0.25); }
+    .movie-reveal.impostor { background:rgba(229,9,20,0.07); border:1px solid rgba(229,9,20,0.3); }
+    .movie-title { font-size:clamp(1.2rem,4vw,1.6rem); font-weight:800; margin:0.4rem 0; }
+    .movie-genre { font-size:0.82rem; color:var(--muted); }
+    .impostor-tag { display:inline-block; background:rgba(229,9,20,0.15); color:#ff6b6b; border:1px solid rgba(229,9,20,0.3); border-radius:20px; padding:0.2rem 0.8rem; font-size:0.75rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:0.6rem; }
+    .question-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; }
+    .question-text { font-size:0.9rem; font-weight:600; margin-bottom:0.6rem; color:#ddd; }
     .suspect-list { display:flex; flex-direction:column; gap:0.5rem; }
-    .suspect-btn { padding:0.7rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:left; transition:all 0.2s; }
-    .suspect-btn:hover { border-color:var(--purple); background:rgba(156,111,228,0.1); }
-    .suspect-btn.selected { border-color:var(--purple); background:rgba(156,111,228,0.2); color:var(--purple); }
+    .suspect-btn { padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:left; transition:all 0.2s; }
+    .suspect-btn:hover { border-color:var(--purple); background:rgba(156,111,228,0.08); }
+    .suspect-btn.selected { border-color:var(--purple); background:rgba(156,111,228,0.18); color:var(--purple); }
     .result-banner { border-radius:12px; padding:1.2rem; text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:1rem; }
-    .result-win { background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.4); color:#1db954; }
-    .result-lose { background:rgba(229,9,20,0.1); border:1px solid rgba(229,9,20,0.4); color:#ff6b6b; }
-    .status-msg { text-align:center; color:var(--muted); font-size:0.88rem; margin:0.8rem 0; }
+    .result-win { background:rgba(29,185,84,0.08); border:1px solid rgba(29,185,84,0.35); color:#1db954; }
+    .result-lose { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.35); color:#ff6b6b; }
+    .answer-block { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:0.8rem 1rem; margin-bottom:0.6rem; }
+    .answer-block .player-name { font-weight:700; font-size:0.85rem; color:var(--purple); margin-bottom:0.4rem; }
+    .answer-line { font-size:0.8rem; color:#ccc; margin-bottom:0.25rem; line-height:1.5; }
+    .answer-line .q-label { color:var(--muted); }
+    .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
+    .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
+    .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
     #screen-lobby, #screen-waiting, #screen-movie, #screen-questions, #screen-vote, #screen-result { display:none; }
     #screen-lobby.active, #screen-waiting.active, #screen-movie.active, #screen-questions.active, #screen-vote.active, #screen-result.active { display:block; }
+    @media(max-width:480px) {
+      .input-row { flex-direction:column; }
+      .input-row input, .input-row .btn { width:100%; }
+    }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
 </head>
@@ -60,30 +75,30 @@
 
   <div class="container">
     <h1>🎬 Movie Impostor</h1>
-    <p class="sub">Everyone gets the same movie — except one impostor who gets a different one. Answer questions, then vote to find the impostor!</p>
+    <p class="sub">Everyone gets the same movie — except one impostor who gets a different one. Answer questions about your movie, then vote to find the impostor!</p>
 
     <!-- Lobby -->
     <div id="screen-lobby" class="active">
       <div class="panel">
         <h2>Create or Join a Room</h2>
         <div class="input-row">
-          <button class="btn btn-purple" onclick="createRoom()">Create Room</button>
+          <button class="btn btn-purple" onclick="createRoom()" style="width:100%;">+ Create New Room</button>
         </div>
-        <div style="color:var(--muted);font-size:0.82rem;margin:0.5rem 0;">— or join existing —</div>
+        <div class="divider">— or join existing —</div>
         <div class="input-row">
-          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" />
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')joinRoom()" />
           <button class="btn btn-purple" onclick="joinRoom()">Join</button>
         </div>
-        <div id="lobby-error" style="color:#ff6b6b;font-size:0.82rem;margin-top:0.5rem;"></div>
+        <div class="error-msg" id="lobby-error"></div>
       </div>
     </div>
 
-    <!-- Waiting room -->
+    <!-- Waiting -->
     <div id="screen-waiting">
       <div class="panel">
         <h2>Waiting for Players</h2>
-        <div class="code-display" id="room-code-display"></div>
-        <div class="status-msg">Share this code — need at least 3 players</div>
+        <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
+        <div class="code-hint">Tap to copy · Need at least 3 players</div>
         <div class="players-row" id="players-list"></div>
         <button class="btn btn-purple" id="ready-btn" onclick="markReady()">Ready ✓</button>
         <div class="status-msg" id="ready-status"></div>
@@ -92,10 +107,9 @@
 
     <!-- Movie reveal -->
     <div id="screen-movie">
-      <div id="movie-reveal-box" class="movie-reveal"></div>
+      <div id="movie-reveal-box"></div>
       <div class="panel">
-        <h2>Your Movie</h2>
-        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Remember your movie. Answer the questions below without revealing the title directly. The impostor has a <em>different</em> movie!</p>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Remember your movie. Answer the questions without revealing the title directly. The impostor has a <em>different</em> movie — blend in or catch them!</p>
         <button class="btn btn-purple" onclick="showScreen('screen-questions')">Answer Questions →</button>
       </div>
     </div>
@@ -104,9 +118,9 @@
     <div id="screen-questions">
       <div class="panel">
         <h2>Answer the Questions</h2>
-        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Answer based on <strong style="color:var(--purple);">your</strong> movie. Be vague enough to not give away the title, but specific enough to sound convincing.</p>
+        <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Answer based on <strong style="color:var(--purple);">your</strong> movie. Be specific enough to sound convincing, vague enough not to give away the title.</p>
         <div id="questions-list"></div>
-        <button class="btn btn-purple" style="margin-top:0.8rem;" onclick="submitAnswers()">Submit Answers</button>
+        <button class="btn btn-purple" style="margin-top:0.8rem;" onclick="submitAnswers()" id="submit-answers-btn">Submit Answers</button>
         <div class="status-msg" id="answers-status"></div>
       </div>
     </div>
@@ -114,11 +128,14 @@
     <!-- Vote -->
     <div id="screen-vote">
       <div class="panel">
+        <h2>Everyone's Answers</h2>
+        <div id="answers-review"></div>
+      </div>
+      <div class="panel">
         <h2>Who is the Impostor?</h2>
-        <div id="answers-review" style="margin-bottom:1.2rem;"></div>
-        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Based on everyone's answers, who do you think got a different movie?</p>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Based on the answers above, who do you think got a different movie?</p>
         <div class="suspect-list" id="suspect-list"></div>
-        <button class="btn btn-red" style="margin-top:1rem;" onclick="submitVote()">Cast Vote</button>
+        <button class="btn btn-red" style="margin-top:1rem;" onclick="submitVote()" id="cast-vote-btn">Cast Vote</button>
         <div class="status-msg" id="vote-status"></div>
       </div>
     </div>
@@ -129,7 +146,10 @@
       <div class="panel">
         <h2>The Truth</h2>
         <div id="result-details"></div>
-        <button class="btn btn-purple" style="margin-top:1rem;" onclick="location.href='/games/movie-impostor'">Play Again</button>
+        <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+          <button class="btn btn-purple" onclick="location.href='/games/movie-impostor'">Play Again</button>
+          <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="location.href='/games'">Back to Games</button>
+        </div>
       </div>
     </div>
   </div>
@@ -144,25 +164,33 @@
     let pollTimer = null;
 
     function showScreen(id) {
-      ['screen-lobby','screen-waiting','screen-movie','screen-questions','screen-vote','screen-result'].forEach(s => {
-        document.getElementById(s).classList.remove('active');
-      });
+      ['screen-lobby','screen-waiting','screen-movie','screen-questions','screen-vote','screen-result'].forEach(s =>
+        document.getElementById(s).classList.remove('active')
+      );
       document.getElementById(id).classList.add('active');
     }
 
+    function copyCode() {
+      if (!roomCode) return;
+      navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
+    }
+
     async function createRoom() {
-      const res = await fetch('/api/games/room', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({game_type:'movie_impostor'})
-      });
-      const d = await res.json();
-      if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
-      roomCode = d.code;
-      enterWaiting();
+      const btn = event.target; btn.disabled = true; btn.textContent = 'Creating...';
+      try {
+        const res = await fetch('/api/games/room', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({game_type:'movie_impostor'})
+        });
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = d.code;
+        enterWaiting();
+      } finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
     }
 
     async function joinRoom() {
-      const code = document.getElementById('join-code').value.trim();
+      const code = document.getElementById('join-code').value.trim().toUpperCase();
       if (!code) return;
       const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
       const d = await res.json();
@@ -174,11 +202,12 @@
     function enterWaiting() {
       document.getElementById('room-code-display').textContent = roomCode;
       showScreen('screen-waiting');
-      pollRoom();
+      startPolling();
     }
 
     async function markReady() {
-      document.getElementById('ready-btn').disabled = true;
+      const btn = document.getElementById('ready-btn');
+      btn.disabled = true;
       document.getElementById('ready-status').textContent = 'Waiting for others...';
       const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
       const d = await res.json();
@@ -190,17 +219,12 @@
 
     function handleRoomState(room) {
       if (!room || room.error) return;
-      // Update players list
       const pl = document.getElementById('players-list');
       if (pl) pl.innerHTML = (room.players||[]).map(p =>
         `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}</span>`
       ).join('');
-
-      if (room.state === 'playing' && room.round >= 1) {
-        revealMovie(room);
-      } else if (room.state === 'finished') {
-        showResult(room);
-      }
+      if (room.state === 'playing' && room.round >= 1) { revealMovie(room); }
+      else if (room.state === 'finished') { showResult(room); }
     }
 
     function revealMovie(room) {
@@ -210,23 +234,23 @@
       const impostor = data.impostor;
       amImpostor = impostor === ME;
       questions = data.questions || [];
-
-      // Assign movies: impostor gets pair[1], others get pair[0]
       myMovie = amImpostor ? pair[1] : pair[0];
 
       const box = document.getElementById('movie-reveal-box');
       if (amImpostor) {
-        box.innerHTML = `<div class="impostor-warning">🕵️ You are the IMPOSTOR!</div>
-          <div class="movie-title">${esc(myMovie.title)}</div>
-          <div class="movie-genre">${esc(myMovie.genre)}</div>
+        box.className = 'movie-reveal impostor';
+        box.innerHTML = `<div class="impostor-tag">🕵️ You are the Impostor</div>
+          <div class="movie-title" style="color:#ff6b6b;">${esc(myMovie?.title || '')}</div>
+          <div class="movie-genre">${esc(myMovie?.genre || '')}</div>
           <div style="color:#ff6b6b;font-size:0.82rem;margin-top:0.8rem;">Others have a different movie. Blend in!</div>`;
       } else {
-        box.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">Your Movie</div>
-          <div class="movie-title">${esc(myMovie.title)}</div>
-          <div class="movie-genre">${esc(myMovie.genre)}</div>`;
+        box.className = 'movie-reveal normal';
+        box.innerHTML = `<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem;">Your Movie</div>
+          <div class="movie-title" style="color:var(--purple);">${esc(myMovie?.title || '')}</div>
+          <div class="movie-genre">${esc(myMovie?.genre || '')}</div>
+          <div style="color:var(--muted);font-size:0.8rem;margin-top:0.6rem;">One player has a different movie — find them!</div>`;
       }
 
-      // Build questions form
       const ql = document.getElementById('questions-list');
       ql.innerHTML = questions.map((q, i) =>
         `<div class="question-card">
@@ -239,20 +263,28 @@
     }
 
     async function submitAnswers() {
-      const answers = questions.map((q, i) => document.getElementById('ans-' + i).value.trim());
-      if (answers.some(a => !a)) { alert('Please answer all questions.'); return; }
+      const answers = questions.map((_, i) => (document.getElementById('ans-'+i)?.value||'').trim());
+      if (answers.some(a => !a)) { showToast('Please answer all questions.'); return; }
+      const btn = document.getElementById('submit-answers-btn');
+      btn.disabled = true;
       document.getElementById('answers-status').textContent = 'Submitting...';
       for (let i = 0; i < questions.length; i++) {
         await fetch('/api/games/room/' + roomCode + '/action', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'answer', question_idx: i, answer: answers[i]})
+          body: JSON.stringify({action:'answer', question_idx:i, answer:answers[i]})
         });
       }
       document.getElementById('answers-status').textContent = 'Answers submitted! Waiting for others...';
-      pollForVoting();
+      startPollingForVoting();
+    }
+
+    function startPollingForVoting() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollForVoting, 2500);
     }
 
     async function pollForVoting() {
+      if (document.hidden) { startPollingForVoting(); return; }
       const res = await fetch('/api/games/room/' + roomCode);
       const room = await res.json();
       if (room.state === 'finished') { showResult(room); return; }
@@ -261,22 +293,22 @@
         return ans[p.username] && ans[p.username].length >= questions.length;
       });
       if (allAnswered) { buildVoteScreen(room); return; }
-      pollTimer = setTimeout(pollForVoting, 2500);
+      startPollingForVoting();
     }
 
     function buildVoteScreen(room) {
+      clearTimeout(pollTimer);
       const data = room.data || {};
       const answers = data.answers || {};
-      // Show all answers anonymously (shuffled)
-      const reviewHtml = Object.entries(answers).map(([user, ans]) =>
-        `<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.8rem;margin-bottom:0.6rem;">
-          <div style="font-weight:600;font-size:0.85rem;color:var(--purple);margin-bottom:0.5rem;">${esc(user)}</div>
-          ${ans.map((a, i) => `<div style="font-size:0.8rem;color:#ccc;margin-bottom:0.3rem;"><span style="color:var(--muted);">Q${i+1}:</span> ${esc(a.a)}</div>`).join('')}
+      const qList = data.questions || questions;
+
+      document.getElementById('answers-review').innerHTML = Object.entries(answers).map(([user, ans]) =>
+        `<div class="answer-block">
+          <div class="player-name">${esc(user)}</div>
+          ${ans.map((a, i) => `<div class="answer-line"><span class="q-label">Q${i+1}: </span>${esc(a.a)}</div>`).join('')}
         </div>`
       ).join('');
-      document.getElementById('answers-review').innerHTML = reviewHtml;
 
-      // Build suspect list (everyone except me)
       const suspects = (room.players||[]).filter(p => p.username !== ME);
       document.getElementById('suspect-list').innerHTML = suspects.map(p =>
         `<button class="suspect-btn" onclick="selectSuspect(this,'${esc(p.username)}')">${esc(p.username)}</button>`
@@ -291,22 +323,22 @@
     }
 
     async function submitVote() {
-      if (!selectedSuspect) { alert('Select a suspect first!'); return; }
+      if (!selectedSuspect) { showToast('Select a suspect first!'); return; }
+      const btn = document.getElementById('cast-vote-btn');
+      btn.disabled = true;
       document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
       const res = await fetch('/api/games/room/' + roomCode + '/action', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'vote_impostor', suspect: selectedSuspect})
+        body: JSON.stringify({action:'vote_impostor', suspect:selectedSuspect})
       });
       const room = await res.json();
       if (room.state === 'finished') { showResult(room); return; }
-      pollForResult();
-    }
-
-    async function pollForResult() {
-      const res = await fetch('/api/games/room/' + roomCode);
-      const room = await res.json();
-      if (room.state === 'finished') { showResult(room); return; }
-      pollTimer = setTimeout(pollForResult, 2500);
+      pollTimer = setTimeout(async function poll() {
+        if (document.hidden) { pollTimer = setTimeout(poll, 2500); return; }
+        const r = await (await fetch('/api/games/room/' + roomCode)).json();
+        if (r.state === 'finished') { showResult(r); return; }
+        pollTimer = setTimeout(poll, 2500);
+      }, 2500);
     }
 
     function showResult(room) {
@@ -323,26 +355,56 @@
         banner.textContent = correct ? '😔 You were caught!' : '🎉 You fooled everyone!';
       } else {
         banner.className = 'result-banner ' + (correct ? 'result-win' : 'result-lose');
-        banner.textContent = correct ? '🎉 Impostor found!' : '😔 Wrong guess!';
+        banner.textContent = correct ? '🎉 Impostor found!' : '😔 Wrong guess — the impostor won!';
       }
 
       document.getElementById('result-details').innerHTML = `
-        <div style="margin-bottom:0.8rem;"><span style="color:var(--muted);">The impostor was:</span> <strong style="color:#ff6b6b;">${esc(realImpostor)}</strong></div>
-        <div style="margin-bottom:0.8rem;"><span style="color:var(--muted);">You accused:</span> <strong style="color:var(--purple);">${esc(accused)}</strong></div>
-        <div style="margin-bottom:0.4rem;"><span style="color:var(--muted);">Most players had:</span> <strong>${esc(pair[0]?.title || '')}</strong></div>
-        <div><span style="color:var(--muted);">Impostor had:</span> <strong>${esc(pair[1]?.title || '')}</strong></div>
-      `;
+        <div style="display:flex;flex-direction:column;gap:0.7rem;">
+          <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;">
+            <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">The Impostor</div>
+            <div style="font-weight:700;color:#ff6b6b;font-size:1rem;">${esc(realImpostor)}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.8rem 1rem;">
+            <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Most players had</div>
+            <div style="font-weight:700;">${esc(pair[0]?.title||'')}</div>
+            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[0]?.genre||'')}</div>
+          </div>
+          <div style="background:rgba(229,9,20,0.06);border:1px solid rgba(229,9,20,0.2);border-radius:8px;padding:0.8rem 1rem;">
+            <div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.3rem;">Impostor had</div>
+            <div style="font-weight:700;color:#ff6b6b;">${esc(pair[1]?.title||'')}</div>
+            <div style="font-size:0.78rem;color:var(--muted);">${esc(pair[1]?.genre||'')}</div>
+          </div>
+          <div style="font-size:0.82rem;color:var(--muted);">Group accused: <strong style="color:var(--purple);">${esc(accused)}</strong></div>
+        </div>`;
       showScreen('screen-result');
     }
 
+    function startPolling() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollRoom, 2000);
+    }
+
     async function pollRoom() {
-      if (!roomCode) return;
+      if (!roomCode || document.hidden) { startPolling(); return; }
       try {
         const res = await fetch('/api/games/room/' + roomCode);
         const room = await res.json();
         handleRoomState(room);
-        if (room.state === 'lobby') pollTimer = setTimeout(pollRoom, 2500);
-      } catch(e) { pollTimer = setTimeout(pollRoom, 3000); }
+        if (room.state === 'finished' || room.state === 'playing') return;
+      } catch(e) {}
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
+    });
+
+    function showToast(msg) {
+      let t = document.getElementById('_toast');
+      if (!t) { t = document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;'; document.body.appendChild(t); }
+      t.textContent = msg; t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
