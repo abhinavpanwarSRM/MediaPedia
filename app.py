@@ -417,9 +417,160 @@ df = df.fillna("")
 def home():
     return render_template("index.html", username=current_user())
 
+# ===== Authors Choice Collection =====
+ac_collection = None
+try:
+    if db is not None:
+        ac_collection = db.authors_choice
+        ac_collection.create_index([('type', 1), ('category', 1)])
+except Exception as e:
+    log.error('Failed to init authors_choice: %s', e)
+
 @app.route('/authors_choice')
 def authors_choice():
-    return render_template('authors_choice.html')
+    return render_template('authors_choice.html', username=current_user())
+
+@app.route('/api/authors_choice', methods=['GET'])
+def ac_get():
+    if ac_collection is None:
+        return jsonify([])
+    items = list(ac_collection.find({}, {'_id': 0}).sort([('type', 1), ('category', 1), ('title', 1)]))
+    return jsonify(items)
+
+@app.route('/api/authors_choice', methods=['POST'])
+def ac_add():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if ac_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    item_type = data.get('type', '').strip()   # 'movie' or 'series'
+    category  = data.get('category', '').strip() # 'english','hindi','anime','korean','series'
+    title     = data.get('title', '').strip()
+    item_id   = int(data.get('id', 0))
+    if not item_type or not title or not item_id:
+        return jsonify({'error': 'type, title and id required'}), 400
+    ac_collection.update_one(
+        {'type': item_type, 'id': item_id},
+        {'$set': {'type': item_type, 'category': category, 'title': title, 'id': item_id}},
+        upsert=True
+    )
+    return jsonify({'success': True}), 201
+
+@app.route('/api/authors_choice/<int:item_id>', methods=['DELETE'])
+def ac_remove(item_id):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if ac_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    item_type = request.args.get('type', '')
+    ac_collection.delete_one({'id': item_id, 'type': item_type})
+    return jsonify({'success': True})
+
+@app.route('/api/authors_choice/seed', methods=['POST'])
+def ac_seed():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if ac_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    seed = [
+        # Series
+        *[{'type':'series','category':'series','title':t,'id':i} for t,i in [
+            ('Dark',65),('Lucifer',684),('Narcos',68),('Money Heist',0),('Panchayat',0),
+            ('Chernobyl',0),('Sex Education',351),('Prison Break',444),('The Office',50),
+            ('The Big Bang Theory',651),('The Walking Dead',464),('Daredevil',123),
+            ('Attack on Titan',2055),('Breaking Bad',7),('Death Note',41),
+            ('Game Of Thrones',10),('Idaten Jump',0),('Mr Bean Series',0),
+            ('Your Lie In April',0),('The Summer I Turned Pretty',0),
+            ('13 Reasons Why',1256),('Dexter',166),('Modern Family',342),
+            ('Kota Factory',19),('How I Met Your Mother',369),
+        ]],
+        # English movies
+        *[{'type':'movie','category':'english','title':t,'id':i} for t,i in [
+            ('Inside Man',1389),('Ruby Sparks',3018),('Law Abiding Citizen',2094),
+            ("Schindler's List",8),('Life is Beautiful',58),('Speed',2448),
+            ('The Judge',2105),('Horrible Bosses',4135),('Horrible Bosses 2',6635),
+            ('Old School',3743),('War Dogs',3288),('Christine 1983',4958),
+            ('John Wick',2045),('Taken',904),('Me And Earl And The dying Girl',1217),
+            ('Five Feet Apart',2900),('21 Jump Street',2847),('22 Jump Street',3791),
+            ('500 Days Of Summer',1122),('A Quiet Place 1',1698),('A Quiet Place 2',2853),
+            ('A Star Is Born',1406),('A Walk To Remember',2487),('Saving Private Ryan',53),
+            ('Bird Box',5319),('Blood Diamond',530),('Bridge To Terabithia',2901),
+            ('Cast Away',898),('Catch Me If You Can',341),('Dumb And Dumber 1',2439),
+            ('Dumb And Dumber 2',8777),('Escape From Alcatraz',1490),('Fight Club',18),
+            ('Flipped 2010',1196),('Get Out',868),('Gladiator',73),('Gone Girl',336),
+            ('Hercules',2436),('I Am Legend',2893),('Inception',17),('Interstellar',35),
+            ('Knight And Day',6572),('Liar Liar',4154),('Limitless',2087),('Lucy',6173),
+            ('Memento',117),('Misery',912),('Never Back Down',5878),
+            ('Now You See Me 1',2850),('Now You See Me 2',6199),('Passengers',3744),
+            ('Real Steel',3353),('Se7en',51),('Shutter Island',235),
+            ('The Chronicles Of Narnia',4119),('The Girl Next Door 2004',4885),
+            ('The Girl Next Door 2007',5814),('The Green Mile',50),
+            ('The Hating Game',7034),('The Insible Man',1549),('The Italian Job',2963),
+            ('The Lake House',4634),('The Martian',503),('The Others',1433),
+            ('The Prestige',74),('The Proposal',4916),('The Pursuit Of Happiness',531),
+            ('The Shawshank Redemption',1),('The Sixth Sense',251),('The Terminal',2119),
+            ('The Vow',4592),('The Wolf Of Wall Street',233),
+            ("There's Something About Mary",3318),('World War Z',3737),
+            ('Yes Man',4614),('Zombieland 1',1421),('Zombieland 2',4942),
+            ('Top Gun Maverick',153),('Missing',1289),('Searching',1412),
+            ('8 Mile',2865),('Me Before You',2066),('Tokyo Drift',7717),
+            ('When Harry Met Sally',1159),('Road Trip',5806),('Remember Me',3314),
+            ('Into The Wild',350),('Captain Fantastic',910),('Definitely Maybe',3413),
+            ('Little Miss Sunshine',902),("Mr. Bean's Holiday",6339),
+            ('National Lampoons Vacation 1983',2450),("She's The Man",6575),
+            ('Due Date',5889),('Ford Vs Ferrari',335),('Silver Linings Playbook',1126),
+            ('The Departed',69),('One Day',3785),('The Perks of Being A Wallflower',688),
+            ('About Time',878),('Green Book',241),("The Time Traveler's Wife",3423),
+            ('Whiplash',72),('Dead Poets Society',338),('Prisoners',328),
+            ('Baby Driver',1397),('Some Kind of Wonderful',3824),('Say Anything',2515),
+            ("She's All That",7997),('Fast Times at Ridgemont High',3262),
+            ('Project X',5383),('Superbad',1384),('Good Boys',4912),
+            ('Sex Drive',5751),('Vanilla Sky',4153),('Jerry Maguire',2470),
+            ('Wanted',4938),('American Pie 1',3700),('American Pie 2',6211),
+            ('American Wedding',6680),('American Reunion',4943),
+            ('Harry Potter 1',1376),('Harry Potter 2',2059),('Harry Potter 3',682),
+            ('Harry Potter 4',1103),('Harry Potter 5',1700),('Harry Potter 6',1396),
+            ('Harry Potter 7',1108),('Harry Potter 8',340),
+            ('Avengers End Game',109),('Avengers Infinity War',112),
+            ('Spiderman No Way Home',230),('Logan',349),
+            ('The Butterfly Effect',1405),('Batman Begins',243),
+            ('Zack Snyders Justice League',504),('The Dark Knight',7),
+            ('The Dark Knight Rises',116),('Before Sunrise',366),
+            ('Before Sunset',383),('Before Midnight',734),('Who Am I',1851),
+        ]],
+        # Hindi movies
+        *[{'type':'movie','category':'hindi','title':t,'id':i} for t,i in [
+            ('Gully Boy',791),('Uri: The Surgical Strike',297),('Badhaai Ho',820),
+            ('Jab We Met',804),('Dil Chahta Hai',435),('3 Idiots',130),
+            ('English Vinglish',1081),('Queen',441),('Hasee Toh Phasee',4865),
+            ('Andhadhun',285),('Dhamaal',2393),('Fukrey',4467),('Ghajini',1963),
+            ('Hera Pheri',448),('Jaane Tu Ya Jaane Na',2343),('New York',4870),
+            ('Taare Zameen Par',189),('Vicky Donor',1084),
+            ('Yeh Jawani Hai Deewani',2949),('Zindagi Na Milegi Dobara',281),
+            ('Desi Boyz',8746),('Welcome',4096),('Drishyam',212),('Drishyam 2',146),
+        ]],
+        # Anime movies
+        *[{'type':'movie','category':'anime','title':t,'id':i} for t,i in [
+            ('Your Name',121),('I Want To Eat Your Pancreas',577),('A Silent Voice',382),
+        ]],
+        # Korean movies
+        *[{'type':'movie','category':'korean','title':t,'id':i} for t,i in [
+            ('Forgotten',2106),('Parasite',70),('I Saw The Devil',917),
+        ]],
+    ]
+    inserted = 0
+    for item in seed:
+        if item['id'] == 0:
+            continue
+        result = ac_collection.update_one(
+            {'type': item['type'], 'id': item['id']},
+            {'$setOnInsert': item},
+            upsert=True
+        )
+        if result.upserted_id:
+            inserted += 1
+    return jsonify({'seeded': inserted})
 
 # ===== Custom Error Handler =====
 @app.errorhandler(404)
