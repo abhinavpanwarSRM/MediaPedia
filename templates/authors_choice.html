@@ -334,6 +334,7 @@
       const badge = badgeClass(item.category);
       const label = badgeLabel(item.category);
 
+      const phId = `ph-${item.type}-${item.id || item.title.replace(/\s+/g,'-')}`;
       const card = document.createElement('a');
       card.className = `media-card ${cardClass}`;
       card.href = href;
@@ -341,7 +342,7 @@
       card.dataset.id = item.id;
       card.dataset.type = item.type;
       card.innerHTML = `
-        <div class="card-poster-placeholder" id="ph-${item.type}-${item.id}">🎬</div>
+        <div class="card-poster-placeholder" id="${phId}">🎬</div>
         <div class="card-body">
           <div class="card-title">${item.title}</div>
           <span class="card-badge ${badge}">${label}</span>
@@ -349,9 +350,8 @@
         ${IS_ADMIN ? `<button class="del-btn" onclick="removeItem(event,${item.id},'${item.type}')" title="Remove">✕</button>` : ''}
       `;
 
-      // lazy-load poster - PASS THE ID TOO!
       getPoster(item.title, kind, item.id).then(url => {
-        const ph = document.getElementById(`ph-${item.type}-${item.id}`);
+        const ph = document.getElementById(phId);
         if (ph && url) {
           const img = document.createElement('img');
           img.className = 'card-poster';
