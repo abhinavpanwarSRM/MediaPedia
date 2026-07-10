@@ -428,7 +428,12 @@ except Exception as e:
 
 @app.route('/authors_choice')
 def authors_choice():
-    return render_template('authors_choice.html', username=current_user())
+    author_avatar = ''
+    if users_collection is not None:
+        doc = users_collection.find_one({'username': 'abhinav'}, {'_id': 0, 'avatar_url': 1})
+        if doc:
+            author_avatar = doc.get('avatar_url', '')
+    return render_template('authors_choice.html', username=current_user(), author_avatar=author_avatar)
 
 @app.route('/api/authors_choice', methods=['GET'])
 def ac_get():
