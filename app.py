@@ -3939,6 +3939,8 @@ def create_game_room():
         m1, m2 = _get_movie_pair()
         room['data']['movie_pair'] = [m1, m2]
         room['data']['questions'] = _random.sample(IMPOSTOR_QUESTIONS, min(5, len(IMPOSTOR_QUESTIONS)))
+        room['data']['answers'] = {}
+        room['data']['impostor_votes'] = {}
     elif game_type == 'music_survivor':
         room['data']['songs'] = []
         room['data']['all_songs'] = []
@@ -4040,6 +4042,8 @@ def ready_game_room(code):
             players = room['players']
             impostor = _random.choice(players)['username']
             update['data.impostor'] = impostor
+            update['data.answers'] = {}
+            update['data.impostor_votes'] = {}
         game_rooms_collection.update_one({'code': code}, {'$set': update})
     
     return jsonify({'started': all_ready})
@@ -4303,19 +4307,37 @@ def game_action(code):
                 'a': data.get('answer', '')[:200]
             })
             update['data.answers'] = answers
+            
+            # Check if all players have answered
+            all_players = [p['username'] for p in room['players']]
+            question_count = len(room.get('data', {}).get('questions', []))
+            all_answered = all(
+                len(answers.get(p, [])) >= question_count
+                for p in all_players
+            )
+            if all_answered and question_count > 0:
+                update['data.all_answered'] = True
         
         elif action == 'vote_impostor':
             votes = room.get('data', {}).get('impostor_votes', {})
             votes[username] = data.get('suspect', '')
             update['data.impostor_votes'] = votes
             
-            if len(votes) >= len(room['players']):
+            # Check if all players have voted
+            all_players = [p['username'] for p in room['players']]
+            all_voted = all(
+                votes.get(p) is not None
+                for p in all_players
+            )
+            
+            if all_voted and len(all_players) >= 2:
                 accused = Counter(votes.values()).most_common(1)[0][0]
                 real_impostor = room.get('data', {}).get('impostor', '')
                 correct = accused == real_impostor
                 update['state'] = 'finished'
                 update['data.accused'] = accused
                 update['data.correct_guess'] = correct
+                update['data.vote_counts'] = dict(Counter(votes.values()))
                 for p in room['players']:
                     won = (p['username'] != real_impostor and correct) or (p['username'] == real_impostor and not correct)
                     _save_game_stats(p['username'], 'movie_impostor', won)
@@ -4396,11 +4418,70 @@ def on_game_join(data):
     
     # Send current state to the joining user
     game_type = room.get('game_type')
-    if game_type == 'song_detective' or game_type == 'music_survivor':
-        emit('game_state', {
-            'room': room,
-            'game_type': game_type
-        }, to=request.sid)
+    emit('game_state', {
+        'room': room,
+        'game_type': game_type
+    }, to=request.sid)
+
+
+# ===== MOVIE IMPOSTOR SOCKET EVENTS =====
+
+@socketio.on('movie_reveal')
+def on_movie_reveal(data):
+    """Notify others when a player reveals their movie."""
+    room_code = data.get('room_code')
+    username = data.get('username')
+    
+    if not room_code or not username:
+        return
+    
+    # Broadcast to all in the room except the sender
+    emit('movie_reveal', {
+        'username': username,
+        'room_code': room_code
+    }, to=room_code, include_self=False)
+
+
+@socketio.on('answers_submitted')
+def on_answers_submitted(data):
+    """Notify others when a player submits answers."""
+    room_code = data.get('room_code')
+    username = data.get('username')
+    
+    if not room_code or not username:
+        return
+    
+    # Get updated room state
+    if game_rooms_collection is not None:
+        room = game_rooms_collection.find_one({'code': room_code}, {'_id': 0})
+        if room:
+            emit('answers_submitted', {
+                'username': username,
+                'room': room
+            }, to=room_code, include_self=False)
+
+
+@socketio.on('vote_cast')
+def on_vote_cast(data):
+    """Notify others when a player casts a vote."""
+    room_code = data.get('room_code')
+    username = data.get('username')
+    room = data.get('room')
+    
+    if not room_code or not username:
+        return
+    
+    # If room not provided, fetch it
+    if not room and game_rooms_collection is not None:
+        room = game_rooms_collection.find_one({'code': room_code}, {'_id': 0})
+    
+    emit('vote_cast', {
+        'username': username,
+        'room': room
+    }, to=room_code, include_self=False)
+
+
+# ===== SONG DETECTIVE & MUSIC SURVIVOR SOCKET EVENTS =====
 
 @socketio.on('game_play')
 def on_game_play(data):
@@ -4438,6 +4519,7 @@ def on_game_play(data):
         'by': username
     }, to=room_code)
 
+
 @socketio.on('game_pause')
 def on_game_pause(data):
     """Host pauses the current song."""
@@ -4473,6 +4555,7 @@ def on_game_pause(data):
         'position': position,
         'by': username
     }, to=room_code)
+
 
 @socketio.on('game_next_song')
 def on_game_next_song(data):
@@ -4520,6 +4603,7 @@ def on_game_next_song(data):
         'by': username
     }, to=room_code)
 
+
 @socketio.on('game_sync_request')
 def on_game_sync_request(data):
     """Member requests sync - host sends current state."""
@@ -4541,6 +4625,7 @@ def on_game_sync_request(data):
         'room': room,
         'game_type': room.get('game_type')
     }, to=request.sid)
+
 
 @socketio.on('game_leave')
 def on_game_leave(data):

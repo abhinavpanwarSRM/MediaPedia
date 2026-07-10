@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
   <style>
-    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; --red:#e50914; --gold:#ffd700; }
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; --red:#e50914; --gold:#ffd700; --green:#1db954; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; animation:fadeIn 0.4s ease-out; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
@@ -38,6 +40,8 @@
     .btn-red:hover:not(:disabled) { background:rgba(229,9,20,0.3); }
     .btn-gold { background:rgba(255,215,0,0.12); border-color:var(--gold); color:var(--gold); }
     .btn-gold:hover:not(:disabled) { background:rgba(255,215,0,0.2); }
+    .btn-green { background:rgba(29,185,84,0.12); border-color:var(--green); color:var(--green); }
+    .btn-green:hover:not(:disabled) { background:rgba(29,185,84,0.2); }
     
     .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--purple); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
     .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
@@ -46,6 +50,7 @@
     .player-chip { background:rgba(156,111,228,0.1); border:1px solid rgba(156,111,228,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); transition:all 0.2s; }
     .player-chip.ready { border-color:var(--purple); color:var(--purple); background:rgba(156,111,228,0.15); }
     .player-chip.host { border-color:var(--gold); color:var(--gold); background:rgba(255,215,0,0.08); }
+    .player-chip.voted { border-color:var(--green); color:var(--green); background:rgba(29,185,84,0.1); }
     
     /* Movie Reveal with Full Details */
     .movie-reveal { border-radius:14px; padding:1.4rem; text-align:center; margin-bottom:1.2rem; }
@@ -81,13 +86,17 @@
     .movie-poster { width:140px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.7); border:1px solid rgba(255,255,255,0.08); margin:0.5rem auto; display:block; }
     .poster-wrapper { display:flex; justify-content:center; margin:0.5rem 0; }
     
-    .question-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; }
+    .question-card { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:1rem 1.1rem; margin-bottom:0.8rem; transition:all 0.3s; }
+    .question-card.answered { border-color:var(--green); background:rgba(29,185,84,0.05); }
     .question-text { font-size:0.9rem; font-weight:600; margin-bottom:0.6rem; color:#ddd; }
+    .question-status { float:right; font-size:0.7rem; color:var(--muted); }
+    .question-card.answered .question-status { color:var(--green); }
     
     .suspect-list { display:flex; flex-direction:column; gap:0.5rem; }
     .suspect-btn { padding:0.75rem 1rem; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; font-weight:600; cursor:pointer; text-align:left; transition:all 0.2s; font-family:'Poppins',sans-serif; }
     .suspect-btn:hover { border-color:var(--purple); background:rgba(156,111,228,0.08); }
     .suspect-btn.selected { border-color:var(--purple); background:rgba(156,111,228,0.18); color:var(--purple); }
+    .suspect-btn:disabled { opacity:0.4; cursor:not-allowed; }
     
     .result-banner { border-radius:12px; padding:1.2rem; text-align:center; font-size:1.1rem; font-weight:700; margin-bottom:1rem; }
     .result-win { background:rgba(29,185,84,0.08); border:1px solid rgba(29,185,84,0.35); color:#1db954; }
@@ -104,7 +113,32 @@
     
     .vote-status-bar { display:flex; align-items:center; justify-content:center; gap:0.8rem; margin:0.8rem 0; flex-wrap:wrap; }
     .vote-status-bar .voter-chip { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:20px; padding:0.15rem 0.6rem; font-size:0.7rem; color:var(--muted); transition:all 0.3s; }
-    .vote-status-bar .voter-chip.done { border-color:#2ed573; color:#2ed573; background:rgba(46,213,115,0.08); }
+    .vote-status-bar .voter-chip.done { border-color:var(--green); color:var(--green); background:rgba(29,185,84,0.08); }
+    
+    .host-badge { display:inline-block; background:rgba(255,215,0,0.12); border:1px solid rgba(255,215,0,0.2); border-radius:12px; padding:0.15rem 0.6rem; font-size:0.65rem; color:var(--gold); font-weight:600; margin-left:0.3rem; }
+    
+    .loading-spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--purple); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    
+    .toast {
+      position:fixed;
+      bottom:1.5rem;
+      left:50%;
+      transform:translateX(-50%);
+      background:var(--purple);
+      color:#fff;
+      padding:0.6rem 1.5rem;
+      border-radius:40px;
+      font-weight:600;
+      font-size:0.85rem;
+      z-index:9999;
+      opacity:0;
+      transition:opacity 0.3s;
+      pointer-events:none;
+      max-width:90%;
+      text-align:center;
+    }
+    .toast.show { opacity:1; }
     
     #screen-lobby, #screen-waiting, #screen-movie, #screen-questions, #screen-vote, #screen-result { display:none; }
     #screen-lobby.active, #screen-waiting.active, #screen-movie.active, #screen-questions.active, #screen-vote.active, #screen-result.active { display:block; }
@@ -120,7 +154,6 @@
       .movie-detail-label { min-width:unset; }
     }
   </style>
-  <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <nav class="topnav">
@@ -161,7 +194,7 @@
       </div>
     </div>
 
-    <!-- Movie reveal with full details like movie.html -->
+    <!-- Movie reveal with full details -->
     <div id="screen-movie">
       <div id="movie-reveal-box"></div>
       
@@ -169,11 +202,16 @@
       <div class="poster-wrapper" id="poster-wrapper"></div>
       
       <!-- Trailer -->
-      <div id="movie-trailer-container" class="trailer-container"></div>
+      <div id="movie-trailer-container" class="trailer-container">
+        <div style="text-align:center;padding:1rem;color:var(--muted);">Loading trailer...</div>
+      </div>
       
       <!-- Full Movie Details -->
       <div class="panel" style="margin-top:0.5rem;">
-        <div class="movie-details-grid" id="movie-details-grid"></div>
+        <div id="movie-details-loading" style="text-align:center;color:var(--muted);padding:1rem;">
+          <div class="loading-spinner"></div> Loading movie details...
+        </div>
+        <div class="movie-details-grid hidden" id="movie-details-grid"></div>
       </div>
       
       <div class="panel" style="margin-top:0.5rem;">
@@ -185,7 +223,7 @@
     <!-- Questions -->
     <div id="screen-questions">
       <div class="panel">
-        <h2>Answer the Questions</h2>
+        <h2>Answer the Questions <span id="questions-progress" style="font-size:0.8rem;color:var(--muted);font-weight:400;"></span></h2>
         <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Answer based on <strong style="color:var(--purple);">your</strong> movie. Be specific enough to sound convincing, vague enough not to give away the title.</p>
         <div id="questions-list"></div>
         <button class="btn btn-purple" style="margin-top:0.8rem;" onclick="submitAnswers()" id="submit-answers-btn">Submit Answers</button>
@@ -200,7 +238,7 @@
         <div id="answers-review"></div>
       </div>
       <div class="panel">
-        <h2>Who is the Impostor?</h2>
+        <h2>Who is the Impostor? <span class="host-badge hidden" id="host-badge-vote">👑 Host</span></h2>
         <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Based on the answers above, who do you think got a different movie?</p>
         <div class="suspect-list" id="suspect-list"></div>
         <div class="vote-status-bar" id="vote-status-bar"></div>
@@ -223,20 +261,27 @@
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <script>
+    // ===== CONFIG =====
     const ME = '{{ username }}';
     const API_KEYS = ['{{ api_key_1 }}', '{{ api_key_2 }}', '{{ api_key_3 }}', '{{ api_key_4 }}', '{{ api_key_5 }}'];
     let roomCode = null;
+    let socket = null;
+    let pollTimer = null;
+    let isHost = false;
+    
+    // Game state
     let myMovie = null;
     let amImpostor = false;
     let questions = [];
     let selectedSuspect = null;
-    let pollTimer = null;
-    let currentKeyIndex = 0;
-    let moviePosterUrl = '';
-    let movieBackdropUrl = '';
-    let fullMovieData = null;
     let hasVoted = false;
+    let answersSubmitted = false;
+    let allAnswered = false;
+    let movieDataLoaded = false;
+    let gameState = null;
 
     // ---- Screen Management ----
     function showScreen(id) {
@@ -252,20 +297,60 @@
     }
 
     function showToast(msg) {
-      let t = document.getElementById('_toast');
-      if (!t) { 
-        t = document.createElement('div'); 
-        t.id = '_toast'; 
-        t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:1px solid rgba(255,255,255,0.1);padding:0.5rem 1.2rem;border-radius:20px;font-size:0.82rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;'; 
-        document.body.appendChild(t); 
-      }
-      t.textContent = msg; 
-      t.style.opacity = '1';
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
       clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2500);
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ---- Socket.IO ----
+    function connectSocket() {
+      if (socket) return;
+      socket = io();
+
+      socket.on('connect', function() {
+        socket.emit('game_join', { room_code: roomCode, username: ME });
+      });
+
+      socket.on('game_state', function(data) {
+        if (data.room) {
+          handleRoomState(data.room);
+        }
+      });
+
+      socket.on('movie_reveal', function(data) {
+        // Someone else revealed their movie - update state
+        if (data.username !== ME) {
+          showToast(data.username + ' has seen their movie');
+        }
+      });
+
+      socket.on('answers_submitted', function(data) {
+        if (data.username !== ME) {
+          showToast(data.username + ' submitted answers');
+        }
+        updateAnsweredStatus(data.room);
+      });
+
+      socket.on('vote_cast', function(data) {
+        if (data.username !== ME) {
+          showToast(data.username + ' voted');
+        }
+        updateVoteStatus(data.room);
+      });
+
+      socket.on('disconnect', function() {
+        showToast('Disconnected — reconnecting...');
+      });
+
+      socket.on('reconnect', function() {
+        showToast('Reconnected!');
+        socket.emit('game_join', { room_code: roomCode, username: ME });
+      });
+    }
 
     // ---- Room Management ----
     async function createRoom() {
@@ -278,6 +363,7 @@
         const d = await res.json();
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = d.code;
+        isHost = true;
         enterWaiting();
       } catch(e) { showToast('Error creating room'); }
       finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
@@ -291,6 +377,7 @@
         const d = await res.json();
         if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
         roomCode = code;
+        isHost = false;
         enterWaiting();
       } catch(e) { showToast('Error joining room'); }
     }
@@ -298,6 +385,7 @@
     function enterWaiting() {
       document.getElementById('room-code-display').textContent = roomCode;
       showScreen('screen-waiting');
+      connectSocket();
       startPolling();
     }
 
@@ -316,34 +404,33 @@
       }
     }
 
+    // ---- Room State ----
     function handleRoomState(room) {
       if (!room || room.error) return;
+      gameState = room;
+      isHost = room.host === ME;
+      
+      // Update players
       const pl = document.getElementById('players-list');
       if (pl) {
         pl.innerHTML = (room.players||[]).map(p =>
           `<span class="player-chip ${p.ready?'ready':''} ${room.host === p.username ? 'host' : ''}">${esc(p.username)}${p.ready?' ✓':''}${room.host === p.username ? ' 👑' : ''}</span>`
         ).join('');
       }
+
+      // Show host badge in vote screen
+      document.getElementById('host-badge-vote').classList.toggle('hidden', !isHost);
       
       if (room.state === 'playing' && room.round >= 1) { 
-        revealMovie(room); 
+        if (!movieDataLoaded) {
+          revealMovie(room);
+        }
       } else if (room.state === 'finished') { 
         showResult(room); 
       }
     }
 
-    // ---- Fetch Full Movie Data ----
-    async function fetchFullMovieData(title, year) {
-      try {
-        const res = await fetch('/api/movie_data?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || ''));
-        const data = await res.json();
-        return data;
-      } catch(e) {
-        return null;
-      }
-    }
-
-    // ---- Movie Details with Trailer ----
+    // ---- Movie Details ----
     function revealMovie(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
@@ -352,6 +439,12 @@
       amImpostor = impostor === ME;
       questions = data.questions || [];
       myMovie = amImpostor ? pair[1] : pair[0];
+      movieDataLoaded = true;
+
+      // Notify others via socket
+      if (socket) {
+        socket.emit('movie_reveal', { room_code: roomCode, username: ME });
+      }
 
       // Build the movie reveal box
       const box = document.getElementById('movie-reveal-box');
@@ -369,140 +462,106 @@
           <div style="color:var(--muted);font-size:0.82rem;margin-top:0.6rem;">One player has a different movie — find them!</div>`;
       }
 
-      // Fetch full movie details
-      fetchMovieDetails(myMovie?.title || '', myMovie?.year || '');
-
       // Fetch poster + backdrop
       fetchMovieMedia(myMovie?.title || '', myMovie?.year || '');
-
-      // Build questions
-      const ql = document.getElementById('questions-list');
-      ql.innerHTML = questions.map((q, i) =>
-        `<div class="question-card">
-          <div class="question-text">${i+1}. ${esc(q)}</div>
-          <textarea id="ans-${i}" placeholder="Your answer..." rows="2"></textarea>
-        </div>`
-      ).join('');
-
-      showScreen('screen-movie');
 
       // Fetch trailer
       if (myMovie?.title) {
         fetchTrailer(myMovie.title, myMovie.genre);
       }
+
+      // Build questions
+      const ql = document.getElementById('questions-list');
+      ql.innerHTML = questions.map((q, i) =>
+        `<div class="question-card" id="q-card-${i}">
+          <div class="question-text">${i+1}. ${esc(q)} <span class="question-status">⏳</span></div>
+          <textarea id="ans-${i}" placeholder="Your answer..." rows="2" oninput="checkAnswerProgress()"></textarea>
+        </div>`
+      ).join('');
+
+      // Fetch full movie details
+      fetchMovieDetails(myMovie?.title || '', myMovie?.year || '');
+
+      showScreen('screen-movie');
+    }
+
+    function checkAnswerProgress() {
+      const total = questions.length;
+      let answered = 0;
+      for (let i = 0; i < total; i++) {
+        const val = document.getElementById('ans-' + i)?.value?.trim() || '';
+        if (val) {
+          answered++;
+          document.getElementById('q-card-' + i).classList.add('answered');
+          document.getElementById('q-card-' + i).querySelector('.question-status').textContent = '✅';
+        } else {
+          document.getElementById('q-card-' + i).classList.remove('answered');
+          document.getElementById('q-card-' + i).querySelector('.question-status').textContent = '⏳';
+        }
+      }
+      document.getElementById('questions-progress').textContent = `(${answered}/${total} answered)`;
     }
 
     function fetchMovieDetails(title, year) {
       const container = document.getElementById('movie-details-grid');
-      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:1rem;">Loading details...</div>';
+      const loading = document.getElementById('movie-details-loading');
       
-      // Fetch from TMDB via our proxy
       fetch('/api/poster?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || '') + '&kind=movie')
         .then(r => r.json())
         .then(d => {
-          // We need more details - fetch from TMDB search
-          const token = '{{ tmdb_token }}' || '';
-          if (!token) {
-            showBasicDetails(container);
-            return;
-          }
+          loading.classList.add('hidden');
+          container.classList.remove('hidden');
           
-          return fetch(`https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(title)}&year=${encodeURIComponent(year || '')}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          .then(r => r.json())
-          .then(data => {
-            if (data.results && data.results.length > 0) {
-              const movie = data.results[0];
-              fullMovieData = movie;
-              renderMovieDetails(container, movie);
-            } else {
-              showBasicDetails(container);
-            }
-          });
+          // Show basic details
+          container.innerHTML = `
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Title</span>
+              <span class="movie-detail-value">${esc(myMovie?.title || '')}</span>
+            </div>
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Genre</span>
+              <span class="movie-detail-value">${esc(myMovie?.genre || 'N/A')}</span>
+            </div>
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Year</span>
+              <span class="movie-detail-value">${esc(myMovie?.year || 'N/A')}</span>
+            </div>
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Rating</span>
+              <span class="movie-detail-value"><span class="rating-badge">★ ${myMovie?.rating || 'N/A'}</span></span>
+            </div>
+          `;
         })
-        .catch(() => showBasicDetails(container));
+        .catch(() => {
+          loading.classList.add('hidden');
+          container.classList.remove('hidden');
+          container.innerHTML = `
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Title</span>
+              <span class="movie-detail-value">${esc(myMovie?.title || '')}</span>
+            </div>
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Genre</span>
+              <span class="movie-detail-value">${esc(myMovie?.genre || 'N/A')}</span>
+            </div>
+            <div class="movie-detail-item">
+              <span class="movie-detail-label">Year</span>
+              <span class="movie-detail-value">${esc(myMovie?.year || 'N/A')}</span>
+            </div>
+          `;
+        });
     }
-
-    function showBasicDetails(container) {
-      container.innerHTML = `
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Title</span>
-          <span class="movie-detail-value">${esc(myMovie?.title || '')}</span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Genre</span>
-          <span class="movie-detail-value">${esc(myMovie?.genre || 'N/A')}</span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Year</span>
-          <span class="movie-detail-value">${esc(myMovie?.year || 'N/A')}</span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Rating</span>
-          <span class="movie-detail-value"><span class="rating-badge">★ ${myMovie?.rating || 'N/A'}</span></span>
-        </div>
-      `;
-    }
-
-    function renderMovieDetails(container, movie) {
-      const genres = movie.genre_ids ? movie.genre_ids.map(id => genreMap[id] || id).join(', ') : myMovie?.genre || 'N/A';
-      const releaseDate = movie.release_date ? movie.release_date.split('-')[0] : myMovie?.year || 'N/A';
-      const rating = movie.vote_average ? movie.vote_average.toFixed(1) : myMovie?.rating || 'N/A';
-      
-      container.innerHTML = `
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Title</span>
-          <span class="movie-detail-value">${esc(movie.title || myMovie?.title || '')}</span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Rating</span>
-          <span class="movie-detail-value"><span class="rating-badge">★ ${rating}</span></span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Genre</span>
-          <span class="movie-detail-value">${esc(genres)}</span>
-        </div>
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Release Year</span>
-          <span class="movie-detail-value">${esc(releaseDate)}</span>
-        </div>
-        ${movie.overview ? `
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Plot</span>
-          <span class="movie-detail-value">${esc(movie.overview)}</span>
-        </div>` : ''}
-        ${movie.runtime ? `
-        <div class="movie-detail-item">
-          <span class="movie-detail-label">Runtime</span>
-          <span class="movie-detail-value">${movie.runtime} min</span>
-        </div>` : ''}
-      `;
-    }
-
-    // Genre map for TMDB
-    const genreMap = {
-      28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy',
-      80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family',
-      14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
-      9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie',
-      53: 'Thriller', 10752: 'War', 37: 'Western'
-    };
 
     function fetchMovieMedia(title, year) {
       fetch('/api/poster?title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year || '') + '&kind=movie')
         .then(r => r.json())
         .then(d => {
-          moviePosterUrl = d.poster || '';
-          movieBackdropUrl = d.backdrop || '';
-          
           const posterWrapper = document.getElementById('poster-wrapper');
-          if (posterWrapper && moviePosterUrl) {
-            posterWrapper.innerHTML = `<img src="${moviePosterUrl}" class="movie-poster" alt="Poster" onerror="this.parentElement.style.display='none'" />`;
+          if (posterWrapper && d.poster) {
+            posterWrapper.innerHTML = `<img src="${d.poster}" class="movie-poster" alt="Poster" onerror="this.parentElement.style.display='none'" />`;
           }
-
-          if (movieBackdropUrl) {
-            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),url('${movieBackdropUrl}')`;
+          if (d.backdrop) {
+            document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.85),rgba(0,0,0,0.85)),url('${d.backdrop}')`;
             document.body.style.backgroundSize = 'cover';
             document.body.style.backgroundPosition = 'center';
             document.body.style.backgroundAttachment = 'fixed';
@@ -531,7 +590,12 @@
               const thumbnail = data.items[0].snippet.thumbnails.high?.url || 
                                data.items[0].snippet.thumbnails.medium?.url || '';
               trailerContainer.innerHTML = `
-                <div class="trailer-thumbnail" style="background-image:url('${thumbnail}')" onclick="playTrailer('${videoId}')"></div>
+                <div class="trailer-thumbnail" style="background-image:url('${thumbnail}')" onclick="playTrailer('${videoId}')">
+                  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#fff;z-index:2;">
+                    <div style="font-size:clamp(3rem,8vw,4rem);text-shadow:0 0 20px rgba(0,0,0,0.7);">▶</div>
+                    <div style="font-size:0.7rem;opacity:0.8;margin-top:0.2rem;">Click to play trailer</div>
+                  </div>
+                </div>
               `;
             } else {
               tryKey(index + 1);
@@ -556,17 +620,43 @@
     async function submitAnswers() {
       const answers = questions.map((_, i) => (document.getElementById('ans-'+i)?.value||'').trim());
       if (answers.some(a => !a)) { showToast('Please answer all questions.'); return; }
+      
+      answersSubmitted = true;
       const btn = document.getElementById('submit-answers-btn');
       btn.disabled = true;
       document.getElementById('answers-status').textContent = 'Submitting...';
+      
       for (let i = 0; i < questions.length; i++) {
         await fetch('/api/games/room/' + roomCode + '/action', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({action:'answer', question_idx:i, answer:answers[i]})
         });
       }
-      document.getElementById('answers-status').textContent = 'Answers submitted! Waiting for others...';
+      
+      document.getElementById('answers-status').textContent = '✅ Answers submitted! Waiting for others...';
+      
+      // Notify via socket
+      if (socket) {
+        socket.emit('answers_submitted', { room_code: roomCode, username: ME });
+      }
+      
       startPollingForVoting();
+    }
+
+    function updateAnsweredStatus(room) {
+      if (!room) return;
+      const allAnswered = (room.players||[]).every(p => {
+        const ans = (room.data||{}).answers || {};
+        return ans[p.username] && ans[p.username].length >= questions.length;
+      });
+      
+      if (allAnswered && !document.getElementById('screen-vote').classList.contains('active')) {
+        document.getElementById('answers-status').textContent = '✅ All players answered!';
+        setTimeout(() => {
+          const roomData = gameState || {};
+          buildVoteScreen(roomData);
+        }, 1000);
+      }
     }
 
     function startPollingForVoting() {
@@ -579,11 +669,16 @@
       const res = await fetch('/api/games/room/' + roomCode);
       const room = await res.json();
       if (room.state === 'finished') { showResult(room); return; }
+      
       const allAnswered = (room.players||[]).every(p => {
         const ans = (room.data||{}).answers || {};
         return ans[p.username] && ans[p.username].length >= questions.length;
       });
-      if (allAnswered) { buildVoteScreen(room); return; }
+      
+      if (allAnswered) { 
+        buildVoteScreen(room); 
+        return; 
+      }
       startPollingForVoting();
     }
 
@@ -606,7 +701,6 @@
         `<button class="suspect-btn" onclick="selectSuspect(this,'${esc(p.username)}')">${esc(p.username)}</button>`
       ).join('');
       
-      // Reset vote status bar
       updateVoteStatus(room);
       showScreen('screen-vote');
     }
@@ -623,6 +717,7 @@
     }
 
     function selectSuspect(btn, username) {
+      if (hasVoted) return;
       document.querySelectorAll('.suspect-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedSuspect = username;
@@ -642,6 +737,12 @@
         body: JSON.stringify({action:'vote_impostor', suspect:selectedSuspect})
       });
       const room = await res.json();
+      
+      // Notify via socket
+      if (socket) {
+        socket.emit('vote_cast', { room_code: roomCode, username: ME, room: room });
+      }
+      
       updateVoteStatus(room);
       
       if (room.state === 'finished') { showResult(room); return; }
