@@ -3784,7 +3784,6 @@ try:
     if db is not None:
         game_rooms_collection = db.game_rooms
         game_rooms_collection.create_index('code', unique=True)
-        game_rooms_collection.create_index('created_at', expireAfterSeconds=86400)
         game_stats_collection = db.game_stats
         game_stats_collection.create_index('username', unique=True)
 except Exception as e:
@@ -3952,18 +3951,22 @@ def create_game_room():
         room['data']['current_index'] = -1
         room['data']['state'] = 'stopped'
         room['data']['position'] = 0
-        room['data']['songs_per_player'] = 1  # Each player adds 1 song
+        room['data']['songs_per_player'] = 1
+        room['data']['player_songs'] = {}
+        room['data']['vote_records'] = {}  # Store all votes
     elif game_type == 'song_detective':
         room['data']['songs_per_player'] = 2
         room['data']['player_songs'] = {}
         room['data']['songs'] = []
         room['data']['all_songs'] = []
         room['data']['votes'] = {}
+        room['data']['all_votes'] = {}  # Persistent vote storage across songs
         room['data']['current_index'] = -1
         room['data']['state'] = 'stopped'
         room['data']['position'] = 0
         room['data']['song_states'] = {}
         room['data']['_shuffled'] = False
+        room['data']['vote_records'] = {}  # Store all votes for reveal
     
     game_rooms_collection.insert_one(room)
     return jsonify({'code': code}), 201
@@ -4028,14 +4031,13 @@ def ready_game_room(code):
         update = {'state': 'playing', 'round': 1}
         
         if room['game_type'] == 'music_survivor':
-            # Music Survivor: set songs_per_player default and transition
             if 'songs_per_player' not in room.get('data', {}):
                 update['data.songs_per_player'] = 1
-            # Add player_songs for tracking
             player_songs = {}
             for p in room['players']:
                 player_songs[p['username']] = []
             update['data.player_songs'] = player_songs
+            update['data.all_votes'] = {}
             
         elif room['game_type'] == 'movie_impostor':
             players = room['players']
@@ -4046,11 +4048,17 @@ def ready_game_room(code):
             update['data.all_answered'] = False
             
         elif room['game_type'] == 'song_detective':
-            player_songs = {}
-            for p in room['players']:
-                player_songs[p['username']] = []
-            update['data.player_songs'] = player_songs
-            update['data._shuffled'] = False
+            songs_per_player = room.get('data', {}).get('songs_per_player', 0)
+            if songs_per_player > 0:
+                player_songs = {}
+                for p in room['players']:
+                    player_songs[p['username']] = []
+                update['data.player_songs'] = player_songs
+                update['data._shuffled'] = False
+                update['data.all_votes'] = {}  # Persistent vote storage
+                update['data.vote_records'] = {}  # Store all votes
+            else:
+                return jsonify({'started': False, 'song_count_set': False})
         
         game_rooms_collection.update_one({'code': code}, {'$set': update})
         return jsonify({'started': True})
@@ -4085,7 +4093,6 @@ def game_action(code):
             update['data.songs_per_player'] = count
         
         elif action == 'shuffle_songs':
-            # Store shuffled songs
             songs = data.get('songs', [])
             if songs and room.get('host') == username:
                 update['data.songs'] = songs
@@ -4125,7 +4132,6 @@ def game_action(code):
                 all_songs = []
                 for p, songs in player_songs.items():
                     all_songs.extend(songs)
-                # Shuffle songs
                 _random.shuffle(all_songs)
                 update['data.songs'] = all_songs
                 update['data.all_songs'] = all_songs
@@ -4133,10 +4139,12 @@ def game_action(code):
                 update['round'] = 1
                 update['data.current_index'] = 0
                 update['data.votes'] = {}
+                update['data.all_votes'] = {}  # Persistent vote storage
                 update['data.song_states'] = {}
                 update['data.state'] = 'stopped'
                 update['data.position'] = 0
                 update['data._shuffled'] = True
+                update['data.vote_records'] = {}
         
         elif action == 'vote':
             song_id = data.get('song_id')
@@ -4144,13 +4152,21 @@ def game_action(code):
             if not song_id or not guess:
                 return jsonify({'error': 'Song ID and guess required'}), 400
             
+            # Store votes persistently
+            all_votes = room.get('data', {}).get('all_votes', {})
+            if username not in all_votes:
+                all_votes[username] = {}
+            all_votes[username][song_id] = guess
+            update['data.all_votes'] = all_votes
+            
+            # Also keep current votes for tracking
             votes = room.get('data', {}).get('votes', {})
             if username not in votes:
                 votes[username] = {}
             votes[username][song_id] = guess
             update['data.votes'] = votes
             
-            # Update song_states for UI progress tracking only
+            # Check if all players have voted on current song
             all_songs = room.get('data', {}).get('songs', [])
             if all_songs:
                 current_index = room.get('data', {}).get('current_index', 0)
@@ -4160,16 +4176,50 @@ def game_action(code):
                     if current_song_id:
                         voted_count = sum(
                             1 for p in room['players']
-                            if votes.get(p['username'], {}).get(current_song_id)
+                            if all_votes.get(p['username'], {}).get(current_song_id)
                         )
                         total_players = len(room['players'])
+                        all_voted = voted_count >= total_players
+                        
                         song_states = room.get('data', {}).get('song_states', {})
                         song_states[current_song_id] = {
                             'voted_count': voted_count,
                             'total_players': total_players,
-                            'all_voted': voted_count >= total_players
+                            'all_voted': all_voted,
+                            'votes': {p['username']: all_votes.get(p['username'], {}).get(current_song_id) for p in room['players']}
                         }
                         update['data.song_states'] = song_states
+                        
+                        # Auto-advance if all voted and host
+                        if all_voted and room.get('host') == username and len(all_songs) > 0:
+                            next_index = current_index + 1
+                            if next_index >= len(all_songs):
+                                # All songs played - finish
+                                update['data.current_index'] = next_index
+                                update['state'] = 'finished'
+                                
+                                # Calculate scores from all_votes
+                                scores = {}
+                                for p in room['players']:
+                                    scores[p['username']] = 0
+                                sub_map = {s['id']: s['submitter'] for s in all_songs}
+                                for voter, gs in all_votes.items():
+                                    for sid, guess_name in gs.items():
+                                        if sub_map.get(sid) == guess_name:
+                                            scores[voter] = scores.get(voter, 0) + 1
+                                update['data.scores'] = scores
+                                update['data.vote_records'] = all_votes  # Store all votes for reveal
+                                winner = max(scores, key=scores.get) if scores else None
+                                update['data.winner'] = winner
+                                for p in room['players']:
+                                    _save_game_stats(p['username'], 'song_detective', p['username'] == winner)
+                            else:
+                                # Move to next song
+                                update['data.current_index'] = next_index
+                                update['data.votes'] = {}
+                                update['data.song_states'] = {}
+                                update['data.position'] = 0
+                                update['data.state'] = 'playing'
 
         elif action == 'play':
             if room.get('host') != username:
@@ -4196,17 +4246,18 @@ def game_action(code):
                 update['data.current_index'] = next_index
                 update['state'] = 'finished'
                 
-                # Calculate scores
-                votes = room.get('data', {}).get('votes', {})
+                # Calculate scores from all_votes
+                all_votes = room.get('data', {}).get('all_votes', {})
                 scores = {}
                 for p in room['players']:
                     scores[p['username']] = 0
                 sub_map = {s['id']: s['submitter'] for s in all_songs}
-                for voter, gs in votes.items():
+                for voter, gs in all_votes.items():
                     for sid, guess_name in gs.items():
                         if sub_map.get(sid) == guess_name:
                             scores[voter] = scores.get(voter, 0) + 1
                 update['data.scores'] = scores
+                update['data.vote_records'] = all_votes  # Store all votes for reveal
                 winner = max(scores, key=scores.get) if scores else None
                 update['data.winner'] = winner
                 for p in room['players']:
@@ -4222,16 +4273,17 @@ def game_action(code):
             if room.get('host') != username:
                 return jsonify({'error': 'Only host can finish'}), 403
             all_songs = room.get('data', {}).get('songs', [])
-            votes = room.get('data', {}).get('votes', {})
+            all_votes = room.get('data', {}).get('all_votes', {})
             scores = {}
             for p in room['players']:
                 scores[p['username']] = 0
             sub_map = {s['id']: s['submitter'] for s in all_songs}
-            for voter, gs in votes.items():
+            for voter, gs in all_votes.items():
                 for sid, guess_name in gs.items():
                     if sub_map.get(sid) == guess_name:
                         scores[voter] = scores.get(voter, 0) + 1
             update['data.scores'] = scores
+            update['data.vote_records'] = all_votes  # Store all votes for reveal
             update['state'] = 'finished'
             winner = max(scores, key=scores.get) if scores else None
             update['data.winner'] = winner
@@ -4256,7 +4308,6 @@ def game_action(code):
                 all_songs = room.get('data', {}).get('all_songs', [])
                 player_songs = room.get('data', {}).get('player_songs', {})
                 
-                # Track which player added which song
                 if username not in player_songs:
                     player_songs[username] = []
                 player_songs[username].append(song['id'])
@@ -4279,6 +4330,7 @@ def game_action(code):
         elif action == 'preview_done':
             update['data.preview_done'] = True
             update['data.votes'] = {}
+            update['data.all_votes'] = {}
             update['round'] = 1
             update['data.current_index'] = 0
             update['data.state'] = 'stopped'
@@ -4297,10 +4349,11 @@ def game_action(code):
             update['data.position'] = data.get('position', 0)
         
         elif action == 'vote':
-            # Only allow votes during the voting phase (preview_done must be True)
-            if not room.get('data', {}).get('preview_done', False):
-                return jsonify({'error': 'Voting not open yet'}), 400
             song_id = data.get('song_id', '')
+            all_votes = room.get('data', {}).get('all_votes', {})
+            all_votes[username] = song_id
+            update['data.all_votes'] = all_votes
+            
             votes = room.get('data', {}).get('votes', {})
             votes[username] = song_id
             update['data.votes'] = votes
@@ -4310,9 +4363,7 @@ def game_action(code):
                 # Find the most voted song
                 vote_counts = Counter(votes.values())
                 max_votes = max(vote_counts.values())
-                # Get all songs with max votes (handle ties)
                 eliminated_candidates = [sid for sid, count in vote_counts.items() if count == max_votes]
-                # If tie, randomly pick one
                 eliminated = _random.choice(eliminated_candidates) if eliminated_candidates else None
                 
                 if eliminated:
@@ -4320,11 +4371,13 @@ def game_action(code):
                     songs = [s for s in songs if s.get('id') != eliminated]
                     update['data.songs'] = songs
                     update['data.votes'] = {}
+                    update['data.all_votes'] = {}
                     update['data.eliminated'] = eliminated
                     update['round'] = room.get('round', 1) + 1
                     update['data.current_index'] = 0
                     update['data.state'] = 'stopped'
                     update['data.position'] = 0
+                    update['data.vote_records'] = votes  # Store votes for history
                     
                     if len(songs) <= 1:
                         update['state'] = 'finished'
@@ -4345,7 +4398,6 @@ def game_action(code):
             })
             update['data.answers'] = answers
             
-            # Check if all players have answered
             all_players = [p['username'] for p in room['players']]
             question_count = len(room.get('data', {}).get('questions', []))
             all_answered = all(
@@ -4360,7 +4412,6 @@ def game_action(code):
             votes[username] = data.get('suspect', '')
             update['data.impostor_votes'] = votes
             
-            # Check if all players have voted
             all_players = [p['username'] for p in room['players']]
             all_voted = all(
                 votes.get(p) is not None
@@ -4375,6 +4426,7 @@ def game_action(code):
                 update['data.accused'] = accused
                 update['data.correct_guess'] = correct
                 update['data.vote_counts'] = dict(Counter(votes.values()))
+                update['data.vote_records'] = votes
                 for p in room['players']:
                     won = (p['username'] != real_impostor and correct) or (p['username'] == real_impostor and not correct)
                     _save_game_stats(p['username'], 'movie_impostor', won)
@@ -4434,7 +4486,6 @@ def on_game_join(data):
     if not room_code or not username:
         return
     
-    # Get room from database
     if game_rooms_collection is None:
         return
     
@@ -4442,18 +4493,14 @@ def on_game_join(data):
     if not room:
         return
     
-    # Check if user is in the room
     if username not in [p['username'] for p in room.get('players', [])]:
         return
     
-    # Join socket room
     join_room(room_code)
     
-    # Store mapping
     game_socket_rooms[room_code] = game_socket_rooms.get(room_code, set())
     game_socket_rooms[room_code].add(username)
     
-    # Send current state to the joining user
     game_type = room.get('game_type')
     emit('game_state', {
         'room': room,
@@ -4464,14 +4511,12 @@ def on_game_join(data):
 
 @socketio.on('movie_reveal')
 def on_movie_reveal(data):
-    """Notify others when a player reveals their movie."""
     room_code = data.get('room_code')
     username = data.get('username')
     
     if not room_code or not username:
         return
     
-    # Broadcast to all in the room except the sender
     emit('movie_reveal', {
         'username': username,
         'room_code': room_code
@@ -4479,14 +4524,12 @@ def on_movie_reveal(data):
 
 @socketio.on('answers_submitted')
 def on_answers_submitted(data):
-    """Notify others when a player submits answers."""
     room_code = data.get('room_code')
     username = data.get('username')
     
     if not room_code or not username:
         return
     
-    # Get updated room state
     if game_rooms_collection is not None:
         room = game_rooms_collection.find_one({'code': room_code}, {'_id': 0})
         if room:
@@ -4497,7 +4540,6 @@ def on_answers_submitted(data):
 
 @socketio.on('vote_cast')
 def on_vote_cast(data):
-    """Notify others when a player casts a vote."""
     room_code = data.get('room_code')
     username = data.get('username')
     room = data.get('room')
@@ -4505,7 +4547,6 @@ def on_vote_cast(data):
     if not room_code or not username:
         return
     
-    # If room not provided, fetch it
     if not room and game_rooms_collection is not None:
         room = game_rooms_collection.find_one({'code': room_code}, {'_id': 0})
     
@@ -4518,7 +4559,6 @@ def on_vote_cast(data):
 
 @socketio.on('game_play')
 def on_game_play(data):
-    """Host plays the current song."""
     room_code = data.get('room_code')
     username = session.get('username')
     position = data.get('position', 0)
@@ -4533,11 +4573,9 @@ def on_game_play(data):
     if not room:
         return
     
-    # Only host can control playback
     if room.get('host') != username:
         return
     
-    # Update database
     game_rooms_collection.update_one(
         {'code': room_code},
         {'$set': {
@@ -4546,7 +4584,6 @@ def on_game_play(data):
         }}
     )
     
-    # Broadcast to all in the room
     emit('game_play', {
         'position': position,
         'by': username
@@ -4554,7 +4591,6 @@ def on_game_play(data):
 
 @socketio.on('game_pause')
 def on_game_pause(data):
-    """Host pauses the current song."""
     room_code = data.get('room_code')
     username = session.get('username')
     position = data.get('position', 0)
@@ -4569,11 +4605,9 @@ def on_game_pause(data):
     if not room:
         return
     
-    # Only host can control playback
     if room.get('host') != username:
         return
     
-    # Update database
     game_rooms_collection.update_one(
         {'code': room_code},
         {'$set': {
@@ -4582,7 +4616,6 @@ def on_game_pause(data):
         }}
     )
     
-    # Broadcast to all in the room
     emit('game_pause', {
         'position': position,
         'by': username
@@ -4590,7 +4623,6 @@ def on_game_pause(data):
 
 @socketio.on('game_next_song')
 def on_game_next_song(data):
-    """Host advances to the next song."""
     room_code = data.get('room_code')
     username = session.get('username')
     
@@ -4604,30 +4636,26 @@ def on_game_next_song(data):
     if not room:
         return
     
-    # Only host can control playback
     if room.get('host') != username:
         return
     
-    # Get current index and songs
     songs = room.get('data', {}).get('songs', [])
     current_index = room.get('data', {}).get('current_index', -1)
     next_index = current_index + 1
     
     if next_index >= len(songs):
-        # End of queue
         return
     
-    # Update database — do NOT reset votes here (game_next_song is used for preview too)
     game_rooms_collection.update_one(
         {'code': room_code},
         {'$set': {
             'data.current_index': next_index,
             'data.position': 0,
-            'data.state': 'playing'
+            'data.state': 'playing',
+            'data.votes': {}
         }}
     )
     
-    # Broadcast to all in the room
     emit('game_next_song', {
         'index': next_index,
         'by': username
@@ -4635,7 +4663,6 @@ def on_game_next_song(data):
 
 @socketio.on('game_sync_request')
 def on_game_sync_request(data):
-    """Member requests sync - host sends current state."""
     room_code = data.get('room_code')
     username = session.get('username')
     
@@ -4649,7 +4676,6 @@ def on_game_sync_request(data):
     if not room:
         return
     
-    # Send current state to the requesting user
     emit('game_state', {
         'room': room,
         'game_type': room.get('game_type')
@@ -4657,7 +4683,6 @@ def on_game_sync_request(data):
 
 @socketio.on('game_leave')
 def on_game_leave(data):
-    """Leave a game room."""
     room_code = data.get('room_code')
     username = session.get('username')
     
