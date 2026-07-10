@@ -253,7 +253,7 @@
     }
     .search-result-add:hover { background: rgba(156,111,228,0.2); }
     
-    /* Preview Player with Audio */
+    /* Preview Player - Host Controls Only */
     .preview-player { 
       background: rgba(0,0,0,0.5); 
       border-radius: 12px; 
@@ -281,13 +281,16 @@
     }
     .preview-player .timer { font-size: 0.78rem; color: var(--muted); }
     .preview-countdown { font-size: 1.4rem; font-weight: 700; color: var(--purple); margin: 0.4rem 0; }
-    .preview-player .audio-controls { 
-      display: flex; 
+    
+    /* Host controls - only visible to host */
+    .host-controls-preview { 
+      display: flex;
       justify-content: center; 
-      gap: 1rem; 
+      gap: 0.8rem; 
       margin-top: 0.8rem; 
+      flex-wrap: wrap;
     }
-    .preview-player .audio-controls button { 
+    .host-controls-preview button { 
       background: rgba(156,111,228,0.15); 
       border: 1px solid var(--purple); 
       color: var(--purple); 
@@ -299,8 +302,20 @@
       font-family: 'Poppins', sans-serif;
       transition: all 0.2s;
     }
-    .preview-player .audio-controls button:hover { background: rgba(156,111,228,0.3); }
-    .preview-player .audio-controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .host-controls-preview button:hover:not(:disabled) { background: rgba(156,111,228,0.3); }
+    .host-controls-preview button:disabled { opacity: 0.4; cursor: not-allowed; }
+    
+    .host-badge {
+      display: inline-block;
+      background: rgba(255,215,0,0.12);
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 12px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.65rem;
+      color: var(--gold);
+      font-weight: 600;
+      margin-left: 0.3rem;
+    }
     
     /* Host controls in lobby */
     .host-controls { 
@@ -348,6 +363,7 @@
       .song-item { flex-wrap: wrap; gap: 0.5rem; }
       .search-result-item { flex-wrap: wrap; }
       .panel { padding: 1rem; }
+      .host-controls-preview { flex-direction: column; align-items: center; }
     }
   </style>
 </head>
@@ -386,7 +402,7 @@
         <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
         
-        <!-- Host Controls -->
+        <!-- Host Controls for Duration -->
         <div id="host-controls" class="host-controls hidden">
           <label>⏱ Preview Duration (seconds):</label>
           <div class="input-row">
@@ -422,6 +438,7 @@
         <h2>🎧 Preview All Songs</h2>
         <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.5rem;">
           Each song will play for <strong id="preview-duration-display">30</strong> seconds.
+          <span id="host-badge-preview" class="host-badge hidden">👑 Host Controls</span>
         </p>
         <div class="preview-player">
           <div class="now-playing" id="preview-song-title">Loading...</div>
@@ -429,15 +446,16 @@
           <div class="progress"><div class="progress-fill" id="preview-progress"></div></div>
           <div class="timer" id="preview-timer">0:00 / 0:30</div>
           <div class="preview-countdown" id="preview-countdown"></div>
-          <div class="audio-controls">
+          
+          <!-- Host Controls - Only visible to host -->
+          <div class="host-controls-preview" id="host-controls-preview">
             <button id="play-pause-btn" onclick="togglePreviewPlay()">⏸ Pause</button>
             <button onclick="skipToNextPreview()">⏭ Skip</button>
+            <button id="skip-all-btn" onclick="skipPreview()" style="border-color:var(--gold);color:var(--gold);">⏭ Skip All</button>
           </div>
+          <div style="margin-top:0.3rem;font-size:0.7rem;color:var(--muted);" id="host-controls-hint">Only the host can control playback</div>
         </div>
         <div class="status-msg" id="preview-status">Getting ready...</div>
-        <div style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;justify-content:center;">
-          <button class="btn btn-gold" id="skip-preview-btn" onclick="skipPreview()" style="display:none;">⏭ Skip All (Host Only)</button>
-        </div>
       </div>
     </div>
 
@@ -553,6 +571,10 @@
       fetch('/api/games/room/' + roomCode).then(r => r.json()).then(room => {
         isHost = room.host === ME;
         document.getElementById('host-controls').classList.toggle('hidden', !isHost);
+        // Show host badge in preview
+        document.getElementById('host-badge-preview').classList.toggle('hidden', !isHost);
+        document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
+        document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
         updatePlayers(room);
         if (room.data?.preview_duration) {
           previewDuration = room.data.preview_duration;
@@ -721,7 +743,12 @@
         document.getElementById('preview-duration-display').textContent = previewDuration;
       }
       previewIndex = 0;
-      document.getElementById('skip-preview-btn').style.display = isHost ? 'inline-block' : 'none';
+      
+      // Show/hide host controls
+      document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
+      document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
+      document.getElementById('host-badge-preview').classList.toggle('hidden', !isHost);
+      
       document.getElementById('play-pause-btn').textContent = '⏸ Pause';
       isPlaying = true;
       playPreviewSong(0);
@@ -792,6 +819,8 @@
     }
 
     function togglePreviewPlay() {
+      if (!isHost) { showToast('Only the host can control playback'); return; }
+      
       const iframe = document.getElementById('preview-iframe');
       const btn = document.getElementById('play-pause-btn');
       if (!iframe) return;
@@ -825,6 +854,7 @@
     }
 
     function skipToNextPreview() {
+      if (!isHost) { showToast('Only the host can skip'); return; }
       clearInterval(previewInterval);
       const idx = previewIndex + 1;
       if (idx < previewSongs.length) {
@@ -883,7 +913,6 @@
           myVote = null; 
           hasVotedThisRound = false;
           lastRound = room.round; 
-          // Re-enable vote buttons for new round
           document.querySelectorAll('.vote-btn').forEach(b => b.disabled = false);
         }
         renderPlaying(room);
@@ -933,7 +962,6 @@
         return;
       }
       
-      // Don't show vote counts - just the songs
       c.innerHTML = songs.map(s => {
         const iVoted = myVote === s.id;
         return `<div class="song-item ${iVoted?'my-vote':''}">
