@@ -15,7 +15,8 @@
     h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); border-bottom: 2px solid rgba(229,9,20,0.3); padding-bottom: 1rem; margin-bottom: 2rem; }
     h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); margin-bottom: 1rem; margin-top: 2rem; }
     .grid { display: grid; gap: 0.8rem; }
-    .row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; text-decoration: none; color: var(--text); transition: all 0.2s; }
+    .row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; align-items: center; gap: .75rem; text-decoration: none; color: var(--text); transition: all 0.2s; }
+    .row-poster { width:36px;height:52px;object-fit:cover;border-radius:4px;flex-shrink:0;display:none; }
     .row.movie { border-left: 3px solid var(--primary); }
     .row.series { border-left: 3px solid var(--series); }
     .row:hover { background: rgba(255,255,255,0.08); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
@@ -46,8 +47,9 @@
     <h2>Movies ({{ movies|length }})</h2>
     <div class="grid">
       {% for m in movies %}
-      <a class="row movie" href="/movie/{{ m['ID'] }}">
-        <div>
+      <a class="row movie" href="/movie/{{ m['ID'] }}" data-title="{{ m['Movie Name']|e }}" data-year="{{ m.get('Year','')|e }}" data-kind="movie">
+        <img class="row-poster" src="" alt="" loading="lazy" onerror="this.style.display='none'" />
+        <div style="flex:1;min-width:0;">
           <div class="title">{{ m['Movie Name'] }}</div>
           <div class="meta">{{ m.get('Genre','') }} &bull; {{ m.get('Year','N/A') }}</div>
         </div>
@@ -61,8 +63,9 @@
     <h2>Series ({{ series|length }})</h2>
     <div class="grid">
       {% for s in series %}
-      <a class="row series" href="/series/{{ s['ID'] }}">
-        <div>
+      <a class="row series" href="/series/{{ s['ID'] }}" data-title="{{ s['Title']|e }}" data-kind="tv">
+        <img class="row-poster" src="" alt="" loading="lazy" onerror="this.style.display='none'" />
+        <div style="flex:1;min-width:0;">
           <div class="title">{{ s['Title'] }}</div>
           <div class="meta">{{ s.get('Genres','') }} &bull; {{ s.get('Years','N/A') }}</div>
         </div>
@@ -75,6 +78,13 @@
   </div>
     <script src="/static/pwa.js"></script>
   <script>
+    // Load posters
+    document.querySelectorAll('.row[data-title]').forEach(row => {
+      const img = row.querySelector('.row-poster');
+      if (!img) return;
+      fetch('/api/poster?title=' + encodeURIComponent(row.dataset.title) + '&kind=' + row.dataset.kind + (row.dataset.year ? '&year=' + encodeURIComponent(row.dataset.year) : ''))
+        .then(r => r.json()).then(d => { if (d.poster) { img.src = d.poster; img.style.display = 'block'; } }).catch(() => {});
+    });
     fetch('/api/person_photo?name=' + encodeURIComponent({{ actor_name|tojson }}))
       .then(r => r.json())
       .then(d => {

@@ -14,7 +14,8 @@
     h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); margin-bottom: 0.4rem; }
     .subtitle { color: var(--grey); margin-bottom: 2rem; font-size: 0.95rem; }
     .trophy { font-size: 1.5rem; margin-right: 0.5rem; }
-    .entry { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1.2rem; border-left: 4px solid var(--gold); flex-wrap: wrap; transition: transform 0.2s, box-shadow 0.2s; }
+    .entry { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; border-left: 4px solid var(--gold); flex-wrap: wrap; transition: transform 0.2s, box-shadow 0.2s; }
+    .entry-poster { width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0;display:none; }
     .entry:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
     .year { font-size: 1.6rem; font-weight: 700; color: var(--gold); min-width: 60px; }
     .info { flex: 1; min-width: 0; }
@@ -49,6 +50,9 @@
     {% for w in winners %}
     <div class="entry" id="entry-{{ w.year }}">
       <div class="year">{{ w.year }}</div>
+      {% if w.movie_id %}
+      <img class="entry-poster" src="" alt="" loading="lazy" data-title="{{ w.title|e }}" data-id="{{ w.movie_id }}" onerror="this.style.display='none'" />
+      {% endif %}
       <div class="info">
         {% if w.movie_id %}
         <a class="title-link" href="/movie/{{ w.movie_id }}">{{ w.title }}</a>
@@ -69,6 +73,11 @@
   </div>
 
   <script>
+    // Load posters for Oscars entries
+    document.querySelectorAll('.entry-poster[data-title]').forEach(img => {
+      fetch('/api/poster?title=' + encodeURIComponent(img.dataset.title) + '&kind=movie')
+        .then(r => r.json()).then(d => { if (d.poster) { img.src = d.poster; img.style.display = 'block'; } }).catch(() => {});
+    });
     const voted = JSON.parse(localStorage.getItem('oscars_voted') || '{}');
 
     document.querySelectorAll('.seen-section').forEach(sec => {

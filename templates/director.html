@@ -21,7 +21,8 @@
     .signatures { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; }
     .sig-tag { background: rgba(229,9,20,0.15); border: 1px solid rgba(229,9,20,0.4); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; }
     .movie-grid { display: grid; gap: 0.8rem; }
-    .movie-row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--primary); transition: all 0.2s; text-decoration: none; color: var(--text); }
+    .movie-row { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 1rem 1.2rem; display: flex; align-items: center; gap: .75rem; border-left: 3px solid var(--primary); transition: all 0.2s; text-decoration: none; color: var(--text); }
+    .row-poster { width:36px;height:52px;object-fit:cover;border-radius:4px;flex-shrink:0;display:none; }
     .movie-row:hover { background: rgba(229,9,20,0.08); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
     .movie-title { font-weight: 600; font-size: 1rem; }
     .movie-meta { font-size: 0.82rem; color: var(--grey); margin-top: 0.2rem; }
@@ -76,8 +77,9 @@
     <h2>Filmography</h2>
     <div class="movie-grid">
       {% for m in movies %}
-      <a class="movie-row" href="/movie/{{ m['ID'] }}">
-        <div>
+      <a class="movie-row" href="/movie/{{ m['ID'] }}" data-title="{{ m['Movie Name']|e }}" data-year="{{ m.get('Year','')|e }}">
+        <img class="row-poster" src="" alt="" loading="lazy" onerror="this.style.display='none'" />
+        <div style="flex:1;min-width:0;">
           <div class="movie-title">{{ m['Movie Name'] }}</div>
           <div class="movie-meta">{{ m.get('Genre','') }} &bull; {{ m.get('Year','N/A') }}</div>
         </div>
@@ -88,6 +90,13 @@
   </div>
     <script src="/static/pwa.js"></script>
   <script>
+    // Load posters
+    document.querySelectorAll('.movie-row[data-title]').forEach(row => {
+      const img = row.querySelector('.row-poster');
+      if (!img) return;
+      fetch('/api/poster?title=' + encodeURIComponent(row.dataset.title) + '&kind=movie' + (row.dataset.year ? '&year=' + encodeURIComponent(row.dataset.year) : ''))
+        .then(r => r.json()).then(d => { if (d.poster) { img.src = d.poster; img.style.display = 'block'; } }).catch(() => {});
+    });
     fetch('/api/person_photo?name=' + encodeURIComponent({{ director_name|tojson }}))
       .then(r => r.json())
       .then(d => {
