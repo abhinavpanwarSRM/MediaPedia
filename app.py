@@ -4349,6 +4349,9 @@ def game_action(code):
             update['data.position'] = data.get('position', 0)
         
         elif action == 'vote':
+            # Only allow votes during the voting phase (preview_done must be True)
+            if not room.get('data', {}).get('preview_done', False):
+                return jsonify({'error': 'Voting not open yet'}), 400
             song_id = data.get('song_id', '')
             all_votes = room.get('data', {}).get('all_votes', {})
             all_votes[username] = song_id
@@ -4646,13 +4649,14 @@ def on_game_next_song(data):
     if next_index >= len(songs):
         return
     
+    # Do NOT reset data.votes here — Song Detective uses all_votes for scoring
+    # and Music Survivor preview uses this handler too
     game_rooms_collection.update_one(
         {'code': room_code},
         {'$set': {
             'data.current_index': next_index,
             'data.position': 0,
-            'data.state': 'playing',
-            'data.votes': {}
+            'data.state': 'playing'
         }}
     )
     

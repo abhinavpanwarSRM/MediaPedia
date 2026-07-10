@@ -1358,7 +1358,7 @@
       var data = room.data || {};
       var scores = data.scores || {};
       var allSongsData = data.all_songs || data.songs || [];
-      var votesData = data.votes || {};
+      var votesData = data.vote_records || data.all_votes || data.votes || {};
 
       // Find winners (handle ties)
       var maxScore = -1;
