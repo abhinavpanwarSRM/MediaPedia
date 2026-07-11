@@ -619,19 +619,13 @@
             }
             if (e.data === YT.PlayerState.ENDED) {
               clearInterval(progTimer);
-              if (isHost && allVotedForCurrentSong && !isGameFinished) {
-                setTimeout(nextSong, 1500);
-              } else if (isHost && !isGameFinished) {
-                var btn = document.getElementById('play-pause-btn');
-                if (btn) btn.textContent = '▶ Play';
-                isPlaying = false;
-              }
+              isPlaying = false;
+              var btn = document.getElementById('play-pause-btn');
+              if (btn) btn.textContent = '▶ Play';
             }
           },
           onError: function() {
-            if (isHost && !isGameFinished) {
-              setTimeout(nextSong, 1000);
-            }
+            showToast('Video unavailable — use Next Song to skip');
           }
         }
       });
@@ -1343,24 +1337,7 @@
       });
 
       if (allVoted && isHost && (room.players || []).length > 1 && !isGameFinished) {
-        showToast('✅ All players voted! Moving to next song...');
-        setTimeout(function() {
-          var nextIdx = currentIndex + 1;
-          if (nextIdx < allSongs.length) {
-            fetch('/api/games/room/' + roomCode + '/action', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'next_song' })
-            });
-            // Reset votes for next song but keep allVotes
-            votes = {};
-            currentIndex = nextIdx;
-            playSong(currentIndex);
-            syncNextSong();
-          } else {
-            finishGame();
-          }
-        }, 2000);
+        showToast('✅ All players voted! Press Next Song to continue.');
       }
 
       fetchRoomState();
