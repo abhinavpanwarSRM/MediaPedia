@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Movie Battle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <style>
+    :root { --purple:#9c6fe4; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --text:#fff; --muted:#888; --gold:#ffd700; --green:#1db954; --red:#e50914; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:'Poppins',sans-serif; min-height:100vh; }
+    .topnav { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.5rem; border-bottom:1px solid var(--border); position:sticky; top:0; background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); z-index:100; gap:1rem; flex-wrap:wrap; }
+    .topnav a { color:var(--muted); text-decoration:none; font-size:0.85rem; transition:color 0.2s; }
+    .topnav a:hover { color:#fff; }
+    .topnav .brand { color:var(--red); font-weight:700; font-size:1rem; }
+    .topnav .user-link { color:var(--purple); font-weight:600; }
+    .container { max-width:700px; margin:0 auto; padding:2rem 1.2rem 5rem; }
+    h1 { font-size:clamp(1.5rem,5vw,2rem); font-weight:700; color:var(--gold); margin-bottom:0.4rem; }
+    .sub { color:var(--muted); font-size:0.88rem; margin-bottom:2rem; line-height:1.6; }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.4rem; margin-bottom:1.2rem; }
+    .panel h2 { font-size:1rem; font-weight:700; margin-bottom:1rem; }
+    .input-row { display:flex; gap:0.6rem; margin-bottom:0.8rem; flex-wrap:wrap; }
+    input[type=text] { flex:1; min-width:120px; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.9rem; }
+    input:focus { outline:none; border-color:var(--purple); }
+    .btn { padding:0.65rem 1.2rem; border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; border:1px solid; transition:all 0.2s; white-space:nowrap; font-family:'Poppins',sans-serif; }
+    .btn-gold { background:rgba(255,215,0,0.12); border-color:var(--gold); color:var(--gold); }
+    .btn-gold:hover:not(:disabled) { background:rgba(255,215,0,0.25); }
+    .btn-gold:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-purple { background:rgba(156,111,228,0.15); border-color:var(--purple); color:var(--purple); }
+    .btn-purple:hover:not(:disabled) { background:rgba(156,111,228,0.3); }
+    .btn-purple:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-green { background:rgba(29,185,84,0.12); border-color:var(--green); color:var(--green); }
+    .btn-green:hover:not(:disabled) { background:rgba(29,185,84,0.2); }
+    .code-display { font-size:clamp(1.6rem,6vw,2.2rem); font-weight:800; letter-spacing:4px; color:var(--gold); text-align:center; margin:0.5rem 0; cursor:pointer; user-select:all; }
+    .code-hint { text-align:center; font-size:0.72rem; color:var(--muted); margin-bottom:0.8rem; }
+    .players-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem; }
+    .player-chip { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.2); border-radius:20px; padding:0.25rem 0.75rem; font-size:0.78rem; font-weight:600; color:var(--muted); }
+    .player-chip.ready { border-color:var(--gold); color:var(--gold); }
+    .divider { color:var(--muted); font-size:0.8rem; text-align:center; margin:0.6rem 0; }
+    .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
+    .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
+
+    /* Scoreboard */
+    .scoreboard { display:flex; gap:1rem; margin-bottom:1.2rem; }
+    .score-card { flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:0.9rem 1rem; text-align:center; }
+    .score-card.me { border-color:var(--gold); background:rgba(255,215,0,0.06); }
+    .score-card .name { font-size:0.75rem; color:var(--muted); margin-bottom:0.2rem; text-transform:uppercase; letter-spacing:0.5px; }
+    .score-card .pts { font-size:2rem; font-weight:800; color:var(--gold); line-height:1; }
+    .score-card.me .pts { color:var(--gold); }
+
+    /* Question banner */
+    .question-banner { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.2); border-radius:10px; padding:0.8rem 1.2rem; text-align:center; font-size:1rem; font-weight:700; color:var(--gold); margin-bottom:1.2rem; }
+
+    /* Movie cards */
+    .movies-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.2rem; }
+    .movie-card { background:var(--card); border:2px solid var(--border); border-radius:14px; padding:1rem; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; }
+    .movie-card:hover { border-color:var(--gold); background:rgba(255,215,0,0.06); transform:translateY(-2px); }
+    .movie-card.selected { border-color:var(--gold); background:rgba(255,215,0,0.1); }
+    .movie-card.correct { border-color:var(--green); background:rgba(29,185,84,0.08); }
+    .movie-card.wrong { border-color:var(--red); background:rgba(229,9,20,0.06); }
+    .movie-card.winner-reveal { border-color:var(--green); background:rgba(29,185,84,0.08); }
+    .movie-card img { width:100%; border-radius:8px; aspect-ratio:2/3; object-fit:cover; background:#222; margin-bottom:0.6rem; display:block; }
+    .movie-card .poster-placeholder { width:100%; aspect-ratio:2/3; background:rgba(255,255,255,0.04); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:2.5rem; margin-bottom:0.6rem; }
+    .movie-card .title { font-size:0.85rem; font-weight:700; line-height:1.3; margin-bottom:0.3rem; }
+    .movie-card .stat { font-size:0.78rem; color:var(--muted); }
+    .movie-card .stat.revealed { color:var(--gold); font-weight:700; font-size:0.9rem; }
+    .movie-card .badge { position:absolute; top:0.5rem; right:0.5rem; background:var(--green); color:#fff; border-radius:20px; padding:0.15rem 0.5rem; font-size:0.65rem; font-weight:700; }
+    .movie-card .badge.wrong-badge { background:var(--red); }
+
+    /* Round result */
+    .round-result { text-align:center; padding:0.8rem; border-radius:10px; margin-bottom:1rem; font-weight:700; font-size:1rem; }
+    .round-result.win { background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.3); color:var(--green); }
+    .round-result.lose { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.25); color:#ff6b6b; }
+    .round-result.tie { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.2); color:var(--gold); }
+
+    /* Opponent status */
+    .opp-status { text-align:center; font-size:0.82rem; color:var(--muted); margin-bottom:0.8rem; }
+    .opp-status .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:0.4rem; }
+    .opp-status .dot.answered { background:var(--green); }
+
+    .round-label { text-align:center; font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.5rem; }
+
+    .toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%); background:var(--purple); color:#fff; padding:0.6rem 1.5rem; border-radius:40px; font-weight:600; font-size:0.85rem; z-index:9999; opacity:0; transition:opacity 0.3s; pointer-events:none; max-width:90%; text-align:center; }
+    .toast.show { opacity:1; }
+
+    #screen-lobby, #screen-waiting, #screen-game { display:none; }
+    #screen-lobby.active, #screen-waiting.active, #screen-game.active { display:block; }
+
+    @media(max-width:480px) {
+      .movies-grid { grid-template-columns:1fr 1fr; gap:0.6rem; }
+      .movie-card { padding:0.7rem; }
+      .movie-card .title { font-size:0.75rem; }
+      .scoreboard { gap:0.6rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <a href="/games" style="color:var(--gold);font-weight:600;">← Games</a>
+    <a href="/u/{{ username }}" class="user-link">{{ username }}</a>
+  </nav>
+
+  <div class="container">
+    <h1>⚔️ Movie Battle</h1>
+    <p class="sub">2 players. Higher or lower. Which movie has a better IMDb rating, more votes, or grossed more? First to answer wins the point!</p>
+
+    <!-- Lobby -->
+    <div id="screen-lobby" class="active">
+      <div class="panel">
+        <h2>Create or Join a Room</h2>
+        <div class="input-row">
+          <button class="btn btn-gold" onclick="createRoom()" style="width:100%;">+ Create New Room</button>
+        </div>
+        <div class="divider">— or join existing —</div>
+        <div class="input-row">
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')joinRoom()" />
+          <button class="btn btn-gold" onclick="joinRoom()">Join</button>
+        </div>
+        <div class="error-msg" id="lobby-error"></div>
+      </div>
+    </div>
+
+    <!-- Waiting -->
+    <div id="screen-waiting">
+      <div class="panel">
+        <h2>Waiting for Opponent</h2>
+        <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
+        <div class="code-hint">Tap to copy · Need exactly 2 players</div>
+        <div class="players-row" id="players-list"></div>
+        <button class="btn btn-gold" id="ready-btn" onclick="markReady()">Ready ✓</button>
+        <div class="status-msg" id="ready-status"></div>
+      </div>
+    </div>
+
+    <!-- Game -->
+    <div id="screen-game">
+      <div class="round-label" id="round-label">Round 1</div>
+
+      <!-- Scoreboard -->
+      <div class="scoreboard" id="scoreboard"></div>
+
+      <!-- Question -->
+      <div class="question-banner" id="question-banner">Which movie has a higher IMDb rating?</div>
+
+      <!-- Opponent status -->
+      <div class="opp-status" id="opp-status">
+        <span class="dot" id="opp-dot"></span><span id="opp-name">Opponent</span>: waiting...
+      </div>
+
+      <!-- Movies -->
+      <div class="movies-grid" id="movies-grid"></div>
+
+      <!-- Round result -->
+      <div class="round-result" id="round-result" style="display:none;"></div>
+
+      <!-- Next round (host only) -->
+      <div style="text-align:center;" id="next-btn-wrap" style="display:none;">
+        <button class="btn btn-gold" id="next-btn" onclick="nextRound()" style="display:none;">Next Round →</button>
+        <div class="status-msg" id="next-status" style="display:none;">Waiting for host to advance...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const ME = '{{ username }}';
+    let roomCode = null;
+    let isHost = false;
+    let pollTimer = null;
+    let gameState = null;
+    let hasAnswered = false;
+    let myChoice = null;
+    let revealed = false;
+
+    function showScreen(id) {
+      ['screen-lobby','screen-waiting','screen-game'].forEach(s =>
+        document.getElementById(s).classList.remove('active')
+      );
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function copyCode() {
+      if (!roomCode) return;
+      navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ---- Room Management ----
+    async function createRoom() {
+      const btn = event.target; btn.disabled = true; btn.textContent = 'Creating...';
+      try {
+        const res = await fetch('/api/games/room', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({game_type:'movie_battle'})
+        });
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = d.code;
+        isHost = true;
+        enterWaiting();
+      } catch(e) { showToast('Error creating room'); }
+      finally { btn.disabled = false; btn.textContent = '+ Create New Room'; }
+    }
+
+    async function joinRoom() {
+      const code = document.getElementById('join-code').value.trim().toUpperCase();
+      if (!code) { showToast('Enter a room code'); return; }
+      try {
+        const res = await fetch('/api/games/room/' + code + '/join', {method:'POST'});
+        const d = await res.json();
+        if (d.error) { document.getElementById('lobby-error').textContent = d.error; return; }
+        roomCode = code;
+        isHost = false;
+        enterWaiting();
+      } catch(e) { showToast('Error joining room'); }
+    }
+
+    function enterWaiting() {
+      document.getElementById('room-code-display').textContent = roomCode;
+      showScreen('screen-waiting');
+      startPolling();
+    }
+
+    async function markReady() {
+      const btn = document.getElementById('ready-btn');
+      btn.disabled = true;
+      document.getElementById('ready-status').textContent = 'Waiting for opponent...';
+      try {
+        const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
+        const d = await res.json();
+        if (d.started) {
+          const room = await (await fetch('/api/games/room/' + roomCode)).json();
+          handleRoomState(room);
+        } else {
+          document.getElementById('ready-status').textContent = 'Waiting for opponent to ready up...';
+          btn.disabled = false;
+        }
+      } catch(e) {
+        showToast('Error — please try again');
+        btn.disabled = false;
+      }
+    }
+
+    // ---- State Handler ----
+    function handleRoomState(room) {
+      if (!room || room.error) return;
+      gameState = room;
+      isHost = room.host === ME;
+
+      // Update waiting screen players
+      const pl = document.getElementById('players-list');
+      if (pl) {
+        pl.innerHTML = (room.players||[]).map(p =>
+          `<span class="player-chip ${p.ready?'ready':''}">${esc(p.username)}${p.ready?' ✓':''}${room.host===p.username?' 👑':''}</span>`
+        ).join('');
+      }
+
+      if (room.state === 'playing') {
+        renderGame(room);
+      }
+    }
+
+    // ---- Game Rendering ----
+    const Q_LABELS = {
+      rating: 'Which movie has a higher IMDb rating?',
+      votes:  'Which movie has more IMDb votes?',
+      gross:  'Which movie grossed more at the box office?'
+    };
+
+    function renderGame(room) {
+      showScreen('screen-game');
+      const data = room.data || {};
+      const pair = data.current_pair;
+      const scores = data.scores || {};
+      const answers = data.answers || {};
+      const round = data.round || 1;
+      revealed = !!data.revealed;
+
+      // Round label
+      document.getElementById('round-label').textContent = 'Round ' + round;
+
+      // Scoreboard
+      const players = room.players || [];
+      const scoreHTML = players.map(p =>
+        `<div class="score-card ${p.username===ME?'me':''}">
+          <div class="name">${esc(p.username)}${p.username===room.host?' 👑':''}</div>
+          <div class="pts">${scores[p.username]||0}</div>
+        </div>`
+      ).join('');
+      document.getElementById('scoreboard').innerHTML = scoreHTML;
+
+      if (!pair) {
+        document.getElementById('movies-grid').innerHTML = '<div style="color:var(--muted);text-align:center;grid-column:1/-1;padding:2rem;">Loading...</div>';
+        return;
+      }
+
+      // Question
+      document.getElementById('question-banner').textContent = Q_LABELS[pair.q_type] || Q_LABELS.rating;
+
+      // Opponent status
+      const opp = players.find(p => p.username !== ME);
+      const oppAnswered = opp && answers[opp.username] !== undefined;
+      document.getElementById('opp-dot').className = 'dot' + (oppAnswered ? ' answered' : '');
+      document.getElementById('opp-name').textContent = opp ? esc(opp.username) : 'Opponent';
+      document.getElementById('opp-status').querySelector('span:last-child').textContent =
+        (opp ? esc(opp.username) : 'Opponent') + ': ' + (oppAnswered ? '✅ answered' : '⏳ thinking...');
+
+      // Movies grid
+      const movies = pair.movies;
+      hasAnswered = answers[ME] !== undefined;
+      myChoice = hasAnswered ? answers[ME] : null;
+
+      document.getElementById('movies-grid').innerHTML = movies.map((m, i) => {
+        let cardClass = 'movie-card';
+        let badge = '';
+        let statText = '?';
+
+        if (revealed) {
+          const isWinner = i === pair.winner;
+          const myPick = answers[ME];
+          if (isWinner) {
+            cardClass += ' winner-reveal';
+            badge = '<div class="badge">✓ Winner</div>';
+          }
+          if (myPick === i && !isWinner) {
+            cardClass += ' wrong';
+            badge = '<div class="badge wrong-badge">✗</div>';
+          }
+          // Show actual stat
+          if (pair.q_type === 'rating') statText = '★ ' + m.rating.toFixed(1);
+          else if (pair.q_type === 'votes') statText = m.votes.toLocaleString() + ' votes';
+          else statText = '$' + (m.gross/1e6).toFixed(1) + 'M gross';
+        } else {
+          if (myChoice === i) cardClass += ' selected';
+        }
+
+        return `<div class="${cardClass}" id="card-${i}" onclick="pickMovie(${i})" data-idx="${i}">
+          ${badge}
+          <div id="poster-${i}" class="poster-placeholder">🎬</div>
+          <div class="title">${esc(m.title)}</div>
+          <div class="stat ${revealed?'revealed':''}" id="stat-${i}">${revealed ? statText : '?'}</div>
+        </div>`;
+      }).join('');
+
+      // Fetch posters
+      movies.forEach((m, i) => fetchPoster(m.title, i));
+
+      // Round result
+      const resultEl = document.getElementById('round-result');
+      if (revealed) {
+        const myPick = answers[ME];
+        const oppPick = opp ? answers[opp.username] : undefined;
+        const iGotIt = myPick === pair.winner;
+        const oppGotIt = oppPick === pair.winner;
+
+        if (iGotIt && !oppGotIt) {
+          resultEl.className = 'round-result win';
+          resultEl.textContent = '🎉 You got it! +1 point';
+        } else if (!iGotIt && oppGotIt) {
+          resultEl.className = 'round-result lose';
+          resultEl.textContent = '😔 ' + (opp ? opp.username : 'Opponent') + ' got it!';
+        } else if (iGotIt && oppGotIt) {
+          resultEl.className = 'round-result tie';
+          resultEl.textContent = '🤝 Both correct! +1 each';
+        } else {
+          resultEl.className = 'round-result tie';
+          resultEl.textContent = '😬 Both wrong — no points';
+        }
+        resultEl.style.display = 'block';
+
+        // Disable cards
+        document.querySelectorAll('.movie-card').forEach(c => c.style.cursor = 'default');
+      } else {
+        resultEl.style.display = 'none';
+      }
+
+      // Next button (host only, after reveal)
+      const nextWrap = document.getElementById('next-btn-wrap');
+      const nextBtn = document.getElementById('next-btn');
+      const nextStatus = document.getElementById('next-status');
+      nextWrap.style.display = revealed ? 'block' : 'none';
+      if (revealed) {
+        if (isHost) {
+          nextBtn.style.display = 'inline-block';
+          nextStatus.style.display = 'none';
+        } else {
+          nextBtn.style.display = 'none';
+          nextStatus.style.display = 'block';
+        }
+      }
+    }
+
+    async function fetchPoster(title, idx) {
+      try {
+        const res = await fetch('/api/poster?title=' + encodeURIComponent(title) + '&kind=movie');
+        const d = await res.json();
+        const el = document.getElementById('poster-' + idx);
+        if (!el) return;
+        if (d.poster) {
+          el.outerHTML = `<img src="${d.poster}" alt="poster" onerror="this.style.display='none'" id="poster-${idx}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`;
+        }
+      } catch(e) {}
+    }
+
+    async function pickMovie(idx) {
+      if (hasAnswered || revealed) return;
+      hasAnswered = true;
+      myChoice = idx;
+
+      // Highlight selection immediately
+      document.querySelectorAll('.movie-card').forEach((c, i) => {
+        c.classList.toggle('selected', i === idx);
+      });
+
+      try {
+        const res = await fetch('/api/games/room/' + roomCode + '/action', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'answer', choice: idx})
+        });
+        const room = await res.json();
+        handleRoomState(room);
+      } catch(e) { showToast('Error submitting answer'); hasAnswered = false; }
+    }
+
+    async function nextRound() {
+      const btn = document.getElementById('next-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/games/room/' + roomCode + '/action', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'next_round'})
+        });
+        const room = await res.json();
+        handleRoomState(room);
+      } catch(e) { showToast('Error'); }
+      finally { btn.disabled = false; }
+    }
+
+    // ---- Polling ----
+    function startPolling() {
+      clearTimeout(pollTimer);
+      pollTimer = setTimeout(pollRoom, 2000);
+    }
+
+    async function pollRoom() {
+      if (!roomCode || document.hidden) { startPolling(); return; }
+      try {
+        const res = await fetch('/api/games/room/' + roomCode);
+        const room = await res.json();
+        handleRoomState(room);
+      } catch(e) {}
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && roomCode) { clearTimeout(pollTimer); pollRoom(); }
+    });
+
+    showScreen('screen-lobby');
+  </script>
+  <script src="/static/pwa.js"></script>
+</body>
+</html>

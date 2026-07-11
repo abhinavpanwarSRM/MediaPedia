@@ -284,6 +284,14 @@
     .game-card.detective:hover { border-color: rgba(107, 203, 255, 0.25); }
     .game-card.detective h2 { color: #6bcbff; }
 
+    .game-card.battle .game-badge { color: #ffd700; border-color: rgba(255, 215, 0, 0.2); background: rgba(255, 215, 0, 0.08); }
+    .game-card.battle:hover { border-color: rgba(255, 215, 0, 0.25); }
+    .game-card.battle h2 { color: #ffd700; }
+
+    .game-card.battle .game-badge { color: #ffd700; border-color: rgba(255, 215, 0, 0.2); background: rgba(255, 215, 0, 0.08); }
+    .game-card.battle:hover { border-color: rgba(255, 215, 0, 0.25); }
+    .game-card.battle h2 { color: #ffd700; }
+
     /* ---- Responsive ---- */
     @media(min-width: 768px) {
       .games-grid { gap: 2rem; }
@@ -368,6 +376,19 @@
       <p>Everyone submits songs from YouTube. All songs are shuffled and played — guess who submitted each one!</p>
       <div class="game-meta">
         <span class="game-badge">2–8 players</span>
+        <span class="game-status"><span class="dot"></span> Live</span>
+      </div>
+    </a>
+
+    <a href="/games/movie-battle" class="game-card battle">
+      <div class="game-icon-wrap">
+        <span class="game-icon">⚔️</span>
+        <span class="game-icon-ring"></span>
+      </div>
+      <h2>Movie Battle</h2>
+      <p>Two players go head-to-head. Pick which movie has a higher rating, more votes, or grossed more. Never-ending!</p>
+      <div class="game-meta">
+        <span class="game-badge">2 players</span>
         <span class="game-status"><span class="dot"></span> Live</span>
       </div>
     </a>

@@ -3913,6 +3913,54 @@ def get_movie_data():
         log.error('Movie data error: %s', e)
         return jsonify({'error': str(e)}), 500
 
+# ===== MOVIE BATTLE DATA =====
+_battle_df = None
+try:
+    _bd = df.copy()
+    _bd['_votes'] = pd.to_numeric(_bd['Votes'].astype(str).str.replace(',', ''), errors='coerce')
+    _bd['_gross'] = pd.to_numeric(_bd['Gross'].astype(str).str.replace(',', '').str.replace('$', ''), errors='coerce')
+    _bd['_rating'] = pd.to_numeric(_bd['Rating'], errors='coerce')
+    _battle_df = _bd[
+        (_bd['_gross'] > 1_000_000) &
+        (_bd['_votes'] > 50_000) &
+        (_bd['_rating'] >= 5)
+    ].reset_index(drop=True)
+except Exception as _e:
+    log.error('Failed to build battle_df: %s', _e)
+    _battle_df = df.copy()
+
+@app.route('/api/games/battle/pair')
+def battle_pair():
+    """Return 2 random movies + the answer for the given question type."""
+    if _battle_df is None or len(_battle_df) < 2:
+        return jsonify({'error': 'Data unavailable'}), 500
+    q_type = request.args.get('q', 'rating')  # rating | votes | gross
+    sample = _battle_df.sample(2)
+    rows = sample.to_dict(orient='records')
+    movies = []
+    for r in rows:
+        movies.append({
+            'id': int(r['ID']),
+            'title': r['Movie Name'],
+            'rating': float(r['_rating']) if pd.notna(r['_rating']) else 0,
+            'votes': int(r['_votes']) if pd.notna(r['_votes']) else 0,
+            'gross': float(r['_gross']) if pd.notna(r['_gross']) else 0,
+        })
+    if q_type == 'votes':
+        winner = 0 if movies[0]['votes'] >= movies[1]['votes'] else 1
+    elif q_type == 'gross':
+        winner = 0 if movies[0]['gross'] >= movies[1]['gross'] else 1
+    else:
+        winner = 0 if movies[0]['rating'] >= movies[1]['rating'] else 1
+    return jsonify({'movies': movies, 'winner': winner, 'q_type': q_type})
+
+@app.route('/games/movie-battle')
+def movie_battle_page():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('movie_battle.html', username=username)
+
 @app.route('/api/games/room', methods=['POST'])
 def create_game_room():
     username = current_user()
@@ -3922,7 +3970,7 @@ def create_game_room():
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json or {}
     game_type = data.get('game_type', '')
-    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective'):
+    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective', 'movie_battle'):
         return jsonify({'error': 'Invalid game type'}), 400
     code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
     room = {
@@ -3967,6 +4015,12 @@ def create_game_room():
         room['data']['song_states'] = {}
         room['data']['_shuffled'] = False
         room['data']['vote_records'] = {}  # Store all votes for reveal
+    elif game_type == 'movie_battle':
+        room['data']['scores'] = {username: 0}
+        room['data']['round'] = 0
+        room['data']['current_pair'] = None
+        room['data']['answers'] = {}  # {username: 0 or 1}
+        room['data']['revealed'] = False
     
     game_rooms_collection.insert_one(room)
     return jsonify({'code': code}), 201
@@ -4019,7 +4073,8 @@ def join_game_room(code):
         return jsonify({'error': 'Game already started'}), 400
     if any(p['username'] == username for p in room['players']):
         return jsonify({'code': code})
-    if len(room['players']) >= 8:
+    max_players = 2 if room.get('game_type') == 'movie_battle' else 8
+    if len(room['players']) >= max_players:
         return jsonify({'error': 'Room full'}), 400
     game_rooms_collection.update_one(
         {'code': code},
@@ -4083,6 +4138,31 @@ def ready_game_room(code):
             # state transition once all players have submitted their songs.
             # Just mark ready and return started: False so players keep waiting.
             return jsonify({'started': False})
+        
+        elif room['game_type'] == 'movie_battle':
+            q_types = ['rating', 'votes', 'gross']
+            q_type = q_types[0]
+            pair = None
+            if _battle_df is not None and len(_battle_df) >= 2:
+                sample = _battle_df.sample(2)
+                rows = sample.to_dict(orient='records')
+                movies = []
+                for r in rows:
+                    movies.append({
+                        'id': int(r['ID']),
+                        'title': r['Movie Name'],
+                        'rating': float(r['_rating']) if pd.notna(r['_rating']) else 0,
+                        'votes': int(r['_votes']) if pd.notna(r['_votes']) else 0,
+                        'gross': float(r['_gross']) if pd.notna(r['_gross']) else 0,
+                    })
+                winner_idx = 0 if movies[0]['rating'] >= movies[1]['rating'] else 1
+                pair = {'movies': movies, 'winner': winner_idx, 'q_type': q_type}
+            scores = {p['username']: 0 for p in room['players']}
+            update['data.current_pair'] = pair
+            update['data.scores'] = scores
+            update['data.answers'] = {}
+            update['data.revealed'] = False
+            update['data.round'] = 1
         
         game_rooms_collection.update_one({'code': code}, {'$set': update})
         return jsonify({'started': True})
@@ -4474,6 +4554,61 @@ def game_action(code):
                 for p in room['players']:
                     won = (p['username'] != real_impostor and correct) or (p['username'] == real_impostor and not correct)
                     _save_game_stats(p['username'], 'movie_impostor', won)
+
+    # ============ MOVIE BATTLE ============
+    elif game_type == 'movie_battle':
+
+        if action == 'answer':
+            choice = data.get('choice')  # 0 or 1
+            if choice not in (0, 1):
+                return jsonify({'error': 'choice must be 0 or 1'}), 400
+            answers = room.get('data', {}).get('answers', {})
+            answers[username] = choice
+            update['data.answers'] = answers
+
+            # If both players answered, score and reveal
+            all_players = [p['username'] for p in room['players']]
+            if len(answers) >= len(all_players) and len(all_players) == 2:
+                winner_idx = room.get('data', {}).get('current_pair', {}).get('winner', -1)
+                scores = room.get('data', {}).get('scores', {})
+                for p in all_players:
+                    if answers.get(p) == winner_idx:
+                        scores[p] = scores.get(p, 0) + 1
+                update['data.scores'] = scores
+                update['data.revealed'] = True
+
+        elif action == 'next_round':
+            if room.get('host') != username:
+                return jsonify({'error': 'Only host can advance'}), 403
+            q_types = ['rating', 'votes', 'gross']
+            rnd = room.get('data', {}).get('round', 0)
+            q_type = q_types[rnd % 3]
+            # Pick a new pair server-side
+            if _battle_df is not None and len(_battle_df) >= 2:
+                sample = _battle_df.sample(2)
+                rows = sample.to_dict(orient='records')
+                movies = []
+                for r in rows:
+                    movies.append({
+                        'id': int(r['ID']),
+                        'title': r['Movie Name'],
+                        'rating': float(r['_rating']) if pd.notna(r['_rating']) else 0,
+                        'votes': int(r['_votes']) if pd.notna(r['_votes']) else 0,
+                        'gross': float(r['_gross']) if pd.notna(r['_gross']) else 0,
+                    })
+                if q_type == 'votes':
+                    winner_idx = 0 if movies[0]['votes'] >= movies[1]['votes'] else 1
+                elif q_type == 'gross':
+                    winner_idx = 0 if movies[0]['gross'] >= movies[1]['gross'] else 1
+                else:
+                    winner_idx = 0 if movies[0]['rating'] >= movies[1]['rating'] else 1
+                pair = {'movies': movies, 'winner': winner_idx, 'q_type': q_type}
+            else:
+                pair = None
+            update['data.current_pair'] = pair
+            update['data.answers'] = {}
+            update['data.revealed'] = False
+            update['data.round'] = rnd + 1
 
     if update:
         game_rooms_collection.update_one({'code': code}, {'$set': update})
