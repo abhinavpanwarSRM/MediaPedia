@@ -4699,7 +4699,7 @@ def delete_watch_link(name):
     watch_links_collection.delete_one({'name': name, 'type': link_type})
     return jsonify({'success': True})
 
-@app.route('/api/watch_links/seed', methods=['POST'])
+@app.route('/api/watch_links/seed', methods=['GET', 'POST'])
 def seed_watch_links():
     if current_user() != 'abhinav':
         return jsonify({'error': 'Unauthorized'}), 403
