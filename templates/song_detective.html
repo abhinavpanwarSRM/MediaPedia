@@ -586,9 +586,11 @@
     let hasVoted = false;
     let selectedGuess = null;
     let votes = {};
+    let allVotes = {};
     let songStates = {};
     let allVotedForCurrentSong = false;
     let voteLocked = false;
+    let isStartingGame = false;
 
     // YouTube player
     let ytPlayer = null;
@@ -737,10 +739,27 @@
       if (codeDisplay) codeDisplay.textContent = roomCode;
       var hostControls = document.getElementById('host-controls');
       if (hostControls) hostControls.style.display = isHost ? 'block' : 'none';
-      showScreen('add-songs');
+      
+      // Fetch room state first to get songs_per_player
+      fetchRoomState().then(function() {
+        showScreen('add-songs');
+        // Update UI with current songs_per_player
+        updateSongsPerPlayerUI();
+      });
+      
       connectSocket();
-      fetchRoomState();
       startPolling();
+    }
+
+    function updateSongsPerPlayerUI() {
+      if (gameState && gameState.data && gameState.data.songs_per_player != null) {
+        songsPerPlayer = gameState.data.songs_per_player;
+        var neededEl = document.getElementById('needed-count');
+        var inputEl = document.getElementById('songs-per-player');
+        if (neededEl) neededEl.textContent = songsPerPlayer;
+        if (inputEl) inputEl.value = songsPerPlayer;
+        updateProgress();
+      }
     }
 
     // ---- Socket.IO ----
@@ -818,6 +837,7 @@
       var input = document.getElementById('songs-per-player');
       var val = parseInt(input?.value) || 2;
       if (val < 1 || val > 5) { showToast('Please enter 1-5 songs per player'); return; }
+      
       songsPerPlayer = val;
       var statusEl = document.getElementById('song-count-status');
       if (statusEl) {
@@ -831,6 +851,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'set_song_count', count: val })
       });
+      
+      // Update UI for all players by fetching room state
       fetchRoomState();
     }
 
@@ -959,8 +981,9 @@
       if (countEl) countEl.textContent = mySongs.length;
       if (neededEl) neededEl.textContent = songsPerPlayer;
       if (btn) {
-        btn.disabled = mySongs.length < songsPerPlayer;
-        btn.textContent = mySongs.length >= songsPerPlayer ? '✅ Done — Start Game' : 'Add ' + (songsPerPlayer - mySongs.length) + ' more song' + (songsPerPlayer - mySongs.length > 1 ? 's' : '');
+        var remaining = songsPerPlayer - mySongs.length;
+        btn.disabled = remaining > 0;
+        btn.textContent = remaining <= 0 ? '✅ Done — Start Game' : 'Add ' + remaining + ' more song' + (remaining > 1 ? 's' : '');
       }
     }
 
@@ -969,6 +992,9 @@
         showToast('Add ' + (songsPerPlayer - mySongs.length) + ' more song' + (songsPerPlayer - mySongs.length > 1 ? 's' : ''));
         return;
       }
+      if (isStartingGame) return;
+      isStartingGame = true;
+      
       var btn = document.getElementById('done-adding-btn');
       if (btn) btn.disabled = true;
       var statusEl = document.getElementById('add-status');
@@ -987,13 +1013,11 @@
       updateProgress();
       if (statusEl) statusEl.textContent = 'Songs submitted! Waiting for others...';
 
-      var res = await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
-      var data = await res.json();
-      
-      if (data.started) {
-        if (statusEl) statusEl.textContent = '✅ Starting game...';
-        setTimeout(fetchRoomState, 1000);
-      }
+      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+
+      if (statusEl) statusEl.textContent = '⏳ Waiting for other players...';
+      isStartingGame = false;
+      // Polling will detect when all players submit and game transitions to playing
     }
 
     // ---- Playing ----
@@ -1001,6 +1025,8 @@
       isGameFinished = false;
       showScreen('playing');
       allSongs = room.data?.songs || [];
+      allVotes = room.data?.all_votes || {};
+      votes = room.data?.votes || {};
       
       if (allSongs.length > 0 && !room.data?._shuffled) {
         allSongs = shuffleArray(allSongs);
@@ -1032,7 +1058,6 @@
       hasVoted = false;
       allVotedForCurrentSong = false;
       voteLocked = false;
-      votes = room.data?.votes || {};
       songStates = room.data?.song_states || {};
 
       updateSkipButtons();
@@ -1130,13 +1155,15 @@
       if (!currentSong) { bar.innerHTML = ''; return; }
       var songId = currentSong.id;
 
+      // Use allVotes for persistent vote tracking
+      var currentVotes = allVotes || {};
       bar.innerHTML = (room.players || []).map(function(p) {
-        var hasVoted = votes[p.username] && votes[p.username][songId];
+        var hasVoted = currentVotes[p.username] && currentVotes[p.username][songId];
         return '<span class="voter-chip ' + (hasVoted ? 'done' : '') + '">' + esc(p.username) + ' ' + (hasVoted ? '✅' : '⏳') + '</span>';
       }).join('');
 
       var allVoted = (room.players || []).every(function(p) {
-        return votes[p.username] && votes[p.username][songId];
+        return currentVotes[p.username] && currentVotes[p.username][songId];
       });
       allVotedForCurrentSong = allVoted;
 
@@ -1162,8 +1189,9 @@
       var currentSong = allSongs[currentIndex];
       if (currentSong && nextBtn) {
         var songId = currentSong.id;
+        var currentVotes = allVotes || {};
         var allVoted = (room.players || []).every(function(p) {
-          return votes[p.username] && votes[p.username][songId];
+          return currentVotes[p.username] && currentVotes[p.username][songId];
         });
         var hasPlayers = (room.players || []).length >= 2;
         nextBtn.disabled = !allVoted || !hasPlayers || isGameFinished;
@@ -1240,8 +1268,9 @@
       if (!currentSong) return;
 
       var songId = currentSong.id;
+      var currentVotes = allVotes || {};
       var allVoted = (room.players || []).every(function(p) {
-        return votes[p.username] && votes[p.username][songId];
+        return currentVotes[p.username] && currentVotes[p.username][songId];
       });
 
       if (!allVoted && (room.players || []).length > 1) {
@@ -1262,6 +1291,8 @@
         body: JSON.stringify({ action: 'next_song' })
       });
 
+      // Reset votes for next song, but keep allVotes
+      votes = {};
       currentIndex = nextIdx;
       playSong(currentIndex);
       syncNextSong();
@@ -1290,7 +1321,10 @@
         })
       });
 
-      // Store my vote locally - IMPORTANT: Use the actual selected guess
+      // Store my vote locally
+      if (!allVotes[ME]) allVotes[ME] = {};
+      allVotes[ME][song.id] = selectedGuess;
+      
       if (!votes[ME]) votes[ME] = {};
       votes[ME][song.id] = selectedGuess;
 
@@ -1305,7 +1339,7 @@
 
       var room = gameState || { players: [] };
       var allVoted = (room.players || []).every(function(p) {
-        return votes[p.username] && votes[p.username][song.id];
+        return allVotes[p.username] && allVotes[p.username][song.id];
       });
 
       if (allVoted && isHost && (room.players || []).length > 1 && !isGameFinished) {
@@ -1318,6 +1352,8 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ action: 'next_song' })
             });
+            // Reset votes for next song but keep allVotes
+            votes = {};
             currentIndex = nextIdx;
             playSong(currentIndex);
             syncNextSong();
@@ -1407,12 +1443,12 @@
         }).join('');
       }
 
-      // Full reveal - get my guesses from votesData[ME]
+      // Full reveal - get my guesses from votesData
       var revealsList = document.getElementById('reveals-list');
       if (revealsList) {
         revealsList.innerHTML = allSongsData.map(function(s) {
           var songId = s.id;
-          // Get my guess from votesData using ME
+          // Get my guess from votesData
           var myGuess = 'No guess';
           if (votesData[ME] && votesData[ME][songId]) {
             myGuess = votesData[ME][songId];
@@ -1456,6 +1492,17 @@
       gameState = room;
       isHost = room.host === ME;
 
+      // Always sync songs_per_player from server
+      if (room.data && room.data.songs_per_player != null) {
+        songsPerPlayer = room.data.songs_per_player;
+        var neededEl = document.getElementById('needed-count');
+        var inputEl = document.getElementById('songs-per-player');
+        if (neededEl) neededEl.textContent = songsPerPlayer;
+        if (inputEl) inputEl.value = songsPerPlayer;
+        updateProgress();
+      }
+
+      // Update players list
       var pl = document.getElementById('players-list');
       if (pl) {
         pl.innerHTML = (room.players || []).map(function(p) {
@@ -1465,20 +1512,20 @@
         }).join('');
       }
 
+      allVotes = room.data?.all_votes || {};
       votes = room.data?.votes || {};
       songStates = room.data?.song_states || {};
 
+      // State transitions
       if (room.state === 'lobby') {
         var allReady = (room.players || []).length >= 2 && (room.players || []).every(function(p) { return p.ready; });
         var hasSongCount = room.data?.songs_per_player > 0;
 
         if (allReady && hasSongCount) {
-          var count = room.data.songs_per_player;
-          songsPerPlayer = count;
-          var neededEl = document.getElementById('needed-count');
-          if (neededEl) neededEl.textContent = count;
-          updateProgress();
-          showScreen('add-songs');
+          // Check if we're already in add-songs or need to transition
+          if (!document.getElementById('screen-add-songs')?.classList?.contains('active')) {
+            showScreen('add-songs');
+          }
         }
       } else if (room.state === 'playing') {
         var hasSongs = room.data?.songs && room.data.songs.length > 0;
@@ -1521,7 +1568,10 @@
         var res = await fetch('/api/games/room/' + roomCode);
         var room = await res.json();
         handleRoomState(room);
-      } catch(e) {}
+        return room;
+      } catch(e) {
+        return null;
+      }
     }
 
     async function pollRoom() {

@@ -4048,17 +4048,10 @@ def ready_game_room(code):
             update['data.all_answered'] = False
             
         elif room['game_type'] == 'song_detective':
-            songs_per_player = room.get('data', {}).get('songs_per_player', 0)
-            if songs_per_player > 0:
-                player_songs = {}
-                for p in room['players']:
-                    player_songs[p['username']] = []
-                update['data.player_songs'] = player_songs
-                update['data._shuffled'] = False
-                update['data.all_votes'] = {}  # Persistent vote storage
-                update['data.vote_records'] = {}  # Store all votes
-            else:
-                return jsonify({'started': False, 'song_count_set': False})
+            # Don't transition song_detective here — submit_song handles the
+            # state transition once all players have submitted their songs.
+            # Just mark ready and return started: False so players keep waiting.
+            return jsonify({'started': False})
         
         game_rooms_collection.update_one({'code': code}, {'$set': update})
         return jsonify({'started': True})
