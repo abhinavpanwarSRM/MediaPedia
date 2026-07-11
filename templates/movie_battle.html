@@ -153,6 +153,7 @@
       <!-- Next round (host only) -->
       <div style="text-align:center;" id="next-btn-wrap" style="display:none;">
         <button class="btn btn-gold" id="next-btn" onclick="nextRound()" style="display:none;">Next Round →</button>
+        <button class="btn btn-purple" id="end-btn" onclick="endGame()" style="display:none;margin-left:0.5rem;">End Game</button>
         <div class="status-msg" id="next-status" style="display:none;">Waiting for host to advance...</div>
       </div>
     </div>
@@ -267,9 +268,40 @@
         ).join('');
       }
 
-      if (room.state === 'playing') {
+      if (room.state === 'finished') {
+        renderFinished(room);
+      } else if (room.state === 'playing') {
         renderGame(room);
       }
+    }
+
+    function renderFinished(room) {
+      showScreen('screen-game');
+      const data = room.data || {};
+      const scores = data.scores || {};
+      const winner = data.winner;
+      const players = room.players || [];
+      const round = data.round || 1;
+      document.getElementById('round-label').textContent = 'Game Over';
+      const scoreHTML = players.map(p =>
+        `<div class="score-card ${p.username===ME?'me':''}">
+          <div class="name">${esc(p.username)}${p.username===room.host?' 👑':''}</div>
+          <div class="pts">${scores[p.username]||0}</div>
+        </div>`
+      ).join('');
+      document.getElementById('scoreboard').innerHTML = scoreHTML;
+      document.getElementById('movies-grid').innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:2rem;">
+          <div style="font-size:2.5rem;margin-bottom:0.8rem;">${winner === ME ? '🏆' : '🎬'}</div>
+          <div style="font-size:1.3rem;font-weight:700;color:var(--gold);margin-bottom:0.4rem;">
+            ${winner ? esc(winner) + ' wins!' : 'Draw!'}
+          </div>
+          <div style="color:var(--muted);font-size:0.88rem;">${round} rounds played</div>
+          <a href="/games" style="display:inline-block;margin-top:1.5rem;padding:0.6rem 1.4rem;background:rgba(156,111,228,0.15);border:1px solid var(--purple);border-radius:8px;color:var(--purple);text-decoration:none;font-size:0.88rem;font-weight:600;">Back to Games</a>
+        </div>`;
+      document.getElementById('round-result').style.display = 'none';
+      document.getElementById('next-btn-wrap').style.display = 'none';
+      document.getElementById('opp-status').style.display = 'none';
     }
 
     // ---- Game Rendering ----
@@ -423,6 +455,9 @@
         if (isHost) {
           nextBtn.style.display = 'inline-block';
           nextStatus.style.display = 'none';
+          // Show end game button after at least 1 round
+          const endBtn = document.getElementById('end-btn');
+          if (endBtn) endBtn.style.display = 'inline-block';
         } else {
           nextBtn.style.display = 'none';
           nextStatus.style.display = 'block';
@@ -498,6 +533,19 @@
         handleRoomState(room);
       } catch(e) { showToast('Error'); }
       finally { btn.disabled = false; }
+    }
+
+    async function endGame() {
+      const btn = document.getElementById('end-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/games/room/' + roomCode + '/action', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'finish'})
+        });
+        const room = await res.json();
+        handleRoomState(room);
+      } catch(e) { showToast('Error'); btn.disabled = false; }
     }
 
     // ---- Polling ----

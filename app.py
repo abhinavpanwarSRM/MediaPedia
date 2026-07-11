@@ -4438,6 +4438,16 @@ def game_action(code):
                 update['data.scores'] = scores
                 update['data.revealed'] = True
 
+        elif action == 'finish':
+            if room.get('host') != username:
+                return jsonify({'error': 'Only host can finish'}), 403
+            scores = room.get('data', {}).get('scores', {})
+            winner = max(scores, key=scores.get) if scores else None
+            update['state'] = 'finished'
+            update['data.winner'] = winner
+            for p in room['players']:
+                _save_game_stats(p['username'], 'movie_battle', p['username'] == winner)
+
         elif action == 'next_round':
             if room.get('host') != username:
                 return jsonify({'error': 'Only host can advance'}), 403
