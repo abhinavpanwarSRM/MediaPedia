@@ -4634,6 +4634,97 @@ def get_game_stats(target_username):
     doc = game_stats_collection.find_one({'username': target_username}, {'_id': 0})
     return jsonify(doc or {})
 
+# ===== Watch Links =====
+watch_links_collection = None
+try:
+    if db is not None:
+        watch_links_collection = db.watch_links
+        watch_links_collection.create_index('name', unique=True)
+except Exception as e:
+    log.error('Failed to init watch_links: %s', e)
+
+@app.route('/api/watch_links', methods=['GET'])
+def get_watch_links():
+    if watch_links_collection is None:
+        return jsonify([])
+    links = list(watch_links_collection.find({}, {'_id': 0}).sort('order', 1))
+    return jsonify(links)
+
+@app.route('/api/watch_links', methods=['POST'])
+def add_watch_link():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if watch_links_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    name = data.get('name', '').strip()
+    url_template = data.get('url_template', '').strip()
+    if not name or not url_template:
+        return jsonify({'error': 'name and url_template required'}), 400
+    count = watch_links_collection.count_documents({})
+    watch_links_collection.update_one(
+        {'name': name},
+        {'$set': {'name': name, 'url_template': url_template, 'order': count}},
+        upsert=True
+    )
+    return jsonify({'success': True}), 201
+
+@app.route('/api/watch_links/<name>', methods=['PUT'])
+def update_watch_link(name):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if watch_links_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    update = {}
+    if 'url_template' in data:
+        update['url_template'] = data['url_template'].strip()
+    if 'name' in data:
+        update['name'] = data['name'].strip()
+    if not update:
+        return jsonify({'error': 'Nothing to update'}), 400
+    watch_links_collection.update_one({'name': name}, {'$set': update})
+    return jsonify({'success': True})
+
+@app.route('/api/watch_links/<name>', methods=['DELETE'])
+def delete_watch_link(name):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if watch_links_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    watch_links_collection.delete_one({'name': name})
+    return jsonify({'success': True})
+
+@app.route('/api/watch_links/seed', methods=['POST'])
+def seed_watch_links():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if watch_links_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    defaults = [
+        {'name': 'YTS',           'url_template': 'https://en.ytsrs.com/movies/?search={q}'},
+        {'name': 'TorrentMovie',  'url_template': 'https://torrentmovie.net/search?query={q}'},
+        {'name': 'LookMovie2',    'url_template': 'https://www.lookmovie2.to/movies/search?q={q}'},
+        {'name': 'HdMovic',       'url_template': 'https://hdmovic.com/?s={q}'},
+        {'name': 'FreeMovieTVApps','url_template': 'https://freemovietvapps.com/search/{q}.html'},
+        {'name': 'Flixtor',       'url_template': 'https://flixtor.mov/browser?keyword={q}'},
+        {'name': 'ThirdMovies',   'url_template': 'https://thirdmovies.net/?s={q}'},
+        {'name': 'MovHub',        'url_template': 'https://movhub.ws/browser?keyword={q}'},
+        {'name': '1HD',           'url_template': 'https://1hd.gg/search?keyword={q}'},
+        {'name': 'TMovie',        'url_template': 'https://tmovie.tv/search?query={q}'},
+        {'name': 'Noxx',          'url_template': 'https://noxx.to/browse?q={q}'},
+    ]
+    inserted = 0
+    for i, link in enumerate(defaults):
+        result = watch_links_collection.update_one(
+            {'name': link['name']},
+            {'$setOnInsert': {**link, 'order': i}},
+            upsert=True
+        )
+        if result.upserted_id:
+            inserted += 1
+    return jsonify({'seeded': inserted})
+
 # ===== GAME CLEANUP =====
 @app.route('/api/games/cleanup', methods=['POST'])
 def cleanup_game_rooms():
