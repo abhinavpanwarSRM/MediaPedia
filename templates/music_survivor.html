@@ -1088,8 +1088,16 @@
         if (eliminated) {
           const allSongs = data.all_songs || [];
           const elSong = allSongs.find(s => s.id === eliminated);
+          const songLabel = elSong ? `${elSong.title} — ${elSong.artist}` : eliminated;
           banner.classList.remove('hidden');
-          banner.textContent = `❌ Eliminated: ${elSong ? elSong.title + ' — ' + elSong.artist : eliminated}`;
+          if (data.is_tiebreak) {
+            const method = data.tiebreak_method === 'views'
+              ? '📊 Tiebreak by views (least popular)'
+              : '🎲 Tiebreak (random)';
+            banner.innerHTML = `${method} — ❌ Eliminated: <strong>${esc(songLabel)}</strong>`;
+          } else {
+            banner.textContent = `❌ Eliminated: ${songLabel}`;
+          }
         } else {
           banner.classList.add('hidden');
         }

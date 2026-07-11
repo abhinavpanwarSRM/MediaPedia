@@ -4038,6 +4038,12 @@ def ready_game_room(code):
                 player_songs[p['username']] = []
             update['data.player_songs'] = player_songs
             update['data.all_votes'] = {}
+            # Shuffle songs so order doesn't reveal who submitted what
+            songs = room.get('data', {}).get('songs', [])
+            if songs:
+                _random.shuffle(songs)
+                update['data.songs'] = songs
+                update['data.all_songs'] = songs
             
         elif room['game_type'] == 'movie_impostor':
             players = room['players']
@@ -4360,7 +4366,51 @@ def game_action(code):
                 vote_counts = Counter(votes.values())
                 max_votes = max(vote_counts.values())
                 eliminated_candidates = [sid for sid, count in vote_counts.items() if count == max_votes]
-                eliminated = _random.choice(eliminated_candidates) if eliminated_candidates else None
+                
+                is_tiebreak = len(eliminated_candidates) > 1
+                tiebreak_method = None
+                
+                if is_tiebreak:
+                    # Fetch view counts for tied songs and eliminate least viewed
+                    all_songs_data = room.get('data', {}).get('songs', [])
+                    tied_songs = [s for s in all_songs_data if s.get('id') in eliminated_candidates]
+                    video_ids = [s['youtube_query'] for s in tied_songs if s.get('youtube_query')]
+                    
+                    view_counts = {}
+                    if video_ids:
+                        for key_name in ['YOUTUBE_API_KEY_1','YOUTUBE_API_KEY_2','YOUTUBE_API_KEY_3','YOUTUBE_API_KEY_4','YOUTUBE_API_KEY_5']:
+                            api_key = os.getenv(key_name, '')
+                            if not api_key:
+                                continue
+                            try:
+                                resp = http_requests.get(
+                                    'https://www.googleapis.com/youtube/v3/videos',
+                                    params={'part': 'statistics', 'id': ','.join(video_ids), 'key': api_key},
+                                    timeout=5
+                                )
+                                if resp.status_code == 200:
+                                    for item in resp.json().get('items', []):
+                                        vid = item['id']
+                                        vc = int(item.get('statistics', {}).get('viewCount', 0))
+                                        view_counts[vid] = vc
+                                    break
+                            except Exception:
+                                continue
+                    
+                    if view_counts:
+                        # Map song id -> view count, eliminate lowest
+                        song_views = {}
+                        for s in tied_songs:
+                            vid = s.get('youtube_query', '')
+                            song_views[s['id']] = view_counts.get(vid, 0)
+                        eliminated = min(song_views, key=song_views.get)
+                        tiebreak_method = 'views'
+                    else:
+                        # Fallback to random if API failed
+                        eliminated = _random.choice(eliminated_candidates)
+                        tiebreak_method = 'random'
+                else:
+                    eliminated = eliminated_candidates[0] if eliminated_candidates else None
                 
                 if eliminated:
                     songs = room.get('data', {}).get('songs', [])
@@ -4369,11 +4419,13 @@ def game_action(code):
                     update['data.votes'] = {}
                     update['data.all_votes'] = {}
                     update['data.eliminated'] = eliminated
+                    update['data.is_tiebreak'] = is_tiebreak
+                    update['data.tiebreak_method'] = tiebreak_method
                     update['round'] = room.get('round', 1) + 1
                     update['data.current_index'] = 0
                     update['data.state'] = 'stopped'
                     update['data.position'] = 0
-                    update['data.vote_records'] = votes  # Store votes for history
+                    update['data.vote_records'] = votes
                     
                     if len(songs) <= 1:
                         update['state'] = 'finished'
