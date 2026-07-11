@@ -688,6 +688,8 @@
         if (data.index !== undefined && !isGameFinished) {
           previewIndex = data.index;
           if (document.getElementById('screen-preview')?.classList?.contains('active')) {
+            clearInterval(previewInterval);
+            if (ytPlayer) ytPlayer.stopVideo();
             playPreviewSong(previewIndex);
           }
         }
@@ -890,6 +892,7 @@
       previewIndex = 0;
       hasVotedThisRound = false;
       voteLocked = false;
+      _previewDoneSent = false;
 
       document.getElementById('host-controls-preview').style.display = isHost ? 'flex' : 'none';
       document.getElementById('host-controls-hint').style.display = isHost ? 'none' : 'block';
@@ -936,6 +939,7 @@
       previewSeconds = 0;
       clearInterval(previewInterval);
       previewInterval = setInterval(() => {
+        if (!isPlaying) return;
         previewSeconds++;
         const progress = Math.min(100, (previewSeconds / previewDuration) * 100);
         document.getElementById('preview-progress').style.width = progress + '%';

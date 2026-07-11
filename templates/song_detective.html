@@ -1014,6 +1014,13 @@
       // Polling will detect when all players submit and game transitions to playing
     }
 
+    function showWaitingForSongs() {
+      var statusEl = document.getElementById('add-status');
+      if (statusEl) statusEl.textContent = '✅ Songs submitted! Waiting for others to submit...';
+      var btn = document.getElementById('done-adding-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Waiting...'; }
+    }
+
     // ---- Playing ----
     function startPlaying(room) {
       isGameFinished = false;
@@ -1021,16 +1028,7 @@
       allSongs = room.data?.songs || [];
       allVotes = room.data?.all_votes || {};
       votes = room.data?.votes || {};
-      
-      if (allSongs.length > 0 && !room.data?._shuffled) {
-        allSongs = shuffleArray(allSongs);
-        fetch('/api/games/room/' + roomCode + '/action', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'shuffle_songs', songs: allSongs })
-        });
-      }
-      
+
       if (!allSongs.length) {
         var statusEl = document.getElementById('vote-status');
         if (statusEl) statusEl.textContent = 'No songs available!';
@@ -1508,8 +1506,12 @@
         var hasSongs = room.data?.songs && room.data.songs.length > 0;
 
         if (!hasSongs) {
-          if (!document.getElementById('screen-add-songs')?.classList?.contains('active')) {
+          // Still waiting for all players to submit songs
+          if (document.getElementById('screen-add-songs')?.classList?.contains('active')) {
+            showWaitingForSongs();
+          } else {
             showScreen('add-songs');
+            showWaitingForSongs();
           }
           return;
         }

@@ -384,6 +384,7 @@
 
     function enterWaiting() {
       document.getElementById('room-code-display').textContent = roomCode;
+      _voteScreenBuilt = false;
       showScreen('screen-waiting');
       connectSocket();
       startPolling();
@@ -393,13 +394,18 @@
       const btn = document.getElementById('ready-btn');
       btn.disabled = true;
       document.getElementById('ready-status').textContent = 'Waiting for others...';
-      const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
-      const d = await res.json();
-      if (d.started) {
-        const room = await (await fetch('/api/games/room/' + roomCode)).json();
-        handleRoomState(room);
-      } else {
-        document.getElementById('ready-status').textContent = 'Waiting for all players to ready up...';
+      try {
+        const res = await fetch('/api/games/room/' + roomCode + '/ready', {method:'POST'});
+        const d = await res.json();
+        if (d.started) {
+          const room = await (await fetch('/api/games/room/' + roomCode)).json();
+          handleRoomState(room);
+        } else {
+          document.getElementById('ready-status').textContent = 'Waiting for all players to ready up...';
+          btn.disabled = false;
+        }
+      } catch(e) {
+        showToast('Error — please try again');
         btn.disabled = false;
       }
     }
@@ -409,7 +415,7 @@
       if (!room || room.error) return;
       gameState = room;
       isHost = room.host === ME;
-      
+
       // Update players
       const pl = document.getElementById('players-list');
       if (pl) {
@@ -420,13 +426,19 @@
 
       // Show host badge in vote screen
       document.getElementById('host-badge-vote').classList.toggle('hidden', !isHost);
-      
-      if (room.state === 'playing' && room.round >= 1) { 
+
+      if (room.state === 'playing' && room.round >= 1) {
         if (!movieDataLoaded) {
+          // Derive amImpostor from the room data so refresh works correctly.
+          // get_game_room strips data.impostor for non-finished games, so we
+          // can't read it here — but revealMovie sets amImpostor from the
+          // first full response (which includes impostor for the playing player
+          // via the socket game_state event on join). If movieDataLoaded is
+          // false we always call revealMovie which sets amImpostor correctly.
           revealMovie(room);
         }
-      } else if (room.state === 'finished') { 
-        showResult(room); 
+      } else if (room.state === 'finished') {
+        showResult(room);
       }
     }
 
@@ -434,11 +446,16 @@
     function revealMovie(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
+      // The GET endpoint strips data.impostor for security, but the socket
+      // game_state event on join sends the full document. Either way, we
+      // determine amImpostor by checking if pair[1] is present (only sent
+      // to the impostor via the initial socket join) or by the impostor field.
       const pair = data.movie_pair || [];
-      const impostor = data.impostor;
-      amImpostor = impostor === ME;
+      const impostor = data.impostor;  // present only in socket join payload
+      amImpostor = impostor ? (impostor === ME) : false;
       questions = data.questions || [];
-      myMovie = amImpostor ? pair[1] : pair[0];
+      // pair[0] = everyone's movie, pair[1] = impostor's movie (only in socket payload)
+      myMovie = (amImpostor && pair[1]) ? pair[1] : pair[0];
       movieDataLoaded = true;
 
       // Notify others via socket
@@ -650,7 +667,7 @@
         const qCount = (room.data||{}).questions?.length || questions.length;
         return ans[p.username] && ans[p.username].length >= qCount;
       });
-      
+
       if (allAnswered && !document.getElementById('screen-vote').classList.contains('active')) {
         document.getElementById('answers-status').textContent = '✅ All players answered!';
         setTimeout(() => buildVoteScreen(room), 1000);
@@ -658,6 +675,7 @@
     }
 
     function startPollingForVoting() {
+      // Stop the main poller before starting the voting poller to avoid both running
       clearTimeout(pollTimer);
       pollTimer = setTimeout(pollForVoting, 2500);
     }
@@ -682,7 +700,10 @@
     }
 
     // ---- Voting ----
+    let _voteScreenBuilt = false;
     function buildVoteScreen(room) {
+      if (_voteScreenBuilt) return;  // guard against double-call
+      _voteScreenBuilt = true;
       clearTimeout(pollTimer);
       hasVoted = false;
       const data = room.data || {};
