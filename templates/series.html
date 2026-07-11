@@ -1608,112 +1608,87 @@
       document.head.appendChild(style);
     </script>
     <script>
-      document
-        .getElementById("link-series-btn")
-        .addEventListener("click", openLinksModal);
+      document.getElementById("link-series-btn").addEventListener("click", openLinksModal);
+      const _isAdmin = {{ 'true' if username == 'abhinav' else 'false' }};
 
       function openLinksModal() {
-        const seriesName = "{{ series['Title'] }}";
-        const encodedName = encodeURIComponent(seriesName);
+        const seriesTitle = "{{ series['Title'] }}";
+        const encodedName = encodeURIComponent(seriesTitle);
+        fetch('/api/watch_links?type=series')
+          .then(r => r.json())
+          .then(links => _renderLinksModal(links, encodedName));
+      }
 
-        const links = [
-          {
-            name: "SeriesOnline",
-            url: `https://seriesonline.sx/search/${encodedName}`,
-          },
-          {
-            name: "Series2Watch",
-            url: `https://series2watch.net/search/${encodedName}`,
-          },
-          {
-            name: "Noxx",
-            url: `https://noxx.to/browse?q=${encodedName}`,
-          },
-          {
-            name: "1HD",
-            url: `https://1hd.gg/search?keyword=${encodedName}`,
-          },
-          {
-            name: "Flixtor",
-            url: `https://flixtor.mov/browser?keyword=${encodedName}`,
-          },
-        ];
+      function _renderLinksModal(links, encodedName) {
+        document.getElementById('_links-overlay')?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = '_links-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:3000;display:flex;align-items:center;justify-content:center;';
 
-        const overlay = document.createElement("div");
-        overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 3000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+        const linksHtml = links.map(link => {
+          const url = link.url_template.replace('{q}', encodedName);
+          return `<div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.6rem;">
+            <a href="${url}" target="_blank"
+              style="flex:1;display:block;padding:0.7rem;background:rgba(255,255,255,0.05);border-left:4px solid var(--primary);color:white;text-decoration:none;border-radius:6px;transition:background 0.2s;"
+              onmouseover="this.style.background='rgba(0,136,182,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+              ${link.name}
+            </a>
+            ${_isAdmin ? `<button onclick="_editLink('${link.name}','${link.url_template.replace(/'/g,"&#39;")}')"
+              style="background:none;border:1px solid #555;color:#aaa;border-radius:4px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.75rem;">✏️</button>
+              <button onclick="_deleteLink('${link.name}')"
+              style="background:none;border:1px solid #ff4757;color:#ff4757;border-radius:4px;padding:0.3rem 0.5rem;cursor:pointer;font-size:0.75rem;">🗑</button>` : ''}
+          </div>`;
+        }).join('');
+
+        const adminAdd = _isAdmin ? `
+          <div style="margin-top:1rem;border-top:1px solid rgba(255,255,255,0.1);padding-top:0.8rem;">
+            <p style="color:#aaa;font-size:0.78rem;margin:0 0 0.4rem;">Add new link (use {q} for series name)</p>
+            <input id="_new-link-name" placeholder="Name" style="width:100%;padding:0.4rem 0.6rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:#fff;font-size:0.85rem;margin-bottom:0.4rem;">
+            <input id="_new-link-url" placeholder="URL template e.g. https://site.com/search?q={q}" style="width:100%;padding:0.4rem 0.6rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:#fff;font-size:0.85rem;margin-bottom:0.4rem;">
+            <button onclick="_addLink()" style="width:100%;padding:0.45rem;background:var(--primary);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:0.85rem;">Add Link</button>
+          </div>` : '';
 
         overlay.innerHTML = `
-      <div style="
-        width: 90%;
-        max-width: 420px;
-        max-height: 70vh;
-        background: var(--card-bg);
-        border-radius: 10px;
-        padding: 1.2rem;
-        overflow-y: auto;
-        border: 1px solid rgba(255,255,255,0.1);
-      ">
-        <div style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        ">
-          <h3 style="margin:0; color:white;">Watch Links</h3>
-          <button onclick="this.parentElement.parentElement.parentElement.remove()"
-            style="
-              background:none;
-              border:none;
-              color:white;
-              font-size:22px;
-              cursor:pointer;
-            ">
-            ×
-          </button>
-        </div>
-
-        ${links
-          .map(
-            (link) => `
-          <a href="${link.url}" target="_blank"
-            style="
-              display:block;
-              padding:0.7rem;
-              margin-bottom:0.6rem;
-              background: rgba(255,255,255,0.05);
-              border-left: 4px solid var(--primary);
-              color:white;
-              text-decoration:none;
-              border-radius:6px;
-              transition: background 0.2s ease;
-            "
-            onmouseover="this.style.background='rgba(0,136,182,0.3)'"
-            onmouseout="this.style.background='rgba(255,255,255,0.05)'"
-          >
-            ${link.name}
-          </a>
-        `,
-          )
-          .join("")}
-      </div>
-    `;
+          <div style="width:90%;max-width:440px;max-height:80vh;background:var(--card-bg);border-radius:10px;padding:1.2rem;overflow-y:auto;border:1px solid rgba(255,255,255,0.1);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+              <h3 style="margin:0;color:white;">Watch Links</h3>
+              <button onclick="document.getElementById('_links-overlay').remove()" style="background:none;border:none;color:white;font-size:22px;cursor:pointer;">×</button>
+            </div>
+            <div id="_links-list">${linksHtml}</div>
+            ${adminAdd}
+          </div>`;
 
         document.body.appendChild(overlay);
-
-        document.addEventListener("keydown", function escClose(e) {
-          if (e.key === "Escape") {
-            overlay.remove();
-            document.removeEventListener("keydown", escClose);
-          }
+        document.addEventListener('keydown', function escClose(e) {
+          if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', escClose); }
         });
+      }
+
+      function _addLink() {
+        const name = document.getElementById('_new-link-name').value.trim();
+        const url_template = document.getElementById('_new-link-url').value.trim();
+        if (!name || !url_template) return;
+        fetch('/api/watch_links?type=series', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, url_template, type: 'series'})
+        }).then(() => openLinksModal());
+      }
+
+      function _deleteLink(name) {
+        if (!confirm(`Delete "${name}"?`)) return;
+        fetch('/api/watch_links/' + encodeURIComponent(name) + '?type=series', {method: 'DELETE'})
+          .then(() => openLinksModal());
+      }
+
+      function _editLink(name, currentTemplate) {
+        const newTemplate = prompt(`Edit URL template for "${name}":`, currentTemplate);
+        if (!newTemplate || newTemplate === currentTemplate) return;
+        fetch('/api/watch_links/' + encodeURIComponent(name) + '?type=series', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url_template: newTemplate})
+        }).then(() => openLinksModal());
       }
     </script>
   

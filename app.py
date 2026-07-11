@@ -4639,7 +4639,7 @@ watch_links_collection = None
 try:
     if db is not None:
         watch_links_collection = db.watch_links
-        watch_links_collection.create_index('name', unique=True)
+        watch_links_collection.create_index([('type', 1), ('name', 1)], unique=True)
 except Exception as e:
     log.error('Failed to init watch_links: %s', e)
 
@@ -4647,7 +4647,8 @@ except Exception as e:
 def get_watch_links():
     if watch_links_collection is None:
         return jsonify([])
-    links = list(watch_links_collection.find({}, {'_id': 0}).sort('order', 1))
+    link_type = request.args.get('type', 'movie')
+    links = list(watch_links_collection.find({'type': link_type}, {'_id': 0}).sort('order', 1))
     return jsonify(links)
 
 @app.route('/api/watch_links', methods=['POST'])
@@ -4659,12 +4660,13 @@ def add_watch_link():
     data = request.json or {}
     name = data.get('name', '').strip()
     url_template = data.get('url_template', '').strip()
+    link_type = request.args.get('type', data.get('type', 'movie'))
     if not name or not url_template:
         return jsonify({'error': 'name and url_template required'}), 400
-    count = watch_links_collection.count_documents({})
+    count = watch_links_collection.count_documents({'type': link_type})
     watch_links_collection.update_one(
-        {'name': name},
-        {'$set': {'name': name, 'url_template': url_template, 'order': count}},
+        {'name': name, 'type': link_type},
+        {'$set': {'name': name, 'url_template': url_template, 'type': link_type, 'order': count}},
         upsert=True
     )
     return jsonify({'success': True}), 201
@@ -4675,6 +4677,7 @@ def update_watch_link(name):
         return jsonify({'error': 'Unauthorized'}), 403
     if watch_links_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
+    link_type = request.args.get('type', 'movie')
     data = request.json or {}
     update = {}
     if 'url_template' in data:
@@ -4683,7 +4686,7 @@ def update_watch_link(name):
         update['name'] = data['name'].strip()
     if not update:
         return jsonify({'error': 'Nothing to update'}), 400
-    watch_links_collection.update_one({'name': name}, {'$set': update})
+    watch_links_collection.update_one({'name': name, 'type': link_type}, {'$set': update})
     return jsonify({'success': True})
 
 @app.route('/api/watch_links/<name>', methods=['DELETE'])
@@ -4692,7 +4695,8 @@ def delete_watch_link(name):
         return jsonify({'error': 'Unauthorized'}), 403
     if watch_links_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
-    watch_links_collection.delete_one({'name': name})
+    link_type = request.args.get('type', 'movie')
+    watch_links_collection.delete_one({'name': name, 'type': link_type})
     return jsonify({'success': True})
 
 @app.route('/api/watch_links/seed', methods=['POST'])
@@ -4702,22 +4706,35 @@ def seed_watch_links():
     if watch_links_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     defaults = [
-        {'name': 'YTS',           'url_template': 'https://en.ytsrs.com/movies/?search={q}'},
-        {'name': 'TorrentMovie',  'url_template': 'https://torrentmovie.net/search?query={q}'},
-        {'name': 'LookMovie2',    'url_template': 'https://www.lookmovie2.to/movies/search?q={q}'},
-        {'name': 'HdMovic',       'url_template': 'https://hdmovic.com/?s={q}'},
-        {'name': 'FreeMovieTVApps','url_template': 'https://freemovietvapps.com/search/{q}.html'},
-        {'name': 'Flixtor',       'url_template': 'https://flixtor.mov/browser?keyword={q}'},
-        {'name': 'ThirdMovies',   'url_template': 'https://thirdmovies.net/?s={q}'},
-        {'name': 'MovHub',        'url_template': 'https://movhub.ws/browser?keyword={q}'},
-        {'name': '1HD',           'url_template': 'https://1hd.gg/search?keyword={q}'},
-        {'name': 'TMovie',        'url_template': 'https://tmovie.tv/search?query={q}'},
-        {'name': 'Noxx',          'url_template': 'https://noxx.to/browse?q={q}'},
+        # Movies
+        {'type': 'movie', 'name': 'YTS',            'url_template': 'https://en.ytsrs.com/movies/?search={q}'},
+        {'type': 'movie', 'name': 'TorrentMovie',   'url_template': 'https://torrentmovie.net/search?query={q}'},
+        {'type': 'movie', 'name': 'LookMovie2',     'url_template': 'https://www.lookmovie2.to/movies/search?q={q}'},
+        {'type': 'movie', 'name': 'HdMovic',        'url_template': 'https://hdmovic.com/?s={q}'},
+        {'type': 'movie', 'name': 'FreeMovieTVApps','url_template': 'https://freemovietvapps.com/search/{q}.html'},
+        {'type': 'movie', 'name': 'Flixtor',        'url_template': 'https://flixtor.mov/browser?keyword={q}'},
+        {'type': 'movie', 'name': 'ThirdMovies',    'url_template': 'https://thirdmovies.net/?s={q}'},
+        {'type': 'movie', 'name': 'MovHub',         'url_template': 'https://movhub.ws/browser?keyword={q}'},
+        {'type': 'movie', 'name': '1HD',            'url_template': 'https://1hd.gg/search?keyword={q}'},
+        {'type': 'movie', 'name': 'TMovie',         'url_template': 'https://tmovie.tv/search?query={q}'},
+        {'type': 'movie', 'name': 'Noxx',           'url_template': 'https://noxx.to/browse?q={q}'},
+        # Series
+        {'type': 'series', 'name': 'SeriesOnline',  'url_template': 'https://seriesonline.sx/search/{q}'},
+        {'type': 'series', 'name': 'Series2Watch',  'url_template': 'https://series2watch.net/search/{q}'},
+        {'type': 'series', 'name': 'Noxx',          'url_template': 'https://noxx.to/browse?q={q}'},
+        {'type': 'series', 'name': '1HD',           'url_template': 'https://1hd.gg/search?keyword={q}'},
+        {'type': 'series', 'name': 'Flixtor',       'url_template': 'https://flixtor.mov/browser?keyword={q}'},
     ]
+    # Drop old index and recreate with type+name unique
+    try:
+        watch_links_collection.drop_index('name_1')
+    except Exception:
+        pass
+    watch_links_collection.create_index([('type', 1), ('name', 1)], unique=True)
     inserted = 0
     for i, link in enumerate(defaults):
         result = watch_links_collection.update_one(
-            {'name': link['name']},
+            {'type': link['type'], 'name': link['name']},
             {'$setOnInsert': {**link, 'order': i}},
             upsert=True
         )
