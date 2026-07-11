@@ -41,7 +41,6 @@
     .error-msg { color:#ff6b6b; font-size:0.82rem; margin-top:0.5rem; min-height:1.2em; }
     .status-msg { text-align:center; color:var(--muted); font-size:0.85rem; margin:0.8rem 0; }
 
-    /* Scoreboard */
     .scoreboard { display:flex; gap:1rem; margin-bottom:1.2rem; }
     .score-card { flex:1; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:0.9rem 1rem; text-align:center; }
     .score-card.me { border-color:var(--gold); background:rgba(255,215,0,0.06); }
@@ -49,10 +48,8 @@
     .score-card .pts { font-size:2rem; font-weight:800; color:var(--gold); line-height:1; }
     .score-card.me .pts { color:var(--gold); }
 
-    /* Question banner */
     .question-banner { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.2); border-radius:10px; padding:0.8rem 1.2rem; text-align:center; font-size:1rem; font-weight:700; color:var(--gold); margin-bottom:1.2rem; }
 
-    /* Movie cards */
     .movies-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.2rem; }
     .movie-card { background:var(--card); border:2px solid var(--border); border-radius:14px; padding:1rem; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; }
     .movie-card:hover { border-color:var(--gold); background:rgba(255,215,0,0.06); transform:translateY(-2px); }
@@ -68,13 +65,11 @@
     .movie-card .badge { position:absolute; top:0.5rem; right:0.5rem; background:var(--green); color:#fff; border-radius:20px; padding:0.15rem 0.5rem; font-size:0.65rem; font-weight:700; }
     .movie-card .badge.wrong-badge { background:var(--red); }
 
-    /* Round result */
     .round-result { text-align:center; padding:0.8rem; border-radius:10px; margin-bottom:1rem; font-weight:700; font-size:1rem; }
     .round-result.win { background:rgba(29,185,84,0.1); border:1px solid rgba(29,185,84,0.3); color:var(--green); }
     .round-result.lose { background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.25); color:#ff6b6b; }
     .round-result.tie { background:rgba(255,215,0,0.08); border:1px solid rgba(255,215,0,0.2); color:var(--gold); }
 
-    /* Opponent status */
     .opp-status { text-align:center; font-size:0.82rem; color:var(--muted); margin-bottom:0.8rem; }
     .opp-status .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); margin-right:0.4rem; }
     .opp-status .dot.answered { background:var(--green); }
@@ -174,6 +169,11 @@
     let hasAnswered = false;
     let myChoice = null;
     let revealed = false;
+    
+    // Poster cache - stores posters by title to prevent re-fetching
+    const posterCache = {};
+    // Track if posters are currently being fetched
+    const fetchingPosters = {};
 
     function showScreen(id) {
       ['screen-lobby','screen-waiting','screen-game'].forEach(s =>
@@ -279,6 +279,10 @@
       gross:  'Which movie grossed more at the box office?'
     };
 
+    // Track the current pair ID to detect changes
+    let currentPairId = null;
+    let postersRendered = false;
+
     function renderGame(room) {
       showScreen('screen-game');
       const data = room.data || {};
@@ -287,6 +291,14 @@
       const answers = data.answers || {};
       const round = data.round || 1;
       revealed = !!data.revealed;
+
+      // Check if we have a new pair
+      const newPairId = pair ? pair.movies.map(m => m.id).join('-') : null;
+      const isNewPair = newPairId !== currentPairId;
+      if (isNewPair) {
+        currentPairId = newPairId;
+        postersRendered = false;
+      }
 
       // Round label
       document.getElementById('round-label').textContent = 'Round ' + round;
@@ -322,6 +334,7 @@
       hasAnswered = answers[ME] !== undefined;
       myChoice = hasAnswered ? answers[ME] : null;
 
+      // Build movie cards with cached posters
       document.getElementById('movies-grid').innerHTML = movies.map((m, i) => {
         let cardClass = 'movie-card';
         let badge = '';
@@ -338,7 +351,6 @@
             cardClass += ' wrong';
             badge = '<div class="badge wrong-badge">✗</div>';
           }
-          // Show actual stat
           if (pair.q_type === 'rating') statText = '★ ' + m.rating.toFixed(1);
           else if (pair.q_type === 'votes') statText = m.votes.toLocaleString() + ' votes';
           else statText = '$' + (m.gross/1e6).toFixed(1) + 'M gross';
@@ -346,16 +358,32 @@
           if (myChoice === i) cardClass += ' selected';
         }
 
+        // Check if poster is cached
+        const cachedPoster = posterCache[m.title];
+        const posterHtml = cachedPoster 
+          ? `<img src="${cachedPoster}" alt="poster" id="poster-${i}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`
+          : `<div id="poster-${i}" class="poster-placeholder">🎬</div>`;
+
         return `<div class="${cardClass}" id="card-${i}" onclick="pickMovie(${i})" data-idx="${i}">
           ${badge}
-          <div id="poster-${i}" class="poster-placeholder">🎬</div>
+          ${posterHtml}
           <div class="title">${esc(m.title)}</div>
           <div class="stat ${revealed?'revealed':''}" id="stat-${i}">${revealed ? statText : '?'}</div>
         </div>`;
       }).join('');
 
-      // Fetch posters
-      movies.forEach((m, i) => fetchPoster(m.title, i));
+      // Fetch posters only if not already cached and not currently fetching
+      movies.forEach((m, i) => {
+        if (!posterCache[m.title] && !fetchingPosters[m.title]) {
+          fetchPoster(m.title, i);
+        } else if (posterCache[m.title]) {
+          // If cached, update the element
+          const posterEl = document.getElementById('poster-' + i);
+          if (posterEl && posterEl.tagName !== 'IMG') {
+            posterEl.outerHTML = `<img src="${posterCache[m.title]}" alt="poster" id="poster-${i}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`;
+          }
+        }
+      });
 
       // Round result
       const resultEl = document.getElementById('round-result');
@@ -403,15 +431,39 @@
     }
 
     async function fetchPoster(title, idx) {
+      // If already cached or currently fetching, skip
+      if (posterCache[title]) return;
+      if (fetchingPosters[title]) {
+        // Wait for the ongoing fetch
+        const checkInterval = setInterval(() => {
+          if (posterCache[title]) {
+            clearInterval(checkInterval);
+            const posterEl = document.getElementById('poster-' + idx);
+            if (posterEl && posterEl.tagName !== 'IMG') {
+              posterEl.outerHTML = `<img src="${posterCache[title]}" alt="poster" id="poster-${idx}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`;
+            }
+          }
+        }, 500);
+        return;
+      }
+
+      fetchingPosters[title] = true;
+
       try {
         const res = await fetch('/api/poster?title=' + encodeURIComponent(title) + '&kind=movie');
         const d = await res.json();
-        const el = document.getElementById('poster-' + idx);
-        if (!el) return;
+        const posterEl = document.getElementById('poster-' + idx);
+        if (!posterEl) return;
+        
         if (d.poster) {
-          el.outerHTML = `<img src="${d.poster}" alt="poster" onerror="this.style.display='none'" id="poster-${idx}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`;
+          posterCache[title] = d.poster;
+          posterEl.outerHTML = `<img src="${d.poster}" alt="poster" id="poster-${idx}" style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;margin-bottom:0.6rem;display:block;" />`;
         }
-      } catch(e) {}
+      } catch(e) {
+        // Silent fail
+      } finally {
+        delete fetchingPosters[title];
+      }
     }
 
     async function pickMovie(idx) {
