@@ -89,23 +89,24 @@
 
     /* LEADERBOARD */
     .leaderboard-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; }
-    .leaderboard { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 420px; }
-    .lb-row { display: grid; grid-template-columns: 60px 1fr repeat(4,80px); align-items: center;
-               padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,215,0,0.07); transition: background 0.2s; gap: 0.5rem; }
+    .leaderboard { background: rgba(255,255,255,0.03); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 480px; }
+    .lb-row { display: grid; grid-template-columns: 44px 1fr 56px 56px 64px 56px; align-items: center;
+               padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,215,0,0.07); transition: background 0.2s; gap: 0.4rem; }
     .lb-row:last-child { border-bottom: none; }
     .lb-row:hover { background: rgba(255,215,0,0.05); }
-    .lb-row.header { background: rgba(255,215,0,0.08); font-size: 0.72rem; letter-spacing: 1px;
-                      text-transform: uppercase; color: var(--gold2); font-weight: 600; }
-    .lb-rank { font-size: 1.4rem; text-align: center; }
-    .lb-name { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; }
-    .lb-name a { color: var(--text); text-decoration: none; transition: color 0.2s; }
+    .lb-row.header { background: rgba(255,215,0,0.08); font-size: 0.68rem; letter-spacing: 1px;
+                      text-transform: uppercase; color: var(--gold2); font-weight: 600; padding: 0.6rem 1rem; }
+    .lb-rank { font-size: 1.2rem; text-align: center; line-height: 1; }
+    .lb-name { font-weight: 600; font-size: 0.88rem; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+    .lb-name a { color: var(--text); text-decoration: none; transition: color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .lb-name a:hover { color: var(--gold); }
-    .player-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
-    .lb-stat { text-align: center; font-size: 0.9rem; color: #ccc; }
-    .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 1rem; }
+    .lb-name-inner { display: flex; flex-direction: column; min-width: 0; }
+    .player-av { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.7rem; flex-shrink: 0; }
+    .lb-stat { text-align: center; font-size: 0.85rem; color: #ccc; white-space: nowrap; }
+    .lb-stat.gold { color: var(--gold); font-weight: 700; font-size: 0.95rem; }
     .lb-champion { background: rgba(255,215,0,0.07) !important; border-left: 3px solid var(--gold); }
-    .form-pills { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
-    .form-pill { font-size: .58rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: .5px; }
+    .form-pills { display: flex; gap: 2px; margin-top: 3px; flex-wrap: nowrap; }
+    .form-pill { font-size: .55rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; letter-spacing: .5px; }
     .fp-w { background: rgba(46,213,115,.2); color: #2ed573; border: 1px solid rgba(46,213,115,.3); }
     .fp-l { background: rgba(255,71,87,.15); color: #ff6b6b; border: 1px solid rgba(255,71,87,.25); }
 
@@ -346,17 +347,19 @@
             {% set av_colors = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'} %}
             {% set av_color = av_colors.get(p.username, '#888') %}
             <div class="player-av" style="background:{{ av_color }}20;border:1.5px solid {{ av_color }};color:{{ av_color }};">{{ p.display_name[0]|upper }}</div>
-            {% if p.username %}
-              <a href="/u/{{ p.username }}">{{ p.display_name }}</a>
-            {% else %}
-              {{ p.display_name }}
-            {% endif %}
-            {% set form = form_guide.get(p.username, []) %}
-            {% if form %}
-            <div class="form-pills">
-              {% for r in form %}<span class="form-pill {{ 'fp-w' if r=='W' else 'fp-l' }}">{{ r }}</span>{% endfor %}
+            <div class="lb-name-inner">
+              {% if p.username %}
+                <a href="/u/{{ p.username }}">{{ p.display_name }}</a>
+              {% else %}
+                {{ p.display_name }}
+              {% endif %}
+              {% set form = form_guide.get(p.username, []) %}
+              {% if form %}
+              <div class="form-pills">
+                {% for r in form %}<span class="form-pill {{ 'fp-w' if r=='W' else 'fp-l' }}">{{ r }}</span>{% endfor %}
+              </div>
+              {% endif %}
             </div>
-            {% endif %}
           </div>
           <div class="lb-stat">{{ p.editions_played }}</div>
           <div class="lb-stat">{{ p.game_wins }}</div>
