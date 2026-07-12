@@ -3,354 +3,805 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gartic Phone</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <title>🎨 Gartic Phone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
+    <link rel="manifest" href="/static/manifest.json">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* ===== RESET & BASE ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
             background: #0a0a0a;
             color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        /* ===== TOP NAV ===== */
+        .topnav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            background: rgba(10,10,10,0.95);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .topnav a {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+            white-space: nowrap;
+        }
+        .topnav a:hover { color: #fff; }
+        .topnav .brand {
+            color: #ff6b6b;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: -0.5px;
+        }
+        .topnav .brand span { color: #ffd93d; }
+        .topnav .user-link {
+            color: #9c6fe4;
+            font-weight: 600;
         }
 
         /* ===== LOBBY ===== */
         #lobby {
             max-width: 480px;
             margin: 10vh auto;
-            padding: 2rem 1.5rem;
-            background: #1a1a1a;
-            border-radius: 24px;
-            border: 1px solid #2a2a2a;
+            padding: 2.5rem 2rem;
+            background: linear-gradient(145deg, #1a1a1a, #141414);
+            border-radius: 32px;
+            border: 1px solid rgba(255,107,107,0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
             text-align: center;
         }
-        #lobby h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-        #lobby h1 span { color: #ff6b6b; }
-        #lobby p { color: #888; margin-bottom: 1.5rem; }
+        
+        #lobby h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin-bottom: 0.3rem;
+            background: linear-gradient(135deg, #ff6b6b, #ff8a5c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        #lobby .subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
         .inp {
             width: 100%;
-            padding: 0.8rem 1rem;
+            padding: 0.9rem 1.2rem;
             background: rgba(255,255,255,0.05);
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
+            border: 2px solid #2a2a2a;
+            border-radius: 16px;
             color: #fff;
-            font-size: 1rem;
+            font-size: 1.1rem;
             margin-bottom: 0.8rem;
             text-align: center;
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             font-weight: 700;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
         }
-        .inp:focus { outline: none; border-color: #ff6b6b; }
+        
+        .inp:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px rgba(255,107,107,0.1);
+        }
+        
+        .inp::placeholder {
+            letter-spacing: 1px;
+            font-weight: 400;
+            color: #555;
+        }
+        
         .btn {
             width: 100%;
-            padding: 0.8rem;
+            padding: 0.9rem;
             border: none;
-            border-radius: 12px;
+            border-radius: 16px;
             font-weight: 700;
-            font-size: 1rem;
+            font-size: 1.05rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            overflow: hidden;
         }
-        .btn-primary { background: #ff6b6b; color: #000; }
-        .btn-primary:hover { background: #ff8787; transform: translateY(-2px); }
-        .btn-secondary { background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; }
-        .btn-secondary:hover { background: rgba(255,107,107,0.1); }
-        .divider { color: #555; margin: 1.2rem 0; position: relative; }
-        .divider::before, .divider::after {
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b, #ff4757);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(255,107,107,0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255,107,107,0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0px);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,107,107,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .btn-gold {
+            background: linear-gradient(135deg, #ffd93d, #f6b83d);
+            color: #000;
+            box-shadow: 0 4px 20px rgba(255,217,61,0.3);
+        }
+        
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255,217,61,0.4);
+        }
+        
+        .divider {
+            color: #555;
+            margin: 1.5rem 0;
+            position: relative;
+            font-size: 0.85rem;
+        }
+        
+        .divider::before,
+        .divider::after {
             content: '';
             position: absolute;
             top: 50%;
-            width: calc(50% - 30px);
+            width: calc(50% - 35px);
             height: 1px;
             background: #2a2a2a;
         }
+        
         .divider::before { left: 0; }
         .divider::after { right: 0; }
 
         /* ===== ROOM ===== */
-        #room { display: none; min-height: 100vh; padding: 1rem; }
-        #room.active { display: block; }
+        #room {
+            display: none;
+            min-height: 100vh;
+            padding: 1rem;
+            background: #0a0a0a;
+        }
+        
+        #room.active {
+            display: block;
+        }
 
+        /* ===== HEADER ===== */
         .room-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.8rem 1rem;
-            background: #1a1a1a;
-            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(145deg, #1a1a1a, #141414);
+            border-radius: 20px;
             border: 1px solid #2a2a2a;
             margin-bottom: 1rem;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.8rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
+        
         .room-code {
-            font-size: 1.2rem;
-            font-weight: 700;
-            letter-spacing: 4px;
-            color: #ff6b6b;
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 6px;
+            background: linear-gradient(135deg, #ff6b6b, #ff8a5c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            cursor: pointer;
         }
-        .room-players { display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1; }
-        .player-chip {
-            padding: 0.2rem 0.8rem;
-            background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            font-size: 0.8rem;
-            border: 1px solid #2a2a2a;
-        }
-        .player-chip.host { border-color: #ffd93d; color: #ffd93d; }
-        .player-chip.you { border-color: #ff6b6b; color: #ff6b6b; }
-
-        /* ===== GAME AREA ===== */
-        .game-area {
-            background: #1a1a1a;
-            border-radius: 16px;
-            border: 1px solid #2a2a2a;
-            padding: 1.5rem;
-            min-height: 300px;
-            text-align: center;
-        }
-        .game-status {
-            color: #888;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-        .game-prompt {
-            font-size: 1.2rem;
-            margin: 1rem 0;
-            color: #ffd93d;
-        }
-        .game-prompt strong { color: #fff; }
-
-        /* ===== SUBMISSION ===== */
-        .submission-area textarea {
-            width: 100%;
-            padding: 0.8rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 1rem;
-            resize: vertical;
-            min-height: 80px;
-            font-family: inherit;
-        }
-        .submission-area textarea:focus { outline: none; border-color: #ff6b6b; }
-        .submission-area canvas {
-            width: 100%;
-            max-width: 400px;
-            height: 300px;
-            background: #111;
-            border-radius: 12px;
-            border: 1px solid #2a2a2a;
-            touch-action: none;
-            cursor: crosshair;
-        }
-        .drawing-tools {
+        
+        .room-players {
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
-            justify-content: center;
-            margin: 0.8rem 0;
+            flex: 1;
         }
-        .drawing-tools button {
+        
+        .player-chip {
+            padding: 0.3rem 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid #2a2a2a;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-weight: 500;
+        }
+        
+        .player-chip.host {
+            border-color: #ffd93d;
+            color: #ffd93d;
+            background: rgba(255,217,61,0.05);
+        }
+        
+        .player-chip.you {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            background: rgba(255,107,107,0.05);
+        }
+        
+        .player-chip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .player-chip .dot.online { background: #6bcb77; }
+        .player-chip .dot.offline { background: #555; }
+
+        .btn-leave {
+            padding: 0.4rem 1.2rem;
+            background: rgba(255,107,107,0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 12px;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .btn-leave:hover {
+            background: rgba(255,107,107,0.2);
+            transform: scale(1.05);
+        }
+
+        /* ===== GAME AREA ===== */
+        .game-area {
+            background: linear-gradient(145deg, #1a1a1a, #141414);
+            border-radius: 20px;
+            border: 1px solid #2a2a2a;
+            padding: 2rem;
+            min-height: 400px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .game-status {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+        }
+        
+        .game-prompt {
+            font-size: 1.4rem;
+            margin: 1rem 0 1.5rem 0;
+            text-align: center;
+            color: #ffd93d;
+            padding: 1rem;
+            background: rgba(255,217,61,0.05);
+            border-radius: 16px;
+            border: 1px dashed rgba(255,217,61,0.2);
+            font-weight: 600;
+        }
+        
+        .game-prompt strong {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .hidden { display: none !important; }
+
+        /* ===== LOBBY STATE ===== */
+        #lobby-state .waiting-players {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+        
+        .waiting-player {
+            padding: 0.5rem 1.2rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            font-size: 0.95rem;
+            border: 1px solid #2a2a2a;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .waiting-player.you {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            background: rgba(255,107,107,0.05);
+        }
+        
+        .waiting-player.submitted {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        /* ===== WRITING STATE ===== */
+        .submission-area textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid #2a2a2a;
+            border-radius: 16px;
+            color: #fff;
+            font-size: 1.1rem;
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .submission-area textarea:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px rgba(255,107,107,0.05);
+        }
+        
+        .submission-area textarea:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .char-counter {
+            text-align: right;
+            color: #555;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+            font-weight: 500;
+        }
+        
+        .char-counter.warning { color: #ffd93d; }
+        .char-counter.danger { color: #ff6b6b; }
+
+        /* ===== DRAWING STATE - Premium ===== */
+        .drawing-container {
+            position: relative;
+            background: #ffffff;
+            border-radius: 16px;
+            border: 2px solid #2a2a2a;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        
+        .drawing-container canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            touch-action: none;
+            cursor: crosshair;
+            background: #ffffff;
+            min-height: 400px;
+        }
+        
+        .drawing-tools {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(0,0,0,0.4);
+            border-radius: 16px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .tool-group {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .tool-group-label {
+            color: #888;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 0.3rem;
+            font-weight: 600;
+        }
+        
+        .tool-btn {
             padding: 0.4rem 0.8rem;
             background: rgba(255,255,255,0.05);
             border: 1px solid #2a2a2a;
             border-radius: 8px;
             color: #fff;
             cursor: pointer;
-            font-size: 0.8rem;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
         }
-        .drawing-tools button.active {
+        
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.05);
+        }
+        
+        .tool-btn.active {
             border-color: #ff6b6b;
-            background: rgba(255,107,107,0.1);
+            background: rgba(255,107,107,0.15);
+            box-shadow: 0 0 20px rgba(255,107,107,0.1);
         }
+        
         .color-picker {
             display: flex;
-            gap: 0.3rem;
+            gap: 4px;
             flex-wrap: wrap;
+            padding: 2px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
         }
+        
         .color-opt {
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             border: 2px solid transparent;
             cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
         }
-        .color-opt.active { border-color: #fff; }
-
+        
+        .color-opt:hover {
+            transform: scale(1.15);
+        }
+        
+        .color-opt.active {
+            border-color: #fff;
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+        
+        .size-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 80px;
+            height: 4px;
+            background: #2a2a2a;
+            border-radius: 2px;
+            outline: none;
+        }
+        
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+        
+        .size-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+        
         .btn-submit {
             width: 100%;
-            padding: 0.8rem;
-            background: #ff6b6b;
-            border: none;
-            border-radius: 12px;
-            color: #000;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 1rem;
-        }
-        .btn-submit:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .btn-submit:hover:not(:disabled) { background: #ff8787; }
-
-        /* ===== REVEAL ===== */
-        .reveal-step {
-            background: #111;
-            border-radius: 12px;
             padding: 1rem;
-            margin: 0.5rem 0;
-            border-left: 3px solid #ffd93d;
-            text-align: left;
-        }
-        .reveal-step .step-author {
-            font-size: 0.8rem;
-            color: #888;
-        }
-        .reveal-step .step-content {
-            font-size: 1.1rem;
-            margin: 0.3rem 0;
-            word-break: break-word;
-        }
-        .reveal-step .step-content img {
-            max-width: 100%;
-            border-radius: 8px;
-            max-height: 200px;
-        }
-        .btn-reveal-next {
-            padding: 0.8rem 1.5rem;
-            background: #ffd93d;
+            background: linear-gradient(135deg, #6bcb77, #1db954);
             border: none;
-            border-radius: 12px;
-            color: #000;
+            border-radius: 16px;
+            color: #fff;
             font-weight: 700;
+            font-size: 1.05rem;
             cursor: pointer;
-            margin-top: 1rem;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+            box-shadow: 0 4px 20px rgba(29,185,84,0.3);
         }
-
-        /* ===== WAITING ===== */
+        
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(29,185,84,0.4);
+        }
+        
+        .btn-submit:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .waiting-players {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.8rem;
             justify-content: center;
             margin: 1rem 0;
         }
-        .waiting-player {
-            padding: 0.4rem 1rem;
-            background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            font-size: 0.9rem;
+
+        /* ===== REVEAL ===== */
+        .reveal-chain {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #2a2a2a;
         }
-        .waiting-player.submitted { opacity: 0.4; }
+        
+        .reveal-chain-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #ffd93d;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .reveal-step {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid #ff6b6b;
+            transition: all 0.3s;
+        }
+        
+        .reveal-step .step-author {
+            font-size: 0.8rem;
+            color: #888;
+            font-weight: 500;
+        }
+        
+        .reveal-step .step-content {
+            font-size: 1rem;
+            margin: 0.3rem 0 0.2rem 0;
+            word-break: break-word;
+            color: #ddd;
+        }
+        
+        .reveal-step .step-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            max-height: 250px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .btn-reveal-next {
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #ffd93d, #f6b83d);
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(255,217,61,0.3);
+        }
+        
+        .btn-reveal-next:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255,217,61,0.4);
+        }
+
+        /* ===== GAME OVER ===== */
+        .game-over {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        
+        .game-over .emoji {
+            font-size: 4rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .game-over h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
 
         /* ===== TOAST ===== */
         .toast {
             position: fixed;
-            bottom: 1.5rem;
+            bottom: 2rem;
             left: 50%;
             transform: translateX(-50%);
-            background: #ff6b6b;
-            color: #000;
-            padding: 0.6rem 1.5rem;
+            background: rgba(20,20,20,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 0.8rem 1.8rem;
             border-radius: 40px;
-            font-weight: 700;
-            font-size: 0.85rem;
+            font-weight: 600;
+            font-size: 0.9rem;
             z-index: 9999;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: all 0.3s;
             pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
         }
-        .toast.show { opacity: 1; }
-
-        .hidden { display: none !important; }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
 
         /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            #lobby { margin: 5vh auto; padding: 2rem 1.5rem; }
+            #lobby h1 { font-size: 2.2rem; }
+            .game-area { padding: 1.2rem; }
+            .drawing-container canvas { min-height: 300px; }
+            .drawing-tools { gap: 0.5rem; padding: 0.8rem; }
+            .color-opt { width: 26px; height: 26px; }
+            .room-header { padding: 0.8rem 1rem; }
+        }
+        
         @media (max-width: 480px) {
-            #lobby { margin: 5vh auto; padding: 1.5rem 1rem; }
-            .game-area { padding: 1rem; }
-            .submission-area canvas { height: 200px; }
+            .topnav { padding: 0.6rem 1rem; }
+            .game-prompt { font-size: 1.1rem; padding: 0.8rem; }
+            .drawing-container canvas { min-height: 250px; }
+            .tool-btn { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+            .color-opt { width: 22px; height: 22px; }
+            .btn { font-size: 0.9rem; padding: 0.8rem; }
+            .btn-reveal-next { padding: 0.6rem 1.5rem; font-size: 0.9rem; }
+            .reveal-step .step-content img { max-height: 150px; }
         }
     </style>
 </head>
 <body>
 
+    <!-- ===== TOP NAV ===== -->
+    <nav class="topnav">
+        <a href="/" class="brand">Media<span>Pedia</span></a>
+        <a href="/games" style="color:#9c6fe4;font-weight:600;">← Games</a>
+        <a href="/u/{{ username }}" class="user-link">{{ username }}</a>
+    </nav>
+
     <!-- ===== LOBBY ===== -->
     <div id="lobby">
-        <h1>🎨 <span>Gartic</span> Phone</h1>
-        <p>Draw, write, and laugh with friends!<br>Each round alternates between writing and drawing.</p>
+        <h1>🎨 Gartic Phone</h1>
+        <p class="subtitle">Draw, write, and laugh with friends!<br>Each round alternates between writing and drawing.</p>
         
         <button class="btn btn-primary" onclick="createRoom()">🎨 Create New Room</button>
         <div class="divider">— or join existing —</div>
-        <input class="inp" id="join-code" placeholder="Enter 6-digit code..." maxlength="6" 
+        <input class="inp" id="join-code" placeholder="6-digit code" maxlength="6" 
                onkeydown="if (event.key === 'Enter') joinRoom()">
         <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+        <div class="error-msg" id="lobby-error" style="color:#ff6b6b;font-size:0.85rem;margin-top:0.5rem;min-height:1.2em;"></div>
     </div>
 
     <!-- ===== ROOM ===== -->
     <div id="room">
+        <!-- Header -->
         <div class="room-header">
-            <div class="room-code" id="room-code">—— ——</div>
+            <div class="room-code" id="room-code" onclick="copyCode()" title="Tap to copy">—— ——</div>
             <div class="room-players" id="room-players"></div>
-            <button class="btn btn-secondary" style="width:auto;padding:0.4rem 1rem;" onclick="leaveRoom()">Leave</button>
+            <button class="btn-leave" onclick="leaveRoom()">✕ Leave</button>
         </div>
 
+        <!-- Game Area -->
         <div class="game-area" id="game-area">
-            <!-- Lobby state -->
+            
+            <!-- LOBBY STATE -->
             <div id="lobby-state">
                 <div class="game-status">🎯 Lobby — Waiting for players</div>
                 <div class="waiting-players" id="waiting-players"></div>
-                <button class="btn btn-primary" id="start-btn" onclick="startGame()">🚀 Start Game</button>
-                <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;">Need at least 2 players</div>
+                <button class="btn btn-gold" id="start-btn" onclick="startGame()">🚀 Start Game</button>
+                <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;text-align:center;">Need at least 2 players</div>
             </div>
 
-            <!-- Writing state -->
+            <!-- WRITING STATE -->
             <div id="writing-state" class="hidden">
                 <div class="game-status">✍️ Round <span id="writing-round">1</span> — Write a description</div>
                 <div class="game-prompt">You're writing about: <strong id="writing-prompt">—</strong></div>
                 <div class="submission-area">
                     <textarea id="writing-input" placeholder="Describe what you see... (max 300 chars)" maxlength="300"></textarea>
+                    <div class="char-counter"><span id="writing-char-count">0</span>/300</div>
                     <button class="btn-submit" id="writing-submit" onclick="submitText()">Submit</button>
                 </div>
                 <div class="waiting-players" id="writing-waiting"></div>
             </div>
 
-            <!-- Drawing state -->
+            <!-- DRAWING STATE -->
             <div id="drawing-state" class="hidden">
                 <div class="game-status">🎨 Round <span id="drawing-round">1</span> — Draw the description</div>
                 <div class="game-prompt">You're drawing: <strong id="drawing-prompt">—</strong></div>
                 <div class="submission-area">
+                    
+                    <!-- Drawing Tools -->
                     <div class="drawing-tools">
-                        <div class="color-picker" id="color-picker"></div>
-                        <button onclick="clearCanvas()">🗑️ Clear</button>
-                        <button onclick="undoDraw()">↩️ Undo</button>
-                        <span style="color:#555;font-size:0.8rem;">Brush: <span id="brush-size-label">3</span>px</span>
-                        <input type="range" id="brush-size" min="1" max="20" value="3" 
-                               oninput="document.getElementById('brush-size-label').textContent=this.value">
+                        <div class="tool-group">
+                            <span class="tool-group-label">🎨 Color</span>
+                            <div class="color-picker" id="color-picker"></div>
+                        </div>
+                        
+                        <div class="tool-group">
+                            <span class="tool-group-label">📏 Size</span>
+                            <input type="range" class="size-slider" id="brush-size" min="1" max="30" value="5">
+                            <span style="color:#888;font-size:0.8rem;min-width:24px;" id="brush-size-label">5</span>
+                        </div>
+                        
+                        <div class="tool-group">
+                            <button class="tool-btn" onclick="undoDraw()">↩️ Undo</button>
+                            <button class="tool-btn" onclick="clearCanvas()">🗑️ Clear</button>
+                        </div>
                     </div>
-                    <canvas id="draw-canvas"></canvas>
+                    
+                    <!-- Canvas -->
+                    <div class="drawing-container">
+                        <canvas id="draw-canvas"></canvas>
+                    </div>
+                    
                     <button class="btn-submit" id="drawing-submit" onclick="submitDrawing()">Submit Drawing</button>
                 </div>
                 <div class="waiting-players" id="drawing-waiting"></div>
             </div>
 
-            <!-- Reveal state -->
+            <!-- REVEAL STATE -->
             <div id="reveal-state" class="hidden">
                 <div class="game-status">🎭 Reveal — See the chaos!</div>
                 <div id="reveal-content"></div>
-                <button class="btn-reveal-next" id="reveal-next" onclick="revealNext()">Next ➜</button>
-                <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;" id="reveal-progress"></div>
+                <div style="text-align:center;margin-top:1rem;">
+                    <button class="btn-reveal-next" id="reveal-next" onclick="revealNext()">Next ➜</button>
+                    <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;" id="reveal-progress"></div>
+                </div>
             </div>
 
-            <!-- Game over -->
+            <!-- GAME OVER -->
             <div id="game-over" class="hidden">
-                <div style="font-size:3rem;margin-bottom:0.5rem;">🎉</div>
-                <div class="game-status">Game Over! All chains revealed.</div>
-                <button class="btn btn-primary" onclick="location.reload()">🔄 Play Again</button>
+                <div class="game-over">
+                    <div class="emoji">🎉</div>
+                    <h2>Game Over!</h2>
+                    <p style="color:#888;margin-bottom:1.5rem;">All chains have been revealed!</p>
+                    <button class="btn btn-primary" onclick="location.reload()" style="max-width:300px;margin:0 auto;">🔄 Play Again</button>
+                </div>
             </div>
         </div>
     </div>
@@ -359,21 +810,22 @@
 
     <script>
         // ===== CONFIG =====
-        const ME = {{ username | tojson }};
+        const ME = '{{ username }}';
         let socket = null;
         let roomCode = null;
         let roomData = null;
         let isSubmitting = false;
         let pollInterval = null;
         let hasSubmitted = false;
+        let isHost = false;
 
         // ===== DRAWING STATE =====
         let canvas = null;
         let ctx = null;
         let isDrawing = false;
         let lastX = 0, lastY = 0;
-        let color = '#ff6b6b';
-        let brushSize = 3;
+        let currentColor = '#ff6b6b';
+        let brushSize = 5;
         let drawHistory = [];
         const MAX_HISTORY = 50;
 
@@ -389,13 +841,27 @@
             setupColorPicker();
             setupCanvas();
             
-            // Auto-join if coming from invite
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
+            // Auto-join from invite
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
             if (code) {
                 document.getElementById('join-code').value = code;
                 joinRoom();
             }
+            
+            // Char counter
+            document.getElementById('writing-input').addEventListener('input', function() {
+                const count = this.value.length;
+                document.getElementById('writing-char-count').textContent = count;
+                const el = document.getElementById('writing-char-count');
+                el.className = count > 280 ? 'danger' : count > 250 ? 'warning' : '';
+            });
+            
+            // Brush size label
+            document.getElementById('brush-size').addEventListener('input', function() {
+                brushSize = parseInt(this.value);
+                document.getElementById('brush-size-label').textContent = brushSize;
+            });
         });
 
         // ===== SOCKET =====
@@ -421,7 +887,6 @@
             });
             
             socket.on('gartic_someone_submitted', function(data) {
-                // Update waiting list
                 fetchRoom();
             });
             
@@ -435,29 +900,43 @@
         }
 
         // ===== ROOM CRUD =====
-        function createRoom() {
-            fetch('/api/gartic/room', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { showToast(data.error); return; }
-                    enterRoom(data.code);
-                })
-                .catch(() => showToast('Failed to create room'));
+        async function createRoom() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            try {
+                const res = await fetch('/api/gartic/room', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    document.getElementById('lobby-error').textContent = data.error;
+                    return;
+                }
+                enterRoom(data.code);
+            } catch(e) {
+                showToast('Failed to create room');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🎨 Create New Room';
+            }
         }
 
-        function joinRoom() {
+        async function joinRoom() {
             const code = document.getElementById('join-code').value.trim();
             if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
                 showToast('Enter a valid 6-digit code');
                 return;
             }
-            fetch('/api/gartic/room/' + code + '/join', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { showToast(data.error); return; }
-                    enterRoom(code);
-                })
-                .catch(() => showToast('Failed to join room'));
+            try {
+                const res = await fetch('/api/gartic/room/' + code + '/join', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    document.getElementById('lobby-error').textContent = data.error;
+                    return;
+                }
+                enterRoom(code);
+            } catch(e) {
+                showToast('Failed to join room');
+            }
         }
 
         function enterRoom(code) {
@@ -467,60 +946,56 @@
             document.getElementById('room-code').textContent = code.slice(0,3) + ' ' + code.slice(3);
             connectSocket(code);
             fetchRoom();
-            // Poll for updates
             if (pollInterval) clearInterval(pollInterval);
             pollInterval = setInterval(fetchRoom, 3000);
         }
 
-        function leaveRoom() {
+        async function leaveRoom() {
             if (!roomCode) return;
             if (socket) {
                 socket.emit('gartic_leave', { code: roomCode });
                 socket.disconnect();
             }
             if (pollInterval) clearInterval(pollInterval);
-            fetch('/api/gartic/room/' + roomCode + '/leave', { method: 'POST' })
-                .catch(() => {});
+            try {
+                await fetch('/api/gartic/room/' + roomCode + '/leave', { method: 'POST' });
+            } catch(e) {}
             window.location.href = '/games/gartic-phone';
         }
 
-        function fetchRoom() {
+        async function fetchRoom() {
             if (!roomCode) return;
-            fetch('/api/gartic/room/' + roomCode)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { 
-                        if (data.error === 'Room not found') {
-                            showToast('Room no longer exists');
-                            setTimeout(() => window.location.href = '/games/gartic-phone', 1500);
-                        }
-                        return; 
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode);
+                const data = await res.json();
+                if (data.error) {
+                    if (data.error === 'Room not found') {
+                        showToast('Room no longer exists');
+                        setTimeout(() => window.location.href = '/games/gartic-phone', 1500);
                     }
-                    roomData = data;
-                    renderRoom(data);
-                })
-                .catch(() => {});
+                    return;
+                }
+                roomData = data;
+                renderRoom(data);
+            } catch(e) {}
         }
 
         // ===== RENDER =====
         function renderRoom(data) {
-            // Update players
-            const playersHtml = data.players.map(p => 
+            // Players
+            const playersHtml = (data.players || []).map(p => 
                 `<span class="player-chip ${p === data.host ? 'host' : ''} ${p === ME ? 'you' : ''}">
                     ${p === ME ? '⭐ ' : ''}${p}
                 </span>`
             ).join('');
             document.getElementById('room-players').innerHTML = playersHtml;
 
-            // Show/hide states
-            document.getElementById('lobby-state').classList.add('hidden');
-            document.getElementById('writing-state').classList.add('hidden');
-            document.getElementById('drawing-state').classList.add('hidden');
-            document.getElementById('reveal-state').classList.add('hidden');
-            document.getElementById('game-over').classList.add('hidden');
+            // Hide all states
+            document.querySelectorAll('#lobby-state, #writing-state, #drawing-state, #reveal-state, #game-over')
+                .forEach(el => el.classList.add('hidden'));
 
             const startBtn = document.getElementById('start-btn');
-            if (data.host === ME && data.players.length >= 2) {
+            if (data.host === ME && (data.players || []).length >= 2) {
                 startBtn.style.display = 'block';
             } else {
                 startBtn.style.display = 'none';
@@ -529,35 +1004,38 @@
             switch(data.state) {
                 case 'lobby':
                     document.getElementById('lobby-state').classList.remove('hidden');
-                    document.getElementById('waiting-players').innerHTML = data.players.map(p => 
+                    document.getElementById('waiting-players').innerHTML = (data.players || []).map(p => 
                         `<span class="waiting-player ${p === ME ? 'you' : ''}">${p}</span>`
                     ).join('');
                     break;
 
                 case 'writing':
                     document.getElementById('writing-state').classList.remove('hidden');
-                    document.getElementById('writing-round').textContent = data.round;
+                    document.getElementById('writing-round').textContent = data.round || 1;
                     const wp = data.my_prompt || {};
                     document.getElementById('writing-prompt').textContent = wp.content || '—';
-                    document.getElementById('writing-input').value = '';
-                    document.getElementById('writing-input').disabled = hasSubmitted;
-                    document.getElementById('writing-submit').disabled = hasSubmitted;
+                    if (!hasSubmitted) {
+                        document.getElementById('writing-input').disabled = false;
+                        document.getElementById('writing-submit').disabled = false;
+                        document.getElementById('writing-input').value = '';
+                        document.getElementById('writing-char-count').textContent = '0';
+                    }
                     // Show who's submitted
-                    const wWaiting = data.players.filter(p => {
-                        // We only know if we submitted ourselves
-                        return p !== ME && p !== data.my_chain_owner;
-                    });
+                    const wWaiting = (data.players || []).filter(p => p !== ME);
                     document.getElementById('writing-waiting').innerHTML = 
                         wWaiting.map(p => `<span class="waiting-player">⏳ ${p}</span>`).join('');
                     break;
 
                 case 'drawing':
                     document.getElementById('drawing-state').classList.remove('hidden');
-                    document.getElementById('drawing-round').textContent = data.round;
+                    document.getElementById('drawing-round').textContent = data.round || 1;
                     const dp = data.my_prompt || {};
                     document.getElementById('drawing-prompt').textContent = dp.content || '—';
-                    clearCanvas();
-                    document.getElementById('drawing-submit').disabled = hasSubmitted;
+                    if (hasSubmitted) {
+                        document.getElementById('drawing-submit').disabled = true;
+                    } else {
+                        document.getElementById('drawing-submit').disabled = false;
+                    }
                     break;
 
                 case 'reveal':
@@ -585,7 +1063,9 @@
             const chain = chains[chainOwner] || [];
             const steps = chain.slice(0, stepIdx + 1);
 
-            let html = `<div style="margin-bottom:1rem;color:#ffd93d;">${chainOwner}'s Chain</div>`;
+            let html = `<div class="reveal-chain">
+                <div class="reveal-chain-title">${chainOwner}'s Chain</div>`;
+            
             steps.forEach((step, i) => {
                 const isText = step.type === 'text';
                 html += `<div class="reveal-step">
@@ -596,72 +1076,74 @@
                 </div>`;
             });
 
+            html += `</div>`;
             container.innerHTML = html;
+            
             document.getElementById('reveal-progress').textContent = 
                 `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
             
             const nextBtn = document.getElementById('reveal-next');
-            if (data.host === ME) {
-                nextBtn.style.display = 'block';
-            } else {
-                nextBtn.style.display = 'none';
+            nextBtn.style.display = data.host === ME ? 'block' : 'none';
+        }
+
+        async function revealNext() {
+            if (!roomCode) return;
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode + '/reveal_next', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) { showToast(data.error); return; }
+                if (data.done) {
+                    document.getElementById('reveal-state').classList.add('hidden');
+                    document.getElementById('game-over').classList.remove('hidden');
+                } else {
+                    renderReveal(data);
+                }
+            } catch(e) {
+                showToast('Failed to advance reveal');
             }
         }
 
-        function revealNext() {
-            if (!roomCode) return;
-            fetch('/api/gartic/room/' + roomCode + '/reveal_next', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { showToast(data.error); return; }
-                    if (data.done) {
-                        document.getElementById('reveal-state').classList.add('hidden');
-                        document.getElementById('game-over').classList.remove('hidden');
-                    } else {
-                        renderReveal(data);
-                    }
-                })
-                .catch(() => showToast('Failed to advance reveal'));
-        }
-
         // ===== START GAME =====
-        function startGame() {
+        async function startGame() {
             if (!roomCode) return;
-            fetch('/api/gartic/room/' + roomCode + '/start', { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.error) { showToast(data.error); return; }
-                    hasSubmitted = false;
-                    fetchRoom();
-                })
-                .catch(() => showToast('Failed to start game'));
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode + '/start', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) { showToast(data.error); return; }
+                hasSubmitted = false;
+                fetchRoom();
+            } catch(e) {
+                showToast('Failed to start game');
+            }
         }
 
         // ===== SUBMIT TEXT =====
-        function submitText() {
+        async function submitText() {
             if (isSubmitting || hasSubmitted) return;
             const input = document.getElementById('writing-input');
             const text = input.value.trim();
             if (!text) { showToast('Please write something'); return; }
             
             isSubmitting = true;
-            fetch('/api/gartic/room/' + roomCode + '/submit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: text })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    isSubmitting = false;
-                    if (data.error) { showToast(data.error); return; }
-                    hasSubmitted = true;
-                    document.getElementById('writing-input').disabled = true;
-                    document.getElementById('writing-submit').disabled = true;
-                    showToast('Submitted! Waiting for others...');
-                    if (socket) socket.emit('gartic_submitted', { code: roomCode });
-                    fetchRoom();
-                })
-                .catch(() => { isSubmitting = false; showToast('Failed to submit'); });
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: text })
+                });
+                const data = await res.json();
+                if (data.error) { showToast(data.error); return; }
+                hasSubmitted = true;
+                document.getElementById('writing-input').disabled = true;
+                document.getElementById('writing-submit').disabled = true;
+                showToast('Submitted! Waiting for others...');
+                if (socket) socket.emit('gartic_submitted', { code: roomCode });
+                fetchRoom();
+            } catch(e) {
+                showToast('Failed to submit');
+            } finally {
+                isSubmitting = false;
+            }
         }
 
         // ===== DRAWING =====
@@ -669,15 +1151,27 @@
             canvas = document.getElementById('draw-canvas');
             ctx = canvas.getContext('2d');
             
-            // Resize canvas
             function resizeCanvas() {
-                const rect = canvas.parentElement.getBoundingClientRect();
-                const w = Math.min(rect.width - 32, 400);
+                const container = canvas.parentElement;
+                const rect = container.getBoundingClientRect();
+                const w = Math.min(rect.width - 4, 800);
+                const h = Math.max(400, Math.min(w * 0.75, 600));
                 canvas.width = w;
-                canvas.height = Math.min(w * 0.75, 300);
+                canvas.height = h;
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                // Restore last drawing if exists
+                if (drawHistory.length > 0) {
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = drawHistory[drawHistory.length - 1];
+                }
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
             }
+            
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
 
@@ -691,6 +1185,7 @@
             canvas.addEventListener('touchstart', handleTouch(startDraw));
             canvas.addEventListener('touchmove', handleTouch(draw));
             canvas.addEventListener('touchend', endDraw);
+            canvas.addEventListener('touchcancel', endDraw);
         }
 
         function handleTouch(fn) {
@@ -699,8 +1194,8 @@
                 const rect = canvas.getBoundingClientRect();
                 const touch = e.touches[0];
                 if (!touch) return;
-                const x = touch.clientX - rect.left;
-                const y = touch.clientY - rect.top;
+                const x = (touch.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (touch.clientY - rect.top) * (canvas.height / rect.height);
                 fn({ offsetX: x, offsetY: y });
             };
         }
@@ -708,25 +1203,28 @@
         function startDraw(e) {
             if (document.getElementById('drawing-submit').disabled) return;
             isDrawing = true;
-            lastX = e.offsetX;
-            lastY = e.offsetY;
+            const x = e.offsetX || 0;
+            const y = e.offsetY || 0;
+            lastX = x;
+            lastY = y;
             ctx.beginPath();
-            ctx.arc(lastX, lastY, brushSize/2, 0, Math.PI * 2);
-            ctx.fillStyle = color;
+            ctx.arc(x, y, brushSize/2, 0, Math.PI * 2);
+            ctx.fillStyle = currentColor;
             ctx.fill();
-            saveState();
         }
 
         function draw(e) {
             if (!isDrawing) return;
+            const x = e.offsetX || 0;
+            const y = e.offsetY || 0;
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
-            ctx.lineTo(e.offsetX, e.offsetY);
-            ctx.strokeStyle = color;
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = currentColor;
             ctx.lineWidth = brushSize;
             ctx.stroke();
-            lastX = e.offsetX;
-            lastY = e.offsetY;
+            lastX = x;
+            lastY = y;
         }
 
         function endDraw() {
@@ -738,11 +1236,11 @@
 
         function saveState() {
             if (drawHistory.length > MAX_HISTORY) drawHistory.shift();
-            drawHistory.push(canvas.toDataURL());
+            drawHistory.push(canvas.toDataURL('image/png'));
         }
 
         function undoDraw() {
-            if (drawHistory.length <= 1) return;
+            if (drawHistory.length <= 1) { showToast('Nothing to undo'); return; }
             drawHistory.pop();
             const img = new Image();
             img.onload = function() {
@@ -753,60 +1251,73 @@
         }
 
         function clearCanvas() {
+            if (drawHistory.length === 0) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawHistory = [];
+            drawHistory = [drawHistory[0]]; // Keep the initial blank state
             saveState();
+            showToast('Canvas cleared');
         }
 
         function setupColorPicker() {
             const container = document.getElementById('color-picker');
+            container.innerHTML = '';
             COLORS.forEach(c => {
                 const div = document.createElement('div');
-                div.className = 'color-opt' + (c === color ? ' active' : '');
+                div.className = 'color-opt' + (c === currentColor ? ' active' : '');
                 div.style.background = c;
+                if (c === '#ffffff') {
+                    div.style.border = '1px solid #555';
+                }
                 div.onclick = function() {
                     document.querySelectorAll('.color-opt').forEach(el => el.classList.remove('active'));
                     this.classList.add('active');
-                    color = c;
+                    currentColor = c;
                 };
                 container.appendChild(div);
             });
         }
 
-        function submitDrawing() {
+        async function submitDrawing() {
             if (isSubmitting || hasSubmitted) return;
             const dataUrl = canvas.toDataURL('image/png');
-            if (dataUrl === drawHistory[0] || dataUrl.length < 100) {
+            if (dataUrl.length < 1000) {
                 showToast('Please draw something first');
                 return;
             }
             
             isSubmitting = true;
-            fetch('/api/gartic/room/' + roomCode + '/submit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: dataUrl })
-            })
-                .then(r => r.json())
-                .then(data => {
-                    isSubmitting = false;
-                    if (data.error) { showToast(data.error); return; }
-                    hasSubmitted = true;
-                    document.getElementById('drawing-submit').disabled = true;
-                    showToast('Submitted! Waiting for others...');
-                    if (socket) socket.emit('gartic_submitted', { code: roomCode });
-                    fetchRoom();
-                })
-                .catch(() => { isSubmitting = false; showToast('Failed to submit'); });
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: dataUrl })
+                });
+                const data = await res.json();
+                if (data.error) { showToast(data.error); return; }
+                hasSubmitted = true;
+                document.getElementById('drawing-submit').disabled = true;
+                showToast('Submitted! Waiting for others...');
+                if (socket) socket.emit('gartic_submitted', { code: roomCode });
+                fetchRoom();
+            } catch(e) {
+                showToast('Failed to submit');
+            } finally {
+                isSubmitting = false;
+            }
         }
 
-        // ===== TOAST =====
+        // ===== HELPERS =====
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.classList.add('show');
             clearTimeout(t._timeout);
             t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function copyCode() {
+            if (!roomCode) return;
+            navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
         }
 
         // ===== KEYBOARD SHORTCUTS =====
@@ -817,7 +1328,18 @@
                     submitText();
                 }
             }
+            if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+                if (document.activeElement?.tagName !== 'INPUT' && 
+                    document.activeElement?.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    undoDraw();
+                }
+            }
         });
+
+        // ===== INITIAL SCREEN =====
+        document.getElementById('lobby').style.display = 'block';
     </script>
+    <script src="/static/pwa.js"></script>
 </body>
 </html>
