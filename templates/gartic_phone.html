@@ -734,11 +734,11 @@
         <h1>🎨 Gartic Phone</h1>
         <p class="subtitle">Draw, write, and laugh with friends!<br>Each round alternates between writing and drawing.</p>
         
-        <button class="btn btn-primary" onclick="createRoom()">🎨 Create New Room</button>
+        <button class="btn btn-primary" onclick="window.createRoom()">🎨 Create New Room</button>
         <div class="divider">— or join existing —</div>
         <input class="inp" id="join-code" placeholder="6-digit code" maxlength="6" 
-               onkeydown="if (event.key === 'Enter') joinRoom()">
-        <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+               onkeydown="if (event.key === 'Enter') window.joinRoom()">
+        <button class="btn btn-secondary" onclick="window.joinRoom()">Join Room</button>
         <div class="error-msg" id="lobby-error" style="color:#ff6b6b;font-size:0.85rem;margin-top:0.5rem;min-height:1.2em;"></div>
     </div>
 
@@ -746,9 +746,9 @@
     <div id="room">
         <!-- Header -->
         <div class="room-header">
-            <div class="room-code" id="room-code" onclick="copyCode()" title="Tap to copy">—— ——</div>
+            <div class="room-code" id="room-code" onclick="window.copyCode()" title="Tap to copy">—— ——</div>
             <div class="room-players" id="room-players"></div>
-            <button class="btn-leave" onclick="leaveRoom()">✕ Leave</button>
+            <button class="btn-leave" onclick="window.leaveRoom()">✕ Leave</button>
         </div>
 
         <!-- Game Area -->
@@ -758,7 +758,7 @@
             <div id="lobby-state">
                 <div class="game-status">🎯 Lobby — Waiting for players</div>
                 <div class="waiting-players" id="waiting-players"></div>
-                <button class="btn btn-gold" id="start-btn" onclick="startGame()">🚀 Start Game</button>
+                <button class="btn btn-gold" id="start-btn" onclick="window.startGame()">🚀 Start Game</button>
                 <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;text-align:center;">Need at least 2 players</div>
             </div>
 
@@ -769,7 +769,7 @@
                 <div class="submission-area">
                     <textarea id="writing-input" placeholder="Describe what you see... (max 300 chars)" maxlength="300"></textarea>
                     <div class="char-counter"><span id="writing-char-count">0</span>/300</div>
-                    <button class="btn-submit" id="writing-submit" onclick="submitText()">Submit</button>
+                    <button class="btn-submit" id="writing-submit" onclick="window.submitText()">Submit</button>
                 </div>
                 <div class="waiting-players" id="writing-waiting"></div>
             </div>
@@ -784,11 +784,11 @@
                     <div class="drawing-tools">
                         <!-- Tab bar -->
                         <div class="tools-top">
-                            <button class="tool-tab active" id="tab-gradient" onclick="switchTab('gradient')">🎨 Color</button>
-                            <button class="tool-tab" id="tab-solid" onclick="switchTab('solid')">🟥 Swatches</button>
-                            <button class="tool-tab" id="tab-brush" onclick="switchTab('brush')">✏️ Brush</button>
-                            <button class="tool-tab" id="tab-shapes" onclick="switchTab('shapes')">⬛ Shapes</button>
-                            <button class="tool-tab" id="tab-fx" onclick="switchTab('fx')">✨ FX</button>
+                            <button class="tool-tab active" id="tab-gradient" onclick="window.switchTab('gradient')">🎨 Color</button>
+                            <button class="tool-tab" id="tab-solid" onclick="window.switchTab('solid')">🟥 Swatches</button>
+                            <button class="tool-tab" id="tab-brush" onclick="window.switchTab('brush')">✏️ Brush</button>
+                            <button class="tool-tab" id="tab-shapes" onclick="window.switchTab('shapes')">⬛ Shapes</button>
+                            <button class="tool-tab" id="tab-fx" onclick="window.switchTab('fx')">✨ FX</button>
                         </div>
 
                         <!-- Color picker tab -->
@@ -808,7 +808,7 @@
                             <div id="solid-picker"></div>
                             <div class="tool-sep"></div>
                             <div class="cur-color-preview" id="cur-color-preview" title="Custom color">
-                                <input type="color" id="custom-color-input" oninput="pickCustomColor(this.value)">
+                                <input type="color" id="custom-color-input" oninput="window.pickCustomColor(this.value)">
                             </div>
                         </div>
 
@@ -822,29 +822,29 @@
                             <input type="range" class="opacity-slider" id="opacity-slider" min="5" max="100" value="100">
                             <span class="size-label" id="opacity-label">100%</span>
                             <div class="tool-sep"></div>
-                            <button class="tool-btn" id="eraser-btn" onclick="setTool('eraser')">🧹 Eraser</button>
-                            <button class="tool-btn" id="fill-btn" onclick="setTool('fill')">🪣 Fill</button>
-                            <button class="tool-btn" id="eyedrop-btn" onclick="setTool('eyedrop')">💉 Pick</button>
+                            <button class="tool-btn" id="eraser-btn" onclick="window.setTool('eraser')">🧹 Eraser</button>
+                            <button class="tool-btn" id="fill-btn" onclick="window.setTool('fill')">🪣 Fill</button>
+                            <button class="tool-btn" id="eyedrop-btn" onclick="window.setTool('eyedrop')">💉 Pick</button>
                         </div>
 
                         <!-- Shapes tab -->
                         <div class="tools-body hidden" id="panel-shapes">
-                            <button class="tool-btn" id="shape-line" onclick="setShape('line')">╱ Line</button>
-                            <button class="tool-btn" id="shape-rect" onclick="setShape('rect')">▭ Rect</button>
-                            <button class="tool-btn" id="shape-circle" onclick="setShape('circle')">○ Circle</button>
-                            <button class="tool-btn" id="shape-triangle" onclick="setShape('triangle')">△ Triangle</button>
+                            <button class="tool-btn" id="shape-line" onclick="window.setShape('line')">╱ Line</button>
+                            <button class="tool-btn" id="shape-rect" onclick="window.setShape('rect')">▭ Rect</button>
+                            <button class="tool-btn" id="shape-circle" onclick="window.setShape('circle')">○ Circle</button>
+                            <button class="tool-btn" id="shape-triangle" onclick="window.setShape('triangle')">△ Triangle</button>
                             <div class="tool-sep"></div>
-                            <button class="tool-btn" id="fill-shape-btn" onclick="toggleFillShape()">Fill: <span id="fill-shape-label">OFF</span></button>
+                            <button class="tool-btn" id="fill-shape-btn" onclick="window.toggleFillShape()">Fill: <span id="fill-shape-label">OFF</span></button>
                         </div>
 
                         <!-- FX tab -->
                         <div class="tools-body hidden" id="panel-fx">
-                            <button class="tool-btn" id="spray-btn" onclick="setTool('spray')">🌫️ Spray</button>
-                            <button class="tool-btn" id="mirror-btn" onclick="toggleMirror()">🪞 Mirror: <span id="mirror-label">OFF</span></button>
-                            <button class="tool-btn" id="rainbow-btn" onclick="toggleRainbow()">🌈 Rainbow: <span id="rainbow-label">OFF</span></button>
+                            <button class="tool-btn" id="spray-btn" onclick="window.setTool('spray')">🌫️ Spray</button>
+                            <button class="tool-btn" id="mirror-btn" onclick="window.toggleMirror()">🪞 Mirror: <span id="mirror-label">OFF</span></button>
+                            <button class="tool-btn" id="rainbow-btn" onclick="window.toggleRainbow()">🌈 Rainbow: <span id="rainbow-label">OFF</span></button>
                             <div class="tool-sep"></div>
-                            <button class="tool-btn" onclick="undoDraw()">↩ Undo</button>
-                            <button class="tool-btn" onclick="clearCanvas()">🗑 Clear</button>
+                            <button class="tool-btn" onclick="window.undoDraw()">↩ Undo</button>
+                            <button class="tool-btn" onclick="window.clearCanvas()">🗑 Clear</button>
                         </div>
                     </div>
                     
@@ -853,7 +853,7 @@
                         <canvas id="draw-canvas"></canvas>
                     </div>
                     
-                    <button class="btn-submit" id="drawing-submit" onclick="submitDrawing()">Submit Drawing</button>
+                    <button class="btn-submit" id="drawing-submit" onclick="window.submitDrawing()">Submit Drawing</button>
                 </div>
                 <div class="waiting-players" id="drawing-waiting"></div>
             </div>
@@ -863,7 +863,7 @@
                 <div class="game-status">🎭 Reveal — See the chaos!</div>
                 <div id="reveal-content"></div>
                 <div style="text-align:center;margin-top:1rem;">
-                    <button class="btn-reveal-next" id="reveal-next" onclick="revealNext()">Next ➜</button>
+                    <button class="btn-reveal-next" id="reveal-next" onclick="window.revealNext()">Next ➜</button>
                     <div style="color:#555;font-size:0.8rem;margin-top:0.5rem;" id="reveal-progress"></div>
                 </div>
             </div>
@@ -900,7 +900,8 @@
         let ctx = null;
         let isDrawing = false;
         let lastX = 0, lastY = 0;
-        let currentSolid = '#000000';
+        // FIXED: Removed duplicate declaration - use currentSolidColor instead
+        let currentSolidColor = '#000000';
         let brushSize = 5;
         let drawHistory = [];
         const MAX_HISTORY = 50;
@@ -914,7 +915,7 @@
         ];
 
         let currentTool = 'brush';
-        let currentSolid = '#000000';
+        // Removed duplicate currentSolid declaration
         let brushOpacity = 1;
         let mirrorMode = false;
         let rainbowMode = false;
@@ -934,7 +935,7 @@
 
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
-            if (code) { document.getElementById('join-code').value = code; joinRoom(); }
+            if (code) { document.getElementById('join-code').value = code; window.joinRoom(); }
 
             document.getElementById('writing-input').addEventListener('input', function() {
                 const count = this.value.length;
@@ -989,7 +990,7 @@
         }
 
         // ===== ROOM CRUD =====
-        async function createRoom() {
+        window.createRoom = async function() {
             const btn = event.target;
             btn.disabled = true;
             btn.textContent = 'Creating...';
@@ -1009,7 +1010,7 @@
             }
         }
 
-        async function joinRoom() {
+        window.joinRoom = async function() {
             const code = document.getElementById('join-code').value.trim();
             if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
                 showToast('Enter a valid 6-digit code');
@@ -1039,7 +1040,7 @@
             pollInterval = setInterval(fetchRoom, 3000);
         }
 
-        async function leaveRoom() {
+        window.leaveRoom = async function() {
             if (!roomCode) return;
             if (socket) {
                 socket.emit('gartic_leave', { code: roomCode });
@@ -1185,7 +1186,7 @@
             nextBtn.style.display = data.host === ME ? 'block' : 'none';
         }
 
-        async function revealNext() {
+        window.revealNext = async function() {
             if (!roomCode) return;
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode + '/reveal_next', { method: 'POST' });
@@ -1203,7 +1204,7 @@
         }
 
         // ===== START GAME =====
-        async function startGame() {
+        window.startGame = async function() {
             if (!roomCode) return;
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode + '/start', { method: 'POST' });
@@ -1217,7 +1218,7 @@
         }
 
         // ===== SUBMIT TEXT =====
-        async function submitText() {
+        window.submitText = async function() {
             if (isSubmitting || hasSubmitted) return;
             const input = document.getElementById('writing-input');
             const text = input.value.trim();
@@ -1308,7 +1309,7 @@
         // ===== COLOR HELPERS =====
         function getStrokeStyle() {
             if (rainbowMode) { rainbowHue = (rainbowHue + 3) % 360; return `hsl(${rainbowHue},100%,55%)`; }
-            return currentSolid;
+            return currentSolidColor;
         }
 
         function applyCtxStyle() {
@@ -1457,7 +1458,7 @@
             const tmp = document.createElement('canvas');
             tmp.width = tmp.height = 1;
             const tc = tmp.getContext('2d');
-            tc.fillStyle = currentSolid;
+            tc.fillStyle = currentSolidColor;
             tc.fillRect(0, 0, 1, 1);
             const fc = tc.getImageData(0, 0, 1, 1).data;
             const [fr, fg, fb] = [fc[0], fc[1], fc[2]];
@@ -1491,12 +1492,12 @@
         // ===== EYEDROPPER =====
         function eyedrop(x, y) {
             const p = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-            currentSolid = '#' + [p[0],p[1],p[2]].map(v => v.toString(16).padStart(2,'0')).join('');
+            currentSolidColor = '#' + [p[0],p[1],p[2]].map(v => v.toString(16).padStart(2,'0')).join('');
             document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
             updateColorPreview();
-            updateHsvPreview(currentSolid);
+            updateHsvPreview(currentSolidColor);
             setTool('brush');
-            showToast('Color picked: ' + currentSolid);
+            showToast('Color picked: ' + currentSolidColor);
         }
 
         // ===== HISTORY =====
@@ -1505,7 +1506,7 @@
             drawHistory.push(canvas.toDataURL('image/png'));
         }
 
-        function undoDraw() {
+        window.undoDraw = function() {
             if (drawHistory.length <= 1) { showToast('Nothing to undo'); return; }
             drawHistory.pop();
             const img = new Image();
@@ -1513,7 +1514,7 @@
             img.src = drawHistory[drawHistory.length - 1];
         }
 
-        function clearCanvas() {
+        window.clearCanvas = function() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawHistory = [];
             saveState();
@@ -1521,7 +1522,7 @@
         }
 
         // ===== TOOL SWITCHERS =====
-        function setTool(tool) {
+        window.setTool = function(tool) {
             currentTool = tool;
             currentShape = null;
             ['eraser-btn','fill-btn','eyedrop-btn','spray-btn'].forEach(id => {
@@ -1533,7 +1534,7 @@
             canvas.style.cursor = tool === 'eraser' ? 'cell' : tool === 'eyedrop' ? 'crosshair' : 'crosshair';
         }
 
-        function setShape(shape) {
+        window.setShape = function(shape) {
             currentTool = shape;
             currentShape = shape;
             ['shape-line','shape-rect','shape-circle','shape-triangle'].forEach(id => {
@@ -1543,26 +1544,26 @@
             canvas.style.cursor = 'crosshair';
         }
 
-        function toggleMirror() {
+        window.toggleMirror = function() {
             mirrorMode = !mirrorMode;
             document.getElementById('mirror-label').textContent = mirrorMode ? 'ON' : 'OFF';
             document.getElementById('mirror-btn').classList.toggle('active', mirrorMode);
         }
 
-        function toggleRainbow() {
+        window.toggleRainbow = function() {
             rainbowMode = !rainbowMode;
             document.getElementById('rainbow-label').textContent = rainbowMode ? 'ON' : 'OFF';
             document.getElementById('rainbow-btn').classList.toggle('active', rainbowMode);
         }
 
-        function toggleFillShape() {
+        window.toggleFillShape = function() {
             fillShape = !fillShape;
             document.getElementById('fill-shape-label').textContent = fillShape ? 'ON' : 'OFF';
             document.getElementById('fill-shape-btn').classList.toggle('active', fillShape);
         }
 
-        function pickCustomColor(hex) {
-            currentSolid = hex;
+        window.pickCustomColor = function(hex) {
+            currentSolidColor = hex;
             document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
             updateColorPreview();
             updateHsvPreview(hex);
@@ -1571,10 +1572,10 @@
 
         function updateColorPreview() {
             const p = document.getElementById('cur-color-preview');
-            if (p) p.style.background = currentSolid;
+            if (p) p.style.background = currentSolidColor;
         }
 
-        function switchTab(tab) {
+        window.switchTab = function(tab) {
             ['gradient','solid','brush','shapes','fx'].forEach(t => {
                 document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
                 document.getElementById('panel-' + t)?.classList.toggle('hidden', t !== tab);
@@ -1601,7 +1602,7 @@
                 const s = Math.max(0, Math.min(1, (cx - r.left) / r.width));
                 const v = Math.max(0, Math.min(1, 1 - (cy - r.top) / r.height));
                 const hex = hsvToHex(_hsvHue, s, v);
-                currentSolid = hex;
+                currentSolidColor = hex;
                 updateHsvPreview(hex);
                 updateColorPreview();
                 if (currentTool === 'eraser') setTool('brush');
@@ -1619,8 +1620,8 @@
                 const cy = e.touches ? e.touches[0].clientY : e.clientY;
                 _hsvHue = Math.max(0, Math.min(360, ((cy - r.top) / r.height) * 360));
                 drawSVBox(sv, _hsvHue);
-                currentSolid = hsvToHex(_hsvHue, 1, 1);
-                updateHsvPreview(currentSolid);
+                currentSolidColor = hsvToHex(_hsvHue, 1, 1);
+                updateHsvPreview(currentSolidColor);
                 updateColorPreview();
                 if (currentTool === 'eraser') setTool('brush');
             }
@@ -1683,7 +1684,7 @@
                 if (c === '#ffffff') el.style.border = '2px solid #555';
                 el.title = c;
                 el.onclick = () => {
-                    currentSolid = c;
+                    currentSolidColor = c;
                     document.querySelectorAll('.color-dot').forEach(s => s.classList.remove('active'));
                     el.classList.add('active');
                     updateColorPreview();
@@ -1694,7 +1695,7 @@
             });
         }
 
-        async function submitDrawing() {
+        window.submitDrawing = async function() {
             if (isSubmitting || hasSubmitted) return;
             // Composite onto white background before export
             const exportCanvas = document.createElement('canvas');
@@ -1736,7 +1737,7 @@
             t._timeout = setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        function copyCode() {
+        window.copyCode = function() {
             if (!roomCode) return;
             navigator.clipboard?.writeText(roomCode).then(() => showToast('Code copied!')).catch(() => {});
         }
@@ -1746,14 +1747,14 @@
             if (e.key === 'Enter') {
                 const active = document.activeElement;
                 if (active && active.id === 'writing-input') {
-                    submitText();
+                    window.submitText();
                 }
             }
             if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
                 if (document.activeElement?.tagName !== 'INPUT' && 
                     document.activeElement?.tagName !== 'TEXTAREA') {
                     e.preventDefault();
-                    undoDraw();
+                    window.undoDraw();
                 }
             }
         });
@@ -1761,6 +1762,7 @@
         // ===== INITIAL SCREEN =====
         document.getElementById('lobby').style.display = 'block';
     </script>
-    <script src="/static/pwa.js"></script>
+    <!-- Removed pwa.js since it's failing - add back when fixed -->
+    <!-- <script src="/static/pwa.js"></script> -->
 </body>
 </html>
