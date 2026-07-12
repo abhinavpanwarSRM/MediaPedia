@@ -14,6 +14,9 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         body {
@@ -22,6 +25,7 @@
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+            touch-action: none;
         }
 
         /* ===== TOP NAV ===== */
@@ -399,6 +403,7 @@
             overflow: hidden;
             margin-bottom: 0.8rem;
             box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+            touch-action: none;
         }
         .drawing-container canvas {
             display: block;
@@ -436,6 +441,7 @@
             transition: all 0.2s;
             white-space: nowrap;
             flex-shrink: 0;
+            font-family: 'Poppins', sans-serif;
         }
         .tool-tab:hover { color: #aaa; background: #161616; }
         .tool-tab.active { color: #fff; border-bottom-color: #ff6b6b; background: #161616; }
@@ -448,20 +454,6 @@
             flex-wrap: wrap;
         }
 
-        /* gradient swatches */
-        .grad-swatch {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: transform 0.15s;
-            flex-shrink: 0;
-        }
-        .grad-swatch:hover { transform: scale(1.12); }
-        .grad-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px #ff6b6b; transform: scale(1.1); }
-
-        /* solid color dots */
         .color-dot {
             width: 28px;
             height: 28px;
@@ -703,8 +695,6 @@
             #lobby h1 { font-size: 2.2rem; }
             .game-area { padding: 1.2rem; }
             .drawing-container canvas { min-height: 300px; }
-            .drawing-tools { gap: 0.5rem; padding: 0.8rem; }
-            .color-opt { width: 26px; height: 26px; }
             .room-header { padding: 0.8rem 1rem; }
         }
         
@@ -713,7 +703,6 @@
             .game-prompt { font-size: 1.1rem; padding: 0.8rem; }
             .drawing-container canvas { min-height: 250px; }
             .tool-btn { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
-            .color-opt { width: 22px; height: 22px; }
             .btn { font-size: 0.9rem; padding: 0.8rem; }
             .btn-reveal-next { padding: 0.6rem 1.5rem; font-size: 0.9rem; }
             .reveal-step .step-content img { max-height: 150px; }
@@ -784,27 +773,14 @@
                     <div class="drawing-tools">
                         <!-- Tab bar -->
                         <div class="tools-top">
-                            <button class="tool-tab active" id="tab-gradient" onclick="window.switchTab('gradient')">🎨 Color</button>
-                            <button class="tool-tab" id="tab-solid" onclick="window.switchTab('solid')">🟥 Swatches</button>
+                            <button class="tool-tab active" id="tab-solid" onclick="window.switchTab('solid')">🟥 Colors</button>
                             <button class="tool-tab" id="tab-brush" onclick="window.switchTab('brush')">✏️ Brush</button>
                             <button class="tool-tab" id="tab-shapes" onclick="window.switchTab('shapes')">⬛ Shapes</button>
                             <button class="tool-tab" id="tab-fx" onclick="window.switchTab('fx')">✨ FX</button>
                         </div>
 
-                        <!-- Color picker tab -->
-                        <div class="tools-body" id="panel-gradient" style="flex-direction:column;align-items:flex-start;gap:6px;padding:0.6rem 0.9rem;">
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <canvas id="hsv-picker" width="200" height="150" style="border-radius:8px;cursor:crosshair;flex-shrink:0;"></canvas>
-                                <canvas id="hue-bar" width="18" height="150" style="border-radius:6px;cursor:crosshair;flex-shrink:0;"></canvas>
-                                <div style="display:flex;flex-direction:column;gap:6px;">
-                                    <div id="color-preview-box" style="width:40px;height:40px;border-radius:8px;border:2px solid #444;"></div>
-                                    <div id="color-hex-label" style="color:#888;font-size:0.7rem;font-weight:600;text-align:center;"></div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Solid tab -->
-                        <div class="tools-body hidden" id="panel-solid">
+                        <div class="tools-body" id="panel-solid">
                             <div id="solid-picker"></div>
                             <div class="tool-sep"></div>
                             <div class="cur-color-preview" id="cur-color-preview" title="Custom color">
@@ -891,7 +867,6 @@
         let isSubmitting = false;
         let pollInterval = null;
         let hasSubmitted = false;
-        let isHost = false;
         let _drawingRoundInit = false;
         let _lastState = null;
 
@@ -900,7 +875,6 @@
         let ctx = null;
         let isDrawing = false;
         let lastX = 0, lastY = 0;
-        // FIXED: Removed duplicate declaration - use currentSolidColor instead
         let currentSolidColor = '#000000';
         let brushSize = 5;
         let drawHistory = [];
@@ -915,7 +889,6 @@
         ];
 
         let currentTool = 'brush';
-        // Removed duplicate currentSolid declaration
         let brushOpacity = 1;
         let mirrorMode = false;
         let rainbowMode = false;
@@ -928,7 +901,6 @@
 
         // ===== INIT =====
         document.addEventListener('DOMContentLoaded', function() {
-            setupGradientPicker();
             setupSolidPicker();
             setupCanvas();
             updateColorPreview();
@@ -1107,7 +1079,6 @@
                     const wp = data.my_prompt || {};
                     document.getElementById('writing-prompt').textContent = wp.content || 'Write anything!';
                     _drawingRoundInit = false;
-                    // Only reset inputs on first entry into writing state
                     if (prevState !== 'writing') {
                         hasSubmitted = false;
                         document.getElementById('writing-input').disabled = false;
@@ -1129,7 +1100,6 @@
                     if (!hasSubmitted && !_drawingRoundInit) {
                         _drawingRoundInit = true;
                         document.getElementById('drawing-submit').disabled = false;
-                        // Fill white so canvas isn't transparent
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         drawHistory = [];
@@ -1255,16 +1225,13 @@
                 const container = canvas.parentElement;
                 const w = container.clientWidth;
                 const h = Math.max(400, Math.min(w * 0.75, 600));
-                // Save current drawing
                 const snapshot = drawHistory.length > 0 ? drawHistory[drawHistory.length - 1] : null;
                 canvas.width = w;
                 canvas.height = h;
-                // Remove inline style overrides — let CSS width:100% handle display
                 canvas.style.width = '';
                 canvas.style.height = '';
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                // Restore drawing
                 if (snapshot) {
                     const img = new Image();
                     img.onload = () => ctx.drawImage(img, 0, 0, w, h);
@@ -1276,7 +1243,6 @@
             }
             
             resizeCanvas();
-            // Fill white on init
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             saveState();
@@ -1288,22 +1254,38 @@
             canvas.addEventListener('mouseup', endDraw);
             canvas.addEventListener('mouseleave', endDraw);
 
-            // Touch events
-            canvas.addEventListener('touchstart', handleTouch(startDraw));
-            canvas.addEventListener('touchmove', handleTouch(draw));
-            canvas.addEventListener('touchend', endDraw);
-            canvas.addEventListener('touchcancel', endDraw);
-        }
-
-        function handleTouch(fn) {
-            return function(e) {
+            // Touch events - FIXED for mobile
+            canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
                 const touch = e.touches[0];
                 if (!touch) return;
-                // pass CSS-space coords; getCanvasPos will scale them
-                fn({ offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top });
-            };
+                const rect = canvas.getBoundingClientRect();
+                startDraw({ 
+                    offsetX: (touch.clientX - rect.left),
+                    offsetY: (touch.clientY - rect.top)
+                });
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                if (!touch) return;
+                const rect = canvas.getBoundingClientRect();
+                draw({
+                    offsetX: (touch.clientX - rect.left),
+                    offsetY: (touch.clientY - rect.top)
+                });
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                endDraw();
+            }, { passive: false });
+
+            canvas.addEventListener('touchcancel', function(e) {
+                e.preventDefault();
+                endDraw();
+            }, { passive: false });
         }
 
         // ===== COLOR HELPERS =====
@@ -1349,7 +1331,6 @@
                 return;
             }
 
-            // brush / eraser — dot on click
             ctx.globalAlpha = currentTool === 'eraser' ? 1 : brushOpacity;
             ctx.beginPath();
             ctx.arc(x, y, (currentTool === 'eraser' ? brushSize * 1.5 : brushSize) / 2, 0, Math.PI * 2);
@@ -1376,7 +1357,6 @@
                 return;
             }
 
-            // brush / eraser
             ctx.globalAlpha = currentTool === 'eraser' ? 1 : brushOpacity;
             ctx.beginPath();
             ctx.moveTo(lastX, lastY);
@@ -1463,7 +1443,6 @@
             const fc = tc.getImageData(0, 0, 1, 1).data;
             const [fr, fg, fb] = [fc[0], fc[1], fc[2]];
 
-            // Don't fill if already the same color
             if (tr === fr && tg === fg && tb === fb && ta === 255) return;
 
             const stack = [Math.floor(startX) + Math.floor(startY) * w];
@@ -1473,7 +1452,6 @@
                 if (visited[pos]) continue;
                 visited[pos] = 1;
                 const i = pos * 4;
-                // Match target color — treat transparent pixels as white (canvas background)
                 const pr = data[i+3] === 0 ? 255 : data[i];
                 const pg = data[i+3] === 0 ? 255 : data[i+1];
                 const pb = data[i+3] === 0 ? 255 : data[i+2];
@@ -1495,7 +1473,6 @@
             currentSolidColor = '#' + [p[0],p[1],p[2]].map(v => v.toString(16).padStart(2,'0')).join('');
             document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
             updateColorPreview();
-            updateHsvPreview(currentSolidColor);
             setTool('brush');
             showToast('Color picked: ' + currentSolidColor);
         }
@@ -1566,7 +1543,6 @@
             currentSolidColor = hex;
             document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
             updateColorPreview();
-            updateHsvPreview(hex);
             if (currentTool === 'eraser') setTool('brush');
         }
 
@@ -1576,100 +1552,10 @@
         }
 
         window.switchTab = function(tab) {
-            ['gradient','solid','brush','shapes','fx'].forEach(t => {
+            ['solid','brush','shapes','fx'].forEach(t => {
                 document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
                 document.getElementById('panel-' + t)?.classList.toggle('hidden', t !== tab);
             });
-        }
-
-        // ===== HSV COLOR PICKER =====
-        let _hsvHue = 0;
-
-        function setupGradientPicker() {
-            const sv = document.getElementById('hsv-picker');
-            const hb = document.getElementById('hue-bar');
-            if (!sv || !hb) return;
-            drawHueBar(hb);
-            drawSVBox(sv, _hsvHue);
-            updateHsvPreview(hsvToHex(_hsvHue, 1, 0.5));
-
-            // SV box interaction
-            let svDown = false;
-            function pickSV(e) {
-                const r = sv.getBoundingClientRect();
-                const cx = e.touches ? e.touches[0].clientX : e.clientX;
-                const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                const s = Math.max(0, Math.min(1, (cx - r.left) / r.width));
-                const v = Math.max(0, Math.min(1, 1 - (cy - r.top) / r.height));
-                const hex = hsvToHex(_hsvHue, s, v);
-                currentSolidColor = hex;
-                updateHsvPreview(hex);
-                updateColorPreview();
-                if (currentTool === 'eraser') setTool('brush');
-            }
-            sv.addEventListener('mousedown', e => { svDown = true; pickSV(e); });
-            sv.addEventListener('mousemove', e => { if (svDown) pickSV(e); });
-            window.addEventListener('mouseup', () => svDown = false);
-            sv.addEventListener('touchstart', e => { e.preventDefault(); pickSV(e); }, {passive:false});
-            sv.addEventListener('touchmove', e => { e.preventDefault(); pickSV(e); }, {passive:false});
-
-            // Hue bar interaction
-            let hDown = false;
-            function pickHue(e) {
-                const r = hb.getBoundingClientRect();
-                const cy = e.touches ? e.touches[0].clientY : e.clientY;
-                _hsvHue = Math.max(0, Math.min(360, ((cy - r.top) / r.height) * 360));
-                drawSVBox(sv, _hsvHue);
-                currentSolidColor = hsvToHex(_hsvHue, 1, 1);
-                updateHsvPreview(currentSolidColor);
-                updateColorPreview();
-                if (currentTool === 'eraser') setTool('brush');
-            }
-            hb.addEventListener('mousedown', e => { hDown = true; pickHue(e); });
-            hb.addEventListener('mousemove', e => { if (hDown) pickHue(e); });
-            window.addEventListener('mouseup', () => hDown = false);
-            hb.addEventListener('touchstart', e => { e.preventDefault(); pickHue(e); }, {passive:false});
-            hb.addEventListener('touchmove', e => { e.preventDefault(); pickHue(e); }, {passive:false});
-        }
-
-        function drawHueBar(c) {
-            const ctx2 = c.getContext('2d');
-            const grad = ctx2.createLinearGradient(0, 0, 0, c.height);
-            for (let i = 0; i <= 360; i += 30) grad.addColorStop(i/360, `hsl(${i},100%,50%)`);
-            ctx2.fillStyle = grad;
-            ctx2.fillRect(0, 0, c.width, c.height);
-        }
-
-        function drawSVBox(c, hue) {
-            const ctx2 = c.getContext('2d');
-            ctx2.fillStyle = `hsl(${hue},100%,50%)`;
-            ctx2.fillRect(0, 0, c.width, c.height);
-            const wGrad = ctx2.createLinearGradient(0, 0, c.width, 0);
-            wGrad.addColorStop(0, 'rgba(255,255,255,1)');
-            wGrad.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx2.fillStyle = wGrad;
-            ctx2.fillRect(0, 0, c.width, c.height);
-            const bGrad = ctx2.createLinearGradient(0, 0, 0, c.height);
-            bGrad.addColorStop(0, 'rgba(0,0,0,0)');
-            bGrad.addColorStop(1, 'rgba(0,0,0,1)');
-            ctx2.fillStyle = bGrad;
-            ctx2.fillRect(0, 0, c.width, c.height);
-        }
-
-        function hsvToHex(h, s, v) {
-            let r, g, b;
-            const i = Math.floor(h / 60) % 6;
-            const f = h / 60 - Math.floor(h / 60);
-            const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
-            [r,g,b] = [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i];
-            return '#' + [r,g,b].map(x => Math.round(x*255).toString(16).padStart(2,'0')).join('');
-        }
-
-        function updateHsvPreview(hex) {
-            const box = document.getElementById('color-preview-box');
-            const lbl = document.getElementById('color-hex-label');
-            if (box) box.style.background = hex;
-            if (lbl) lbl.textContent = hex;
         }
 
         function setupSolidPicker() {
@@ -1688,7 +1574,6 @@
                     document.querySelectorAll('.color-dot').forEach(s => s.classList.remove('active'));
                     el.classList.add('active');
                     updateColorPreview();
-                    updateHsvPreview(c);
                     if (currentTool === 'eraser') setTool('brush');
                 };
                 container.appendChild(el);
@@ -1696,7 +1581,26 @@
         }
 
         window.submitDrawing = async function() {
-            if (isSubmitting || hasSubmitted) return;
+            if (isSubmitting || hasSubmitted) {
+                showToast('Already submitted!');
+                return;
+            }
+            
+            // Check if canvas is empty (all white)
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            let isEmpty = true;
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i] !== 255 || data[i+1] !== 255 || data[i+2] !== 255) {
+                    isEmpty = false;
+                    break;
+                }
+            }
+            if (isEmpty) {
+                showToast('Please draw something first!');
+                return;
+            }
+            
             // Composite onto white background before export
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = canvas.width;
@@ -1705,9 +1609,14 @@
             ectx.fillStyle = '#ffffff';
             ectx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
             ectx.drawImage(canvas, 0, 0);
+            
+            // Convert to JPEG with quality 0.85
             const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.85);
             
             isSubmitting = true;
+            document.getElementById('drawing-submit').disabled = true;
+            document.getElementById('drawing-submit').textContent = 'Submitting...';
+            
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
                     method: 'POST',
@@ -1715,15 +1624,22 @@
                     body: JSON.stringify({ content: dataUrl })
                 });
                 const data = await res.json();
-                if (data.error) { showToast(data.error); return; }
+                if (data.error) { 
+                    showToast(data.error); 
+                    document.getElementById('drawing-submit').disabled = false;
+                    document.getElementById('drawing-submit').textContent = 'Submit Drawing';
+                    isSubmitting = false;
+                    return; 
+                }
                 hasSubmitted = true;
-                document.getElementById('drawing-submit').disabled = true;
-                showToast('Submitted! Waiting for others...');
+                showToast('✅ Drawing submitted! Waiting for others...');
                 if (socket) socket.emit('gartic_submitted', { code: roomCode });
                 fetchRoom();
             } catch(e) {
-                showToast('Failed to submit');
-            } finally {
+                console.error('Submit error:', e);
+                showToast('❌ Failed to submit drawing');
+                document.getElementById('drawing-submit').disabled = false;
+                document.getElementById('drawing-submit').textContent = 'Submit Drawing';
                 isSubmitting = false;
             }
         }
@@ -1762,7 +1678,5 @@
         // ===== INITIAL SCREEN =====
         document.getElementById('lobby').style.display = 'block';
     </script>
-    <!-- Removed pwa.js since it's failing - add back when fixed -->
-    <!-- <script src="/static/pwa.js"></script> -->
 </body>
 </html>
