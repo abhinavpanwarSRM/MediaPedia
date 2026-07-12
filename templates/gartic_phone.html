@@ -1611,7 +1611,7 @@
             ectx.drawImage(canvas, 0, 0);
             
             // Convert to JPEG with quality 0.85
-            const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.85);
+            const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.6);
             
             isSubmitting = true;
             document.getElementById('drawing-submit').disabled = true;

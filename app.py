@@ -4946,7 +4946,7 @@ def gartic_submit(code):
     content = data.get('content', '').strip()
     if not content:
         return jsonify({'error': 'Content required'}), 400
-    if room['state'] == 'drawing' and len(content) > 250000:
+    if room['state'] == 'drawing' and len(content) > 600000:
         return jsonify({'error': 'Drawing too large'}), 400
     if room['state'] == 'writing' and len(content) > 300:
         return jsonify({'error': 'Text too long (max 300 chars)'}), 400
