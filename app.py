@@ -4798,6 +4798,311 @@ def on_game_leave(data):
         if not game_socket_rooms[room_code]:
             del game_socket_rooms[room_code]
 
+# ===== GARTIC PHONE =====
+gartic_collection = None
+try:
+    if db is not None:
+        gartic_collection = db.gartic_rooms
+        gartic_collection.create_index('code', unique=True)
+        gartic_collection.create_index('created_at', expireAfterSeconds=86400)  # Auto-delete after 24h
+except Exception as e:
+    log.error('Failed to init gartic_rooms: %s', e)
+
+@app.route('/games/gartic-phone')
+def gartic_phone_page():
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    return render_template('gartic_phone.html', username=username)
+
+@app.route('/api/gartic/room', methods=['POST'])
+def gartic_create_room():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    
+    # Generate unique code with retry
+    for _ in range(10):
+        code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
+        if not gartic_collection.find_one({'code': code}):
+            break
+    else:
+        return jsonify({'error': 'Failed to generate unique code'}), 500
+    
+    room = {
+        'code': code,
+        'host': username,
+        'players': [username],
+        'state': 'lobby',
+        'round': 0,
+        'total_rounds': 0,
+        'chains': {},
+        'submissions': {},
+        'assignments': {},
+        'reveal_chain_idx': 0,
+        'reveal_step_idx': 0,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    gartic_collection.insert_one(room)
+    return jsonify({'code': code}), 201
+
+@app.route('/api/gartic/room/<code>', methods=['GET'])
+def gartic_get_room(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code}, {'_id': 0})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    if room['state'] in ('writing', 'drawing'):
+        room = _gartic_strip_for_player(room, username)
+    return jsonify(room)
+
+def _gartic_strip_for_player(room, username):
+    """Remove sensitive data, only show what this player should see."""
+    assignment = room.get('assignments', {}).get(username)
+    if assignment:
+        chain = room.get('chains', {}).get(assignment, [])
+        last_entry = chain[-1] if chain else None
+        room['my_prompt'] = last_entry
+        room['my_chain_owner'] = assignment
+    room.pop('chains', None)
+    room.pop('submissions', None)
+    room.pop('assignments', None)
+    return room
+
+@app.route('/api/gartic/room/<code>/join', methods=['POST'])
+def gartic_join_room(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if room['state'] != 'lobby':
+        return jsonify({'error': 'Game already started'}), 400
+    if username in room['players']:
+        return jsonify({'code': code})
+    if len(room['players']) >= 8:
+        return jsonify({'error': 'Room full (max 8)'}), 400
+    gartic_collection.update_one({'code': code}, {'$push': {'players': username}})
+    socketio.emit('gartic_player_joined', {'username': username}, to=code)
+    return jsonify({'code': code})
+
+@app.route('/api/gartic/room/<code>/start', methods=['POST'])
+def gartic_start(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if room['host'] != username:
+        return jsonify({'error': 'Only host can start'}), 403
+    players = room['players']
+    if len(players) < 2:
+        return jsonify({'error': 'Need at least 2 players'}), 400
+    chains = {p: [] for p in players}
+    assignments = {p: p for p in players}
+    total_rounds = len(players) * 2
+    gartic_collection.update_one({'code': code}, {'$set': {
+        'state': 'writing',
+        'round': 1,
+        'total_rounds': total_rounds,
+        'chains': chains,
+        'submissions': {},
+        'assignments': assignments,
+        'reveal_chain_idx': 0,
+        'reveal_step_idx': 0
+    }})
+    socketio.emit('gartic_refresh', {}, to=code)
+    return jsonify({'started': True})
+
+@app.route('/api/gartic/room/<code>/submit', methods=['POST'])
+def gartic_submit(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if username not in room['players']:
+        return jsonify({'error': 'Not in this room'}), 403
+    if room['state'] not in ('writing', 'drawing'):
+        return jsonify({'error': 'Not accepting submissions'}), 400
+
+    data = request.json or {}
+    content = data.get('content', '').strip()
+    if not content:
+        return jsonify({'error': 'Content required'}), 400
+    if room['state'] == 'drawing' and len(content) > 250000:
+        return jsonify({'error': 'Drawing too large'}), 400
+    if room['state'] == 'writing' and len(content) > 300:
+        return jsonify({'error': 'Text too long (max 300 chars)'}), 400
+
+    gartic_collection.update_one(
+        {'code': code},
+        {'$set': {f'submissions.{username}': content}}
+    )
+    socketio.emit('gartic_someone_submitted', {'username': username}, to=code)
+
+    room = gartic_collection.find_one({'code': code})
+    players = room['players']
+    submissions = room.get('submissions', {})
+
+    if all(p in submissions for p in players):
+        chains = room.get('chains', {})
+        assignments = room.get('assignments', {})
+        entry_type = 'text' if room['state'] == 'writing' else 'drawing'
+
+        for player, content_val in submissions.items():
+            chain_owner = assignments.get(player, player)
+            if chain_owner in chains:
+                chains[chain_owner].append({
+                    'type': entry_type,
+                    'content': content_val,
+                    'author': player
+                })
+
+        current_round = room['round']
+        total_rounds = room['total_rounds']
+
+        if current_round >= total_rounds:
+            gartic_collection.update_one({'code': code}, {'$set': {
+                'chains': chains,
+                'submissions': {},
+                'state': 'reveal',
+                'reveal_chain_idx': 0,
+                'reveal_step_idx': 0
+            }})
+        else:
+            new_assignments = _gartic_rotate(players, assignments)
+            next_state = 'drawing' if room['state'] == 'writing' else 'writing'
+            gartic_collection.update_one({'code': code}, {'$set': {
+                'chains': chains,
+                'submissions': {},
+                'assignments': new_assignments,
+                'state': next_state,
+                'round': current_round + 1
+            }})
+        socketio.emit('gartic_refresh', {}, to=code)
+
+    room = gartic_collection.find_one({'code': code}, {'_id': 0})
+    if room['state'] in ('writing', 'drawing'):
+        room = _gartic_strip_for_player(room, username)
+    return jsonify(room)
+
+def _gartic_rotate(players, assignments):
+    """Rotate each player's assignment to the next player's chain."""
+    n = len(players)
+    new_assignments = {}
+    for player in players:
+        current_chain = assignments.get(player, player)
+        current_idx = players.index(current_chain) if current_chain in players else players.index(player)
+        next_chain_owner = players[(current_idx + 1) % n]
+        new_assignments[player] = next_chain_owner
+    return new_assignments
+
+@app.route('/api/gartic/room/<code>/reveal_next', methods=['POST'])
+def gartic_reveal_next(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if room['host'] != username:
+        return jsonify({'error': 'Only host can advance reveal'}), 403
+    if room['state'] != 'reveal':
+        return jsonify({'error': 'Not in reveal state'}), 400
+
+    chains = room.get('chains', {})
+    players = room['players']
+    chain_idx = room.get('reveal_chain_idx', 0)
+    step_idx = room.get('reveal_step_idx', 0)
+
+    if chain_idx >= len(players):
+        return jsonify({'done': True})
+
+    chain_owner = players[chain_idx]
+    chain = chains.get(chain_owner, [])
+    next_step = step_idx + 1
+
+    if next_step >= len(chain):
+        gartic_collection.update_one({'code': code}, {'$set': {
+            'reveal_chain_idx': chain_idx + 1,
+            'reveal_step_idx': 0
+        }})
+    else:
+        gartic_collection.update_one({'code': code}, {'$set': {
+            'reveal_step_idx': next_step
+        }})
+    
+    socketio.emit('gartic_refresh', {}, to=code)
+    room = gartic_collection.find_one({'code': code}, {'_id': 0})
+    return jsonify(room)
+
+@app.route('/api/gartic/room/<code>/leave', methods=['POST'])
+def gartic_leave(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    if username not in room['players']:
+        return jsonify({'error': 'Not in this room'}), 400
+    
+    if room['host'] == username:
+        remaining = [p for p in room['players'] if p != username]
+        if remaining:
+            gartic_collection.update_one(
+                {'code': code},
+                {'$set': {'host': remaining[0]}, '$pull': {'players': username}}
+            )
+        else:
+            gartic_collection.delete_one({'code': code})
+            return jsonify({'deleted': True})
+    else:
+        gartic_collection.update_one({'code': code}, {'$pull': {'players': username}})
+    
+    socketio.emit('gartic_player_left', {'username': username}, to=code)
+    return jsonify({'left': True})
+
+# SocketIO events for Gartic
+@socketio.on('gartic_join')
+def on_gartic_join(data):
+    code = data.get('code')
+    username = session.get('username')
+    if not code or not username:
+        return
+    join_room(code)
+
+@socketio.on('gartic_leave')
+def on_gartic_leave(data):
+    code = data.get('code')
+    username = session.get('username')
+    if not code or not username:
+        return
+    leave_room(code)
+
 if __name__ == "__main__":
     _debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     socketio.run(app, host="0.0.0.0", port=5000, debug=_debug)
