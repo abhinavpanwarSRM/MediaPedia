@@ -397,12 +397,12 @@
         /* ===== DRAWING STATE ===== */
         .drawing-container {
             position: relative;
-            border-radius: 14px;
+            border-radius: 14px 14px 0 0;
             border: 2px solid #2a2a2a;
+            border-bottom: none;
             overflow: hidden;
-            margin-bottom: 0.8rem;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.7);
             touch-action: none;
+            background: #fff;
         }
         .drawing-container canvas {
             display: block;
@@ -411,122 +411,45 @@
             touch-action: none;
             cursor: crosshair;
             background: #fff;
-            min-height: 420px;
+            min-height: 300px;
         }
 
+        /* ===== UNIFIED TOOLBAR ===== */
         .drawing-tools {
-            background: #0f0f0f;
-            border-radius: 16px;
-            border: 1px solid #222;
+            background: #111;
+            border: 2px solid #2a2a2a;
+            border-top: none;
+            border-radius: 0 0 14px 14px;
             margin-bottom: 0.8rem;
-            overflow: hidden;
-        }
-        .tools-top {
+            padding: 0.55rem 0.75rem;
             display: flex;
-            gap: 0;
-            border-bottom: 1px solid #1e1e1e;
-            overflow-x: auto;
-            scrollbar-width: none;
+            flex-direction: column;
+            gap: 0.45rem;
         }
-        .tools-top::-webkit-scrollbar { display: none; }
-        .tool-tab {
-            padding: 0.55rem 0.9rem;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid transparent;
-            color: #555;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-            font-family: 'Poppins', sans-serif;
-        }
-        .tool-tab:hover { color: #aaa; background: #161616; }
-        .tool-tab.active { color: #fff; border-bottom-color: #ff6b6b; background: #161616; }
-
-        .tools-body {
-            padding: 0.7rem 0.9rem;
+        .toolbar-row {
             display: flex;
-            gap: 0.6rem;
             align-items: center;
+            gap: 0.4rem;
             flex-wrap: wrap;
         }
+        .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
+        .toolbar-sep-h { width: 100%; height: 1px; background: #1e1e1e; }
 
         .color-dot {
-            width: 28px;
-            height: 28px;
+            width: 24px; height: 24px;
             border-radius: 50%;
             border: 2px solid transparent;
             cursor: pointer;
-            transition: transform 0.15s;
+            transition: transform 0.12s;
             flex-shrink: 0;
         }
-        .color-dot:hover { transform: scale(1.2); }
-        .color-dot.active { border-color: #fff; box-shadow: 0 0 0 2px #ff6b6b; transform: scale(1.1); }
-
-        .tool-btn {
-            padding: 0.35rem 0.8rem;
-            background: #1a1a1a;
-            border: 1px solid #2e2e2e;
-            border-radius: 8px;
-            color: #bbb;
-            cursor: pointer;
-            transition: all 0.18s;
-            font-size: 0.82rem;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .tool-btn:hover { background: #252525; color: #fff; border-color: #444; }
-        .tool-btn.active { border-color: #ff6b6b; background: rgba(255,107,107,0.12); color: #ff6b6b; }
-
-        .tool-sep { width: 1px; height: 24px; background: #2a2a2a; flex-shrink: 0; }
-
-        .size-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 90px;
-            height: 4px;
-            background: #2a2a2a;
-            border-radius: 2px;
-            outline: none;
-            cursor: pointer;
-        }
-        .size-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 15px; height: 15px;
-            border-radius: 50%;
-            background: #ff6b6b;
-            cursor: pointer;
-            border: 2px solid #fff;
-        }
-        .size-label { color: #666; font-size: 0.78rem; min-width: 20px; font-weight: 600; }
-
-        .opacity-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 70px;
-            height: 4px;
-            background: linear-gradient(to right, transparent, #fff);
-            border-radius: 2px;
-            outline: none;
-            cursor: pointer;
-            border: 1px solid #333;
-        }
-        .opacity-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px; height: 14px;
-            border-radius: 50%;
-            background: #fff;
-            cursor: pointer;
-            border: 2px solid #555;
-        }
+        .color-dot:hover { transform: scale(1.25); }
+        .color-dot.active { border-color: #fff; box-shadow: 0 0 0 2px #ff6b6b; transform: scale(1.15); }
 
         .cur-color-preview {
-            width: 28px; height: 28px;
-            border-radius: 6px;
-            border: 2px solid #444;
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            border: 2px solid #555;
             flex-shrink: 0;
             cursor: pointer;
             position: relative;
@@ -537,6 +460,63 @@
             width: 100%; height: 100%;
             border: none; padding: 0;
         }
+
+        .tool-btn {
+            padding: 0.28rem 0.6rem;
+            background: #1a1a1a;
+            border: 1px solid #2e2e2e;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.8rem;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .tool-btn:hover { background: #252525; color: #fff; border-color: #444; }
+        .tool-btn.active { border-color: #ff6b6b; background: rgba(255,107,107,0.15); color: #ff6b6b; }
+        .tool-btn.danger:hover { border-color: #ff6b6b; color: #ff6b6b; background: rgba(255,107,107,0.08); }
+
+        .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
+
+        .size-track { display: flex; align-items: center; gap: 0.35rem; }
+        .size-dot-preview {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .size-dot-preview span {
+            border-radius: 50%; background: #fff; display: block;
+            transition: width 0.1s, height 0.1s;
+            width: 5px; height: 5px;
+        }
+        .size-slider {
+            -webkit-appearance: none; appearance: none;
+            width: 80px; height: 4px;
+            background: #2a2a2a; border-radius: 2px;
+            outline: none; cursor: pointer;
+        }
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px; height: 14px;
+            border-radius: 50%; background: #ff6b6b;
+            cursor: pointer; border: 2px solid #fff;
+        }
+        .opacity-slider {
+            -webkit-appearance: none; appearance: none;
+            width: 60px; height: 4px;
+            background: linear-gradient(to right, transparent, #fff);
+            border-radius: 2px; outline: none;
+            cursor: pointer; border: 1px solid #333;
+        }
+        .opacity-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px; height: 13px;
+            border-radius: 50%; background: #fff;
+            cursor: pointer; border: 2px solid #555;
+        }
+        .tool-label { color: #444; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.5px; white-space: nowrap; }
         
         .btn-submit {
             width: 100%;
@@ -692,19 +672,21 @@
         @media (max-width: 768px) {
             #lobby { margin: 5vh auto; padding: 2rem 1.5rem; }
             #lobby h1 { font-size: 2.2rem; }
-            .game-area { padding: 1.2rem; }
-            .drawing-container canvas { min-height: 300px; }
+            .game-area { padding: 1rem; }
+            .drawing-container canvas { min-height: 260px; }
             .room-header { padding: 0.8rem 1rem; }
         }
         
         @media (max-width: 480px) {
             .topnav { padding: 0.6rem 1rem; }
-            .game-prompt { font-size: 1.1rem; padding: 0.8rem; }
-            .drawing-container canvas { min-height: 250px; }
-            .tool-btn { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+            .game-prompt { font-size: 1rem; padding: 0.7rem; }
+            .drawing-container canvas { min-height: 220px; }
+            .tool-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
             .btn { font-size: 0.9rem; padding: 0.8rem; }
             .btn-reveal-next { padding: 0.6rem 1.5rem; font-size: 0.9rem; }
-            .reveal-step .step-content img { max-height: 150px; }
+            .reveal-step .step-content img { max-height: 220px; }
+            .size-slider { width: 60px; }
+            .opacity-slider { width: 45px; }
         }
     </style>
 </head>
@@ -753,7 +735,7 @@
             <!-- WRITING STATE -->
             <div id="writing-state" class="hidden">
                 <div class="game-status">✍️ Round <span id="writing-round">1</span> — Write a description</div>
-                <div class="game-prompt">You're writing about: <strong id="writing-prompt">—</strong></div>
+                <div class="game-prompt">You're writing about: <span id="writing-prompt">—</span></div>
                 <div class="submission-area">
                     <textarea id="writing-input" placeholder="Describe what you see... (max 300 chars)" maxlength="300"></textarea>
                     <div class="char-counter"><span id="writing-char-count">0</span>/300</div>
@@ -765,77 +747,55 @@
             <!-- DRAWING STATE -->
             <div id="drawing-state" class="hidden">
                 <div class="game-status">🎨 Round <span id="drawing-round">1</span> — Draw the description</div>
-                <div class="game-prompt">You're drawing: <strong id="drawing-prompt">—</strong></div>
+                <div class="game-prompt" style="margin-bottom:0.6rem;">You're drawing: <strong id="drawing-prompt">—</strong></div>
                 <div class="submission-area">
-                    
-                    <!-- Drawing Tools -->
-                    <div class="drawing-tools">
-                        <!-- Tab bar -->
-                        <div class="tools-top">
-                            <button class="tool-tab active" id="tab-solid" onclick="window.switchTab('solid')">🟥 Colors</button>
-                            <button class="tool-tab" id="tab-brush" onclick="window.switchTab('brush')">✏️ Brush</button>
-                            <button class="tool-tab" id="tab-shapes" onclick="window.switchTab('shapes')">⬛ Shapes</button>
-                            <button class="tool-tab" id="tab-fx" onclick="window.switchTab('fx')">✨ FX</button>
-                        </div>
-
-                        <!-- Solid tab -->
-                        <div class="tools-body" id="panel-solid">
-                            <div id="solid-picker"></div>
-                            <div class="tool-sep"></div>
-                            <div class="cur-color-preview" id="cur-color-preview" title="Custom color">
-                                <input type="color" id="custom-color-input" oninput="window.pickCustomColor(this.value)">
-                            </div>
-                        </div>
-
-                        <!-- Brush tab -->
-                        <div class="tools-body hidden" id="panel-brush">
-                            <span style="color:#555;font-size:0.75rem;">SIZE</span>
-                            <input type="range" class="size-slider" id="brush-size" min="1" max="60" value="5">
-                            <span class="size-label" id="brush-size-label">5</span>
-                            <div class="tool-sep"></div>
-                            <span style="color:#555;font-size:0.75rem;">OPACITY</span>
-                            <input type="range" class="opacity-slider" id="opacity-slider" min="5" max="100" value="100">
-                            <span class="size-label" id="opacity-label">100%</span>
-                            <div class="tool-sep"></div>
-                            <button class="tool-btn" id="eraser-btn" onclick="window.setTool('eraser')">🧹 Eraser</button>
-                            <button class="tool-btn" id="fill-btn" onclick="window.setTool('fill')">🪣 Fill</button>
-                            <button class="tool-btn" id="eyedrop-btn" onclick="window.setTool('eyedrop')">💉 Pick</button>
-                        </div>
-
-                        <!-- Shapes tab -->
-                        <div class="tools-body hidden" id="panel-shapes">
-                            <button class="tool-btn" id="shape-pen" onclick="window.setTool('brush')">✏️ Pen</button>
-                            <div class="tool-sep"></div>
-                            <button class="tool-btn" id="shape-line" onclick="window.setShape('line')">╱ Line</button>
-                            <button class="tool-btn" id="shape-rect" onclick="window.setShape('rect')">▭ Rect</button>
-                            <button class="tool-btn" id="shape-circle" onclick="window.setShape('circle')">○ Circle</button>
-                            <button class="tool-btn" id="shape-triangle" onclick="window.setShape('triangle')">△ Triangle</button>
-                            <div class="tool-sep"></div>
-                            <button class="tool-btn" id="fill-shape-btn" onclick="window.toggleFillShape()">Fill: <span id="fill-shape-label">OFF</span></button>
-                        </div>
-
-                        <!-- FX tab -->
-                        <div class="tools-body hidden" id="panel-fx">
-                            <button class="tool-btn" id="spray-btn" onclick="window.setTool('spray')">🌫️ Spray</button>
-                            <button class="tool-btn" id="mirror-btn" onclick="window.toggleMirror()">🪞 Mirror: <span id="mirror-label">OFF</span></button>
-                            <button class="tool-btn" id="rainbow-btn" onclick="window.toggleRainbow()">🌈 Rainbow: <span id="rainbow-label">OFF</span></button>
-                            <div class="tool-sep"></div>
-                            <button class="tool-btn" onclick="window.undoDraw()">↩ Undo</button>
-                            <button class="tool-btn" onclick="window.clearCanvas()">🗑 Clear</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Canvas -->
                     <div class="drawing-container">
                         <canvas id="draw-canvas"></canvas>
                     </div>
-                    
+                    <div class="drawing-tools">
+                        <div class="toolbar-row">
+                            <div class="cur-color-preview" id="cur-color-preview" title="Custom color">
+                                <input type="color" id="custom-color-input" oninput="window.pickCustomColor(this.value)">
+                            </div>
+                            <div id="solid-picker" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+                        </div>
+                        <div class="toolbar-sep-h"></div>
+                        <div class="toolbar-row">
+                            <button class="tool-btn active" id="shape-pen" onclick="window.setTool('brush')">✏️ Pen</button>
+                            <button class="tool-btn" id="eraser-btn" onclick="window.setTool('eraser')">🧹</button>
+                            <button class="tool-btn" id="fill-btn" onclick="window.setTool('fill')">🪣</button>
+                            <button class="tool-btn" id="eyedrop-btn" onclick="window.setTool('eyedrop')">💉</button>
+                            <button class="tool-btn" id="spray-btn" onclick="window.setTool('spray')">🌫️</button>
+                            <div class="toolbar-sep"></div>
+                            <div class="size-track">
+                                <div class="size-dot-preview"><span id="size-dot"></span></div>
+                                <input type="range" class="size-slider" id="brush-size" min="1" max="60" value="5">
+                            </div>
+                            <div class="toolbar-sep"></div>
+                            <span class="tool-label">OPACITY</span>
+                            <input type="range" class="opacity-slider" id="opacity-slider" min="5" max="100" value="100">
+                        </div>
+                        <div class="toolbar-sep-h"></div>
+                        <div class="toolbar-row">
+                            <button class="tool-btn" id="shape-line" onclick="window.setShape('line')">╱</button>
+                            <button class="tool-btn" id="shape-rect" onclick="window.setShape('rect')">▭</button>
+                            <button class="tool-btn" id="shape-circle" onclick="window.setShape('circle')">○</button>
+                            <button class="tool-btn" id="shape-triangle" onclick="window.setShape('triangle')">△</button>
+                            <button class="tool-btn" id="fill-shape-btn" onclick="window.toggleFillShape()">⬛ Fill: <span id="fill-shape-label">OFF</span></button>
+                            <div class="toolbar-sep"></div>
+                            <button class="tool-btn" id="mirror-btn" onclick="window.toggleMirror()">🪞 <span id="mirror-label">OFF</span></button>
+                            <button class="tool-btn" id="rainbow-btn" onclick="window.toggleRainbow()">🌈 <span id="rainbow-label">OFF</span></button>
+                            <div class="toolbar-sep"></div>
+                            <button class="tool-btn" onclick="window.undoDraw()">↩</button>
+                            <button class="tool-btn danger" onclick="window.clearCanvas()">🗑</button>
+                        </div>
+                    </div>
                     <button class="btn-submit" id="drawing-submit" onclick="window.submitDrawing()">Submit Drawing</button>
                 </div>
                 <div class="waiting-players" id="drawing-waiting"></div>
             </div>
 
-            <!-- REVEAL STATE -->
+                        <!-- REVEAL STATE -->
             <div id="reveal-state" class="hidden">
                 <div class="game-status">🎭 Reveal — See the chaos!</div>
                 <div id="reveal-content"></div>
@@ -925,12 +885,11 @@
 
             document.getElementById('brush-size').addEventListener('input', function() {
                 brushSize = parseInt(this.value);
-                document.getElementById('brush-size-label').textContent = brushSize;
+                updateSizeDot();
             });
 
             document.getElementById('opacity-slider').addEventListener('input', function() {
                 brushOpacity = parseInt(this.value) / 100;
-                document.getElementById('opacity-label').textContent = this.value + '%';
             });
         });
 
@@ -1091,7 +1050,13 @@
                     document.getElementById('writing-state').classList.remove('hidden');
                     document.getElementById('writing-round').textContent = data.round || 1;
                     const wp = data.my_prompt || {};
-                    document.getElementById('writing-prompt').textContent = wp.content || 'Write anything!';
+                    const wpEl = document.getElementById('writing-prompt');
+                    if (wp.type === 'drawing' && wp.content && wp.content.startsWith('drawing:')) {
+                        const drawId = wp.content.replace('drawing:', '');
+                        wpEl.innerHTML = `<img src="/api/gartic/drawing/${drawId}" alt="Drawing to describe" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #2a2a2a;display:block;margin:0.4rem auto;" onerror="this.outerHTML='<span style=color:#f66>Image failed to load</span>'">`;
+                    } else {
+                        wpEl.textContent = wp.content || 'Write anything!';
+                    }
                     _drawingRoundInit = false;
                     if (prevState !== 'writing') {
                         hasSubmitted = loadSubmit();
@@ -1138,7 +1103,6 @@
                             saveState();
                             resetFX();
                             window.setTool('brush');
-                            window.switchTab('solid');
                             syncToolUI();
                         });
                     } else if (hasSubmitted) {
@@ -1617,6 +1581,7 @@
             };
             document.getElementById(map[currentTool])?.classList.add('active');
             canvas.style.cursor = currentTool === 'eraser' ? 'cell' : 'crosshair';
+            updateSizeDot();
         }
 
         window.setTool = function(tool) {
@@ -1666,24 +1631,22 @@
             if (['eraser','fill','eyedrop','spray'].includes(currentTool)) window.setTool('brush');
         }
 
+        function updateSizeDot() {
+            const dot = document.getElementById('size-dot');
+            if (!dot) return;
+            const px = Math.max(2, Math.min(brushSize, 20));
+            dot.style.width = px + 'px';
+            dot.style.height = px + 'px';
+            dot.style.background = currentTool === 'eraser' ? '#888' : currentSolidColor;
+        }
+
         function updateColorPreview() {
             const p = document.getElementById('cur-color-preview');
             if (p) p.style.background = currentSolidColor;
+            updateSizeDot();
         }
 
-        window.switchTab = function(tab) {
-            ['solid','brush','shapes','fx'].forEach(t => {
-                document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
-                document.getElementById('panel-' + t)?.classList.toggle('hidden', t !== tab);
-            });
-            // Switching to Brush tab always resets to brush so user isn't stuck on eraser/fill/eyedrop invisibly
-            if (tab === 'brush' && ['fill','eyedrop'].includes(currentTool)) {
-                window.setTool('brush');
-            }
-            // Switching away from FX tab stops spray
-            if (tab !== 'fx' && sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
-            if (tab !== 'fx' && currentTool === 'spray') { currentTool = 'brush'; syncToolUI(); }
-        }
+        window.switchTab = function(tab) { /* no-op: unified toolbar */ }
 
         function setupSolidPicker() {
             const container = document.getElementById('solid-picker');
