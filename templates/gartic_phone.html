@@ -1179,11 +1179,12 @@
             
             steps.forEach((step, i) => {
                 const isText = step.type === 'text';
+                const contentHtml = isText
+                    ? step.content
+                    : `<img src="/api/gartic/drawing/${step.content.replace('drawing:', '')}" alt="Drawing" onerror="this.alt='Image failed to load'">`;
                 html += `<div class="reveal-step">
                     <div class="step-author">${isText ? '✍️' : '🎨'} ${step.author}</div>
-                    <div class="step-content">
-                        ${isText ? step.content : `<img src="${step.content}" alt="Drawing">`}
-                    </div>
+                    <div class="step-content">${contentHtml}</div>
                 </div>`;
             });
 

@@ -4800,11 +4800,14 @@ def on_game_leave(data):
 
 # ===== GARTIC PHONE =====
 gartic_collection = None
+gartic_drawings_collection = None
 try:
     if db is not None:
         gartic_collection = db.gartic_rooms
         gartic_collection.create_index('code', unique=True)
         gartic_collection.create_index('created_at', expireAfterSeconds=86400)  # Auto-delete after 24h
+        gartic_drawings_collection = db.gartic_drawings
+        gartic_drawings_collection.create_index('created_at', expireAfterSeconds=86400)
 except Exception as e:
     log.error('Failed to init gartic_rooms: %s', e)
 
@@ -4950,6 +4953,13 @@ def gartic_submit(code):
         return jsonify({'error': 'Drawing too large'}), 400
     if room['state'] == 'writing' and len(content) > 300:
         return jsonify({'error': 'Text too long (max 300 chars)'}), 400
+    # Store drawing data separately to keep room document small
+    if room['state'] == 'drawing' and gartic_drawings_collection is not None:
+        draw_result = gartic_drawings_collection.insert_one({
+            'data': content,
+            'created_at': datetime.now(timezone.utc)
+        })
+        content = 'drawing:' + str(draw_result.inserted_id)
 
     result = gartic_collection.update_one(
         {'code': code, f'submissions.{username}': {'$exists': False}},
@@ -5023,6 +5033,31 @@ def _gartic_rotate(players, assignments):
         new_assignments[player] = next_chain_owner
     return new_assignments
 
+@app.route('/api/gartic/drawing/<drawing_id>', methods=['GET'])
+def gartic_get_drawing(drawing_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_drawings_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    try:
+        from bson import ObjectId
+        doc = gartic_drawings_collection.find_one({'_id': ObjectId(drawing_id)})
+    except Exception:
+        return jsonify({'error': 'Invalid id'}), 400
+    if not doc:
+        return jsonify({'error': 'Not found'}), 404
+    data_url = doc['data']
+    # Return as image directly so browser can cache it
+    if data_url.startswith('data:image/jpeg;base64,'):
+        import base64
+        img_bytes = base64.b64decode(data_url.split(',', 1)[1])
+        from flask import Response
+        return Response(img_bytes, mimetype='image/jpeg',
+                        headers={'Cache-Control': 'public, max-age=86400'})
+    return jsonify({'error': 'Invalid drawing data'}), 400
+
+
 @app.route('/api/gartic/room/<code>/reveal_next', methods=['POST'])
 def gartic_reveal_next(code):
     username = current_user()
@@ -5080,9 +5115,10 @@ def gartic_leave(code):
         return jsonify({'error': 'Not in this room'}), 400
     
     if room['state'] in ('writing', 'drawing') and username not in room.get('submissions', {}):
+        placeholder = '[left the game]'
         gartic_collection.update_one(
             {'code': code, f'submissions.{username}': {'$exists': False}},
-            {'$set': {f'submissions.{username}': '[left the game]'}}
+            {'$set': {f'submissions.{username}': placeholder}}
         )
         updated = gartic_collection.find_one({'code': code})
         remaining_active = [p for p in updated['players'] if p != username]
