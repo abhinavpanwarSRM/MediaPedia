@@ -25,7 +25,6 @@
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
-            touch-action: none;
         }
 
         /* ===== TOP NAV ===== */
@@ -1009,7 +1008,7 @@
             connectSocket(code);
             fetchRoom();
             if (pollInterval) clearInterval(pollInterval);
-            pollInterval = setInterval(fetchRoom, 3000);
+            pollInterval = setInterval(fetchRoom, 5000);
         }
 
         window.leaveRoom = async function() {
@@ -1081,10 +1080,16 @@
                     _drawingRoundInit = false;
                     if (prevState !== 'writing') {
                         hasSubmitted = false;
+                        isSubmitting = false;
                         document.getElementById('writing-input').disabled = false;
                         document.getElementById('writing-submit').disabled = false;
+                        document.getElementById('writing-submit').textContent = 'Submit';
                         document.getElementById('writing-input').value = '';
                         document.getElementById('writing-char-count').textContent = '0';
+                    } else if (hasSubmitted) {
+                        document.getElementById('writing-input').disabled = true;
+                        document.getElementById('writing-submit').disabled = true;
+                        document.getElementById('writing-submit').textContent = '✅ Submitted';
                     }
                     const wWaiting = (data.players || []).filter(p => p !== ME);
                     document.getElementById('writing-waiting').innerHTML =
@@ -1097,13 +1102,24 @@
                     document.getElementById('drawing-round').textContent = data.round || 1;
                     const dp = data.my_prompt || {};
                     document.getElementById('drawing-prompt').textContent = dp.content || '—';
+                    if (prevState !== 'drawing') {
+                        hasSubmitted = false;
+                        isSubmitting = false;
+                        _drawingRoundInit = false;
+                    }
                     if (!hasSubmitted && !_drawingRoundInit) {
                         _drawingRoundInit = true;
-                        document.getElementById('drawing-submit').disabled = false;
+                        const submitBtn = document.getElementById('drawing-submit');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit Drawing';
                         ctx.fillStyle = '#ffffff';
                         ctx.fillRect(0, 0, canvas.width, canvas.height);
                         drawHistory = [];
                         saveState();
+                    } else if (hasSubmitted) {
+                        const submitBtn = document.getElementById('drawing-submit');
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = '✅ Submitted';
                     }
                     break;
                 }
@@ -1195,6 +1211,9 @@
             if (!text) { showToast('Please write something'); return; }
             
             isSubmitting = true;
+            const submitBtn = document.getElementById('writing-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
                     method: 'POST',
@@ -1202,16 +1221,24 @@
                     body: JSON.stringify({ content: text })
                 });
                 const data = await res.json();
-                if (data.error) { showToast(data.error); return; }
+                if (data.error) {
+                    showToast(data.error);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit';
+                    isSubmitting = false;
+                    return;
+                }
                 hasSubmitted = true;
+                isSubmitting = false;
                 document.getElementById('writing-input').disabled = true;
-                document.getElementById('writing-submit').disabled = true;
+                submitBtn.textContent = '✅ Submitted';
                 showToast('Submitted! Waiting for others...');
                 if (socket) socket.emit('gartic_submitted', { code: roomCode });
                 fetchRoom();
             } catch(e) {
                 showToast('Failed to submit');
-            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit';
                 isSubmitting = false;
             }
         }
@@ -1254,27 +1281,19 @@
             canvas.addEventListener('mouseup', endDraw);
             canvas.addEventListener('mouseleave', endDraw);
 
-            // Touch events - FIXED for mobile
+            // Touch events
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 const touch = e.touches[0];
                 if (!touch) return;
-                const rect = canvas.getBoundingClientRect();
-                startDraw({ 
-                    offsetX: (touch.clientX - rect.left),
-                    offsetY: (touch.clientY - rect.top)
-                });
+                startDraw(touch);
             }, { passive: false });
 
             canvas.addEventListener('touchmove', function(e) {
                 e.preventDefault();
                 const touch = e.touches[0];
                 if (!touch) return;
-                const rect = canvas.getBoundingClientRect();
-                draw({
-                    offsetX: (touch.clientX - rect.left),
-                    offsetY: (touch.clientY - rect.top)
-                });
+                draw(touch);
             }, { passive: false });
 
             canvas.addEventListener('touchend', function(e) {
@@ -1307,7 +1326,12 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            return { x: (e.offsetX || 0) * scaleX, y: (e.offsetY || 0) * scaleY };
+            const clientX = e.clientX !== undefined ? e.clientX : (e.offsetX + rect.left);
+            const clientY = e.clientY !== undefined ? e.clientY : (e.offsetY + rect.top);
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
         }
 
         function startDraw(e) {
@@ -1389,7 +1413,7 @@
             isDrawing = false;
             if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             shapeStart = null; shapeSnapshot = null;
-            saveState();
+            saveStateImmediate();
         }
 
         // ===== SHAPES =====
@@ -1478,12 +1502,22 @@
         }
 
         // ===== HISTORY =====
+        let _saveStateTimer = null;
         function saveState() {
+            clearTimeout(_saveStateTimer);
+            _saveStateTimer = setTimeout(function() {
+                if (drawHistory.length >= MAX_HISTORY) drawHistory.shift();
+                drawHistory.push(canvas.toDataURL('image/jpeg', 0.5));
+            }, 100);
+        }
+        function saveStateImmediate() {
+            clearTimeout(_saveStateTimer);
             if (drawHistory.length >= MAX_HISTORY) drawHistory.shift();
-            drawHistory.push(canvas.toDataURL('image/png'));
+            drawHistory.push(canvas.toDataURL('image/jpeg', 0.5));
         }
 
         window.undoDraw = function() {
+            clearTimeout(_saveStateTimer);
             if (drawHistory.length <= 1) { showToast('Nothing to undo'); return; }
             drawHistory.pop();
             const img = new Image();
@@ -1492,7 +1526,8 @@
         }
 
         window.clearCanvas = function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawHistory = [];
             saveState();
             showToast('Canvas cleared');
@@ -1581,7 +1616,8 @@
         }
 
         window.submitDrawing = async function() {
-            if (isSubmitting || hasSubmitted) {
+            if (isSubmitting) return;
+            if (hasSubmitted) {
                 showToast('Already submitted!');
                 return;
             }
