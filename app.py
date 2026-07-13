@@ -4843,7 +4843,7 @@ def gartic_create_room():
         'assignments': {},
         'reveal_chain_idx': 0,
         'reveal_step_idx': 0,
-        'created_at': datetime.now(timezone.utc).isoformat()
+        'created_at': datetime.now(timezone.utc)
     }
     gartic_collection.insert_one(room)
     return jsonify({'code': code}), 201
@@ -4913,7 +4913,7 @@ def gartic_start(code):
         return jsonify({'error': 'Need at least 2 players'}), 400
     chains = {p: [] for p in players}
     assignments = {p: p for p in players}
-    total_rounds = len(players) * 2
+    total_rounds = len(players)
     gartic_collection.update_one({'code': code}, {'$set': {
         'state': 'writing',
         'round': 1,
@@ -4922,7 +4922,7 @@ def gartic_start(code):
         'submissions': {},
         'assignments': assignments,
         'reveal_chain_idx': 0,
-        'reveal_step_idx': 0
+        'reveal_step_idx': -1
     }})
     socketio.emit('gartic_refresh', {}, to=code)
     return jsonify({'started': True})
@@ -4946,21 +4946,24 @@ def gartic_submit(code):
     content = data.get('content', '').strip()
     if not content:
         return jsonify({'error': 'Content required'}), 400
-    if room['state'] == 'drawing' and len(content) > 600000:
+    if room['state'] == 'drawing' and len(content) > 1500000:
         return jsonify({'error': 'Drawing too large'}), 400
     if room['state'] == 'writing' and len(content) > 300:
         return jsonify({'error': 'Text too long (max 300 chars)'}), 400
 
-    gartic_collection.update_one(
-        {'code': code},
+    result = gartic_collection.update_one(
+        {'code': code, f'submissions.{username}': {'$exists': False}},
         {'$set': {f'submissions.{username}': content}}
     )
+    if result.modified_count == 0:
+        room = gartic_collection.find_one({'code': code}, {'_id': 0})
+        if room['state'] in ('writing', 'drawing'):
+            room = _gartic_strip_for_player(room, username)
+        return jsonify(room)
     socketio.emit('gartic_someone_submitted', {'username': username}, to=code)
-
     room = gartic_collection.find_one({'code': code})
     players = room['players']
     submissions = room.get('submissions', {})
-
     if all(p in submissions for p in players):
         chains = room.get('chains', {})
         assignments = room.get('assignments', {})
@@ -4984,7 +4987,7 @@ def gartic_submit(code):
                 'submissions': {},
                 'state': 'reveal',
                 'reveal_chain_idx': 0,
-                'reveal_step_idx': 0
+                'reveal_step_idx': -1
             }})
         else:
             new_assignments = _gartic_rotate(players, assignments)
@@ -5009,7 +5012,13 @@ def _gartic_rotate(players, assignments):
     new_assignments = {}
     for player in players:
         current_chain = assignments.get(player, player)
-        current_idx = players.index(current_chain) if current_chain in players else players.index(player)
+        try:
+            current_idx = players.index(current_chain)
+        except ValueError:
+            try:
+                current_idx = players.index(player)
+            except ValueError:
+                current_idx = 0
         next_chain_owner = players[(current_idx + 1) % n]
         new_assignments[player] = next_chain_owner
     return new_assignments
@@ -5044,7 +5053,7 @@ def gartic_reveal_next(code):
     if next_step >= len(chain):
         gartic_collection.update_one({'code': code}, {'$set': {
             'reveal_chain_idx': chain_idx + 1,
-            'reveal_step_idx': 0
+            'reveal_step_idx': -1
         }})
     else:
         gartic_collection.update_one({'code': code}, {'$set': {
@@ -5070,6 +5079,36 @@ def gartic_leave(code):
     if username not in room['players']:
         return jsonify({'error': 'Not in this room'}), 400
     
+    if room['state'] in ('writing', 'drawing') and username not in room.get('submissions', {}):
+        gartic_collection.update_one(
+            {'code': code, f'submissions.{username}': {'$exists': False}},
+            {'$set': {f'submissions.{username}': '[left the game]'}}
+        )
+        updated = gartic_collection.find_one({'code': code})
+        remaining_active = [p for p in updated['players'] if p != username]
+        if remaining_active and all(p in updated.get('submissions', {}) for p in remaining_active):
+            chains = updated.get('chains', {})
+            assignments = updated.get('assignments', {})
+            subs = updated.get('submissions', {})
+            entry_type = 'text' if updated['state'] == 'writing' else 'drawing'
+            for p, c in subs.items():
+                owner = assignments.get(p, p)
+                if owner in chains:
+                    chains[owner].append({'type': entry_type, 'content': c, 'author': p})
+            cur_round = updated['round']
+            tot_rounds = updated['total_rounds']
+            if cur_round >= tot_rounds:
+                gartic_collection.update_one({'code': code}, {'$set': {
+                    'chains': chains, 'submissions': {}, 'state': 'reveal',
+                    'reveal_chain_idx': 0, 'reveal_step_idx': -1
+                }})
+            else:
+                new_asgn = _gartic_rotate(remaining_active, assignments)
+                nxt = 'drawing' if updated['state'] == 'writing' else 'writing'
+                gartic_collection.update_one({'code': code}, {'$set': {
+                    'chains': chains, 'submissions': {}, 'assignments': new_asgn,
+                    'state': nxt, 'round': cur_round + 1
+                }})
     if room['host'] == username:
         remaining = [p for p in room['players'] if p != username]
         if remaining:
@@ -5082,8 +5121,8 @@ def gartic_leave(code):
             return jsonify({'deleted': True})
     else:
         gartic_collection.update_one({'code': code}, {'$pull': {'players': username}})
-    
     socketio.emit('gartic_player_left', {'username': username}, to=code)
+    socketio.emit('gartic_refresh', {}, to=code)
     return jsonify({'left': True})
 
 # SocketIO events for Gartic

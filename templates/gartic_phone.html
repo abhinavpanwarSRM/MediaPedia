@@ -866,6 +866,11 @@
         let isSubmitting = false;
         let pollInterval = null;
         let hasSubmitted = false;
+
+        function _submitKey() { return 'gartic_submitted_' + roomCode + '_' + (roomData && roomData.round || 0); }
+        function persistSubmit() { try { localStorage.setItem(_submitKey(), '1'); } catch(e) {} }
+        function loadSubmit() { try { return localStorage.getItem(_submitKey()) === '1'; } catch(e) { return false; } }
+        function clearSubmit() { try { localStorage.removeItem(_submitKey()); } catch(e) {} }
         let _drawingRoundInit = false;
         let _lastState = null;
 
@@ -958,6 +963,10 @@
             socket.on('disconnect', function() {
                 showToast('Disconnected — reconnecting...');
             });
+            
+            socket.on('reconnect', function() {
+                fetchRoom();
+            });
         }
 
         // ===== ROOM CRUD =====
@@ -1029,8 +1038,10 @@
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode);
                 const data = await res.json();
+                if (res.status === 401) { window.location.href = '/login'; return; }
                 if (data.error) {
                     if (data.error === 'Room not found') {
+                        clearInterval(pollInterval);
                         showToast('Room no longer exists');
                         setTimeout(() => window.location.href = '/games/gartic-phone', 1500);
                     }
@@ -1079,13 +1090,15 @@
                     document.getElementById('writing-prompt').textContent = wp.content || 'Write anything!';
                     _drawingRoundInit = false;
                     if (prevState !== 'writing') {
-                        hasSubmitted = false;
+                        hasSubmitted = loadSubmit();
                         isSubmitting = false;
-                        document.getElementById('writing-input').disabled = false;
-                        document.getElementById('writing-submit').disabled = false;
-                        document.getElementById('writing-submit').textContent = 'Submit';
-                        document.getElementById('writing-input').value = '';
-                        document.getElementById('writing-char-count').textContent = '0';
+                        if (!hasSubmitted) {
+                            document.getElementById('writing-input').disabled = false;
+                            document.getElementById('writing-submit').disabled = false;
+                            document.getElementById('writing-submit').textContent = 'Submit';
+                            document.getElementById('writing-input').value = '';
+                            document.getElementById('writing-char-count').textContent = '0';
+                        }
                     } else if (hasSubmitted) {
                         document.getElementById('writing-input').disabled = true;
                         document.getElementById('writing-submit').disabled = true;
@@ -1103,7 +1116,7 @@
                     const dp = data.my_prompt || {};
                     document.getElementById('drawing-prompt').textContent = dp.content || '—';
                     if (prevState !== 'drawing') {
-                        hasSubmitted = false;
+                        hasSubmitted = loadSubmit();
                         isSubmitting = false;
                         _drawingRoundInit = false;
                     }
@@ -1137,7 +1150,7 @@
             const chains = data.chains || {};
             const players = data.players || [];
             const chainIdx = data.reveal_chain_idx || 0;
-            const stepIdx = data.reveal_step_idx || 0;
+            const stepIdx = (data.reveal_step_idx === undefined || data.reveal_step_idx === null) ? -1 : data.reveal_step_idx;
 
             if (chainIdx >= players.length) {
                 document.getElementById('reveal-state').classList.add('hidden');
@@ -1147,7 +1160,7 @@
 
             const chainOwner = players[chainIdx];
             const chain = chains[chainOwner] || [];
-            const steps = chain.slice(0, stepIdx + 1);
+            const steps = stepIdx < 0 ? [] : chain.slice(0, stepIdx + 1);
 
             let html = `<div class="reveal-chain">
                 <div class="reveal-chain-title">${chainOwner}'s Chain</div>`;
@@ -1169,7 +1182,16 @@
                 `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
             
             const nextBtn = document.getElementById('reveal-next');
-            nextBtn.style.display = data.host === ME ? 'block' : 'none';
+            if (data.host === ME) {
+                nextBtn.style.display = 'block';
+                nextBtn.textContent = 'Next ➜';
+            } else {
+                nextBtn.style.display = 'block';
+                nextBtn.disabled = true;
+                nextBtn.textContent = 'Waiting for host...';
+                nextBtn.style.opacity = '0.5';
+                nextBtn.style.cursor = 'default';
+            }
         }
 
         window.revealNext = async function() {
@@ -1229,6 +1251,7 @@
                     return;
                 }
                 hasSubmitted = true;
+                persistSubmit();
                 isSubmitting = false;
                 document.getElementById('writing-input').disabled = true;
                 submitBtn.textContent = '✅ Submitted';
@@ -1249,6 +1272,7 @@
             ctx = canvas.getContext('2d');
             
             function resizeCanvas() {
+                if (isDrawing) endDraw();
                 const container = canvas.parentElement;
                 const w = container.clientWidth;
                 const h = Math.max(400, Math.min(w * 0.75, 600));
@@ -1456,8 +1480,9 @@
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imgData.data;
             const w = canvas.width, h = canvas.height;
-            const idx = (Math.floor(startY) * w + Math.floor(startX)) * 4;
-            const tr = data[idx], tg = data[idx+1], tb = data[idx+2], ta = data[idx+3];
+            const sx = Math.floor(startX), sy = Math.floor(startY);
+            const idx = (sy * w + sx) * 4;
+            const tr = data[idx], tg = data[idx+1], tb = data[idx+2];
 
             const tmp = document.createElement('canvas');
             tmp.width = tmp.height = 1;
@@ -1467,25 +1492,48 @@
             const fc = tc.getImageData(0, 0, 1, 1).data;
             const [fr, fg, fb] = [fc[0], fc[1], fc[2]];
 
-            if (tr === fr && tg === fg && tb === fb && ta === 255) return;
+            if (tr === fr && tg === fg && tb === fb) return;
 
-            const stack = [Math.floor(startX) + Math.floor(startY) * w];
+            function match(i) {
+                return Math.abs(data[i]-tr) <= 32 && Math.abs(data[i+1]-tg) <= 32 && Math.abs(data[i+2]-tb) <= 32;
+            }
+            function fill(i) { data[i]=fr; data[i+1]=fg; data[i+2]=fb; data[i+3]=255; }
+
+            const stack = [[sx, sy]];
             const visited = new Uint8Array(w * h);
             while (stack.length) {
-                const pos = stack.pop();
-                if (visited[pos]) continue;
-                visited[pos] = 1;
-                const i = pos * 4;
-                const pr = data[i+3] === 0 ? 255 : data[i];
-                const pg = data[i+3] === 0 ? 255 : data[i+1];
-                const pb = data[i+3] === 0 ? 255 : data[i+2];
-                if (Math.abs(pr-tr) > 32 || Math.abs(pg-tg) > 32 || Math.abs(pb-tb) > 32) continue;
-                data[i] = fr; data[i+1] = fg; data[i+2] = fb; data[i+3] = 255;
-                const x = pos % w, y = Math.floor(pos / w);
-                if (x > 0) stack.push(pos - 1);
-                if (x < w - 1) stack.push(pos + 1);
-                if (y > 0) stack.push(pos - w);
-                if (y < h - 1) stack.push(pos + w);
+                let [x, y] = stack.pop();
+                while (y > 0 && match((( y-1)*w+x)*4)) y--;
+                let spanLeft = false, spanRight = false;
+                while (y < h) {
+                    const i = (y * w + x) * 4;
+                    if (!match(i) || visited[y*w+x]) break;
+                    // scan left
+                    let lx = x;
+                    while (lx > 0 && match((y*w+lx-1)*4)) lx--;
+                    // scan right
+                    let rx = x;
+                    while (rx < w-1 && match((y*w+rx+1)*4)) rx++;
+                    // fill span
+                    for (let cx = lx; cx <= rx; cx++) {
+                        const ci = (y*w+cx)*4;
+                        fill(ci);
+                        visited[y*w+cx] = 1;
+                    }
+                    // check row above
+                    if (y > 0) {
+                        for (let cx = lx; cx <= rx; cx++) {
+                            if (match(((y-1)*w+cx)*4) && !visited[(y-1)*w+cx]) stack.push([cx, y-1]);
+                        }
+                    }
+                    // check row below
+                    if (y < h-1) {
+                        for (let cx = lx; cx <= rx; cx++) {
+                            if (match(((y+1)*w+cx)*4) && !visited[(y+1)*w+cx]) stack.push([cx, y+1]);
+                        }
+                    }
+                    y++;
+                }
             }
             ctx.putImageData(imgData, 0, 0);
             saveState();
@@ -1535,6 +1583,7 @@
 
         // ===== TOOL SWITCHERS =====
         window.setTool = function(tool) {
+            if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             currentTool = tool;
             currentShape = null;
             ['eraser-btn','fill-btn','eyedrop-btn','spray-btn'].forEach(id => {
@@ -1668,6 +1717,7 @@
                     return; 
                 }
                 hasSubmitted = true;
+                persistSubmit();
                 showToast('✅ Drawing submitted! Waiting for others...');
                 if (socket) socket.emit('gartic_submitted', { code: roomCode });
                 fetchRoom();
