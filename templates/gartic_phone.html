@@ -804,6 +804,8 @@
 
                         <!-- Shapes tab -->
                         <div class="tools-body hidden" id="panel-shapes">
+                            <button class="tool-btn" id="shape-pen" onclick="window.setTool('brush')">✏️ Pen</button>
+                            <div class="tool-sep"></div>
                             <button class="tool-btn" id="shape-line" onclick="window.setShape('line')">╱ Line</button>
                             <button class="tool-btn" id="shape-rect" onclick="window.setShape('rect')">▭ Rect</button>
                             <button class="tool-btn" id="shape-circle" onclick="window.setShape('circle')">○ Circle</button>
@@ -877,6 +879,7 @@
         // ===== DRAWING STATE =====
         let canvas = null;
         let ctx = null;
+        let resizeCanvas = null;
         let isDrawing = false;
         let lastX = 0, lastY = 0;
         let currentSolidColor = '#000000';
@@ -908,6 +911,7 @@
             setupSolidPicker();
             setupCanvas();
             updateColorPreview();
+            syncToolUI(); // show brush as active on load
 
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
@@ -1125,10 +1129,18 @@
                         const submitBtn = document.getElementById('drawing-submit');
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Submit Drawing';
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        drawHistory = [];
-                        saveState();
+                        // Resize now that the container is visible, then clear
+                        requestAnimationFrame(function() {
+                            resizeCanvas();
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            drawHistory = [];
+                            saveState();
+                            resetFX();
+                            window.setTool('brush');
+                            window.switchTab('solid');
+                            syncToolUI();
+                        });
                     } else if (hasSubmitted) {
                         const submitBtn = document.getElementById('drawing-submit');
                         submitBtn.disabled = true;
@@ -1271,7 +1283,7 @@
             canvas = document.getElementById('draw-canvas');
             ctx = canvas.getContext('2d');
             
-            function resizeCanvas() {
+            resizeCanvas = function resizeCanvas() {
                 if (isDrawing) endDraw();
                 const container = canvas.parentElement;
                 const w = container.clientWidth;
@@ -1578,31 +1590,54 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawHistory = [];
             saveState();
+            resetFX();
+            window.setTool('brush');
             showToast('Canvas cleared');
         }
 
         // ===== TOOL SWITCHERS =====
+        // Single source of truth for all tool active states
+        function syncToolUI() {
+            // All toggleable tool buttons across all panels
+            ['eraser-btn','fill-btn','eyedrop-btn','spray-btn',
+             'shape-pen','shape-line','shape-rect','shape-circle','shape-triangle'].forEach(id => {
+                document.getElementById(id)?.classList.remove('active');
+            });
+            const map = {
+                eraser:   'eraser-btn',
+                fill:     'fill-btn',
+                eyedrop:  'eyedrop-btn',
+                spray:    'spray-btn',
+                brush:    'shape-pen',
+                line:     'shape-line',
+                rect:     'shape-rect',
+                circle:   'shape-circle',
+                triangle: 'shape-triangle'
+            };
+            document.getElementById(map[currentTool])?.classList.add('active');
+            canvas.style.cursor = currentTool === 'eraser' ? 'cell' : 'crosshair';
+        }
+
         window.setTool = function(tool) {
             if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             currentTool = tool;
             currentShape = null;
-            ['eraser-btn','fill-btn','eyedrop-btn','spray-btn'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.remove('active');
-            });
-            const map = { eraser: 'eraser-btn', fill: 'fill-btn', eyedrop: 'eyedrop-btn', spray: 'spray-btn' };
-            if (map[tool]) document.getElementById(map[tool])?.classList.add('active');
-            canvas.style.cursor = tool === 'eraser' ? 'cell' : tool === 'eyedrop' ? 'crosshair' : 'crosshair';
+            syncToolUI();
         }
 
         window.setShape = function(shape) {
+            if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             currentTool = shape;
             currentShape = shape;
-            ['shape-line','shape-rect','shape-circle','shape-triangle'].forEach(id => {
-                document.getElementById(id)?.classList.remove('active');
-            });
-            document.getElementById('shape-' + shape)?.classList.add('active');
-            canvas.style.cursor = 'crosshair';
+            syncToolUI();
+        }
+
+        function resetFX() {
+            mirrorMode = false; rainbowMode = false;
+            document.getElementById('mirror-label').textContent = 'OFF';
+            document.getElementById('rainbow-label').textContent = 'OFF';
+            document.getElementById('mirror-btn').classList.remove('active');
+            document.getElementById('rainbow-btn').classList.remove('active');
         }
 
         window.toggleMirror = function() {
@@ -1627,7 +1662,7 @@
             currentSolidColor = hex;
             document.querySelectorAll('.color-dot').forEach(el => el.classList.remove('active'));
             updateColorPreview();
-            if (currentTool === 'eraser') setTool('brush');
+            if (['eraser','fill','eyedrop','spray'].includes(currentTool)) window.setTool('brush');
         }
 
         function updateColorPreview() {
@@ -1640,6 +1675,13 @@
                 document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
                 document.getElementById('panel-' + t)?.classList.toggle('hidden', t !== tab);
             });
+            // Switching to Brush tab always resets to brush so user isn't stuck on eraser/fill/eyedrop invisibly
+            if (tab === 'brush' && ['fill','eyedrop'].includes(currentTool)) {
+                window.setTool('brush');
+            }
+            // Switching away from FX tab stops spray
+            if (tab !== 'fx' && sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
+            if (tab !== 'fx' && currentTool === 'spray') { currentTool = 'brush'; syncToolUI(); }
         }
 
         function setupSolidPicker() {
@@ -1658,7 +1700,8 @@
                     document.querySelectorAll('.color-dot').forEach(s => s.classList.remove('active'));
                     el.classList.add('active');
                     updateColorPreview();
-                    if (currentTool === 'eraser') setTool('brush');
+                    // Picking a color always switches back to brush
+                    if (['eraser','fill','eyedrop','spray'].includes(currentTool)) window.setTool('brush');
                 };
                 container.appendChild(el);
             });
