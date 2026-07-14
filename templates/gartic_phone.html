@@ -842,8 +842,8 @@
             <button class="btn-leave" id="qr-btn" onclick="window.toggleQR()" style="margin-right:0.3rem;">QR</button>
             <button class="btn-leave" onclick="window.leaveRoom()">✕ Leave</button>
         </div>
-        <div id="qr-panel" style="display:none;text-align:center;padding:0.8rem;background:#1a1a1a;border-radius:16px;border:1px solid #2a2a2a;margin-bottom:0.8rem;">
-            <div id="qr-code"></div>
+        <div id="qr-panel" style="display:none;text-align:center;padding:1rem;background:#1a1a1a;border-radius:16px;border:1px solid #2a2a2a;margin-bottom:0.8rem;">
+            <div id="qr-code" style="display:flex;justify-content:center;align-items:center;"></div>
             <div style="color:#888;font-size:0.75rem;margin-top:0.4rem;">Scan to join</div>
         </div>
         <div id="timer-bar-wrap" style="display:none;margin-bottom:0.6rem;">
@@ -1087,7 +1087,16 @@
             
             socket.on('gartic_reactions', function(data) {
                 _revealReactions = data.reactions || {};
-                if (roomData) { roomData.reactions = _revealReactions; renderReveal(roomData); }
+                if (roomData) {
+                    roomData.reactions = _revealReactions;
+                    if (roomData.state === 'reveal') {
+                        const _players = roomData.players || [];
+                        const _ci = roomData.reveal_chain_idx || 0;
+                        const _co = _players[_ci];
+                        const _si = (roomData.reveal_step_idx == null ? -1 : roomData.reveal_step_idx);
+                        if (_co && _si >= 0) _renderReactionBars(_co, _si + 1);
+                    }
+                }
             });
 
             socket.on('reconnect', function() {
@@ -1317,32 +1326,28 @@
             const chain = chains[chainOwner] || [];
             const steps = stepIdx < 0 ? [] : chain.slice(0, stepIdx + 1);
 
+            const chainNum = chainIdx + 1;
+            const totalChains = players.length;
             let html = `<div class="reveal-chain">
-                <div class="reveal-chain-title">🔗 ${chainOwner}'s Chain</div>`;
+                <div class="reveal-chain-title">\uD83D\uDD17 Chain ${chainNum}/${totalChains} \u2014 ${chainOwner}'s Chain</div>`;
 
             steps.forEach((step, i) => {
                 const isText = step.type === 'text';
+                const drawId = !isText ? step.content.replace('drawing:', '') : '';
                 const contentHtml = isText
                     ? `<span style="color:#fff;font-size:1.1rem;font-weight:600;">${step.content}</span>`
-                    : `<img src="/api/gartic/drawing/${step.content.replace('drawing:', '')}" alt="Drawing" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid #2a2a2a;display:block;" onerror="this.alt='Image failed to load'">`;
-                const stepReactions = (_revealReactions[chainOwner] || {})[i] || {};
-                const counts = {};
-                Object.values(stepReactions).forEach(e => { counts[e] = (counts[e] || 0) + 1; });
-                const myReaction = stepReactions[ME] || '';
-                const EMOJIS = ['😂','❤️','🔥','😮','👏'];
-                const reactionHtml = EMOJIS.map(em =>
-                    `<button class="reaction-btn ${myReaction === em ? 'mine' : ''}" onclick="window.sendReaction('${chainOwner}',${i},'${em}')">${em}<span class="reaction-count">${counts[em] || ''}</span></button>`
-                ).join('');
+                    : `<img src="/api/gartic/drawing/${drawId}" alt="Drawing" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid #2a2a2a;display:block;" loading="lazy" onerror="this.alt='Image failed to load'">`;
                 const delay = i * 0.08;
                 html += `<div class="reveal-step" style="animation-delay:${delay}s;">
-                    <div class="step-author" style="color:${playerColor(step.author)};">${isText ? '✍️' : '🎨'} ${step.author}</div>
+                    <div class="step-author" style="color:${playerColor(step.author)};">${isText ? '\u270D\uFE0F' : '\uD83C\uDFA8'} ${step.author}</div>
                     <div class="step-content">${contentHtml}</div>
-                    <div class="reaction-bar">${reactionHtml}</div>
+                    <div class="reaction-bar" id="rbar-${chainOwner}-${i}"></div>
                 </div>`;
             });
 
             html += `</div>`;
             container.innerHTML = html;
+            _renderReactionBars(chainOwner, steps.length);
 
             document.getElementById('reveal-progress').textContent =
                 `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
@@ -1479,11 +1484,10 @@
             saveState();
             window.addEventListener('resize', resizeCanvas);
 
-            // Mouse events
+            // Mouse events — on document so stroke continues outside canvas
             canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', endDraw);
-            canvas.addEventListener('mouseleave', endDraw);
+            document.addEventListener('mousemove', function(e) { if (isDrawing) draw(e); });
+            document.addEventListener('mouseup',   function(e) { if (isDrawing) endDraw(); });
 
             // Touch events
             canvas.addEventListener('touchstart', function(e) {
@@ -1493,21 +1497,21 @@
                 startDraw(touch);
             }, { passive: false });
 
-            canvas.addEventListener('touchmove', function(e) {
+            // Touch move/end on document so finger can slide freely
+            document.addEventListener('touchmove', function(e) {
+                if (!isDrawing) return;
                 e.preventDefault();
                 const touch = e.touches[0];
                 if (!touch) return;
                 draw(touch);
             }, { passive: false });
 
-            canvas.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                endDraw();
+            document.addEventListener('touchend', function(e) {
+                if (isDrawing) { e.preventDefault(); endDraw(); }
             }, { passive: false });
 
-            canvas.addEventListener('touchcancel', function(e) {
-                e.preventDefault();
-                endDraw();
+            document.addEventListener('touchcancel', function(e) {
+                if (isDrawing) endDraw();
             }, { passive: false });
         }
 
@@ -1530,11 +1534,9 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const clientX = e.clientX !== undefined ? e.clientX : (e.offsetX + rect.left);
-            const clientY = e.clientY !== undefined ? e.clientY : (e.offsetY + rect.top);
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
             };
         }
 
@@ -1584,17 +1586,8 @@
                 return;
             }
 
-            // Pressure simulation: faster = thinner
-            const now = Date.now();
-            const dt = Math.max(1, now - lastPointerTime);
-            const dist = Math.hypot(x - lastX, y - lastY);
-            const speed = dist / dt;
-            lastPointerSpeed = speed;
-            lastPointerTime = now;
-            const pressureFactor = Math.max(0.4, 1 - speed * 0.8);
-            const effectiveSize = currentTool === 'eraser' ? brushSize * 1.5 : brushSize * pressureFactor;
-
             // Smoothing: use midpoint
+            const effectiveSize = currentTool === 'eraser' ? brushSize * 1.5 : brushSize;
             const mx = (smoothLastX + x) / 2;
             const my = (smoothLastY + y) / 2;
 
