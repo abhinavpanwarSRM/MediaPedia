@@ -455,14 +455,10 @@
       const pair = data.movie_pair || [];
       const impostor = data.impostor;  // present only in socket join payload
 
-      // Determine amImpostor: use socket-captured value, then sessionStorage fallback
-      // Also: if pair has 2 entries, this must be the impostor (server only sends pair[1] to them)
+      // Determine amImpostor: impostor field present in socket join payload, else sessionStorage
       if (impostor) {
         amImpostor = (impostor === ME);
         sessionStorage.setItem('mi_impostor_' + roomCode, amImpostor ? '1' : '0');
-      } else if (pair.length === 2) {
-        amImpostor = true;
-        sessionStorage.setItem('mi_impostor_' + roomCode, '1');
       } else {
         const stored = sessionStorage.getItem('mi_impostor_' + roomCode);
         if (stored !== null) amImpostor = stored === '1';

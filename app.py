@@ -4779,8 +4779,20 @@ def on_game_join(data):
     game_socket_rooms[room_code].add(username)
     
     game_type = room.get('game_type')
+    emit_room = room
+    if game_type == 'movie_impostor' and room.get('state') != 'finished':
+        import copy
+        emit_room = copy.deepcopy(room)
+        d = emit_room.get('data', {})
+        real_impostor = d.get('impostor')
+        pair = d.get('movie_pair', [])
+        if username != real_impostor:
+            d.pop('impostor', None)
+            if len(pair) == 2:
+                d['movie_pair'] = [pair[0]]
+        emit_room['data'] = d
     emit('game_state', {
-        'room': room,
+        'room': emit_room,
         'game_type': game_type
     }, to=request.sid)
 
