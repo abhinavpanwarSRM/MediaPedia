@@ -845,9 +845,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'set_song_count', count: val })
       });
-      
-      // Update UI for all players by fetching room state
-      fetchRoomState();
     }
 
     // ---- YouTube Search ----
@@ -1467,13 +1464,13 @@
       gameState = room;
       isHost = room.host === ME;
 
-      // Always sync songs_per_player from server
+      // Sync songs_per_player from server (non-host only for the input field)
       if (room.data && room.data.songs_per_player != null) {
         songsPerPlayer = room.data.songs_per_player;
         var neededEl = document.getElementById('needed-count');
         var inputEl = document.getElementById('songs-per-player');
         if (neededEl) neededEl.textContent = songsPerPlayer;
-        if (inputEl) inputEl.value = songsPerPlayer;
+        if (inputEl && !isHost) inputEl.value = songsPerPlayer;
         updateProgress();
       }
 
