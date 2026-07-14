@@ -722,9 +722,9 @@
       socket.emit('game_pause', { room_code: roomCode, position: pos });
     }
 
-    function syncNextSong() {
+    function syncNextSong(idx) {
       if (!isHost || !socket || isGameFinished) return;
-      socket.emit('game_next_song', { room_code: roomCode });
+      socket.emit('game_next_song', { room_code: roomCode, index: idx });
     }
 
     // ---- Set Duration ----
@@ -960,7 +960,7 @@
               const nextIdx = previewIndex + 1;
               if (nextIdx < previewSongs.length) {
                 playPreviewSong(nextIdx);
-                syncNextSong();
+                syncNextSong(nextIdx);
               } else {
                 playPreviewSong(previewSongs.length);
               }
@@ -1001,7 +1001,7 @@
       if (idx < previewSongs.length) {
         previewIndex = idx;
         playPreviewSong(idx);
-        syncNextSong();
+        syncNextSong(idx);
       } else {
         playPreviewSong(previewSongs.length);
       }
