@@ -929,15 +929,35 @@
 
         socket.on("game_state", function (data) {
           if (data.room) {
-            // Full room doc from socket join includes impostor field — capture it now
+            // Full room doc from socket join includes impostor and both movies
             const impostor = data.room?.data?.impostor;
-            if (impostor && !movieDataLoaded) {
-              amImpostor = impostor === ME;
+            const pair = data.room?.data?.movie_pair || [];
+
+            // Store the full data if we have both movies
+            if (impostor !== undefined && pair.length >= 2) {
+              // This is the full data from socket
+              const amImpostor = impostor === ME;
               sessionStorage.setItem(
                 "mi_impostor_" + roomCode,
                 amImpostor ? "1" : "0",
               );
+              sessionStorage.setItem(
+                "mi_normal_movie_" + roomCode,
+                JSON.stringify(pair[0]),
+              );
+              sessionStorage.setItem(
+                "mi_impostor_movie_" + roomCode,
+                JSON.stringify(pair[1]),
+              );
+
+              console.log(
+                "🎬 Socket full data received - Normal:",
+                pair[0]?.title,
+                "Impostor:",
+                pair[1]?.title,
+              );
             }
+
             handleRoomState(data.room);
           }
         });
@@ -1084,13 +1104,23 @@
 
         if (room.state === "playing" && room.round >= 1) {
           if (!movieDataLoaded) {
-            // Derive amImpostor from the room data so refresh works correctly.
-            // get_game_room strips data.impostor for non-finished games, so we
-            // can't read it here — but revealMovie sets amImpostor from the
-            // first full response (which includes impostor for the playing player
-            // via the socket game_state event on join). If movieDataLoaded is
-            // false we always call revealMovie which sets amImpostor correctly.
             revealMovie(room);
+          } else {
+            // If movieDataLoaded is true, we might need to update the UI with new data
+            // But only if the room data changed significantly
+            const currentRoom = room;
+            const storedPair = sessionStorage.getItem(
+              "mi_normal_movie_" + roomCode,
+            );
+            if (storedPair) {
+              try {
+                const normalMovie = JSON.parse(storedPair);
+                // Update myMovie if it's different
+                if (!amImpostor && myMovie?.title !== normalMovie?.title) {
+                  myMovie = normalMovie;
+                }
+              } catch (e) {}
+            }
           }
         } else if (room.state === "finished") {
           showResult(room);
@@ -1105,28 +1135,44 @@
         const impostor = data.impostor;
 
         // --- IMPOSTOR DETECTION ---
-        if (impostor) {
+        // Check if we're getting the full data from socket (has impostor field)
+        const hasFullData = impostor !== undefined && pair.length >= 2;
+
+        if (hasFullData) {
           amImpostor = impostor === ME;
           sessionStorage.setItem(
             "mi_impostor_" + roomCode,
             amImpostor ? "1" : "0",
           );
 
-          // Store both movies in sessionStorage for page refreshes
-          if (pair.length >= 2) {
-            sessionStorage.setItem(
-              "mi_normal_movie_" + roomCode,
-              JSON.stringify(pair[0]),
-            );
-            sessionStorage.setItem(
-              "mi_impostor_movie_" + roomCode,
-              JSON.stringify(pair[1]),
-            );
-          }
+          // Store BOTH movies in sessionStorage for page refreshes
+          // pair[0] = normal movie, pair[1] = impostor movie
+          sessionStorage.setItem(
+            "mi_normal_movie_" + roomCode,
+            JSON.stringify(pair[0]),
+          );
+          sessionStorage.setItem(
+            "mi_impostor_movie_" + roomCode,
+            JSON.stringify(pair[1]),
+          );
+
+          console.log(
+            "📦 Stored movies - Normal:",
+            pair[0]?.title,
+            "Impostor:",
+            pair[1]?.title,
+          );
         } else {
+          // Check sessionStorage for impostor status
           const stored = sessionStorage.getItem("mi_impostor_" + roomCode);
           if (stored !== null) {
             amImpostor = stored === "1";
+          } else {
+            // If we don't have stored data, default to false
+            amImpostor = false;
+            console.warn(
+              "⚠️ No stored impostor data, defaulting to normal player",
+            );
           }
         }
 
@@ -1135,35 +1181,61 @@
         // --- MOVIE ASSIGNMENT ---
         if (!myMovie) {
           if (amImpostor) {
-            // Impostor gets pair[1]
+            // Impostor gets pair[1] from storage
             let storedMovie = sessionStorage.getItem(
               "mi_impostor_movie_" + roomCode,
             );
             if (storedMovie) {
               try {
                 myMovie = JSON.parse(storedMovie);
+                console.log(
+                  "🕵️ Retrieved impostor movie from storage:",
+                  myMovie?.title,
+                );
               } catch (e) {
-                myMovie = pair[1] || pair[0];
+                // If storage parse fails, use what we have
+                myMovie = pair.length >= 2 ? pair[1] : pair[0];
+                console.warn(
+                  "⚠️ Failed to parse stored impostor movie, using fallback",
+                );
               }
             } else {
-              myMovie = pair[1] || pair[0];
+              // If no stored movie, and we have the full pair from socket
+              if (pair.length >= 2) {
+                myMovie = pair[1];
+                // Save it for future refreshes
+                sessionStorage.setItem(
+                  "mi_impostor_movie_" + roomCode,
+                  JSON.stringify(pair[1]),
+                );
+              } else {
+                myMovie = pair[0];
+                console.warn("⚠️ No impostor movie found, using normal movie");
+              }
             }
-            console.log("🕵️ Impostor movie:", myMovie?.title);
           } else {
-            // Normal player gets pair[0]
+            // Normal player gets pair[0] from storage
             let storedMovie = sessionStorage.getItem(
               "mi_normal_movie_" + roomCode,
             );
             if (storedMovie) {
               try {
                 myMovie = JSON.parse(storedMovie);
+                console.log(
+                  "🎬 Retrieved normal movie from storage:",
+                  myMovie?.title,
+                );
               } catch (e) {
                 myMovie = pair[0];
               }
             } else {
               myMovie = pair[0];
+              // Save it for future refreshes
+              sessionStorage.setItem(
+                "mi_normal_movie_" + roomCode,
+                JSON.stringify(pair[0]),
+              );
             }
-            console.log("🎬 Normal movie:", myMovie?.title);
           }
         }
 
@@ -1198,15 +1270,17 @@
 
         // --- BUILD QUESTIONS ---
         const ql = document.getElementById("questions-list");
-        ql.innerHTML = questions
-          .map(
-            (q, i) =>
-              `<div class="question-card" id="q-card-${i}">
-            <div class="question-text">${i + 1}. ${esc(q)} <span class="question-status">⏳</span></div>
-            <textarea id="ans-${i}" placeholder="Your answer..." rows="2" oninput="checkAnswerProgress()"></textarea>
-          </div>`,
-          )
-          .join("");
+        if (ql) {
+          ql.innerHTML = questions
+            .map(
+              (q, i) =>
+                `<div class="question-card" id="q-card-${i}">
+                <div class="question-text">${i + 1}. ${esc(q)} <span class="question-status">⏳</span></div>
+                <textarea id="ans-${i}" placeholder="Your answer..." rows="2" oninput="checkAnswerProgress()"></textarea>
+              </div>`,
+            )
+            .join("");
+        }
 
         // --- FETCH DETAILS ---
         fetchMovieDetails(myMovie?.title || "", myMovie?.year || "");
