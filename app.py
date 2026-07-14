@@ -5078,12 +5078,21 @@ def gartic_react(code):
         return jsonify({'error': 'Login required'}), 401
     if gartic_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
+    room = gartic_collection.find_one({'code': code})
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if username not in room.get('players', []):
+        return jsonify({'error': 'Not in this room'}), 403
+    if room.get('state') != 'reveal':
+        return jsonify({'error': 'Not in reveal state'}), 400
     data = request.json or {}
     chain_owner = data.get('chain_owner', '')
     step_idx = str(data.get('step_idx', 0))
     emoji = data.get('emoji', '')
     if not emoji or len(emoji) > 10:
         return jsonify({'error': 'Invalid reaction'}), 400
+    if not chain_owner or chain_owner not in room.get('players', []):
+        return jsonify({'error': 'Invalid chain owner'}), 400
     key = f'reactions.{chain_owner}.{step_idx}.{username}'
     gartic_collection.update_one({'code': code}, {'$set': {key: emoji}})
     room = gartic_collection.find_one({'code': code}, {'reactions': 1, '_id': 0})
@@ -5111,6 +5120,8 @@ def gartic_reveal_next(code):
     step_idx = room.get('reveal_step_idx', 0)
 
     if chain_idx >= len(players):
+        gartic_collection.update_one({'code': code}, {'$set': {'state': 'done'}})
+        socketio.emit('gartic_refresh', {}, to=code)
         return jsonify({'done': True})
 
     chain_owner = players[chain_idx]
@@ -5175,7 +5186,8 @@ def gartic_leave(code):
                 nxt = 'drawing' if updated['state'] == 'writing' else 'writing'
                 gartic_collection.update_one({'code': code}, {'$set': {
                     'chains': chains, 'submissions': {}, 'assignments': new_asgn,
-                    'state': nxt, 'round': cur_round + 1
+                    'state': nxt, 'round': cur_round + 1,
+                    'round_started_at': datetime.now(timezone.utc).isoformat()
                 }})
     if room['host'] == username:
         remaining = [p for p in room['players'] if p != username]

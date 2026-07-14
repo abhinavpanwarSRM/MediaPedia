@@ -811,7 +811,7 @@
         <h1>🎨 Gartic Phone</h1>
         <p class="subtitle">Draw, write, and laugh with friends!<br>Each round alternates between writing and drawing.</p>
         
-        <button class="btn btn-primary" onclick="window.createRoom()">🎨 Create New Room</button>
+        <button class="btn btn-primary" onclick="window.createRoom(event)">🎨 Create New Room</button>
         <div id="room-settings" style="margin:0.8rem 0;background:rgba(255,255,255,0.03);border:1px solid #2a2a2a;border-radius:16px;padding:1rem;text-align:left;">
             <div style="color:#888;font-size:0.8rem;font-weight:600;letter-spacing:1px;margin-bottom:0.6rem;">ROOM SETTINGS</div>
             <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;">
@@ -1105,8 +1105,8 @@
         }
 
         // ===== ROOM CRUD =====
-        window.createRoom = async function() {
-            const btn = event.target;
+        window.createRoom = async function(e) {
+            const btn = (e && e.target) || document.querySelector('.btn-primary');
             btn.disabled = true;
             btn.textContent = 'Creating...';
             try {
@@ -1165,7 +1165,7 @@
             if (!roomCode) return;
             if (socket) {
                 socket.emit('gartic_leave', { code: roomCode });
-                socket.disconnect();
+                setTimeout(() => socket.disconnect(), 300);
             }
             if (pollInterval) clearInterval(pollInterval);
             try {
@@ -1176,11 +1176,12 @@
 
         async function fetchRoom() {
             if (!roomCode) return;
+            if (roomData && (roomData.state === 'reveal' || roomData.state === 'done')) return;
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode);
                 const data = await res.json();
                 if (res.status === 401) { window.location.href = '/login'; return; }
-                if (data.error) {
+                if (!res.ok && data.error) {
                     if (data.error === 'Room not found') {
                         clearInterval(pollInterval);
                         showToast('Room no longer exists');
@@ -1209,7 +1210,7 @@
                 .forEach(el => el.classList.add('hidden'));
 
             const startBtn = document.getElementById('start-btn');
-            if (data.host === ME && (data.players || []).length >= 2) {
+            if (data.state === 'lobby' && data.host === ME && (data.players || []).length >= 2) {
                 startBtn.style.display = 'block';
             } else {
                 startBtn.style.display = 'none';
@@ -1246,9 +1247,11 @@
                             document.getElementById('writing-submit').textContent = 'Submit';
                             document.getElementById('writing-input').value = '';
                             document.getElementById('writing-char-count').textContent = '0';
-                            if (data.round_started_at && data.time_limit) startTimer(data.round_started_at, data.time_limit);
-                        } else { stopTimer(); }
-                    } else if (hasSubmitted) {
+                        }
+                    }
+                    if (!hasSubmitted) {
+                        if (data.round_started_at && data.time_limit) startTimer(data.round_started_at, data.time_limit);
+                    } else {
                         stopTimer();
                         document.getElementById('writing-input').disabled = true;
                         document.getElementById('writing-submit').disabled = true;
@@ -1264,7 +1267,8 @@
                     document.getElementById('drawing-state').classList.remove('hidden');
                     document.getElementById('drawing-round').textContent = data.round || 1;
                     const dp = data.my_prompt || {};
-                    document.getElementById('drawing-prompt').textContent = dp.content || '—';
+                    const dpText = (dp.content && dp.content.startsWith('drawing:')) ? '(see previous drawing)' : (dp.content || '—');
+                    document.getElementById('drawing-prompt').textContent = dpText;
                     if (prevState !== 'drawing') {
                         hasSubmitted = loadSubmit();
                         isSubmitting = false;
@@ -1302,6 +1306,10 @@
                 case 'reveal':
                     document.getElementById('reveal-state').classList.remove('hidden');
                     renderReveal(data);
+                    break;
+
+                case 'done':
+                    document.getElementById('game-over').classList.remove('hidden');
                     break;
             }
         }
@@ -1349,8 +1357,9 @@
             container.innerHTML = html;
             _renderReactionBars(chainOwner, steps.length);
 
-            document.getElementById('reveal-progress').textContent =
-                `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
+            document.getElementById('reveal-progress').textContent = stepIdx < 0
+                ? `Chain ${chainIdx + 1}/${players.length} — waiting for first step`
+                : `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
 
             const nextBtn = document.getElementById('reveal-next');
             if (data.host === ME) {
@@ -1730,7 +1739,6 @@
             while (stack.length) {
                 let [x, y] = stack.pop();
                 while (y > 0 && match((( y-1)*w+x)*4)) y--;
-                let spanLeft = false, spanRight = false;
                 while (y < h) {
                     const i = (y * w + x) * 4;
                     if (!match(i) || visited[y*w+x]) break;
