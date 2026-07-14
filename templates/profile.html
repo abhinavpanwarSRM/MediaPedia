@@ -1181,90 +1181,59 @@
     <div class="toast" id="toast"></div>
 
     <script>
-      const PROFILE_USER = "{{ username }}";
-      const VIEWER = '{{ viewer or "" }}';
+      const PROFILE_USER = '{{ username }}';
+      const VIEWER       = {% if viewer %}'{{ viewer }}'{% else %}''{% endif %};
 
       function toggleDrawer() {
-        document.getElementById("nav-drawer").classList.toggle("open");
+        document.getElementById('nav-drawer').classList.toggle('open');
       }
-      document.addEventListener("click", function (e) {
-        const drawer = document.getElementById("nav-drawer");
-        if (
-          drawer.classList.contains("open") &&
-          !drawer.contains(e.target) &&
-          !e.target.closest(".nav-burger")
-        ) {
-          drawer.classList.remove("open");
+      document.addEventListener('click', function(e) {
+        const drawer = document.getElementById('nav-drawer');
+        if (drawer.classList.contains('open') &&
+            !drawer.contains(e.target) &&
+            !e.target.closest('.nav-burger')) {
+          drawer.classList.remove('open');
         }
       });
       // Tabs
       let connectLoaded = false;
       function switchTab(name, btn) {
-        document
-          .querySelectorAll(".tab")
-          .forEach((t) => t.classList.remove("active"));
-        document
-          .querySelectorAll(".tab-panel")
-          .forEach((p) => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById("tab-" + name).classList.add("active");
-        if (name === "connect" && !connectLoaded) {
-          connectLoaded = true;
-          loadConnectTab();
-        }
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
+        if (name === 'connect' && !connectLoaded) { connectLoaded = true; loadConnectTab(); }
       }
 
       // Main follow button
       function toggleFollow(target) {
-        fetch("/api/follow/" + target, { method: "POST" })
-          .then((r) => {
-            if (r.status === 401) {
-              window.location.href = "/login";
-              return null;
-            }
-            return r.json();
-          })
-          .then((d) => {
+        fetch('/api/follow/' + target, { method: 'POST' })
+          .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
+          .then(d => {
             if (!d) return;
-            const btn = document.getElementById("follow-btn");
-            if (d.status === "followed") {
-              btn.textContent = "Following";
-              btn.classList.add("following");
-              showToast("Now following " + target);
-            } else {
-              btn.textContent = "Follow";
-              btn.classList.remove("following");
-              showToast("Unfollowed " + target);
-            }
+            const btn = document.getElementById('follow-btn');
+            if (d.status === 'followed') { btn.textContent = 'Following'; btn.classList.add('following'); showToast('Now following ' + target); }
+            else { btn.textContent = 'Follow'; btn.classList.remove('following'); showToast('Unfollowed ' + target); }
           });
       }
 
       // Inline follow (modal + connect tab)
       function doFollow(btn, target) {
-        if (!VIEWER) {
-          window.location.href = "/login";
-          return;
-        }
-        fetch("/api/follow/" + target, { method: "POST" })
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.status === "followed") {
-              btn.textContent = "Following";
-              btn.classList.add("following");
-              showToast("Now following " + target);
+        if (!VIEWER) { window.location.href = '/login'; return; }
+        fetch('/api/follow/' + target, { method: 'POST' })
+          .then(r => r.json())
+          .then(d => {
+            if (d.status === 'followed') {
+              btn.textContent = 'Following'; btn.classList.add('following');
+              showToast('Now following ' + target);
             } else {
-              btn.textContent = "Follow";
-              btn.classList.remove("following");
-              showToast("Unfollowed " + target);
+              btn.textContent = 'Follow'; btn.classList.remove('following');
+              showToast('Unfollowed ' + target);
             }
             // sync main follow-btn if target is the profile owner
             if (target === PROFILE_USER) {
-              const mb = document.getElementById("follow-btn");
-              if (mb) {
-                mb.textContent =
-                  d.status === "followed" ? "Following" : "Follow";
-                mb.classList.toggle("following", d.status === "followed");
-              }
+              const mb = document.getElementById('follow-btn');
+              if (mb) { mb.textContent = d.status === 'followed' ? 'Following' : 'Follow'; mb.classList.toggle('following', d.status === 'followed'); }
             }
           });
       }
@@ -1272,165 +1241,111 @@
       // Build a user row HTML
       function userRowHtml(u) {
         const isMe = u.username === VIEWER;
-        const mutual =
-          u.is_following && !isMe
-            ? '<span class="mutual-badge">Mutual</span>'
-            : "";
-        const btnHtml =
-          VIEWER && !isMe
-            ? `<button class="mini-follow-btn ${u.is_following ? "following" : ""}" onclick="doFollow(this,'${escAttr(u.username)}')">${u.is_following ? "Following" : "Follow"}</button>`
-            : "";
+        const mutual = (u.is_following && !isMe) ? '<span class="mutual-badge">Mutual</span>' : '';
+        const btnHtml = (VIEWER && !isMe)
+          ? `<button class="mini-follow-btn ${u.is_following ? 'following' : ''}" onclick="doFollow(this,'${escAttr(u.username)}')">${u.is_following ? 'Following' : 'Follow'}</button>`
+          : '';
         const avContent = u.avatar_url
           ? `<img src="${escAttr(u.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextSibling.style.display=''"><span style="display:none">${u.username[0].toUpperCase()}</span>`
           : u.username[0].toUpperCase();
         return `<div class="user-row">
-        <a class="user-av" href="/u/${escAttr(u.username)}">${avContent}</a>
-        <div class="user-info">
-          <a href="/u/${escAttr(u.username)}">${escHtml(u.username)}</a>${mutual}
-          <div class="user-bio-text">${escHtml(u.bio || "No bio")}</div>
-        </div>
-        ${btnHtml}
-      </div>`;
+          <a class="user-av" href="/u/${escAttr(u.username)}">${avContent}</a>
+          <div class="user-info">
+            <a href="/u/${escAttr(u.username)}">${escHtml(u.username)}</a>${mutual}
+            <div class="user-bio-text">${escHtml(u.bio || 'No bio')}</div>
+          </div>
+          ${btnHtml}
+        </div>`;
       }
 
       // Modal (followers / following)
       function openModal(type) {
-        document.getElementById("modal-title").textContent =
-          type === "followers" ? "Followers" : "Following";
-        const body = document.getElementById("modal-body");
+        document.getElementById('modal-title').textContent = type === 'followers' ? 'Followers' : 'Following';
+        const body = document.getElementById('modal-body');
         body.innerHTML = '<p class="modal-empty">Loading...</p>';
-        document.getElementById("social-modal").classList.add("open");
+        document.getElementById('social-modal').classList.add('open');
         fetch(`/api/${type}/${PROFILE_USER}`)
-          .then((r) => r.json())
-          .then((users) => {
-            if (!users.length) {
-              body.innerHTML = '<p class="modal-empty">Nobody here yet.</p>';
-              return;
-            }
-            body.innerHTML = users.map((u) => userRowHtml(u)).join("");
+          .then(r => r.json())
+          .then(users => {
+            if (!users.length) { body.innerHTML = '<p class="modal-empty">Nobody here yet.</p>'; return; }
+            body.innerHTML = users.map(u => userRowHtml(u)).join('');
           })
-          .catch(() => {
-            body.innerHTML = '<p class="modal-empty">Could not load.</p>';
-          });
+          .catch(() => { body.innerHTML = '<p class="modal-empty">Could not load.</p>'; });
       }
-      function closeModal() {
-        document.getElementById("social-modal").classList.remove("open");
-      }
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeModal();
-      });
+      function closeModal() { document.getElementById('social-modal').classList.remove('open'); }
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
       // Connect tab
       function loadConnectTab() {
-        fetch("/api/followers/" + PROFILE_USER)
-          .then((r) => r.json())
-          .then((users) => {
-            const el = document.getElementById("connect-followers");
-            const list = users.filter((u) => u.username !== VIEWER);
-            el.innerHTML = list.length
-              ? list.map((u) => userRowHtml(u)).join("")
-              : '<p class="empty">No followers yet.</p>';
+        fetch('/api/followers/' + PROFILE_USER)
+          .then(r => r.json())
+          .then(users => {
+            const el = document.getElementById('connect-followers');
+            const list = users.filter(u => u.username !== VIEWER);
+            el.innerHTML = list.length ? list.map(u => userRowHtml(u)).join('') : '<p class="empty">No followers yet.</p>';
           })
-          .catch(() => {
-            document.getElementById("connect-followers").innerHTML =
-              '<p class="empty">Could not load.</p>';
-          });
+          .catch(() => { document.getElementById('connect-followers').innerHTML = '<p class="empty">Could not load.</p>'; });
 
-        fetch("/api/following/" + PROFILE_USER)
-          .then((r) => r.json())
-          .then((users) => {
-            const el = document.getElementById("connect-following");
-            const list = users.filter((u) => u.username !== VIEWER);
-            el.innerHTML = list.length
-              ? list.map((u) => userRowHtml(u)).join("")
-              : '<p class="empty">Not following anyone yet.</p>';
+        fetch('/api/following/' + PROFILE_USER)
+          .then(r => r.json())
+          .then(users => {
+            const el = document.getElementById('connect-following');
+            const list = users.filter(u => u.username !== VIEWER);
+            el.innerHTML = list.length ? list.map(u => userRowHtml(u)).join('') : '<p class="empty">Not following anyone yet.</p>';
           })
-          .catch(() => {
-            document.getElementById("connect-following").innerHTML =
-              '<p class="empty">Could not load.</p>';
-          });
+          .catch(() => { document.getElementById('connect-following').innerHTML = '<p class="empty">Could not load.</p>'; });
 
-        const discoverEl = document.getElementById("connect-discover");
+        const discoverEl = document.getElementById('connect-discover');
         if (discoverEl) {
-          fetch("/api/users/discover")
-            .then((r) => r.json())
-            .then((users) => {
-              discoverEl.innerHTML = users.length
-                ? users.map((u) => userRowHtml(u)).join("")
-                : '<p class="empty">No suggestions right now.</p>';
+          fetch('/api/users/discover')
+            .then(r => r.json())
+            .then(users => {
+              discoverEl.innerHTML = users.length ? users.map(u => userRowHtml(u)).join('') : '<p class="empty">No suggestions right now.</p>';
             })
-            .catch(() => {
-              discoverEl.innerHTML = '<p class="empty">Could not load.</p>';
-            });
+            .catch(() => { discoverEl.innerHTML = '<p class="empty">Could not load.</p>'; });
         }
       }
 
       // Bio edit
       function toggleBioEdit() {
-        document.getElementById("bio-input").style.display = "block";
-        document.getElementById("bio-save-btn").style.display = "block";
-        document.getElementById("bio-cancel-btn").style.display = "block";
-        document.getElementById("bio-display").style.display = "none";
-        document.getElementById("bio-btn").style.display = "none";
-        document.getElementById("bio-input").focus();
+        document.getElementById('bio-input').style.display = 'block';
+        document.getElementById('bio-save-btn').style.display = 'block';
+        document.getElementById('bio-cancel-btn').style.display = 'block';
+        document.getElementById('bio-display').style.display = 'none';
+        document.getElementById('bio-btn').style.display = 'none';
+        document.getElementById('bio-input').focus();
       }
       function cancelBioEdit() {
-        document.getElementById("bio-input").style.display = "none";
-        document.getElementById("bio-save-btn").style.display = "none";
-        document.getElementById("bio-cancel-btn").style.display = "none";
-        document.getElementById("bio-display").style.display = "";
-        document.getElementById("bio-btn").style.display = "";
+        document.getElementById('bio-input').style.display = 'none';
+        document.getElementById('bio-save-btn').style.display = 'none';
+        document.getElementById('bio-cancel-btn').style.display = 'none';
+        document.getElementById('bio-display').style.display = '';
+        document.getElementById('bio-btn').style.display = '';
       }
       function saveBio() {
-        const bio = document.getElementById("bio-input").value.trim();
-        fetch("/api/profile/bio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bio }),
-        })
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.success) {
-              document.getElementById("bio-display").textContent =
-                bio || "No bio yet.";
-              cancelBioEdit();
-              showToast("Bio updated");
-            }
+        const bio = document.getElementById('bio-input').value.trim();
+        fetch('/api/profile/bio', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({bio}) })
+          .then(r => r.json()).then(d => {
+            if (d.success) { document.getElementById('bio-display').textContent = bio || 'No bio yet.'; cancelBioEdit(); showToast('Bio updated'); }
           });
       }
 
       // Create list
       function createList() {
-        const inp = document.getElementById("new-list-name");
-        const name = inp.value.trim();
-        if (!name) return;
-        fetch("/api/lists", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
-        })
-          .then((r) => {
-            if (r.status === 401) {
-              window.location.href = "/login";
-              return null;
-            }
-            return r.json();
-          })
-          .then((d) => {
-            if (!d || d.error) {
-              showToast(d?.error || "Error");
-              return;
-            }
-            inp.value = "";
-            const c = document.getElementById("lists-container");
-            const e = c.querySelector(".empty");
-            if (e) e.remove();
-            const a = document.createElement("a");
-            a.className = "item-card";
-            a.href = "/list/" + d.list_id;
+        const inp = document.getElementById('new-list-name');
+        const name = inp.value.trim(); if (!name) return;
+        fetch('/api/lists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+          .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
+          .then(d => {
+            if (!d || d.error) { showToast(d?.error || 'Error'); return; }
+            inp.value = '';
+            const c = document.getElementById('lists-container');
+            const e = c.querySelector('.empty'); if (e) e.remove();
+            const a = document.createElement('a');
+            a.className = 'item-card'; a.href = '/list/' + d.list_id;
             a.innerHTML = `<div class="card-icon">📋</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 items</div></div><div class="card-arrow">→</div>`;
             c.prepend(a);
-            const sv = document.getElementById("stat-lists");
+            const sv = document.getElementById('stat-lists');
             if (sv) sv.textContent = parseInt(sv.textContent || 0) + 1;
             showToast('List "' + escHtml(d.name) + '" created');
           });
@@ -1438,33 +1353,17 @@
 
       // Create playlist
       function createPlaylist() {
-        const inp = document.getElementById("new-playlist-name");
-        const name = inp.value.trim();
-        if (!name) return;
-        fetch("/api/playlists", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
-        })
-          .then((r) => {
-            if (r.status === 401) {
-              window.location.href = "/login";
-              return null;
-            }
-            return r.json();
-          })
-          .then((d) => {
-            if (!d || d.error) {
-              showToast(d?.error || "Error");
-              return;
-            }
-            inp.value = "";
-            const c = document.getElementById("playlists-container");
-            const e = c.querySelector(".empty");
-            if (e) e.remove();
-            const a = document.createElement("a");
-            a.className = "item-card green";
-            a.href = "/playlist/" + d.playlist_id;
+        const inp = document.getElementById('new-playlist-name');
+        const name = inp.value.trim(); if (!name) return;
+        fetch('/api/playlists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+          .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
+          .then(d => {
+            if (!d || d.error) { showToast(d?.error || 'Error'); return; }
+            inp.value = '';
+            const c = document.getElementById('playlists-container');
+            const e = c.querySelector('.empty'); if (e) e.remove();
+            const a = document.createElement('a');
+            a.className = 'item-card green'; a.href = '/playlist/' + d.playlist_id;
             a.innerHTML = `<div class="card-icon">🎵</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 songs</div></div><div class="card-arrow" style="color:var(--green);">→</div>`;
             c.prepend(a);
             showToast('Playlist "' + escHtml(d.name) + '" created');
@@ -1472,114 +1371,71 @@
       }
 
       // Load playlists
-      fetch("/api/playlists/user/{{ username }}")
-        .then((r) => r.json())
-        .then((playlists) => {
-          const c = document.getElementById("playlists-container");
-          if (!playlists.length) {
-            c.innerHTML = '<p class="empty">No playlists yet.</p>';
-            return;
-          }
-          c.innerHTML = playlists
-            .map((pl) => {
-              const n = (pl.songs || []).length;
-              return `<a class="item-card green" href="/playlist/${pl.playlist_id}">
-            <div class="card-icon">🎵</div>
-            <div class="card-body"><div class="card-name">${escHtml(pl.name)}</div><div class="card-sub">${n} song${n !== 1 ? "s" : ""}</div></div>
-            <div class="card-arrow" style="color:var(--green);">→</div>
-          </a>`;
-            })
-            .join("");
+      fetch('/api/playlists/user/{{ username }}')
+        .then(r => r.json())
+        .then(playlists => {
+          const c = document.getElementById('playlists-container');
+          if (!playlists.length) { c.innerHTML = '<p class="empty">No playlists yet.</p>'; return; }
+          c.innerHTML = playlists.map(pl => {
+            const n = (pl.songs || []).length;
+            return `<a class="item-card green" href="/playlist/${pl.playlist_id}">
+              <div class="card-icon">🎵</div>
+              <div class="card-body"><div class="card-name">${escHtml(pl.name)}</div><div class="card-sub">${n} song${n !== 1 ? 's' : ''}</div></div>
+              <div class="card-arrow" style="color:var(--green);">→</div>
+            </a>`;
+          }).join('');
         })
-        .catch(() => {
-          document.getElementById("playlists-container").innerHTML =
-            '<p class="empty">Could not load playlists.</p>';
-        });
+        .catch(() => { document.getElementById('playlists-container').innerHTML = '<p class="empty">Could not load playlists.</p>'; });
 
       // Toast
       function showToast(msg) {
-        const t = document.getElementById("toast");
-        t.textContent = msg;
-        t.classList.add("show");
-        setTimeout(() => t.classList.remove("show"), 2500);
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
       }
-      function escHtml(s) {
-        return String(s)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
-      }
-      function escAttr(s) {
-        return String(s).replace(/'/g, "\\'").replace(/"/g, "&quot;");
-      }
+      function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
       // Avatar modal
-      function openAvatarModal() {
-        document.getElementById("avatar-modal-overlay").classList.add("open");
-      }
-      function closeAvatarModal() {
-        document
-          .getElementById("avatar-modal-overlay")
-          .classList.remove("open");
-      }
+      function openAvatarModal() { document.getElementById('avatar-modal-overlay').classList.add('open'); }
+      function closeAvatarModal() { document.getElementById('avatar-modal-overlay').classList.remove('open'); }
       function previewAvatar(url) {
-        const preview = document.getElementById("avatar-preview");
-        const existing = preview.querySelector("img");
+        const preview = document.getElementById('avatar-preview');
+        const existing = preview.querySelector('img');
         if (url) {
-          if (existing) {
-            existing.src = url;
-            existing.style.display = "";
-          } else {
-            preview.innerHTML =
-              `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` +
-              (preview.querySelector("span")
-                ? preview.querySelector("span").outerHTML
-                : "");
-          }
-          const letter = preview.querySelector("span");
-          if (letter) letter.style.display = "none";
+          if (existing) { existing.src = url; existing.style.display = ''; }
+          else { preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` + (preview.querySelector('span') ? preview.querySelector('span').outerHTML : ''); }
+          const letter = preview.querySelector('span');
+          if (letter) letter.style.display = 'none';
         } else {
-          if (existing) existing.style.display = "none";
-          const letter = preview.querySelector("span");
-          if (letter) letter.style.display = "";
+          if (existing) existing.style.display = 'none';
+          const letter = preview.querySelector('span');
+          if (letter) letter.style.display = '';
         }
       }
       function saveAvatar() {
-        const url = document.getElementById("avatar-url-input").value.trim();
-        fetch("/api/profile/avatar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        })
-          .then((r) => r.json())
-          .then((d) => {
-            if (d.error) {
-              showToast(d.error);
-              return;
-            }
-            const circle = document.getElementById("avatar-circle");
-            const letter = document.getElementById("avatar-letter");
-            let img = document.getElementById("avatar-img");
+        const url = document.getElementById('avatar-url-input').value.trim();
+        fetch('/api/profile/avatar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url}) })
+          .then(r => r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            const circle = document.getElementById('avatar-circle');
+            const letter = document.getElementById('avatar-letter');
+            let img = document.getElementById('avatar-img');
             if (url) {
               if (!img) {
-                img = document.createElement("img");
-                img.id = "avatar-img";
-                img.onerror = function () {
-                  this.style.display = "none";
-                  letter.style.display = "flex";
-                };
+                img = document.createElement('img');
+                img.id = 'avatar-img';
+                img.onerror = function() { this.style.display='none'; letter.style.display='flex'; };
                 circle.insertBefore(img, letter);
               }
-              img.src = url;
-              img.style.display = "";
-              if (letter) letter.style.display = "none";
+              img.src = url; img.style.display = '';
+              if (letter) letter.style.display = 'none';
             } else {
-              if (img) img.style.display = "none";
-              if (letter) letter.style.display = "flex";
+              if (img) img.style.display = 'none';
+              if (letter) letter.style.display = 'flex';
             }
             closeAvatarModal();
-            showToast("Profile picture updated");
+            showToast('Profile picture updated');
           });
       }
     </script>
@@ -1667,7 +1523,6 @@
             { key: "movie_impostor", label: "Movie Impostor", emoji: "🎬" },
             { key: "song_detective", label: "Song Detective", emoji: "🕵️" },
             { key: "movie_battle", label: "Movie Battle", emoji: "⚔️" },
-            { key: "gartic_phone", label: "Gartic Phone", emoji: "🎨" },
           ];
           const hasAny = games.some((g) => d[g.key + "_played"] > 0);
           if (!hasAny) return;
