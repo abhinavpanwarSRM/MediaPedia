@@ -687,10 +687,15 @@
       socket.on('game_next_song', function(data) {
         if (data.index !== undefined && !isGameFinished) {
           previewIndex = data.index;
-          if (document.getElementById('screen-preview')?.classList?.contains('active')) {
+          const onPreview = document.getElementById('screen-preview')?.classList?.contains('active');
+          if (onPreview) {
             clearInterval(previewInterval);
             if (ytPlayer) ytPlayer.stopVideo();
             playPreviewSong(previewIndex);
+          } else if (gameState && gameState.data?.songs?.length) {
+            // Non-host hasn't transitioned to preview yet — do it now
+            startPreview(gameState);
+            setTimeout(() => playPreviewSong(previewIndex), 300);
           }
         }
       });

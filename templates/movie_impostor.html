@@ -317,6 +317,12 @@
 
       socket.on('game_state', function(data) {
         if (data.room) {
+          // Full room doc from socket join includes impostor field — capture it now
+          const impostor = data.room?.data?.impostor;
+          if (impostor && !movieDataLoaded) {
+            amImpostor = (impostor === ME);
+            sessionStorage.setItem('mi_impostor_' + roomCode, amImpostor ? '1' : '0');
+          }
           handleRoomState(data.room);
         }
       });
@@ -446,16 +452,29 @@
     function revealMovie(room) {
       clearTimeout(pollTimer);
       const data = room.data || {};
-      // The GET endpoint strips data.impostor for security, but the socket
-      // game_state event on join sends the full document. Either way, we
-      // determine amImpostor by checking if pair[1] is present (only sent
-      // to the impostor via the initial socket join) or by the impostor field.
       const pair = data.movie_pair || [];
       const impostor = data.impostor;  // present only in socket join payload
-      amImpostor = impostor ? (impostor === ME) : false;
+
+      // Determine amImpostor: use socket-captured value, then sessionStorage fallback
+      // Also: if pair has 2 entries, this must be the impostor (server only sends pair[1] to them)
+      if (impostor) {
+        amImpostor = (impostor === ME);
+        sessionStorage.setItem('mi_impostor_' + roomCode, amImpostor ? '1' : '0');
+      } else if (pair.length === 2) {
+        amImpostor = true;
+        sessionStorage.setItem('mi_impostor_' + roomCode, '1');
+      } else {
+        const stored = sessionStorage.getItem('mi_impostor_' + roomCode);
+        if (stored !== null) amImpostor = stored === '1';
+      }
+
       questions = data.questions || [];
-      // pair[0] = everyone's movie, pair[1] = impostor's movie (only in socket payload)
-      myMovie = (amImpostor && pair[1]) ? pair[1] : pair[0];
+      // pair[0] = everyone's movie, pair[1] = impostor's movie
+      // Server only sends pair[1] in the socket join payload (full doc)
+      // On subsequent GETs, pair is stripped to [pair[0]] only
+      if (!myMovie) {
+        myMovie = (amImpostor && pair[1]) ? pair[1] : pair[0];
+      }
       movieDataLoaded = true;
 
       // Notify others via socket

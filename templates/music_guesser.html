@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Music Guesser</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <style>
+    :root{--purple:#9c6fe4;--bg:#141414;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.08);--text:#fff;--muted:#888;--red:#e50914;--gold:#ffd700;--green:#1db954;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Poppins',sans-serif;min-height:100vh;animation:fadeIn 0.4s ease-out;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .topnav{display:flex;justify-content:space-between;align-items:center;padding:0.9rem 1.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(20,20,20,0.95);backdrop-filter:blur(8px);z-index:100;gap:1rem;flex-wrap:wrap;}
+    .topnav a{color:var(--muted);text-decoration:none;font-size:0.85rem;transition:color 0.2s;}
+    .topnav a:hover{color:#fff;}
+    .topnav .brand{color:#e50914;font-weight:700;font-size:1rem;}
+    .topnav .user-link{color:var(--purple);font-weight:600;}
+    .container{max-width:720px;margin:0 auto;padding:2rem 1.2rem 5rem;}
+    h1{font-size:clamp(1.5rem,5vw,2rem);font-weight:700;color:var(--purple);margin-bottom:0.2rem;}
+    .sub{color:var(--muted);font-size:0.88rem;margin-bottom:2rem;line-height:1.6;}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
+    .panel h2{font-size:1rem;font-weight:700;margin-bottom:1rem;}
+    .input-row{display:flex;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;}
+    input[type="text"],input[type="number"]{flex:1;min-width:80px;padding:0.65rem 0.9rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.9rem;font-family:'Poppins',sans-serif;}
+    input[type="number"]{max-width:100px;}
+    input:focus{outline:none;border-color:var(--purple);}
+    input::placeholder{color:var(--muted);}
+    .btn{padding:0.65rem 1.2rem;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;border:1px solid;transition:all 0.2s;white-space:nowrap;font-family:'Poppins',sans-serif;}
+    .btn-purple{background:rgba(156,111,228,0.15);border-color:var(--purple);color:var(--purple);}
+    .btn-purple:hover:not(:disabled){background:rgba(156,111,228,0.3);}
+    .btn-purple:disabled{opacity:0.45;cursor:not-allowed;}
+    .btn-green{background:rgba(29,185,84,0.12);border-color:var(--green);color:var(--green);}
+    .btn-green:hover:not(:disabled){background:rgba(29,185,84,0.2);}
+    .btn-green:disabled{opacity:0.45;cursor:not-allowed;}
+    .btn-gold{background:rgba(255,215,0,0.12);border-color:var(--gold);color:var(--gold);}
+    .btn-gold:hover:not(:disabled){background:rgba(255,215,0,0.2);}
+    .btn-red{background:rgba(229,9,20,0.12);border-color:var(--red);color:var(--red);}
+    .btn-red:hover:not(:disabled){background:rgba(229,9,20,0.25);}
+    .code-display{font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;letter-spacing:4px;color:var(--purple);text-align:center;margin:0.5rem 0;cursor:pointer;user-select:all;}
+    .code-hint{text-align:center;font-size:0.72rem;color:var(--muted);margin-bottom:0.8rem;}
+    .players-row{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;}
+    .player-chip{background:rgba(156,111,228,0.1);border:1px solid rgba(156,111,228,0.2);border-radius:20px;padding:0.25rem 0.75rem;font-size:0.78rem;font-weight:600;color:var(--muted);transition:all 0.2s;}
+    .player-chip.ready{border-color:var(--purple);color:var(--purple);background:rgba(156,111,228,0.15);}
+    .player-chip.host{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,0.08);}
+    .status-msg{text-align:center;color:var(--muted);font-size:0.85rem;margin:0.8rem 0;}
+    .error-msg{color:#ff6b6b;font-size:0.82rem;margin-top:0.5rem;min-height:1.2em;}
+    .divider{color:var(--muted);font-size:0.8rem;text-align:center;margin:0.6rem 0;}
+    .song-item{display:flex;align-items:center;gap:0.8rem;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:0.6rem 1rem;margin-bottom:0.5rem;}
+    .song-thumb{width:48px;height:36px;border-radius:4px;object-fit:cover;flex-shrink:0;background:#222;}
+    .song-info{flex:1;min-width:0;}
+    .song-name{font-size:0.9rem;font-weight:600;}
+    .song-artist{font-size:0.76rem;color:var(--muted);}
+    .search-results{display:flex;flex-direction:column;gap:0.4rem;max-height:300px;overflow-y:auto;margin-top:0.5rem;}
+    .search-result-item{display:flex;align-items:center;gap:0.8rem;padding:0.5rem 0.8rem;background:rgba(255,255,255,0.03);border-radius:8px;cursor:pointer;transition:background 0.2s;border:1px solid transparent;}
+    .search-result-item:hover{background:rgba(255,255,255,0.08);border-color:var(--border);}
+    .search-result-item img{width:56px;height:42px;border-radius:4px;object-fit:cover;flex-shrink:0;background:#222;}
+    .search-result-info{flex:1;min-width:0;}
+    .search-result-title{font-size:0.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .search-result-artist{font-size:0.72rem;color:var(--muted);}
+    .search-result-add{padding:0.2rem 0.8rem;border-radius:4px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--purple);background:rgba(156,111,228,0.1);color:var(--purple);flex-shrink:0;font-family:'Poppins',sans-serif;}
+    .search-result-add:hover{background:rgba(156,111,228,0.2);}
+    /* Playing screen */
+    .song-counter{display:inline-block;background:rgba(156,111,228,0.15);border:1px solid rgba(156,111,228,0.3);border-radius:20px;padding:0.2rem 0.8rem;font-size:0.75rem;font-weight:700;color:var(--purple);margin-bottom:0.8rem;}
+    .now-playing-box{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:1.5rem;text-align:center;margin:0.8rem 0;}
+    .np-art{font-size:3rem;margin-bottom:0.5rem;}
+    .np-title{font-size:1rem;font-weight:600;}
+    .np-artist{font-size:0.85rem;color:var(--muted);}
+    .progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin:0.8rem 0;overflow:hidden;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),#c084fc);border-radius:3px;width:0%;transition:width 0.3s;}
+    .clip-timer{font-size:0.78rem;color:var(--muted);}
+    /* Buzzer */
+    .buzzer-btn{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,#e50914,#a00);border:4px solid rgba(229,9,20,0.5);color:#fff;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.3rem;margin:1rem auto;font-family:'Poppins',sans-serif;box-shadow:0 0 30px rgba(229,9,20,0.3);}
+    .buzzer-btn:hover:not(:disabled){transform:scale(1.06);box-shadow:0 0 50px rgba(229,9,20,0.5);}
+    .buzzer-btn:active:not(:disabled){transform:scale(0.96);}
+    .buzzer-btn:disabled{opacity:0.35;cursor:not-allowed;box-shadow:none;}
+    .buzzer-pressed{background:rgba(29,185,84,0.1);border:1px solid var(--green);border-radius:12px;padding:1rem;text-align:center;font-size:1rem;font-weight:700;color:var(--green);margin:0.8rem 0;}
+    .owner-waiting{background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:1rem;text-align:center;color:var(--gold);font-size:0.9rem;margin:0.8rem 0;}
+    .guess-box{margin:0.8rem 0;}
+    .guess-box textarea{width:100%;padding:0.8rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.95rem;font-family:'Poppins',sans-serif;resize:none;min-height:70px;}
+    .guess-box textarea:focus{outline:none;border-color:var(--purple);}
+    .verify-box{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:1.2rem;text-align:center;margin:0.8rem 0;}
+    .verify-guess-text{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:0.3rem;}
+    .verify-label{font-size:0.8rem;color:var(--muted);margin-bottom:1rem;}
+    .verify-btns{display:flex;gap:0.8rem;justify-content:center;flex-wrap:wrap;}
+    .reveal-box{background:rgba(29,185,84,0.06);border:1px solid rgba(29,185,84,0.25);border-radius:12px;padding:1.2rem;text-align:center;margin:0.8rem 0;}
+    .reveal-box.wrong{background:rgba(229,9,20,0.06);border-color:rgba(229,9,20,0.25);}
+    .reveal-song-name{font-size:1.1rem;font-weight:700;color:var(--green);margin-bottom:0.2rem;}
+    .reveal-box.wrong .reveal-song-name{color:#ff6b6b;}
+    /* Scores */
+    .scores-row{display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0;border-bottom:1px solid var(--border);font-size:0.88rem;}
+    .scores-row:last-child{border-bottom:none;}
+    .score-val{font-weight:700;color:var(--purple);}
+    .winner-banner{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.35);border-radius:12px;padding:1.2rem;font-size:1.1rem;font-weight:700;color:var(--gold);text-align:center;margin-bottom:1rem;}
+    .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;padding:0.6rem 1.5rem;border-radius:40px;font-weight:600;font-size:0.85rem;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:90%;text-align:center;}
+    .toast.show{opacity:1;}
+    #screen-lobby,#screen-add,#screen-playing,#screen-done{display:none;}
+    #screen-lobby.active,#screen-add.active,#screen-playing.active,#screen-done.active{display:block;}
+    @media(max-width:480px){.topnav{padding:0.6rem 1rem;}.input-row{flex-direction:column;}.buzzer-btn{width:130px;height:130px;}}
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <a href="/games" style="color:var(--purple);font-weight:600;">← Games</a>
+    <a href="/u/{{ username }}" class="user-link">{{ username }}</a>
+  </nav>
+
+  <div class="container">
+    <h1>🎯 Music Guesser</h1>
+    <p class="sub">Everyone submits songs. A clip plays — buzz first and guess the song name. Owner verifies. Most correct guesses wins!</p>
+
+    <!-- LOBBY -->
+    <div id="screen-lobby" class="active">
+      <div class="panel">
+        <h2>Create or Join</h2>
+        <div class="input-row">
+          <button class="btn btn-purple" onclick="createRoom()" style="width:100%;">+ Create New Room</button>
+        </div>
+        <div class="divider">— or join existing —</div>
+        <div class="input-row">
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')joinRoom()" />
+          <button class="btn btn-purple" onclick="joinRoom()">Join</button>
+        </div>
+        <div class="error-msg" id="lobby-error"></div>
+      </div>
+    </div>
+
+    <!-- ADD SONGS -->
+    <div id="screen-add">
+      <div class="panel">
+        <h2>🎯 Room Code</h2>
+        <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
+        <div class="code-hint">Tap to copy · Share with friends</div>
+        <div class="players-row" id="players-list"></div>
+        <div id="host-config" style="display:none;">
+          <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem;">
+            <div style="color:var(--muted);font-size:0.82rem;margin-bottom:0.6rem;">Host Settings</div>
+            <div class="input-row">
+              <div style="flex:1;">
+                <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.3rem;">Songs per player</div>
+                <input type="number" id="cfg-spp" value="1" min="1" max="5" />
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.3rem;">Clip duration (sec)</div>
+                <input type="number" id="cfg-dur" value="5" min="3" max="10" />
+              </div>
+              <button class="btn btn-gold" onclick="saveConfig()" style="align-self:flex-end;">Set</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🎵 Add Your Songs</h2>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:0.8rem;">
+          Add <strong id="needed-count" style="color:var(--purple);">1</strong> song(s). Added: <span id="added-count">0</span>
+        </div>
+        <div class="input-row">
+          <input type="text" id="yt-search" placeholder="Search YouTube..." onkeydown="if(event.key==='Enter')searchYT()" />
+          <button class="btn btn-purple" onclick="searchYT()">Search</button>
+        </div>
+        <div id="search-results" class="search-results"></div>
+        <div class="status-msg" id="search-status"></div>
+      </div>
+
+      <div class="panel">
+        <h2>📋 Your Songs</h2>
+        <div id="my-songs-list"></div>
+        <button class="btn btn-green" id="done-btn" onclick="doneAdding()" style="margin-top:0.8rem;" disabled>✅ Done — Ready</button>
+        <div class="status-msg" id="add-status"></div>
+      </div>
+    </div>
+
+    <!-- PLAYING -->
+    <div id="screen-playing">
+      <div class="panel">
+        <div class="song-counter">Song <span id="song-num">1</span> of <span id="song-total">0</span></div>
+        <div id="attempt-badge" style="display:none;background:rgba(229,9,20,0.1);border:1px solid rgba(229,9,20,0.3);border-radius:20px;padding:0.2rem 0.8rem;font-size:0.72rem;color:#ff6b6b;display:inline-block;margin-left:0.5rem;">🔄 Retry</div>
+
+        <div class="now-playing-box">
+          <div class="np-art">🎵</div>
+          <div class="np-title" id="np-title">Waiting...</div>
+          <div class="np-artist" id="np-artist"></div>
+          <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+          <div class="clip-timer" id="clip-timer">0s / 5s</div>
+        </div>
+
+        <!-- Scores sidebar -->
+        <div id="scores-panel" style="margin-bottom:0.8rem;"></div>
+
+        <!-- PHASE: playing — show buzzer to non-owners -->
+        <div id="phase-playing">
+          <div id="buzzer-wrap" style="text-align:center;">
+            <button class="buzzer-btn" id="buzzer-btn" onclick="pressBuzzer()">
+              <span style="font-size:1.8rem;">🔔</span>
+              <span>BUZZ!</span>
+            </button>
+            <div style="font-size:0.75rem;color:var(--muted);">Press as soon as you know the song!</div>
+          </div>
+          <div id="owner-wait" class="owner-waiting" style="display:none;">
+            🎵 This is your song — wait for others to buzz!
+          </div>
+        </div>
+
+        <!-- PHASE: buzzer pressed — show who buzzed -->
+        <div id="phase-buzzed" style="display:none;">
+          <div class="buzzer-pressed" id="buzzed-banner">🔔 — buzzed first!</div>
+          <div id="guesser-input" style="display:none;">
+            <div class="guess-box">
+              <div style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem;">Type the song name:</div>
+              <textarea id="guess-input" placeholder="Song name..."></textarea>
+            </div>
+            <button class="btn btn-purple" onclick="submitGuess()" style="width:100%;">Submit Guess</button>
+          </div>
+          <div id="others-wait" style="display:none;">
+            <div class="status-msg">⏳ Waiting for them to type their guess...</div>
+          </div>
+        </div>
+
+        <!-- PHASE: verifying — show to owner -->
+        <div id="phase-verifying" style="display:none;">
+          <div class="verify-box">
+            <div class="verify-label">Their guess:</div>
+            <div class="verify-guess-text" id="verify-guess-text"></div>
+            <div class="verify-label" style="margin-top:0.5rem;">Is this correct?</div>
+            <div class="verify-btns">
+              <button class="btn btn-green" onclick="verify(true)">✓ Yes, Correct!</button>
+              <button class="btn btn-red" onclick="verify(false)">✗ Wrong</button>
+            </div>
+          </div>
+          <div id="non-owner-verify" style="display:none;">
+            <div class="status-msg">⏳ Song owner is verifying the guess...</div>
+          </div>
+        </div>
+
+        <!-- PHASE: reveal -->
+        <div id="phase-reveal" style="display:none;">
+          <div id="reveal-box" class="reveal-box">
+            <div id="reveal-result" style="font-size:1rem;font-weight:700;margin-bottom:0.5rem;"></div>
+            <div class="reveal-song-name" id="reveal-song-name"></div>
+            <div style="font-size:0.8rem;color:var(--muted);" id="reveal-song-artist"></div>
+          </div>
+          <div id="host-next-btn" style="display:none;margin-top:0.8rem;">
+            <button class="btn btn-purple" onclick="nextSong()" style="width:100%;">⏭ Next Song</button>
+          </div>
+          <div id="non-host-next" style="display:none;">
+            <div class="status-msg">⏳ Waiting for host to advance...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DONE -->
+    <div id="screen-done">
+      <div class="winner-banner" id="winner-banner"></div>
+      <div class="panel">
+        <h2>🏆 Final Scores</h2>
+        <div id="final-scores"></div>
+        <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+          <button class="btn btn-purple" onclick="location.href='/games/music-guesser'">Play Again</button>
+          <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="location.href='/games'">Back to Games</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div id="yt-div" style="position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1;"></div>
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script>
+    const ME = '{{ username }}';
+    const API_KEYS = ['{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}','{{ api_key_4 }}','{{ api_key_5 }}'];
+    let roomCode = null, isHost = false, socket = null, pollTimer = null;
+    let gameState = null, mySongs = [], searchKeyIndex = 0;
+    let songsPerPlayer = 1, clipDuration = 5;
+    let ytPlayer = null, ytReady = false, isPlaying = false;
+    let clipInterval = null, clipSeconds = 0;
+    let lastPhase = null, buzzLocked = false;
+
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('yt-div', {
+        height:'1', width:'1',
+        playerVars:{autoplay:0,controls:0,rel:0,playsinline:1},
+        events:{
+          onReady:()=>{ ytReady=true; },
+          onStateChange:(e)=>{
+            if(e.data===YT.PlayerState.PLAYING){ isPlaying=true; }
+            if(e.data===YT.PlayerState.PAUSED||e.data===YT.PlayerState.ENDED){ isPlaying=false; }
+          },
+          onError:()=>{ showToast('Video error'); }
+        }
+      });
+    }
+
+    function showToast(msg) {
+      const t=document.getElementById('toast');
+      t.textContent=msg; t.classList.add('show');
+      clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2500);
+    }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function showScreen(name) {
+      ['lobby','add','playing','done'].forEach(s=>{
+        const el=document.getElementById('screen-'+s);
+        if(el) el.classList.remove('active');
+      });
+      const t=document.getElementById('screen-'+name);
+      if(t) t.classList.add('active');
+    }
+
+    function copyCode() {
+      if(!roomCode) return;
+      navigator.clipboard?.writeText(roomCode).then(()=>showToast('Code copied!'));
+    }
+
+    // ---- Room ----
+    async function createRoom() {
+      const btn=event.target; btn.disabled=true; btn.textContent='Creating...';
+      try {
+        const r=await fetch('/api/games/room',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game_type:'music_guesser'})});
+        const d=await r.json();
+        if(d.error){document.getElementById('lobby-error').textContent=d.error;return;}
+        roomCode=d.code; isHost=true; enterAdd();
+      } catch(e){showToast('Error');}
+      finally{btn.disabled=false;btn.textContent='+ Create New Room';}
+    }
+
+    async function joinRoom() {
+      const code=document.getElementById('join-code').value.trim().toUpperCase();
+      if(!code){showToast('Enter a code');return;}
+      try {
+        const r=await fetch('/api/games/room/'+code+'/join',{method:'POST'});
+        const d=await r.json();
+        if(d.error){document.getElementById('lobby-error').textContent=d.error;return;}
+        roomCode=code; isHost=false; enterAdd();
+      } catch(e){showToast('Error joining');}
+    }
+
+    function enterAdd() {
+      document.getElementById('room-code-display').textContent=roomCode;
+      document.getElementById('host-config').style.display=isHost?'block':'none';
+      showScreen('add'); connectSocket(); fetchState(); startPolling();
+    }
+
+    // ---- Socket ----
+    function connectSocket() {
+      if(socket) return;
+      socket=io();
+      socket.on('connect',()=>socket.emit('game_join',{room_code:roomCode,username:ME}));
+      socket.on('game_state',(d)=>{ if(d.room) handleState(d.room); });
+      socket.on('game_play',(d)=>{ if(ytReady&&d.position!==undefined) { ytPlayer.seekTo(d.position,true); ytPlayer.playVideo(); }});
+      socket.on('game_pause',(d)=>{ if(ytReady&&d.position!==undefined) { ytPlayer.seekTo(d.position,true); ytPlayer.pauseVideo(); }});
+      socket.on('disconnect',()=>showToast('Disconnected...'));
+      socket.on('reconnect',()=>{ showToast('Reconnected!'); socket.emit('game_join',{room_code:roomCode,username:ME}); });
+    }
+
+    // ---- Config ----
+    async function saveConfig() {
+      if(!isHost) return;
+      const spp=parseInt(document.getElementById('cfg-spp').value)||1;
+      const dur=parseInt(document.getElementById('cfg-dur').value)||5;
+      await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'set_config',songs_per_player:spp,clip_duration:dur})});
+      showToast('Config saved');
+      fetchState();
+    }
+
+    // ---- YouTube Search ----
+    async function searchYT() {
+      const q=document.getElementById('yt-search').value.trim();
+      if(!q){showToast('Enter search term');return;}
+      const res=document.getElementById('search-results');
+      const st=document.getElementById('search-status');
+      res.innerHTML=''; st.textContent='Searching...';
+      const key=getKey(); if(!key){st.textContent='No API key';return;}
+      try {
+        const r=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&key=${key}&maxResults=10&type=video`);
+        if(!r.ok) throw new Error('API error');
+        const d=await r.json();
+        if(!d.items||!d.items.length){st.textContent='No results';return;}
+        st.textContent='';
+        res.innerHTML=d.items.map(item=>{
+          const thumb=item.snippet.thumbnails.medium?.url||'';
+          const title=item.snippet.title||'Untitled';
+          const vid=item.id.videoId;
+          const parts=title.split(/\s[-–]\s/);
+          const artist=parts.length>1?parts[parts.length-1]:'Unknown';
+          const songTitle=parts.length>1?parts.slice(0,-1).join(' - '):title;
+          const added=mySongs.some(s=>s.youtube_query===vid);
+          return `<div class="search-result-item" style="${added?'opacity:0.5;':''}" onclick="${added?'':` addSong('${vid}','${esc(songTitle)}','${esc(artist)}','${thumb}')`}">
+            <img src="${thumb}" loading="lazy"/>
+            <div class="search-result-info"><div class="search-result-title">${esc(songTitle)}</div><div class="search-result-artist">${esc(artist)}</div></div>
+            <button class="search-result-add" ${added?'disabled':''} >${added?'Added':'+ Add'}</button>
+          </div>`;
+        }).join('');
+      } catch(e){
+        st.textContent='Search failed'; searchKeyIndex++;
+        if(searchKeyIndex<API_KEYS.length) setTimeout(searchYT,500);
+      }
+    }
+
+    function getKey() {
+      while(searchKeyIndex<API_KEYS.length){
+        const k=API_KEYS[searchKeyIndex];
+        if(k&&k.length>5) return k;
+        searchKeyIndex++;
+      }
+      return null;
+    }
+
+    function addSong(vid,title,artist,thumb) {
+      if(mySongs.some(s=>s.youtube_query===vid)){showToast('Already added');return;}
+      if(mySongs.length>=songsPerPlayer){showToast('Max songs reached');return;}
+      mySongs.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),youtube_query:vid,title:title||'Untitled',artist:artist||'Unknown',thumbnail:thumb||''});
+      renderMySongs(); updateDoneBtn();
+      document.getElementById('yt-search').value='';
+      document.getElementById('search-results').innerHTML='';
+      document.getElementById('search-status').textContent='';
+      showToast('Added: '+title);
+    }
+
+    function removeSong(id) {
+      mySongs=mySongs.filter(s=>s.id!==id);
+      renderMySongs(); updateDoneBtn();
+    }
+
+    function renderMySongs() {
+      const c=document.getElementById('my-songs-list');
+      document.getElementById('added-count').textContent=mySongs.length;
+      if(!mySongs.length){c.innerHTML='<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:0.5rem;">No songs yet.</div>';return;}
+      c.innerHTML=mySongs.map(s=>`<div class="song-item">
+        ${s.thumbnail?`<img src="${s.thumbnail}" class="song-thumb"/>`:'' }
+        <div class="song-info"><div class="song-name">${esc(s.title)}</div><div class="song-artist">${esc(s.artist)}</div></div>
+        <button onclick="removeSong('${s.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;">✕</button>
+      </div>`).join('');
+    }
+
+    function updateDoneBtn() {
+      const btn=document.getElementById('done-btn');
+      btn.disabled=mySongs.length<songsPerPlayer;
+      btn.textContent=mySongs.length>=songsPerPlayer?'✅ Done — Ready':'Add '+(songsPerPlayer-mySongs.length)+' more';
+    }
+
+    async function doneAdding() {
+      if(mySongs.length<songsPerPlayer){showToast('Add more songs');return;}
+      const btn=document.getElementById('done-btn'); btn.disabled=true;
+      document.getElementById('add-status').textContent='Uploading...';
+      for(const s of mySongs){
+        await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_song',song:s})});
+      }
+      mySongs=[]; renderMySongs();
+      document.getElementById('add-status').textContent='✅ Submitted! Waiting for others...';
+      await fetch('/api/games/room/'+roomCode+'/ready',{method:'POST'});
+      fetchState();
+    }
+
+    // ---- Playing ----
+    function startPlaying(room) {
+      showScreen('playing');
+      const data=room.data||{};
+      const songs=data.songs||[];
+      const idx=data.current_index||0;
+      document.getElementById('song-total').textContent=songs.length;
+      clipDuration=data.clip_duration||5;
+      renderScores(data.scores||{},room.players||[]);
+      applyPhase(room);
+    }
+
+    function applyPhase(room) {
+      const data=room.data||{};
+      const phase=data.phase||'playing';
+      const songs=data.songs||[];
+      const idx=data.current_index||0;
+      const song=songs[idx]||{};
+      const attempt=data.attempt||0;
+
+      document.getElementById('song-num').textContent=idx+1;
+      document.getElementById('song-total').textContent=songs.length;
+      document.getElementById('np-title').textContent=phase==='reveal'?song.title||'?':'🎵 Playing...';
+      document.getElementById('np-artist').textContent=phase==='reveal'?song.artist||'':'';
+
+      const attemptBadge=document.getElementById('attempt-badge');
+      attemptBadge.style.display=attempt>0?'inline-block':'none';
+
+      // Hide all phases
+      ['phase-playing','phase-buzzed','phase-verifying','phase-reveal'].forEach(id=>{
+        document.getElementById(id).style.display='none';
+      });
+
+      renderScores(data.scores||{},room.players||[]);
+
+      if(phase==='playing') {
+        // Reset guess input for next attempt
+        const gi=document.getElementById('guess-input');
+        gi.value=''; gi.disabled=false;
+        document.getElementById('phase-playing').style.display='block';
+        const isOwner=song.owner===ME;
+        document.getElementById('buzzer-wrap').style.display=isOwner?'none':'block';
+        document.getElementById('owner-wait').style.display=isOwner?'block':'none';
+        const buzzerBtn=document.getElementById('buzzer-btn');
+        buzzerBtn.disabled=isOwner||buzzLocked;
+
+        // Play clip if phase just changed to playing, or on retry (attempt changed)
+        const songKey = (data.current_index||0)+'-'+(data.attempt||0);
+        if(lastPhase!==phase||lastPhase===null||window._lastSongKey!==songKey) {
+          window._lastSongKey=songKey;
+          buzzLocked=false;
+          buzzerBtn.disabled=isOwner;
+          if(song.youtube_query&&ytReady) {
+            playClip(song.youtube_query);
+          }
+        }
+
+      } else if(phase==='guessing') {
+        document.getElementById('phase-buzzed').style.display='block';
+        const winner=data.buzzer_winner||'';
+        document.getElementById('buzzed-banner').textContent='🔔 '+winner+' buzzed first!';
+        const isGuesser=winner===ME;
+        document.getElementById('guesser-input').style.display=isGuesser?'block':'none';
+        document.getElementById('others-wait').style.display=isGuesser?'none':'block';
+        stopClip();
+
+      } else if(phase==='verifying') {
+        document.getElementById('phase-verifying').style.display='block';
+        // Also show buzzed banner
+        document.getElementById('phase-buzzed').style.display='block';
+        const winner=data.buzzer_winner||'';
+        document.getElementById('buzzed-banner').textContent='🔔 '+winner+' buzzed first!';
+        document.getElementById('guesser-input').style.display='none';
+        document.getElementById('others-wait').style.display='none';
+        const guess=data.current_guess||'';
+        const isOwner=song.owner===ME;
+        document.getElementById('verify-guess-text').textContent=guess;
+        document.getElementById('phase-verifying').querySelector('.verify-box').style.display=isOwner?'block':'none';
+        document.getElementById('non-owner-verify').style.display=isOwner?'none':'block';
+
+      } else if(phase==='reveal') {
+        document.getElementById('phase-reveal').style.display='block';
+        const correct=data.reveal_correct;
+        const box=document.getElementById('reveal-box');
+        box.className='reveal-box'+(correct?'':' wrong');
+        document.getElementById('reveal-result').textContent=correct?'✅ Correct!':'❌ No one guessed it';
+        document.getElementById('reveal-result').style.color=correct?'var(--green)':'#ff6b6b';
+        document.getElementById('reveal-song-name').textContent=song.title||'?';
+        document.getElementById('reveal-song-artist').textContent=song.artist||'';
+        document.getElementById('host-next-btn').style.display=isHost?'block':'none';
+        document.getElementById('non-host-next').style.display=isHost?'none':'block';
+        stopClip();
+        document.getElementById('np-title').textContent=song.title||'?';
+        document.getElementById('np-artist').textContent=song.artist||'';
+      }
+
+      lastPhase=phase;
+    }
+
+    function playClip(videoId) {
+      stopClip();
+      if(!ytReady) return;
+      ytPlayer.loadVideoById({videoId:videoId,startSeconds:0});
+      ytPlayer.playVideo();
+      clipSeconds=0;
+      document.getElementById('prog-fill').style.width='0%';
+      document.getElementById('clip-timer').textContent='0s / '+clipDuration+'s';
+      clipInterval=setInterval(()=>{
+        clipSeconds++;
+        const pct=Math.min(100,(clipSeconds/clipDuration)*100);
+        document.getElementById('prog-fill').style.width=pct+'%';
+        document.getElementById('clip-timer').textContent=clipSeconds+'s / '+clipDuration+'s';
+        if(clipSeconds>=clipDuration) {
+          stopClip();
+          // Lock buzzer after clip ends if no one buzzed
+          buzzLocked=true;
+          const btn=document.getElementById('buzzer-btn');
+          if(btn) btn.disabled=true;
+        }
+      },1000);
+    }
+
+    function stopClip() {
+      clearInterval(clipInterval);
+      if(ytReady&&ytPlayer) { try{ytPlayer.stopVideo();}catch(e){} }
+    }
+
+    function renderScores(scores,players) {
+      const c=document.getElementById('scores-panel');
+      if(!c) return;
+      const sorted=[...players].sort((a,b)=>(scores[b.username]||0)-(scores[a.username]||0));
+      c.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;">'+
+        sorted.map(p=>`<span style="background:rgba(156,111,228,0.1);border:1px solid rgba(156,111,228,0.2);border-radius:20px;padding:0.2rem 0.7rem;font-size:0.75rem;font-weight:600;color:var(--purple);">${esc(p.username)}: ${scores[p.username]||0}</span>`).join('')+
+      '</div>';
+    }
+
+    // ---- Buzzer ----
+    async function pressBuzzer() {
+      if(buzzLocked) return;
+      buzzLocked=true;
+      document.getElementById('buzzer-btn').disabled=true;
+      const r=await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'buzz'})});
+      const d=await r.json();
+      if(d.error){showToast(d.error);buzzLocked=false;document.getElementById('buzzer-btn').disabled=false;return;}
+      fetchState();
+    }
+
+    // ---- Guess ----
+    async function submitGuess() {
+      const guess=document.getElementById('guess-input').value.trim();
+      if(!guess){showToast('Type something');return;}
+      document.getElementById('guess-input').disabled=true;
+      await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'submit_guess',guess:guess})});
+      fetchState();
+    }
+
+    // ---- Verify ----
+    async function verify(correct) {
+      document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=true);
+      await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',correct:correct})});
+      document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
+      fetchState();
+    }
+
+    // ---- Next Song ----
+    async function nextSong() {
+      await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'next_song'})});
+      lastPhase=null; buzzLocked=false;
+      document.getElementById('guess-input').value='';
+      document.getElementById('guess-input').disabled=false;
+      document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
+      fetchState();
+    }
+
+    // ---- State ----
+    function handleState(room) {
+      if(!room||room.error) return;
+      // Reset local state when song advances
+      const newIdx=(room.data||{}).current_index;
+      if(gameState&&newIdx!==(gameState.data||{}).current_index){
+        buzzLocked=false;
+        lastPhase=null;
+        window._lastSongKey=null;
+        const gi=document.getElementById('guess-input');
+        if(gi){gi.value='';gi.disabled=false;}
+        document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
+      }
+      gameState=room;
+      isHost=room.host===ME;
+
+      const data=room.data||{};
+      if(data.songs_per_player) {
+        songsPerPlayer=data.songs_per_player;
+        document.getElementById('needed-count').textContent=songsPerPlayer;
+        updateDoneBtn();
+      }
+      if(data.clip_duration) clipDuration=data.clip_duration;
+
+      // Players list
+      const pl=document.getElementById('players-list');
+      if(pl) pl.innerHTML=(room.players||[]).map(p=>`<span class="player-chip ${p.ready?'ready':''} ${room.host===p.username?'host':''}">${esc(p.username)}${p.ready?' ✓':''}${room.host===p.username?' 👑':''}</span>`).join('');
+
+      if(room.state==='lobby'||room.state==='playing'&&!(data.songs||[]).length) {
+        if(!document.getElementById('screen-add').classList.contains('active')) showScreen('add');
+      } else if(room.state==='playing') {
+        if(!document.getElementById('screen-playing').classList.contains('active')) {
+          startPlaying(room);
+        } else {
+          applyPhase(room);
+        }
+      } else if(room.state==='finished') {
+        showDone(room);
+      }
+    }
+
+    function showDone(room) {
+      stopClip();
+      clearTimeout(pollTimer);
+      showScreen('done');
+      const data=room.data||{};
+      const scores=data.scores||{};
+      const winner=data.winner||'';
+      document.getElementById('winner-banner').innerHTML=winner
+        ? `🏆 Winner: <strong>${esc(winner)}</strong>`
+        : data.tied
+          ? `🤝 It's a Tie!`
+          : '🏆 Game Over!';
+      const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+      document.getElementById('final-scores').innerHTML=sorted.map(([u,s],i)=>`<div class="scores-row"><span>${i===0?'🥇':i+1+'.'} ${esc(u)}</span><span class="score-val">${s} pts</span></div>`).join('');
+    }
+
+    // ---- Polling ----
+    function startPolling(){clearTimeout(pollTimer);pollTimer=setTimeout(pollRoom,2000);}
+    async function fetchState(){
+      try{const r=await fetch('/api/games/room/'+roomCode);const d=await r.json();handleState(d);}catch(e){}
+    }
+    async function pollRoom(){
+      if(!roomCode||document.hidden){startPolling();return;}
+      await fetchState(); startPolling();
+    }
+
+    showScreen('lobby');
+    window.addEventListener('beforeunload',()=>{if(socket&&roomCode)socket.emit('game_leave',{room_code:roomCode});});
+  </script>
+  <script src="/static/pwa.js"></script>
+</body>
+</html>

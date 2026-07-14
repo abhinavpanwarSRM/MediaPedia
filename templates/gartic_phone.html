@@ -8,6 +8,7 @@
     <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon">
     <link rel="manifest" href="/static/manifest.json">
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* ===== RESET & BASE ===== */
         * {
@@ -18,6 +19,13 @@
             -webkit-user-select: none;
             user-select: none;
         }
+        /* Fix 1: allow text selection in inputs and readable content */
+        input, textarea, select,
+        .game-prompt, .reveal-step .step-content,
+        .step-author, .reveal-chain-title, .room-code {
+            -webkit-user-select: text;
+            user-select: text;
+        }
         
         body {
             background: #0a0a0a;
@@ -25,7 +33,13 @@
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+            /* Fix 7: custom thin scrollbar */
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #0a0a0a;
         }
+        body::-webkit-scrollbar { width: 6px; }
+        body::-webkit-scrollbar-track { background: #0a0a0a; }
+        body::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
 
         /* ===== TOP NAV ===== */
         .topnav {
@@ -65,7 +79,7 @@
         /* ===== LOBBY ===== */
         #lobby {
             max-width: 480px;
-            margin: 10vh auto;
+            margin: clamp(1.5rem, 8vh, 6rem) auto;
             padding: 2.5rem 2rem;
             background: linear-gradient(145deg, #1a1a1a, #141414);
             border-radius: 32px;
@@ -195,6 +209,9 @@
             display: none;
             min-height: 100vh;
             padding: 1rem;
+            max-width: 900px;
+            margin: 0 auto;
+            overflow-x: hidden;
             background: #0a0a0a;
         }
         
@@ -207,14 +224,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1.2rem;
             background: linear-gradient(145deg, #1a1a1a, #141414);
-            border-radius: 20px;
+            border-radius: 16px;
             border: 1px solid #2a2a2a;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             flex-wrap: wrap;
-            gap: 0.8rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            gap: 0.6rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
         }
         
         .room-code {
@@ -236,17 +253,18 @@
         }
         
         .player-chip {
-            padding: 0.3rem 1rem;
+            padding: 0.35rem 1rem;
             background: rgba(255,255,255,0.05);
             border-radius: 20px;
-            font-size: 0.85rem;
-            border: 1px solid #2a2a2a;
-            transition: all 0.3s;
+            font-size: 0.82rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 0.3rem;
-            font-weight: 500;
+            gap: 0.35rem;
+            font-weight: 600;
         }
+        .player-chip:hover { background: rgba(255,255,255,0.08); }
         
         .player-chip.host {
             border-color: #ffd93d;
@@ -293,31 +311,45 @@
             background: linear-gradient(145deg, #1a1a1a, #141414);
             border-radius: 20px;
             border: 1px solid #2a2a2a;
-            padding: 2rem;
+            padding: 1.5rem;
             min-height: 400px;
+            overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            padding-bottom: 2.2rem;
         }
 
         .game-status {
-            color: #888;
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.78rem;
+            margin-bottom: 0.8rem;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 500;
+            letter-spacing: 2.5px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 0.4rem 1rem;
+            display: inline-block;
+            width: 100%;
         }
         
         .game-prompt {
-            font-size: 1.4rem;
-            margin: 1rem 0 1.5rem 0;
+            font-size: 1.25rem;
+            margin: 0.6rem 0 1rem 0;
             text-align: center;
             color: #ffd93d;
-            padding: 1rem;
-            background: rgba(255,217,61,0.05);
-            border-radius: 16px;
-            border: 1px dashed rgba(255,217,61,0.2);
+            padding: 0.8rem 1rem;
+            background: rgba(255,217,61,0.06);
+            border-radius: 14px;
+            border: 1px solid rgba(255,217,61,0.18);
             font-weight: 600;
+            line-height: 1.4;
+        }
+        /* When prompt contains an image, reset font size context */
+        .game-prompt img {
+            font-size: 0;
+            display: block;
+            margin: 0.5rem auto 0;
         }
         
         .game-prompt strong {
@@ -336,14 +368,20 @@
             margin: 1.5rem 0;
         }
         
+        /* Fix 9: waiting player entrance animation */
+        @keyframes chipIn {
+            from { opacity: 0; transform: scale(0.85) translateY(4px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
         .waiting-player {
-            padding: 0.5rem 1.2rem;
+            padding: 0.45rem 1.1rem;
             background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            font-size: 0.95rem;
-            border: 1px solid #2a2a2a;
+            border-radius: 40px;
+            font-size: 0.88rem;
+            border: 1px solid #333;
             transition: all 0.3s;
-            font-weight: 500;
+            font-weight: 600;
+            animation: chipIn 0.25s ease both;
         }
         
         .waiting-player.you {
@@ -369,7 +407,10 @@
             resize: vertical;
             min-height: 120px;
             font-family: 'Poppins', sans-serif;
-            transition: all 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            /* Fix 1: allow typing on mobile */
+            -webkit-user-select: text;
+            user-select: text;
         }
         
         .submission-area textarea:focus {
@@ -400,9 +441,15 @@
             border-radius: 14px 14px 0 0;
             border: 2px solid #2a2a2a;
             border-bottom: none;
+            /* Fix 6: clip canvas overflow cleanly */
             overflow: hidden;
             touch-action: none;
             background: #fff;
+            /* smooth border glow on active drawing */
+            transition: border-color 0.3s;
+        }
+        .drawing-container:focus-within {
+            border-color: #ff6b6b44;
         }
         .drawing-container canvas {
             display: block;
@@ -425,13 +472,22 @@
             display: flex;
             flex-direction: column;
             gap: 0.45rem;
+            /* Fix 6: toolbar must not overflow game-area */
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #111;
         }
+        .drawing-tools::-webkit-scrollbar { height: 3px; }
+        .drawing-tools::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
         .toolbar-row {
             display: flex;
             align-items: center;
             gap: 0.4rem;
             flex-wrap: wrap;
+            /* Fix 6: min-width so rows don't collapse weirdly */
+            min-width: min-content;
         }
+        /* Fix 4: remove duplicate .toolbar-sep — keep only one definition */
         .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
         .toolbar-sep-h { width: 100%; height: 1px; background: #1e1e1e; }
 
@@ -477,8 +533,7 @@
         .tool-btn:hover { background: #252525; color: #fff; border-color: #444; }
         .tool-btn.active { border-color: #ff6b6b; background: rgba(255,107,107,0.15); color: #ff6b6b; }
         .tool-btn.danger:hover { border-color: #ff6b6b; color: #ff6b6b; background: rgba(255,107,107,0.08); }
-
-        .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
+        /* Fix 4: duplicate .toolbar-sep removed — defined once above */
 
         .size-track { display: flex; align-items: center; gap: 0.35rem; }
         .size-dot-preview {
@@ -538,10 +593,15 @@
             box-shadow: 0 8px 30px rgba(29,185,84,0.4);
         }
         
+        /* Fix 10: distinguish submitted state from just disabled */
         .btn-submit:disabled {
-            opacity: 0.4;
+            opacity: 0.45;
             cursor: not-allowed;
             transform: none;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            box-shadow: none;
+            color: #6bcb77;
+            border: 1px solid #6bcb7744;
         }
         
         .waiting-players {
@@ -553,37 +613,54 @@
         }
 
         /* ===== REVEAL ===== */
+        /* Fix 8: scrollable reveal content with custom scrollbar */
+        #reveal-content {
+            max-height: 65vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #0a0a0a;
+            padding-right: 4px;
+        }
+        #reveal-content::-webkit-scrollbar { width: 5px; }
+        #reveal-content::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
         .reveal-chain {
-            background: rgba(255,255,255,0.03);
+            background: rgba(255,255,255,0.04);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 1rem;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #333;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
         }
         
         .reveal-chain-title {
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1.2rem;
+            font-weight: 800;
             color: #ffd93d;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(255,217,61,0.15);
         }
         
+        /* Fix 3: remove transition:all from reveal-step — conflicts with stepIn animation */
         .reveal-step {
-            background: rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.03);
             border-radius: 12px;
-            padding: 1rem;
-            margin: 0.5rem 0;
+            padding: 1rem 1.2rem;
+            margin: 0.6rem 0;
             border-left: 3px solid #ff6b6b;
-            transition: all 0.3s;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.25);
         }
+        .reveal-step.step-text { border-left-color: #4d96ff; }
+        .reveal-step.step-drawing { border-left-color: #6bcb77; }
         
         .reveal-step .step-author {
-            font-size: 0.8rem;
-            color: #888;
-            font-weight: 500;
+            font-size: 0.82rem;
+            color: #aaa;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
         }
         
         .reveal-step .step-content {
@@ -601,17 +678,18 @@
         }
         
         .btn-reveal-next {
-            padding: 0.8rem 2rem;
+            padding: 0.8rem 2.5rem;
             background: linear-gradient(135deg, #ffd93d, #f6b83d);
             border: none;
-            border-radius: 12px;
+            border-radius: 40px;
             color: #000;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
             font-size: 1rem;
             transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(255,217,61,0.3);
+            box-shadow: 0 4px 20px rgba(255,217,61,0.35);
+            letter-spacing: 0.3px;
         }
         
         .btn-reveal-next:hover {
@@ -641,11 +719,12 @@
         }
 
         /* ===== TOAST ===== */
+        /* Fix 5: toast slides up from below instead of just fading */
         .toast {
             position: fixed;
             bottom: 2rem;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(16px);
             background: rgba(20,20,20,0.95);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.1);
@@ -656,7 +735,7 @@
             font-size: 0.9rem;
             z-index: 9999;
             opacity: 0;
-            transition: all 0.3s;
+            transition: opacity 0.25s ease, transform 0.25s ease;
             pointer-events: none;
             max-width: 90%;
             text-align: center;
@@ -668,18 +747,55 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* ===== RESPONSIVE ===== */
+        /* ===== REACTIONS & REVEAL ANIMATION ===== */
+        /* Fix 3: animation only — no conflicting transition on reveal-step */
+        .reveal-step { animation: stepIn 0.35s ease both; }
+        @keyframes stepIn {
+            from { opacity:0; transform:translateY(10px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .reaction-bar { display:flex; gap:0.4rem; margin-top:0.5rem; flex-wrap:wrap; }
+        .reaction-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #2a2a2a;
+            border-radius: 20px;
+            padding: 0.2rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+        }
+        .reaction-btn:hover { background: rgba(255,255,255,0.12); transform: scale(1.1); }
+        .reaction-btn.mine { border-color: #ff6b6b; background: rgba(255,107,107,0.15); }
+        .reaction-count { font-size:0.75rem; color:#888; margin-left:2px; }
+        /* ===== TIMER ===== */
+        #timer-text.danger { color: #ff6b6b !important; }
+        #timer-fill.danger { background: linear-gradient(90deg,#ff4757,#ff6b6b) !important; }
+        /* Fix 11: room settings panel smooth show/hide */
+        #room-settings {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        /* Fix 2: writing-prompt readable text */
+        #writing-prompt {
+            -webkit-user-select: text;
+            user-select: text;
+        }
         @media (max-width: 768px) {
             #lobby { margin: 5vh auto; padding: 2rem 1.5rem; }
             #lobby h1 { font-size: 2.2rem; }
-            .game-area { padding: 1rem; }
+            /* Fix 6: game area no side padding on tablet */
+            .game-area { padding: 1rem; overflow: hidden; }
             .drawing-container canvas { min-height: 260px; }
             .room-header { padding: 0.8rem 1rem; }
+            /* Fix 8: taller reveal scroll area on tablet */
+            #reveal-content { max-height: 70vh; }
         }
         
         @media (max-width: 480px) {
             .topnav { padding: 0.6rem 1rem; }
-            .game-prompt { font-size: 1rem; padding: 0.7rem; }
+            /* Fix 12: smaller font on mobile so image prompt fits */
+            .game-prompt { font-size: 0.95rem; padding: 0.7rem; }
             .drawing-container canvas { min-height: 220px; }
             .tool-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
             .btn { font-size: 0.9rem; padding: 0.8rem; }
@@ -687,6 +803,10 @@
             .reveal-step .step-content img { max-height: 220px; }
             .size-slider { width: 60px; }
             .opacity-slider { width: 45px; }
+            /* Fix 8: full-height reveal scroll on mobile */
+            #reveal-content { max-height: 60vh; }
+            /* Fix 9: faster chip animation on mobile */
+            .waiting-player { animation-duration: 0.18s; }
         }
     </style>
 </head>
@@ -704,7 +824,21 @@
         <h1>🎨 Gartic Phone</h1>
         <p class="subtitle">Draw, write, and laugh with friends!<br>Each round alternates between writing and drawing.</p>
         
-        <button class="btn btn-primary" onclick="window.createRoom()">🎨 Create New Room</button>
+        <button class="btn btn-primary" onclick="window.createRoom(event)">🎨 Create New Room</button>
+        <div id="room-settings" style="margin:0.8rem 0;background:rgba(255,255,255,0.03);border:1px solid #2a2a2a;border-radius:16px;padding:1rem;text-align:left;">
+            <div style="color:#888;font-size:0.8rem;font-weight:600;letter-spacing:1px;margin-bottom:0.6rem;">ROOM SETTINGS</div>
+            <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;">
+                <label style="color:#aaa;font-size:0.85rem;display:flex;align-items:center;gap:0.5rem;">
+                    <input type="checkbox" id="timer-enabled" onchange="window.toggleTimerSetting()" style="accent-color:#ff6b6b;"> Timer
+                </label>
+                <select id="timer-limit" disabled style="background:#1a1a1a;border:1px solid #2a2a2a;color:#888;border-radius:8px;padding:0.3rem 0.6rem;font-family:Poppins,sans-serif;font-size:0.85rem;">
+                    <option value="30">30s</option>
+                    <option value="60" selected>60s</option>
+                    <option value="90">90s</option>
+                    <option value="120">120s</option>
+                </select>
+            </div>
+        </div>
         <div class="divider">— or join existing —</div>
         <input class="inp" id="join-code" placeholder="6-digit code" maxlength="6" 
                onkeydown="if (event.key === 'Enter') window.joinRoom()">
@@ -718,7 +852,21 @@
         <div class="room-header">
             <div class="room-code" id="room-code" onclick="window.copyCode()" title="Tap to copy">—— ——</div>
             <div class="room-players" id="room-players"></div>
+            <button class="btn-leave" id="qr-btn" onclick="window.toggleQR()" style="margin-right:0.3rem;">QR</button>
             <button class="btn-leave" onclick="window.leaveRoom()">✕ Leave</button>
+        </div>
+        <div id="qr-panel" style="display:none;text-align:center;padding:1rem;background:#1a1a1a;border-radius:16px;border:1px solid #2a2a2a;margin-bottom:0.8rem;">
+            <div id="qr-code" style="display:flex;justify-content:center;align-items:center;"></div>
+            <div style="color:#888;font-size:0.75rem;margin-top:0.4rem;">Scan to join</div>
+        </div>
+        <div id="timer-bar-wrap" style="display:none;margin-bottom:0.6rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                <span style="color:#888;font-size:0.8rem;">⏱ Time remaining</span>
+                <span id="timer-text" style="font-weight:700;font-size:1rem;color:#ffd93d;">—</span>
+            </div>
+            <div style="background:#1a1a1a;border-radius:8px;height:8px;overflow:hidden;">
+                <div id="timer-fill" style="height:100%;background:linear-gradient(90deg,#6bcb77,#ffd93d);border-radius:8px;transition:width 1s linear,background 0.5s;"></div>
+            </div>
         </div>
 
         <!-- Game Area -->
@@ -781,12 +929,22 @@
                             <button class="tool-btn" id="shape-rect" onclick="window.setShape('rect')">▭</button>
                             <button class="tool-btn" id="shape-circle" onclick="window.setShape('circle')">○</button>
                             <button class="tool-btn" id="shape-triangle" onclick="window.setShape('triangle')">△</button>
+                            <button class="tool-btn" id="text-btn" onclick="window.setTool('text')">T</button>
                             <button class="tool-btn" id="fill-shape-btn" onclick="window.toggleFillShape()">⬛ Fill: <span id="fill-shape-label">OFF</span></button>
                             <div class="toolbar-sep"></div>
-                            <button class="tool-btn" id="mirror-btn" onclick="window.toggleMirror()">🪞 <span id="mirror-label">OFF</span></button>
+                            <button class="tool-btn" id="mirror-btn" onclick="window.toggleMirror()">🪞H <span id="mirror-label">OFF</span></button>
+                            <button class="tool-btn" id="mirror-v-btn" onclick="window.toggleMirrorV()">🪞V <span id="mirror-v-label">OFF</span></button>
+                            <button class="tool-btn" id="mirror-4-btn" onclick="window.toggleMirror4()">✦ <span id="mirror-4-label">OFF</span></button>
                             <button class="tool-btn" id="rainbow-btn" onclick="window.toggleRainbow()">🌈 <span id="rainbow-label">OFF</span></button>
                             <div class="toolbar-sep"></div>
+                            <button class="tool-btn" id="grid-btn" onclick="window.toggleGrid()">⊞ <span id="grid-label">OFF</span></button>
+                            <button class="tool-btn" onclick="window.zoomIn()">🔍+</button>
+                            <button class="tool-btn" onclick="window.zoomOut()">🔍-</button>
+                            
+                            
+                            <div class="toolbar-sep"></div>
                             <button class="tool-btn" onclick="window.undoDraw()">↩</button>
+                            <button class="tool-btn" id="redo-btn" onclick="window.redoDraw()">↪</button>
                             <button class="tool-btn danger" onclick="window.clearCanvas()">🗑</button>
                         </div>
                     </div>
@@ -858,6 +1016,8 @@
         let currentTool = 'brush';
         let brushOpacity = 1;
         let mirrorMode = false;
+        let mirrorVMode = false;
+        let mirror4Mode = false;
         let rainbowMode = false;
         let fillShape = false;
         let currentShape = null;
@@ -865,6 +1025,17 @@
         let shapeSnapshot = null;
         let rainbowHue = 0;
         let sprayInterval = null;
+        let redoHistory = [];
+        let gridVisible = false;
+        let zoomLevel = 1;
+        let panX = 0, panY = 0;
+        let isPanning = false;
+        let panStart = null;
+        let lastPinchDist = null;
+        let lastPointerTime = 0;
+        let lastPointerSpeed = 0;
+        let smoothLastX = 0, smoothLastY = 0;
+        let textInput = null;
 
         // ===== INIT =====
         document.addEventListener('DOMContentLoaded', function() {
@@ -920,25 +1091,45 @@
             });
             
             socket.on('gartic_refresh', function() {
-                fetchRoom();
+                fetchRoomForce();
             });
             
             socket.on('disconnect', function() {
                 showToast('Disconnected — reconnecting...');
             });
             
+            socket.on('gartic_reactions', function(data) {
+                _revealReactions = data.reactions || {};
+                if (roomData) {
+                    roomData.reactions = _revealReactions;
+                    if (roomData.state === 'reveal') {
+                        const _players = roomData.players || [];
+                        const _ci = roomData.reveal_chain_idx || 0;
+                        const _co = _players[_ci];
+                        const _si = (roomData.reveal_step_idx == null ? -1 : roomData.reveal_step_idx);
+                        if (_co && _si >= 0) _renderReactionBars(_co, _si + 1);
+                    }
+                }
+            });
+
             socket.on('reconnect', function() {
                 fetchRoom();
             });
         }
 
         // ===== ROOM CRUD =====
-        window.createRoom = async function() {
-            const btn = event.target;
+        window.createRoom = async function(e) {
+            const btn = (e && e.target) || document.querySelector('.btn-primary');
             btn.disabled = true;
             btn.textContent = 'Creating...';
             try {
-                const res = await fetch('/api/gartic/room', { method: 'POST' });
+                const timerEnabled = document.getElementById('timer-enabled').checked;
+                const timeLimit = timerEnabled ? parseInt(document.getElementById('timer-limit').value) : 0;
+                const res = await fetch('/api/gartic/room', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time_limit: timeLimit })
+                });
                 const data = await res.json();
                 if (data.error) {
                     document.getElementById('lobby-error').textContent = data.error;
@@ -987,7 +1178,7 @@
             if (!roomCode) return;
             if (socket) {
                 socket.emit('gartic_leave', { code: roomCode });
-                socket.disconnect();
+                setTimeout(() => socket.disconnect(), 300);
             }
             if (pollInterval) clearInterval(pollInterval);
             try {
@@ -996,13 +1187,33 @@
             window.location.href = '/games/gartic-phone';
         }
 
-        async function fetchRoom() {
+        async function fetchRoomForce() {
             if (!roomCode) return;
             try {
                 const res = await fetch('/api/gartic/room/' + roomCode);
                 const data = await res.json();
                 if (res.status === 401) { window.location.href = '/login'; return; }
-                if (data.error) {
+                if (!res.ok && data.error) {
+                    if (data.error === 'Room not found') {
+                        clearInterval(pollInterval);
+                        showToast('Room no longer exists');
+                        setTimeout(() => window.location.href = '/games/gartic-phone', 1500);
+                    }
+                    return;
+                }
+                roomData = data;
+                renderRoom(data);
+            } catch(e) {}
+        }
+
+        async function fetchRoom() {
+            if (!roomCode) return;
+            if (roomData && (roomData.state === 'reveal' || roomData.state === 'done')) return;
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode);
+                const data = await res.json();
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                if (!res.ok && data.error) {
                     if (data.error === 'Room not found') {
                         clearInterval(pollInterval);
                         showToast('Room no longer exists');
@@ -1017,12 +1228,13 @@
 
         // ===== RENDER =====
         function renderRoom(data) {
-            // Players
-            const playersHtml = (data.players || []).map(p => 
-                `<span class="player-chip ${p === data.host ? 'host' : ''} ${p === ME ? 'you' : ''}">
-                    ${p === ME ? '⭐ ' : ''}${p}
-                </span>`
-            ).join('');
+            // Players with color tags
+            const playersHtml = (data.players || []).map(p => {
+                const col = playerColor(p);
+                return `<span class="player-chip ${p === data.host ? 'host' : ''} ${p === ME ? 'you' : ''}" style="border-color:${col}33;">
+                    <span class="dot online" style="background:${col};"></span>${p === ME ? '⭐ ' : ''}${p}
+                </span>`;
+            }).join('');
             document.getElementById('room-players').innerHTML = playersHtml;
 
             // Hide all states
@@ -1030,7 +1242,7 @@
                 .forEach(el => el.classList.add('hidden'));
 
             const startBtn = document.getElementById('start-btn');
-            if (data.host === ME && (data.players || []).length >= 2) {
+            if (data.state === 'lobby' && data.host === ME && (data.players || []).length >= 2) {
                 startBtn.style.display = 'block';
             } else {
                 startBtn.style.display = 'none';
@@ -1068,14 +1280,18 @@
                             document.getElementById('writing-input').value = '';
                             document.getElementById('writing-char-count').textContent = '0';
                         }
-                    } else if (hasSubmitted) {
+                    }
+                    if (!hasSubmitted) {
+                        if (data.round_started_at && data.time_limit) startTimer(data.round_started_at, data.time_limit);
+                    } else {
+                        stopTimer();
                         document.getElementById('writing-input').disabled = true;
                         document.getElementById('writing-submit').disabled = true;
                         document.getElementById('writing-submit').textContent = '✅ Submitted';
                     }
                     const wWaiting = (data.players || []).filter(p => p !== ME);
                     document.getElementById('writing-waiting').innerHTML =
-                        wWaiting.map(p => `<span class="waiting-player">⏳ ${p}</span>`).join('');
+                        wWaiting.map(p => `<span class="waiting-player" style="border-color:${playerColor(p)}44;">⏳ ${p}</span>`).join('');
                     break;
                 }
 
@@ -1083,7 +1299,8 @@
                     document.getElementById('drawing-state').classList.remove('hidden');
                     document.getElementById('drawing-round').textContent = data.round || 1;
                     const dp = data.my_prompt || {};
-                    document.getElementById('drawing-prompt').textContent = dp.content || '—';
+                    const dpText = (dp.content && dp.content.startsWith('drawing:')) ? '(see previous drawing)' : (dp.content || '—');
+                    document.getElementById('drawing-prompt').textContent = dpText;
                     if (prevState !== 'drawing') {
                         hasSubmitted = loadSubmit();
                         isSubmitting = false;
@@ -1094,34 +1311,51 @@
                         const submitBtn = document.getElementById('drawing-submit');
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Submit Drawing';
-                        // Resize now that the container is visible, then clear
+                        if (data.round_started_at && data.time_limit) startTimer(data.round_started_at, data.time_limit);
                         requestAnimationFrame(function() {
                             resizeCanvas();
                             ctx.fillStyle = '#ffffff';
                             ctx.fillRect(0, 0, canvas.width, canvas.height);
-                            drawHistory = [];
+                            drawHistory = []; redoHistory = [];
                             saveState();
                             resetFX();
                             window.setTool('brush');
                             syncToolUI();
+                            renderGrid();
                         });
                     } else if (hasSubmitted) {
+                        stopTimer();
                         const submitBtn = document.getElementById('drawing-submit');
                         submitBtn.disabled = true;
                         submitBtn.textContent = '✅ Submitted';
                     }
+                    const dWaiting = (data.players || []).filter(p => p !== ME);
+                    document.getElementById('drawing-waiting').innerHTML =
+                        dWaiting.map(p => `<span class="waiting-player" style="border-color:${playerColor(p)}44;">⏳ ${p}</span>`).join('');
                     break;
                 }
 
                 case 'reveal':
                     document.getElementById('reveal-state').classList.remove('hidden');
+                    if (roomData && roomData.state !== 'reveal') {
+                        _lastRevealChainIdx = -1;
+                        _lastRevealStepIdx = -2;
+                    }
                     renderReveal(data);
+                    break;
+
+                case 'done':
+                    document.getElementById('game-over').classList.remove('hidden');
                     break;
             }
         }
 
         // ===== REVEAL =====
+        let _revealReactions = {};
+        let _lastRevealChainIdx = -1;
+        let _lastRevealStepIdx = -2;
         function renderReveal(data) {
+            _revealReactions = data.reactions || {};
             const container = document.getElementById('reveal-content');
             const chains = data.chains || {};
             const players = data.players || [];
@@ -1138,37 +1372,77 @@
             const chain = chains[chainOwner] || [];
             const steps = stepIdx < 0 ? [] : chain.slice(0, stepIdx + 1);
 
+            // Only rebuild HTML when chain or step actually changed — prevents image reload
+            if (chainIdx === _lastRevealChainIdx && stepIdx === _lastRevealStepIdx) {
+                _renderReactionBars(chainOwner, steps.length);
+                return;
+            }
+            _lastRevealChainIdx = chainIdx;
+            _lastRevealStepIdx = stepIdx;
+
+            const chainNum = chainIdx + 1;
+            const totalChains = players.length;
             let html = `<div class="reveal-chain">
-                <div class="reveal-chain-title">${chainOwner}'s Chain</div>`;
-            
+                <div class="reveal-chain-title">🔗 Chain ${chainNum}/${totalChains} — ${chainOwner}'s Chain</div>`;
+
             steps.forEach((step, i) => {
                 const isText = step.type === 'text';
+                const drawId = !isText ? step.content.replace('drawing:', '') : '';
                 const contentHtml = isText
-                    ? step.content
-                    : `<img src="/api/gartic/drawing/${step.content.replace('drawing:', '')}" alt="Drawing" onerror="this.alt='Image failed to load'">`;
-                html += `<div class="reveal-step">
-                    <div class="step-author">${isText ? '✍️' : '🎨'} ${step.author}</div>
+                    ? `<span style="color:#fff;font-size:1.1rem;font-weight:600;">${step.content}</span>`
+                    : `<img src="/api/gartic/drawing/${drawId}" alt="Drawing" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid #2a2a2a;display:block;" loading="lazy" onerror="this.alt='Image failed to load'">`;
+                const delay = i * 0.08;
+                html += `<div class="reveal-step ${isText ? 'step-text' : 'step-drawing'}" style="animation-delay:${delay}s;">
+                    <div class="step-author" style="color:${playerColor(step.author)};">${isText ? '\u270D\uFE0F' : '\uD83C\uDFA8'} ${step.author}</div>
                     <div class="step-content">${contentHtml}</div>
+                    <div class="reaction-bar" id="rbar-${chainOwner}-${i}"></div>
                 </div>`;
             });
 
             html += `</div>`;
             container.innerHTML = html;
-            
-            document.getElementById('reveal-progress').textContent = 
-                `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
-            
+            _renderReactionBars(chainOwner, steps.length);
+
+            document.getElementById('reveal-progress').textContent = stepIdx < 0
+                ? `Chain ${chainIdx + 1}/${players.length} — waiting for first step`
+                : `Chain ${chainIdx + 1}/${players.length} · Step ${stepIdx + 1}/${chain.length}`;
+
             const nextBtn = document.getElementById('reveal-next');
             if (data.host === ME) {
                 nextBtn.style.display = 'block';
-                nextBtn.textContent = 'Next ➜';
+                nextBtn.disabled = false;
+                nextBtn.style.opacity = '1';
+                nextBtn.style.cursor = 'pointer';
+                nextBtn.textContent = stepIdx + 1 >= chain.length && chainIdx + 1 >= players.length ? '🎉 Finish' : 'Next ➜';
             } else {
-                nextBtn.style.display = 'block';
-                nextBtn.disabled = true;
-                nextBtn.textContent = 'Waiting for host...';
-                nextBtn.style.opacity = '0.5';
-                nextBtn.style.cursor = 'default';
+                nextBtn.style.display = 'none';
             }
+        }
+
+        function _renderReactionBars(chainOwner, stepCount) {
+            const EMOJIS = ['😂','❤️','🔥','😮','👏'];
+            for (let i = 0; i < stepCount; i++) {
+                const bar = document.getElementById('rbar-' + chainOwner + '-' + i);
+                if (!bar) continue;
+                const stepReactions = (_revealReactions[chainOwner] || {})[i] || {};
+                const counts = {};
+                Object.values(stepReactions).forEach(e => { counts[e] = (counts[e] || 0) + 1; });
+                const myReaction = stepReactions[ME] || '';
+                bar.innerHTML = EMOJIS.map(em =>
+                    `<button class="reaction-btn ${myReaction === em ? 'mine' : ''}" onclick="window.sendReaction('${chainOwner}',${i},'${em}')">${em}<span class="reaction-count">${counts[em] || ''}</span></button>`
+                ).join('');
+            }
+        }
+
+        window.sendReaction = async function(chainOwner, stepIdx, emoji) {
+            if (!roomCode) return;
+            try {
+                await fetch('/api/gartic/room/' + roomCode + '/react', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chain_owner: chainOwner, step_idx: stepIdx, emoji })
+                });
+            } catch(e) {}
         }
 
         window.revealNext = async function() {
@@ -1276,11 +1550,10 @@
             saveState();
             window.addEventListener('resize', resizeCanvas);
 
-            // Mouse events
+            // Mouse events — on document so stroke continues outside canvas
             canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', endDraw);
-            canvas.addEventListener('mouseleave', endDraw);
+            document.addEventListener('mousemove', function(e) { if (isDrawing) draw(e); });
+            document.addEventListener('mouseup',   function(e) { if (isDrawing) endDraw(); });
 
             // Touch events
             canvas.addEventListener('touchstart', function(e) {
@@ -1290,21 +1563,21 @@
                 startDraw(touch);
             }, { passive: false });
 
-            canvas.addEventListener('touchmove', function(e) {
+            // Touch move/end on document so finger can slide freely
+            document.addEventListener('touchmove', function(e) {
+                if (!isDrawing) return;
                 e.preventDefault();
                 const touch = e.touches[0];
                 if (!touch) return;
                 draw(touch);
             }, { passive: false });
 
-            canvas.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                endDraw();
+            document.addEventListener('touchend', function(e) {
+                if (isDrawing) { e.preventDefault(); endDraw(); }
             }, { passive: false });
 
-            canvas.addEventListener('touchcancel', function(e) {
-                e.preventDefault();
-                endDraw();
+            document.addEventListener('touchcancel', function(e) {
+                if (isDrawing) endDraw();
             }, { passive: false });
         }
 
@@ -1327,11 +1600,9 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            const clientX = e.clientX !== undefined ? e.clientX : (e.offsetX + rect.left);
-            const clientY = e.clientY !== undefined ? e.clientY : (e.offsetY + rect.top);
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
             };
         }
 
@@ -1341,9 +1612,12 @@
 
             if (currentTool === 'eyedrop') { eyedrop(x, y); return; }
             if (currentTool === 'fill') { floodFill(x, y); return; }
+            if (currentTool === 'text') { activateTextTool(x, y); return; }
 
             isDrawing = true;
             lastX = x; lastY = y;
+            smoothLastX = x; smoothLastY = y;
+            lastPointerTime = Date.now();
 
             if (currentTool === 'spray') {
                 sprayAt(x, y);
@@ -1356,18 +1630,14 @@
                 return;
             }
 
+            const sz = currentTool === 'eraser' ? brushSize * 1.5 : brushSize;
             ctx.globalAlpha = currentTool === 'eraser' ? 1 : brushOpacity;
             ctx.beginPath();
-            ctx.arc(x, y, (currentTool === 'eraser' ? brushSize * 1.5 : brushSize) / 2, 0, Math.PI * 2);
+            ctx.arc(x, y, sz / 2, 0, Math.PI * 2);
             ctx.fillStyle = currentTool === 'eraser' ? '#ffffff' : getStrokeStyle();
             ctx.fill();
             ctx.globalAlpha = 1;
-            if (mirrorMode) {
-                const mx = canvas.width - x;
-                ctx.beginPath();
-                ctx.arc(mx, y, (currentTool === 'eraser' ? brushSize * 1.5 : brushSize) / 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            _mirrorDot(x, y, sz);
         }
 
         function draw(e) {
@@ -1382,31 +1652,65 @@
                 return;
             }
 
+            // Smoothing: use midpoint
+            const effectiveSize = currentTool === 'eraser' ? brushSize * 1.5 : brushSize;
+            const mx = (smoothLastX + x) / 2;
+            const my = (smoothLastY + y) / 2;
+
             ctx.globalAlpha = currentTool === 'eraser' ? 1 : brushOpacity;
             ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
+            ctx.moveTo(smoothLastX, smoothLastY);
+            ctx.quadraticCurveTo(lastX, lastY, mx, my);
             ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : getStrokeStyle();
-            ctx.lineWidth = currentTool === 'eraser' ? brushSize * 1.5 : brushSize;
+            ctx.lineWidth = effectiveSize;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.stroke();
             ctx.globalAlpha = 1;
 
-            if (mirrorMode && currentTool !== 'eraser') {
-                ctx.globalAlpha = brushOpacity;
+            _mirrorStroke(smoothLastX, smoothLastY, lastX, lastY, mx, my, effectiveSize);
+
+            smoothLastX = mx; smoothLastY = my;
+            lastX = x; lastY = y;
+        }
+
+        function _mirrorDot(x, y, sz) {
+            const col = currentTool === 'eraser' ? '#ffffff' : getStrokeStyle();
+            const alpha = currentTool === 'eraser' ? 1 : brushOpacity;
+            function dot(px, py) {
+                ctx.globalAlpha = alpha;
                 ctx.beginPath();
-                ctx.moveTo(canvas.width - lastX, lastY);
-                ctx.lineTo(canvas.width - x, y);
-                ctx.strokeStyle = getStrokeStyle();
-                ctx.lineWidth = brushSize;
+                ctx.arc(px, py, sz / 2, 0, Math.PI * 2);
+                ctx.fillStyle = col;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            if (mirrorMode || mirror4Mode)  dot(canvas.width - x, y);
+            if (mirrorVMode || mirror4Mode) dot(x, canvas.height - y);
+            if (mirror4Mode)                dot(canvas.width - x, canvas.height - y);
+        }
+
+        function _mirrorStroke(sx, sy, cx, cy, ex, ey, lw) {
+            if (!mirrorMode && !mirrorVMode && !mirror4Mode) return;
+            const col = currentTool === 'eraser' ? '#ffffff' : getStrokeStyle();
+            const alpha = currentTool === 'eraser' ? 1 : brushOpacity;
+            const W = canvas.width, H = canvas.height;
+            const pairs = [];
+            if (mirrorMode || mirror4Mode)  pairs.push([W-sx, sy, W-cx, cy, W-ex, ey]);
+            if (mirrorVMode || mirror4Mode) pairs.push([sx, H-sy, cx, H-cy, ex, H-ey]);
+            if (mirror4Mode)                pairs.push([W-sx, H-sy, W-cx, H-cy, W-ex, H-ey]);
+            pairs.forEach(([s0,s1,c0,c1,e0,e1]) => {
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.moveTo(s0, s1);
+                ctx.quadraticCurveTo(c0, c1, e0, e1);
+                ctx.strokeStyle = col;
+                ctx.lineWidth = lw;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.stroke();
                 ctx.globalAlpha = 1;
-            }
-
-            lastX = x; lastY = y;
+            });
         }
 
         function endDraw() {
@@ -1415,6 +1719,7 @@
             if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             shapeStart = null; shapeSnapshot = null;
             saveStateImmediate();
+            renderGrid();
         }
 
         // ===== SHAPES =====
@@ -1481,7 +1786,6 @@
             while (stack.length) {
                 let [x, y] = stack.pop();
                 while (y > 0 && match((( y-1)*w+x)*4)) y--;
-                let spanLeft = false, spanRight = false;
                 while (y < h) {
                     const i = (y * w + x) * 4;
                     if (!match(i) || visited[y*w+x]) break;
@@ -1544,28 +1848,55 @@
         window.undoDraw = function() {
             clearTimeout(_saveStateTimer);
             if (drawHistory.length <= 1) { showToast('Nothing to undo'); return; }
-            drawHistory.pop();
+            redoHistory.push(drawHistory.pop());
             const img = new Image();
-            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); renderGrid(); };
             img.src = drawHistory[drawHistory.length - 1];
+        }
+
+        window.redoDraw = function() {
+            if (!redoHistory.length) { showToast('Nothing to redo'); return; }
+            const snap = redoHistory.pop();
+            drawHistory.push(snap);
+            const img = new Image();
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); renderGrid(); };
+            img.src = snap;
         }
 
         window.clearCanvas = function() {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawHistory = [];
+            redoHistory = [];
             saveState();
             resetFX();
             window.setTool('brush');
             showToast('Canvas cleared');
         }
 
+        // ===== GRID =====
+        // Draw grid on top of main canvas — purely visual, stripped before export
+        function renderGrid() {
+            if (!gridVisible || !canvas) return;
+            const step = 40;
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(100,149,237,0.35)';
+            ctx.lineWidth = 0.5;
+            for (let x = step; x < canvas.width; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = step; y < canvas.height; y += step) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            ctx.restore();
+        }
+
         // ===== TOOL SWITCHERS =====
         // Single source of truth for all tool active states
         function syncToolUI() {
-            // All toggleable tool buttons across all panels
             ['eraser-btn','fill-btn','eyedrop-btn','spray-btn',
-             'shape-pen','shape-line','shape-rect','shape-circle','shape-triangle'].forEach(id => {
+             'shape-pen','shape-line','shape-rect','shape-circle','shape-triangle','text-btn'].forEach(id => {
                 document.getElementById(id)?.classList.remove('active');
             });
             const map = {
@@ -1577,11 +1908,13 @@
                 line:     'shape-line',
                 rect:     'shape-rect',
                 circle:   'shape-circle',
-                triangle: 'shape-triangle'
+                triangle: 'shape-triangle',
+                text:     'text-btn'
             };
             document.getElementById(map[currentTool])?.classList.add('active');
-            canvas.style.cursor = currentTool === 'eraser' ? 'cell' : 'crosshair';
+            canvas.style.cursor = currentTool === 'eraser' ? 'cell' : currentTool === 'text' ? 'text' : 'crosshair';
             updateSizeDot();
+            if (currentTool !== 'text' && textInput) { textInput.remove(); textInput = null; }
         }
 
         window.setTool = function(tool) {
@@ -1599,11 +1932,12 @@
         }
 
         function resetFX() {
-            mirrorMode = false; rainbowMode = false;
+            mirrorMode = false; mirrorVMode = false; mirror4Mode = false; rainbowMode = false;
+            ['mirror-btn','mirror-v-btn','mirror-4-btn','rainbow-btn'].forEach(id => document.getElementById(id)?.classList.remove('active'));
             document.getElementById('mirror-label').textContent = 'OFF';
+            document.getElementById('mirror-v-label').textContent = 'OFF';
+            document.getElementById('mirror-4-label').textContent = 'OFF';
             document.getElementById('rainbow-label').textContent = 'OFF';
-            document.getElementById('mirror-btn').classList.remove('active');
-            document.getElementById('rainbow-btn').classList.remove('active');
         }
 
         window.toggleMirror = function() {
@@ -1612,10 +1946,92 @@
             document.getElementById('mirror-btn').classList.toggle('active', mirrorMode);
         }
 
+        window.toggleMirrorV = function() {
+            mirrorVMode = !mirrorVMode;
+            document.getElementById('mirror-v-label').textContent = mirrorVMode ? 'ON' : 'OFF';
+            document.getElementById('mirror-v-btn').classList.toggle('active', mirrorVMode);
+        }
+
+        window.toggleMirror4 = function() {
+            mirror4Mode = !mirror4Mode;
+            document.getElementById('mirror-4-label').textContent = mirror4Mode ? 'ON' : 'OFF';
+            document.getElementById('mirror-4-btn').classList.toggle('active', mirror4Mode);
+        }
+
         window.toggleRainbow = function() {
             rainbowMode = !rainbowMode;
             document.getElementById('rainbow-label').textContent = rainbowMode ? 'ON' : 'OFF';
             document.getElementById('rainbow-btn').classList.toggle('active', rainbowMode);
+        }
+
+        window.toggleGrid = function() {
+            gridVisible = !gridVisible;
+            document.getElementById('grid-label').textContent = gridVisible ? 'ON' : 'OFF';
+            document.getElementById('grid-btn').classList.toggle('active', gridVisible);
+            drawGrid();
+        }
+
+        function drawGrid() {
+            // Redraw canvas from last history snapshot then overlay grid
+            if (!drawHistory.length) return;
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                renderGrid();
+            };
+            img.src = drawHistory[drawHistory.length - 1];
+        }
+
+        // ===== ZOOM / PAN =====
+        window.zoomIn  = function() { setZoom(Math.min(zoomLevel * 1.25, 5)); }
+        window.zoomOut = function() { setZoom(Math.max(zoomLevel / 1.25, 1)); }
+        window.zoomReset = function() { zoomLevel = 1; panX = 0; panY = 0; applyTransform(); }
+
+        function setZoom(z) {
+            zoomLevel = z;
+            applyTransform();
+        }
+
+        function applyTransform() {
+            canvas.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+            canvas.style.transformOrigin = 'top left';
+        }
+
+        // ===== TEXT TOOL =====
+        function activateTextTool(x, y) {
+            if (textInput) { commitText(); }
+            const rect = canvas.getBoundingClientRect();
+            textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.placeholder = 'Type here...';
+            textInput.style.cssText = `position:fixed;left:${rect.left + x / (canvas.width / rect.width)}px;top:${rect.top + y / (canvas.height / rect.height)}px;background:rgba(255,255,255,0.95);color:#000;border:2px dashed #ff6b6b;border-radius:4px;padding:2px 6px;font-size:${Math.max(12, brushSize * 2)}px;font-family:Poppins,sans-serif;z-index:999;min-width:80px;outline:none;`;
+            document.body.appendChild(textInput);
+            textInput.focus();
+            textInput._cx = x;
+            textInput._cy = y;
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); commitText(); }
+                if (e.key === 'Escape') { textInput.remove(); textInput = null; }
+            });
+            textInput.addEventListener('blur', function() { setTimeout(commitText, 100); });
+        }
+
+        function commitText() {
+            if (!textInput) return;
+            const val = textInput.value.trim();
+            if (val) {
+                ctx.save();
+                ctx.globalAlpha = brushOpacity;
+                ctx.fillStyle = currentSolidColor;
+                ctx.font = `bold ${Math.max(14, brushSize * 2)}px Poppins, sans-serif`;
+                ctx.fillText(val, textInput._cx, textInput._cy);
+                ctx.restore();
+                saveStateImmediate();
+                redoHistory = [];
+            }
+            textInput.remove();
+            textInput = null;
         }
 
         window.toggleFillShape = function() {
@@ -1693,48 +2109,48 @@
                 return;
             }
             
-            // Composite onto white background before export
+            // Export from last history snapshot (no grid lines)
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = canvas.width;
             exportCanvas.height = canvas.height;
             const ectx = exportCanvas.getContext('2d');
             ectx.fillStyle = '#ffffff';
             ectx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ectx.drawImage(canvas, 0, 0);
-            
-            // Convert to JPEG with quality 0.85
-            const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.6);
-            
-            isSubmitting = true;
-            document.getElementById('drawing-submit').disabled = true;
-            document.getElementById('drawing-submit').textContent = 'Submitting...';
-            
-            try {
-                const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: dataUrl })
-                });
-                const data = await res.json();
-                if (data.error) { 
-                    showToast(data.error); 
+            const snapImg = new Image();
+            snapImg.onload = async () => {
+                ectx.drawImage(snapImg, 0, 0);
+                const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.6);
+                isSubmitting = true;
+                document.getElementById('drawing-submit').disabled = true;
+                document.getElementById('drawing-submit').textContent = 'Submitting...';
+                try {
+                    const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: dataUrl })
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        showToast(data.error);
+                        document.getElementById('drawing-submit').disabled = false;
+                        document.getElementById('drawing-submit').textContent = 'Submit Drawing';
+                        isSubmitting = false;
+                        return;
+                    }
+                    hasSubmitted = true;
+                    persistSubmit();
+                    showToast('✅ Drawing submitted! Waiting for others...');
+                    if (socket) socket.emit('gartic_submitted', { code: roomCode });
+                    fetchRoom();
+                } catch(e) {
+                    console.error('Submit error:', e);
+                    showToast('❌ Failed to submit drawing');
                     document.getElementById('drawing-submit').disabled = false;
                     document.getElementById('drawing-submit').textContent = 'Submit Drawing';
                     isSubmitting = false;
-                    return; 
                 }
-                hasSubmitted = true;
-                persistSubmit();
-                showToast('✅ Drawing submitted! Waiting for others...');
-                if (socket) socket.emit('gartic_submitted', { code: roomCode });
-                fetchRoom();
-            } catch(e) {
-                console.error('Submit error:', e);
-                showToast('❌ Failed to submit drawing');
-                document.getElementById('drawing-submit').disabled = false;
-                document.getElementById('drawing-submit').textContent = 'Submit Drawing';
-                isSubmitting = false;
-            }
+            };
+            snapImg.src = drawHistory[drawHistory.length - 1];
         }
 
         // ===== HELPERS =====
@@ -1759,17 +2175,109 @@
                     window.submitText();
                 }
             }
-            if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+            if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
                 if (document.activeElement?.tagName !== 'INPUT' && 
                     document.activeElement?.tagName !== 'TEXTAREA') {
                     e.preventDefault();
                     window.undoDraw();
                 }
             }
+            if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) || (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) {
+                if (document.activeElement?.tagName !== 'INPUT' && 
+                    document.activeElement?.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    window.redoDraw();
+                }
+            }
         });
 
-        // ===== INITIAL SCREEN =====
-        document.getElementById('lobby').style.display = 'block';
+        // Zoom via scroll wheel on canvas
+        document.getElementById('draw-canvas').addEventListener('wheel', function(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) window.zoomIn(); else window.zoomOut();
+        }, { passive: false });
+
+        window.toggleTimerSetting = function() {
+            const cb = document.getElementById('timer-enabled');
+            document.getElementById('timer-limit').disabled = !cb.checked;
+            document.getElementById('timer-limit').style.color = cb.checked ? '#fff' : '#888';
+        }
+
+        // ===== PLAYER COLORS =====
+        function playerColor(name) {
+            const colors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff6bb5','#a66cff','#00d2d3','#ff8a5c'];
+            let h = 0;
+            for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+            return colors[h % colors.length];
+        }
+
+        // ===== QR CODE =====
+        let _qrInstance = null;
+        window.toggleQR = function() {
+            const panel = document.getElementById('qr-panel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                if (!_qrInstance) {
+                    _qrInstance = new QRCode(document.getElementById('qr-code'), {
+                        text: window.location.origin + '/games/gartic-phone?code=' + roomCode,
+                        width: 160, height: 160,
+                        colorDark: '#ffffff', colorLight: '#1a1a1a'
+                    });
+                }
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        // ===== TIMER =====
+        let _timerInterval = null;
+        function startTimer(startedAt, limitSecs) {
+            stopTimer();
+            if (!limitSecs) return;
+            const wrap = document.getElementById('timer-bar-wrap');
+            wrap.style.display = 'block';
+            function tick() {
+                const elapsed = (Date.now() - new Date(startedAt).getTime()) / 1000;
+                const remaining = Math.max(0, limitSecs - elapsed);
+                const pct = (remaining / limitSecs) * 100;
+                const txt = document.getElementById('timer-text');
+                const fill = document.getElementById('timer-fill');
+                txt.textContent = Math.ceil(remaining) + 's';
+                fill.style.width = pct + '%';
+                const danger = remaining <= 10;
+                txt.className = danger ? 'danger' : '';
+                fill.className = danger ? 'danger' : '';
+                if (remaining <= 0) {
+                    stopTimer();
+                    autoSubmit();
+                }
+            }
+            tick();
+            _timerInterval = setInterval(tick, 500);
+        }
+        function stopTimer() {
+            if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+            document.getElementById('timer-bar-wrap').style.display = 'none';
+        }
+        function autoSubmit() {
+            if (hasSubmitted || isSubmitting) return;
+            const state = roomData && roomData.state;
+            if (state === 'writing') {
+                const txt = document.getElementById('writing-input').value.trim();
+                if (!txt) document.getElementById('writing-input').value = "Time's up!";
+                window.submitText();
+            } else if (state === 'drawing') {
+                // Only auto-submit if canvas has something drawn
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let hasContent = false;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    if (imgData[i] !== 255 || imgData[i+1] !== 255 || imgData[i+2] !== 255) { hasContent = true; break; }
+                }
+                if (hasContent) window.submitDrawing();
+                else showToast("⏱ Time's up! Draw something to submit.");
+            }
+        }
     </script>
+
 </body>
 </html>
