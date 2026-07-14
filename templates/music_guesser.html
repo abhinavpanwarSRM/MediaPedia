@@ -679,7 +679,11 @@
       const data=room.data||{};
       const scores=data.scores||{};
       const winner=data.winner||'';
-      document.getElementById('winner-banner').innerHTML=winner?`🏆 Winner: <strong>${esc(winner)}</strong>`:'🏆 Game Over!';
+      document.getElementById('winner-banner').innerHTML=winner
+        ? `🏆 Winner: <strong>${esc(winner)}</strong>`
+        : data.tied
+          ? `🤝 It's a Tie!`
+          : '🏆 Game Over!';
       const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
       document.getElementById('final-scores').innerHTML=sorted.map(([u,s],i)=>`<div class="scores-row"><span>${i===0?'🥇':i+1+'.'} ${esc(u)}</span><span class="score-val">${s} pts</span></div>`).join('');
     }

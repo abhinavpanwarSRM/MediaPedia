@@ -4368,10 +4368,16 @@ def game_action(code):
             next_idx = room['data'].get('current_index', 0) + 1
             if next_idx >= len(songs):
                 scores = room['data'].get('scores', {})
-                winner = max(scores, key=scores.get) if scores else None
+                if scores:
+                    top = max(scores.values())
+                    winners = [u for u, s in scores.items() if s == top]
+                    winner = winners[0] if len(winners) == 1 else None
+                else:
+                    winner = None
                 update['data.phase'] = 'done'
                 update['state'] = 'finished'
                 update['data.winner'] = winner
+                update['data.tied'] = len([u for u, s in scores.items() if s == max(scores.values())]) > 1 if scores else False
                 for p in room['players']:
                     _save_game_stats(p['username'], 'music_guesser', p['username'] == winner)
             else:
