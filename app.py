@@ -5082,7 +5082,7 @@ def gartic_react(code):
     chain_owner = data.get('chain_owner', '')
     step_idx = str(data.get('step_idx', 0))
     emoji = data.get('emoji', '')
-    if emoji not in ('😂', '❤️', '🔥', '😮', '👏'):
+    if not emoji or len(emoji) > 10:
         return jsonify({'error': 'Invalid reaction'}), 400
     key = f'reactions.{chain_owner}.{step_idx}.{username}'
     gartic_collection.update_one({'code': code}, {'$set': {key: emoji}})

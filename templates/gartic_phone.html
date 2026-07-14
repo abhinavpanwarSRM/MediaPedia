@@ -1751,13 +1751,6 @@
             }
         }
 
-        function drawGrid() {
-            const overlay = document.getElementById('grid-overlay');
-            if (!overlay) return;
-            overlay.style.display = gridVisible ? 'block' : 'none';
-            renderGrid();
-        }
-
         // ===== TOOL SWITCHERS =====
         // Single source of truth for all tool active states
         function syncToolUI() {
@@ -1841,6 +1834,7 @@
             const overlay = document.getElementById('grid-overlay');
             if (!overlay) return;
             overlay.style.display = gridVisible ? 'block' : 'none';
+            renderGrid();
         }
 
         // ===== ZOOM / PAN =====
@@ -2124,13 +2118,17 @@
             const state = roomData && roomData.state;
             if (state === 'writing') {
                 const txt = document.getElementById('writing-input').value.trim();
-                if (txt) window.submitText();
-                else {
-                    document.getElementById('writing-input').value = 'Time\'s up!';
-                    window.submitText();
-                }
+                if (!txt) document.getElementById('writing-input').value = "Time's up!";
+                window.submitText();
             } else if (state === 'drawing') {
-                window.submitDrawing();
+                // Only auto-submit if canvas has something drawn
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let hasContent = false;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    if (imgData[i] !== 255 || imgData[i+1] !== 255 || imgData[i+2] !== 255) { hasContent = true; break; }
+                }
+                if (hasContent) window.submitDrawing();
+                else showToast("⏱ Time's up! Draw something to submit.");
             }
         }
     </script>
