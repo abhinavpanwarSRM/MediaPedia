@@ -220,6 +220,52 @@ def get_person_photo():
         log.error('TMDB person photo error: %s', e)
         return jsonify({'photo': ''})
 
+# ===== Background Poster Slideshow =====
+@app.route('/api/bg_posters')
+def bg_posters():
+    token = os.getenv('TMDB_TOKEN', '')
+    if not token:
+        return jsonify([])
+    cache_key = 'bg_posters_v1'
+    if poster_cache_collection is not None:
+        cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'posters': 1, 'ts': 1})
+        if cached and cached.get('posters'):
+            age = (datetime.now(timezone.utc) - cached['ts']).total_seconds() if isinstance(cached.get('ts'), datetime) else 99999
+            if age < 86400:  # 24h cache
+                return jsonify(cached['posters'])
+    try:
+        endpoints = [
+            'movie/trending/movie/week',
+            'movie/popular',
+            'tv/trending/tv/week',
+            'tv/popular',
+        ]
+        posters = []
+        for ep in endpoints:
+            resp = http_requests.get(
+                f'https://api.themoviedb.org/3/{ep}',
+                headers={'Authorization': f'Bearer {token}'},
+                params={'language': 'en-US', 'page': 1}, timeout=5
+            )
+            if resp.ok:
+                for r in resp.json().get('results', [])[:10]:
+                    p = r.get('poster_path', '')
+                    if p:
+                        posters.append(f'https://image.tmdb.org/t/p/w500{p}')
+        import random as _r
+        _r.shuffle(posters)
+        posters = list(dict.fromkeys(posters))  # dedupe preserving order
+        if poster_cache_collection is not None:
+            poster_cache_collection.update_one(
+                {'title': cache_key},
+                {'$set': {'title': cache_key, 'posters': posters, 'ts': datetime.now(timezone.utc)}},
+                upsert=True
+            )
+        return jsonify(posters)
+    except Exception as e:
+        log.error('bg_posters error: %s', e)
+        return jsonify([])
+
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
 def tmdb_popular():

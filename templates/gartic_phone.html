@@ -27,6 +27,23 @@
             user-select: text;
         }
         
+        /* ===== POSTER BACKGROUND ===== */
+        .bg-poster {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1.4s ease;
+            opacity: 0;
+        }
+        .bg-poster.active { opacity: 1; }
+        .bg-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: rgba(10,10,10,0.82);
+        }
         body {
             background: #0a0a0a;
             color: #fff;
@@ -939,6 +956,7 @@
                             <div class="toolbar-sep"></div>
                             <button class="tool-btn" id="grid-btn" onclick="window.toggleGrid()">⊞ <span id="grid-label">OFF</span></button>
                             <button class="tool-btn" onclick="window.zoomIn()">🔍+</button>
+                            <button class="tool-btn" onclick="window.zoomOut()">🔍-</button>
                             
                             
                             <div class="toolbar-sep"></div>
@@ -1090,7 +1108,7 @@
             });
             
             socket.on('gartic_refresh', function() {
-                fetchRoom();
+                fetchRoomForce();
             });
             
             socket.on('disconnect', function() {
@@ -1184,6 +1202,25 @@
                 await fetch('/api/gartic/room/' + roomCode + '/leave', { method: 'POST' });
             } catch(e) {}
             window.location.href = '/games/gartic-phone';
+        }
+
+        async function fetchRoomForce() {
+            if (!roomCode) return;
+            try {
+                const res = await fetch('/api/gartic/room/' + roomCode);
+                const data = await res.json();
+                if (res.status === 401) { window.location.href = '/login'; return; }
+                if (!res.ok && data.error) {
+                    if (data.error === 'Room not found') {
+                        clearInterval(pollInterval);
+                        showToast('Room no longer exists');
+                        setTimeout(() => window.location.href = '/games/gartic-phone', 1500);
+                    }
+                    return;
+                }
+                roomData = data;
+                renderRoom(data);
+            } catch(e) {}
         }
 
         async function fetchRoom() {
@@ -2257,6 +2294,50 @@
                 else showToast("⏱ Time's up! Draw something to submit.");
             }
         }
+    </script>
+    <!-- ===== POSTER BACKGROUND ===== -->
+    <div class="bg-overlay"></div>
+    <div class="bg-poster" id="bg-a"></div>
+    <div class="bg-poster" id="bg-b"></div>
+
+    <script>
+        (function() {
+            const bgA = document.getElementById('bg-a');
+            const bgB = document.getElementById('bg-b');
+            let posters = [];
+            let idx = 0;
+            let current = bgA;  // which layer is visible
+            let next = bgB;
+
+            function showPoster(url) {
+                next.style.backgroundImage = `url('${url}')`;
+                // preload then crossfade
+                const img = new Image();
+                img.onload = function() {
+                    next.classList.add('active');
+                    current.classList.remove('active');
+                    // swap roles
+                    const tmp = current; current = next; next = tmp;
+                };
+                img.src = url;
+            }
+
+            function advance() {
+                if (!posters.length) return;
+                idx = (idx + 1) % posters.length;
+                showPoster(posters[idx]);
+            }
+
+            fetch('/api/bg_posters')
+                .then(r => r.json())
+                .then(list => {
+                    if (!list || !list.length) return;
+                    posters = list;
+                    showPoster(posters[0]);
+                    setInterval(advance, 6000);
+                })
+                .catch(() => {});
+        })();
     </script>
 </body>
 </html>
