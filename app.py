@@ -4834,6 +4834,10 @@ def gartic_create_room():
     else:
         return jsonify({'error': 'Failed to generate unique code'}), 500
     
+    req = request.json or {}
+    time_limit = int(req.get('time_limit', 0))
+    if time_limit not in (0, 30, 60, 90, 120):
+        time_limit = 0
     room = {
         'code': code,
         'host': username,
@@ -4841,11 +4845,14 @@ def gartic_create_room():
         'state': 'lobby',
         'round': 0,
         'total_rounds': 0,
+        'time_limit': time_limit,
         'chains': {},
         'submissions': {},
         'assignments': {},
+        'reactions': {},
         'reveal_chain_idx': 0,
         'reveal_step_idx': 0,
+        'round_started_at': None,
         'created_at': datetime.now(timezone.utc)
     }
     gartic_collection.insert_one(room)
@@ -4924,8 +4931,10 @@ def gartic_start(code):
         'chains': chains,
         'submissions': {},
         'assignments': assignments,
+        'reactions': {},
         'reveal_chain_idx': 0,
-        'reveal_step_idx': -1
+        'reveal_step_idx': -1,
+        'round_started_at': datetime.now(timezone.utc).isoformat()
     }})
     socketio.emit('gartic_refresh', {}, to=code)
     return jsonify({'started': True})
@@ -4997,7 +5006,8 @@ def gartic_submit(code):
                 'submissions': {},
                 'state': 'reveal',
                 'reveal_chain_idx': 0,
-                'reveal_step_idx': -1
+                'reveal_step_idx': -1,
+                'round_started_at': None
             }})
         else:
             new_assignments = _gartic_rotate(players, assignments)
@@ -5007,7 +5017,8 @@ def gartic_submit(code):
                 'submissions': {},
                 'assignments': new_assignments,
                 'state': next_state,
-                'round': current_round + 1
+                'round': current_round + 1,
+                'round_started_at': datetime.now(timezone.utc).isoformat()
             }})
         socketio.emit('gartic_refresh', {}, to=code)
 
@@ -5057,6 +5068,27 @@ def gartic_get_drawing(drawing_id):
                         headers={'Cache-Control': 'public, max-age=86400'})
     return jsonify({'error': 'Invalid drawing data'}), 400
 
+
+
+
+@app.route('/api/gartic/room/<code>/react', methods=['POST'])
+def gartic_react(code):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if gartic_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    chain_owner = data.get('chain_owner', '')
+    step_idx = str(data.get('step_idx', 0))
+    emoji = data.get('emoji', '')
+    if emoji not in ('😂', '❤️', '🔥', '😮', '👏'):
+        return jsonify({'error': 'Invalid reaction'}), 400
+    key = f'reactions.{chain_owner}.{step_idx}.{username}'
+    gartic_collection.update_one({'code': code}, {'$set': {key: emoji}})
+    room = gartic_collection.find_one({'code': code}, {'reactions': 1, '_id': 0})
+    socketio.emit('gartic_reactions', {'reactions': room.get('reactions', {})}, to=code)
+    return jsonify({'ok': True})
 
 @app.route('/api/gartic/room/<code>/reveal_next', methods=['POST'])
 def gartic_reveal_next(code):
