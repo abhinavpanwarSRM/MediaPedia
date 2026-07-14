@@ -3831,7 +3831,7 @@ def create_game_room():
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json or {}
     game_type = data.get('game_type', '')
-    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective', 'movie_battle'):
+    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective', 'movie_battle', 'music_guesser'):
         return jsonify({'error': 'Invalid game type'}), 400
     code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
     room = {
@@ -3862,26 +3862,45 @@ def create_game_room():
         room['data']['position'] = 0
         room['data']['songs_per_player'] = 1
         room['data']['player_songs'] = {}
-        room['data']['vote_records'] = {}  # Store all votes
+        room['data']['vote_records'] = {}
     elif game_type == 'song_detective':
         room['data']['songs_per_player'] = 2
         room['data']['player_songs'] = {}
         room['data']['songs'] = []
         room['data']['all_songs'] = []
         room['data']['votes'] = {}
-        room['data']['all_votes'] = {}  # Persistent vote storage across songs
+        room['data']['all_votes'] = {}
         room['data']['current_index'] = -1
         room['data']['state'] = 'stopped'
         room['data']['position'] = 0
         room['data']['song_states'] = {}
         room['data']['_shuffled'] = False
-        room['data']['vote_records'] = {}  # Store all votes for reveal
+        room['data']['vote_records'] = {}
     elif game_type == 'movie_battle':
         room['data']['scores'] = {username: 0}
         room['data']['round'] = 0
         room['data']['current_pair'] = None
-        room['data']['answers'] = {}  # {username: 0 or 1}
+        room['data']['answers'] = {}
         room['data']['revealed'] = False
+    elif game_type == 'music_guesser':
+        room['data']['songs_per_player'] = 3
+        room['data']['play_time'] = 5
+        room['data']['player_songs'] = {}
+        room['data']['songs'] = []
+        room['data']['all_songs'] = []
+        room['data']['scores'] = {}
+        room['data']['current_index'] = -1
+        room['data']['state'] = 'stopped'
+        room['data']['position'] = 0
+        room['data']['guess_history'] = []
+        room['data']['song_submissions'] = {}
+        room['data']['guess_submitted'] = None
+        room['data']['verify_guess'] = None
+        room['data']['has_buzzed'] = {}
+        room['data']['show_reveal'] = False
+        room['data']['winner'] = None
+        room['data']['played_at'] = None
+        room['data']['buzz_info'] = None
     
     game_rooms_collection.insert_one(room)
     return jsonify({'code': code}), 201
