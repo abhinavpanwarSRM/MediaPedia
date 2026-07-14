@@ -905,6 +905,9 @@
       let lastRound = 0;
       let voteLocked = false;
 
+      // FIX: Declare _previewDoneSent globally
+      let _previewDoneSent = false;
+
       // YouTube player
       let ytPlayer = null;
       let ytReady = false;
@@ -1116,6 +1119,22 @@
               }
               // Small delay before playing the next song
               setTimeout(() => {
+                // FIX: If newIndex equals previewSongs.length, it means preview is done
+                if (newIndex >= previewSongs.length) {
+                  // End of preview - mark as done
+                  if (!_previewDoneSent && isHost) {
+                    _previewDoneSent = true;
+                    document.getElementById("preview-status").textContent =
+                      "✅ Preview complete! Starting voting...";
+                    fetch("/api/games/room/" + roomCode + "/action", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "preview_done" }),
+                    });
+                    setTimeout(() => fetchRoomState(), 1500);
+                  }
+                  return;
+                }
                 // Make sure the index exists
                 if (newIndex < previewSongs.length) {
                   previewIndex = newIndex;
@@ -1383,7 +1402,7 @@
             previewDuration;
         }
 
-        // FIX: Reset previewIndex to 0, not -1
+        // FIX: Reset previewIndex to 0
         previewIndex = 0;
         hasVotedThisRound = false;
         voteLocked = false;
@@ -1404,7 +1423,6 @@
         playPreviewSong(0);
       }
 
-      let _previewDoneSent = false;
       function playPreviewSong(idx) {
         if (isGameFinished) return;
 
@@ -1590,6 +1608,9 @@
 
         clearInterval(previewInterval);
         if (ytPlayer) ytPlayer.stopVideo();
+        // Notify other players
+        const nextIdx = previewSongs.length;
+        syncNextSong(nextIdx);
         playPreviewSong(previewSongs.length);
       }
 
