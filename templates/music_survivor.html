@@ -889,6 +889,8 @@
       let pollTimer = null;
       let isGameFinished = false;
       let _previewAdvancing = false;
+      let _lastSyncTime = 0;
+      let _lastIndexWarning = 0;
 
       // Game state
       let gameState = null;
@@ -917,7 +919,14 @@
         ytPlayer = new YT.Player("yt-div", {
           height: "1",
           width: "1",
-          playerVars: { autoplay: 0, controls: 0, rel: 0, playsinline: 1 },
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            rel: 0,
+            playsinline: 1,
+            modestbranding: 1,
+            showinfo: 0,
+          },
           events: {
             onReady: function () {
               ytReady = true;
@@ -945,9 +954,12 @@
                   "▶ Play";
               }
             },
-            onError: function () {
-              if (isHost) {
-                setTimeout(skipPreviewSong, 1000);
+            onError: function (e) {
+              if (e.data === 2 || e.data === 100 || e.data === 150) {
+                console.warn("YouTube player error:", e.data);
+                if (isHost) {
+                  setTimeout(skipPreviewSong, 1000);
+                }
               }
             },
           },
@@ -1099,15 +1111,27 @@
 
         socket.on("game_next_song", function (data) {
           if (data.index !== undefined && !isGameFinished) {
+            // Ignore negative indices
+            if (data.index < 0) {
+              const now = Date.now();
+              if (now - _lastIndexWarning > 10000) {
+                _lastIndexWarning = now;
+                console.log(
+                  "📌 Preview phase - ignoring current_index:",
+                  data.index,
+                );
+              }
+              return;
+            }
+
+            // If we're already advancing, ignore this event
+            if (_previewAdvancing) {
+              console.log("⏳ Already advancing, ignoring sync event");
+              return;
+            }
+
             // Clear any existing preview interval
             clearInterval(previewInterval);
-
-            // FIX: Ensure index is valid
-            let newIndex = data.index;
-            if (newIndex < 0) {
-              newIndex = 0;
-              console.warn("Received negative index, resetting to 0");
-            }
 
             const onPreview = document
               .getElementById("screen-preview")
@@ -1119,9 +1143,8 @@
               }
               // Small delay before playing the next song
               setTimeout(() => {
-                // FIX: If newIndex equals previewSongs.length, it means preview is done
-                if (newIndex >= previewSongs.length) {
-                  // End of preview - mark as done
+                // If we're at the end, finish preview
+                if (data.index >= previewSongs.length) {
                   if (!_previewDoneSent && isHost) {
                     _previewDoneSent = true;
                     document.getElementById("preview-status").textContent =
@@ -1136,29 +1159,18 @@
                   return;
                 }
                 // Make sure the index exists
-                if (newIndex < previewSongs.length) {
-                  previewIndex = newIndex;
-                  playPreviewSong(newIndex);
-                } else {
-                  // If index is out of bounds, go to the next valid song or end
-                  const nextValid =
-                    previewSongs.length > 0 ? 0 : previewSongs.length;
-                  previewIndex = nextValid;
-                  playPreviewSong(nextValid);
+                if (data.index < previewSongs.length && data.index >= 0) {
+                  previewIndex = data.index;
+                  playPreviewSong(data.index);
                 }
-              }, 150);
+              }, 300);
             } else if (gameState && gameState.data?.songs?.length) {
               // Non-host hasn't transitioned to preview yet — do it now
               startPreview(gameState);
               setTimeout(() => {
-                if (newIndex < previewSongs.length) {
-                  previewIndex = newIndex;
-                  playPreviewSong(newIndex);
-                } else {
-                  const nextValid =
-                    previewSongs.length > 0 ? 0 : previewSongs.length;
-                  previewIndex = nextValid;
-                  playPreviewSong(nextValid);
+                if (data.index < previewSongs.length && data.index >= 0) {
+                  previewIndex = data.index;
+                  playPreviewSong(data.index);
                 }
               }, 300);
             }
@@ -1402,11 +1414,12 @@
             previewDuration;
         }
 
-        // FIX: Reset previewIndex to 0
+        // Reset preview state
         previewIndex = 0;
         hasVotedThisRound = false;
         voteLocked = false;
         _previewDoneSent = false;
+        _previewAdvancing = false;
 
         document.getElementById("host-controls-preview").style.display = isHost
           ? "flex"
@@ -1440,7 +1453,7 @@
           return;
         }
 
-        // FIX: Ensure idx is valid (not negative)
+        // Ensure idx is valid (not negative)
         if (idx < 0) {
           console.warn("Invalid index", idx, "resetting to 0");
           idx = 0;
@@ -1576,27 +1589,52 @@
           return;
         }
 
+        // Prevent rapid skips
+        const now = Date.now();
+        if (now - _lastSyncTime < 500) {
+          return;
+        }
+        _lastSyncTime = now;
+
+        // Stop the current playback
         clearInterval(previewInterval);
         if (ytPlayer) {
           ytPlayer.stopVideo();
           ytPlayer.seekTo(0, true);
         }
 
-        _previewAdvancing = true;
-        const idx = previewIndex + 1;
-        if (idx < previewSongs.length) {
-          previewIndex = idx;
-          // Small delay to ensure cleanup is complete
-          setTimeout(() => {
-            _previewAdvancing = false;
-            playPreviewSong(idx);
-            syncNextSong(idx);
-          }, 100);
-        } else {
+        const nextIdx = previewIndex + 1;
+
+        if (nextIdx >= previewSongs.length) {
           // End of preview
           _previewAdvancing = false;
-          playPreviewSong(previewSongs.length);
+          if (!_previewDoneSent) {
+            _previewDoneSent = true;
+            document.getElementById("preview-status").textContent =
+              "✅ Preview complete! Starting voting...";
+            fetch("/api/games/room/" + roomCode + "/action", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "preview_done" }),
+            });
+            setTimeout(() => fetchRoomState(), 1500);
+          }
+          return;
         }
+
+        _previewAdvancing = true;
+        previewIndex = nextIdx;
+
+        // Play locally first
+        playPreviewSong(nextIdx);
+
+        // Then sync others after a delay
+        setTimeout(() => {
+          syncNextSong(nextIdx);
+          setTimeout(() => {
+            _previewAdvancing = false;
+          }, 300);
+        }, 200);
       }
 
       function skipAllPreview() {
@@ -1605,13 +1643,33 @@
           return;
         }
         if (isGameFinished) return;
+        if (_previewAdvancing) return;
 
         clearInterval(previewInterval);
         if (ytPlayer) ytPlayer.stopVideo();
-        // Notify other players
+
+        _previewAdvancing = true;
         const nextIdx = previewSongs.length;
+
+        // Notify other players
         syncNextSong(nextIdx);
-        playPreviewSong(previewSongs.length);
+
+        // End preview locally
+        if (!_previewDoneSent) {
+          _previewDoneSent = true;
+          document.getElementById("preview-status").textContent =
+            "✅ Preview complete! Starting voting...";
+          fetch("/api/games/room/" + roomCode + "/action", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "preview_done" }),
+          });
+          setTimeout(() => fetchRoomState(), 1500);
+        }
+
+        setTimeout(() => {
+          _previewAdvancing = false;
+        }, 500);
       }
 
       // ---- Voting ----
@@ -1654,7 +1712,6 @@
 
         // State transitions
         if (room.state === "lobby") {
-          // Check if we should transition to add-songs
           if (
             !document
               .getElementById("screen-add-songs")
@@ -1675,7 +1732,6 @@
             ) {
               startPreview(room);
             } else {
-              // Re-evaluate host controls visibility on every poll (isHost may have changed)
               document.getElementById("host-controls-preview").style.display =
                 isHost ? "flex" : "none";
               document.getElementById("host-controls-hint").style.display =
@@ -1758,7 +1814,6 @@
           })
           .join("");
 
-        // Vote status
         const bar = document.getElementById("vote-status-bar");
         if (bar) {
           const votes = data.votes || {};
