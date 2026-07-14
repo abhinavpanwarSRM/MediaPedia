@@ -1110,15 +1110,31 @@
               }
               // Small delay before playing the next song
               setTimeout(() => {
-                previewIndex = newIndex;
-                playPreviewSong(newIndex);
+                // Make sure the index exists
+                if (newIndex < previewSongs.length) {
+                  previewIndex = newIndex;
+                  playPreviewSong(newIndex);
+                } else {
+                  // If index is out of bounds, go to the next valid song or end
+                  const nextValid =
+                    previewSongs.length > 0 ? 0 : previewSongs.length;
+                  previewIndex = nextValid;
+                  playPreviewSong(nextValid);
+                }
               }, 150);
             } else if (gameState && gameState.data?.songs?.length) {
               // Non-host hasn't transitioned to preview yet — do it now
               startPreview(gameState);
               setTimeout(() => {
-                previewIndex = newIndex;
-                playPreviewSong(newIndex);
+                if (newIndex < previewSongs.length) {
+                  previewIndex = newIndex;
+                  playPreviewSong(newIndex);
+                } else {
+                  const nextValid =
+                    previewSongs.length > 0 ? 0 : previewSongs.length;
+                  previewIndex = nextValid;
+                  playPreviewSong(nextValid);
+                }
               }, 300);
             }
           }
@@ -1342,11 +1358,17 @@
         showScreen("preview");
         previewSongs = room.data?.songs || [];
 
+        // Filter out any undefined or invalid songs
+        previewSongs = previewSongs.filter((s) => s && s.youtube_query);
+
         if (previewSongs.length === 0) {
           document.getElementById("preview-status").textContent =
-            "No songs in the pool!";
+            "No valid songs in the pool! Waiting for songs...";
+          // Try to fetch again after a delay
+          setTimeout(() => fetchRoomState(), 3000);
           return;
         }
+
         if (room.data?.preview_duration) {
           previewDuration = room.data.preview_duration;
           document.getElementById("preview-duration-display").textContent =
@@ -1379,6 +1401,17 @@
         // Clear any existing interval to prevent conflicts
         clearInterval(previewInterval);
 
+        // Check if previewSongs is defined and has the requested index
+        if (
+          !previewSongs ||
+          !Array.isArray(previewSongs) ||
+          previewSongs.length === 0
+        ) {
+          document.getElementById("preview-status").textContent =
+            "No songs to preview!";
+          return;
+        }
+
         if (idx >= previewSongs.length) {
           if (!isHost) return;
           if (_previewDoneSent) return;
@@ -1397,6 +1430,23 @@
 
         previewIndex = idx;
         const song = previewSongs[idx];
+
+        // Guard against undefined song
+        if (!song) {
+          console.warn("Song at index", idx, "is undefined. Skipping.");
+          // Skip to next song
+          setTimeout(() => {
+            const nextIdx = idx + 1;
+            if (nextIdx < previewSongs.length) {
+              playPreviewSong(nextIdx);
+              if (isHost) syncNextSong(nextIdx);
+            } else {
+              playPreviewSong(previewSongs.length);
+            }
+          }, 500);
+          return;
+        }
+
         document.getElementById("preview-song-title").textContent =
           song.title || "Untitled";
         document.getElementById("preview-song-artist").textContent =
@@ -1486,7 +1536,11 @@
           return;
         }
         if (isGameFinished) return;
-        if (_previewAdvancing) return; // Prevent double skips
+        if (_previewAdvancing) return;
+        if (!previewSongs || previewSongs.length === 0) {
+          showToast("No songs to skip");
+          return;
+        }
 
         clearInterval(previewInterval);
         if (ytPlayer) {
