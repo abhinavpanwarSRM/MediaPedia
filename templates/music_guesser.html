@@ -533,12 +533,12 @@
       <div class="panel">
         <h2>Create or Join a Room</h2>
         <div class="input-row">
-          <button class="btn btn-purple" onclick="createRoom()" style="width:100%;">+ Create New Room</button>
+          <button class="btn btn-purple" onclick="window.createRoom()" style="width:100%;">+ Create New Room</button>
         </div>
         <div class="divider">— or join existing —</div>
         <div class="input-row">
-          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')joinRoom()" />
-          <button class="btn btn-purple" onclick="joinRoom()">Join</button>
+          <input type="text" id="join-code" placeholder="6-digit room code" maxlength="6" onkeydown="if(event.key==='Enter')window.joinRoom()" />
+          <button class="btn btn-purple" onclick="window.joinRoom()">Join</button>
         </div>
         <div class="error-msg" id="lobby-error"></div>
       </div>
@@ -548,7 +548,7 @@
     <div id="screen-add-songs">
       <div class="panel">
         <h2>🎯 Room Code</h2>
-        <div class="code-display" id="room-code-display" onclick="copyCode()" title="Tap to copy"></div>
+        <div class="code-display" id="room-code-display" onclick="window.copyCode()" title="Tap to copy"></div>
         <div class="code-hint">Tap to copy · Share with friends</div>
         <div class="players-row" id="players-list"></div>
         <div id="host-controls" style="display:none;">
@@ -556,12 +556,12 @@
             <label style="color:var(--muted);font-size:0.82rem;display:block;margin-bottom:0.4rem;">Songs per player:</label>
             <div class="input-row">
               <input type="number" id="songs-per-player" value="3" min="1" max="6" />
-              <button class="btn btn-gold" onclick="setSongCount()">Set</button>
+              <button class="btn btn-gold" onclick="window.setSongCount()">Set</button>
             </div>
             <label style="color:var(--muted);font-size:0.82rem;display:block;margin:0.4rem 0;">Play time per song (seconds):</label>
             <div class="input-row">
               <input type="number" id="play-time" value="5" min="3" max="15" />
-              <button class="btn btn-gold" onclick="setPlayTime()">Set</button>
+              <button class="btn btn-gold" onclick="window.setPlayTime()">Set</button>
             </div>
             <div id="game-settings-status" style="color:var(--muted);font-size:0.78rem;margin-top:0.3rem;"></div>
           </div>
@@ -575,8 +575,8 @@
           <span style="color:var(--muted);">Added: <span id="added-count">0</span></span>
         </div>
         <div class="input-row">
-          <input type="text" id="youtube-search-input" placeholder="Search for a song on YouTube..." onkeydown="if(event.key==='Enter')searchYouTube()" />
-          <button class="btn btn-purple" onclick="searchYouTube()">Search</button>
+          <input type="text" id="youtube-search-input" placeholder="Search for a song on YouTube..." onkeydown="if(event.key==='Enter')window.searchYouTube()" />
+          <button class="btn btn-purple" onclick="window.searchYouTube()">Search</button>
         </div>
         <div id="search-results" class="search-results"></div>
         <div class="status-msg" id="search-status"></div>
@@ -585,7 +585,7 @@
       <div class="panel">
         <h2>📋 Your Songs</h2>
         <div id="added-songs-list"></div>
-        <button class="btn btn-green" id="done-adding-btn" onclick="doneAdding()" style="margin-top:0.8rem;" disabled>✅ Done — Start Game</button>
+        <button class="btn btn-green" id="done-adding-btn" onclick="window.doneAdding()" style="margin-top:0.8rem;" disabled>✅ Done — Start Game</button>
         <div class="status-msg" id="add-status"></div>
       </div>
     </div>
@@ -613,15 +613,15 @@
 
         <!-- Host Controls -->
         <div class="host-controls-playing" id="host-controls-playing">
-          <button id="play-pause-btn" onclick="togglePlay()">▶ Play</button>
-          <button id="skip-song-btn" onclick="skipSong()">⏭ Skip Song</button>
-          <button id="next-round-btn" onclick="nextRound()" style="border-color:var(--gold);color:var(--gold);" disabled>⏭ Next Song</button>
+          <button id="play-pause-btn" onclick="window.togglePlay()">▶ Play</button>
+          <button id="skip-song-btn" onclick="window.skipSong()">⏭ Skip Song</button>
+          <button id="next-round-btn" onclick="window.nextRound()" style="border-color:var(--gold);color:var(--gold);" disabled>⏭ Next Song</button>
         </div>
         <div class="status-msg" id="player-controls-hint">🎧 Listening...</div>
 
         <!-- Buzzer -->
         <div style="margin:1rem 0;">
-          <button class="buzzer-btn" id="buzzer-btn" onclick="buzz()" disabled>
+          <button class="buzzer-btn" id="buzzer-btn" onclick="window.buzz()" disabled>
             🔔 BUZZ
           </button>
           <div class="status-msg" id="buzzer-status"></div>
@@ -631,8 +631,8 @@
         <div class="guess-input-area" id="guess-area">
           <div style="font-size:0.9rem;font-weight:600;color:var(--gold);margin-bottom:0.3rem;">🎯 Enter your guess:</div>
           <div class="input-row">
-            <input type="text" id="guess-input" placeholder="Song title..." onkeydown="if(event.key==='Enter')submitGuess()" />
-            <button class="btn btn-green" onclick="submitGuess()">Submit</button>
+            <input type="text" id="guess-input" placeholder="Song title..." onkeydown="if(event.key==='Enter')window.submitGuess()" />
+            <button class="btn btn-green" onclick="window.submitGuess()">Submit</button>
           </div>
           <div class="status-msg" id="guess-status"></div>
         </div>
@@ -644,8 +644,8 @@
             <strong id="verification-guesser">Someone</strong> guessed: "<strong id="verification-guess">Song Title</strong>"
           </div>
           <div class="verification-btns">
-            <button class="btn btn-green" onclick="verifyGuess(true)">✅ Correct</button>
-            <button class="btn btn-red" onclick="verifyGuess(false)">❌ Wrong</button>
+            <button class="btn btn-green" onclick="window.verifyGuess(true)">✅ Correct</button>
+            <button class="btn btn-red" onclick="window.verifyGuess(false)">❌ Wrong</button>
           </div>
           <div class="status-msg" id="verification-status"></div>
         </div>
@@ -755,7 +755,7 @@
           },
           onError: function() {
             showToast('Video unavailable — skip to next song');
-            if (isHost) setTimeout(skipSong, 1500);
+            if (isHost) setTimeout(window.skipSong, 1500);
           }
         }
       });
@@ -795,7 +795,7 @@
       if (target) target.classList.add('active');
     }
 
-    function copyCode() {
+    window.copyCode = function() {
       if (!roomCode) return;
       navigator.clipboard?.writeText(roomCode).then(function() {
         showToast('Code copied!');
@@ -803,15 +803,18 @@
     }
 
     // ---- Room Management ----
-    async function createRoom() {
+    window.createRoom = async function() {
       var btn = event.target;
       btn.disabled = true;
       btn.textContent = 'Creating...';
       try {
-        var res = await fetch('/api/games/room', {
+        var res = await fetch('/api/music-guesser/room', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ game_type: 'music_guesser' })
+          body: JSON.stringify({ 
+            songs_per_player: parseInt(document.getElementById('songs-per-player').value) || 3,
+            play_time: parseInt(document.getElementById('play-time').value) || 5
+          })
         });
         var d = await res.json();
         if (d.error) {
@@ -830,11 +833,11 @@
       }
     }
 
-    async function joinRoom() {
+    window.joinRoom = async function() {
       var code = document.getElementById('join-code')?.value?.trim()?.toUpperCase();
       if (!code) { showToast('Enter a room code'); return; }
       try {
-        var res = await fetch('/api/games/room/' + code + '/join', { method: 'POST' });
+        var res = await fetch('/api/music-guesser/room/' + code + '/join', { method: 'POST' });
         var d = await res.json();
         if (d.error) {
           var errEl = document.getElementById('lobby-error');
@@ -891,16 +894,55 @@
       socket = io();
 
       socket.on('connect', function() {
-        socket.emit('game_join', { room_code: roomCode, username: ME });
+        socket.emit('music_guesser_join', { code: roomCode, username: ME });
       });
 
-      socket.on('game_state', function(data) {
-        if (data.room) {
-          handleRoomState(data.room);
+      socket.on('music_guesser_player_joined', function(data) {
+        showToast(data.username + ' joined');
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_player_left', function(data) {
+        showToast(data.username + ' left');
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_game_started', function(data) {
+        showToast('🎵 Game started! ' + data.songs_count + ' songs');
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_buzz', function(data) {
+        if (data.username && data.username !== ME) {
+          showToast('🔔 ' + data.username + ' buzzed in!');
         }
       });
 
-      socket.on('game_play', function(data) {
+      socket.on('music_guesser_guess_submitted', function(data) {
+        if (data.guesser !== ME) {
+          showToast('🎯 ' + data.guesser + ' submitted a guess');
+        }
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_guess_verified', function(data) {
+        if (data.guesser === ME) {
+          showToast(data.correct ? '✅ Your guess was correct!' : '❌ Your guess was wrong');
+        }
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_next_song', function(data) {
+        currentIndex = data.index;
+        loadSong(currentIndex);
+      });
+
+      socket.on('music_guesser_game_finished', function(data) {
+        showToast('🏆 Game finished! Winner: ' + (data.winner || 'No one'));
+        fetchRoomState();
+      });
+
+      socket.on('music_guesser_play', function(data) {
         if (ytReady && data.position !== undefined && !isGameFinished) {
           ytPlayer.seekTo(data.position, true);
           ytPlayer.playVideo();
@@ -910,7 +952,7 @@
         }
       });
 
-      socket.on('game_pause', function(data) {
+      socket.on('music_guesser_pause', function(data) {
         if (ytReady && data.position !== undefined && !isGameFinished) {
           ytPlayer.seekTo(data.position, true);
           ytPlayer.pauseVideo();
@@ -920,88 +962,89 @@
         }
       });
 
-      socket.on('game_next_song', function(data) {
-        if (data.index !== undefined && !isGameFinished) {
-          currentIndex = data.index;
-          loadSong(currentIndex);
-        }
-      });
-
-      socket.on('game_buzz', function(data) {
-        if (data.username && data.username !== ME) {
-          showToast('🔔 ' + data.username + ' buzzed in!');
-        }
-      });
-
       socket.on('disconnect', function() {
         showToast('Disconnected — reconnecting...');
       });
 
       socket.on('reconnect', function() {
         showToast('Reconnected!');
-        socket.emit('game_join', { room_code: roomCode, username: ME });
+        socket.emit('music_guesser_join', { code: roomCode, username: ME });
       });
     }
 
     function syncPlay() {
       if (!isHost || !ytReady || !socket || isGameFinished) return;
       var pos = ytPlayer.getCurrentTime() || 0;
-      socket.emit('game_play', { room_code: roomCode, position: pos });
+      socket.emit('music_guesser_play', { room_code: roomCode, position: pos });
     }
 
     function syncPause() {
       if (!isHost || !ytReady || !socket || isGameFinished) return;
       var pos = ytPlayer.getCurrentTime() || 0;
-      socket.emit('game_pause', { room_code: roomCode, position: pos });
+      socket.emit('music_guesser_pause', { room_code: roomCode, position: pos });
     }
 
     function syncNextSong() {
       if (!isHost || !socket || isGameFinished) return;
-      socket.emit('game_next_song', { room_code: roomCode, index: currentIndex });
+      socket.emit('music_guesser_next_song', { room_code: roomCode, index: currentIndex });
     }
 
     function syncBuzz(username) {
       if (!socket || isGameFinished) return;
-      socket.emit('game_buzz', { room_code: roomCode, username: username });
+      socket.emit('music_guesser_buzz', { room_code: roomCode, username: username });
     }
 
     // ---- Set Settings ----
-    async function setSongCount() {
+    window.setSongCount = async function() {
       if (!isHost) return;
       var input = document.getElementById('songs-per-player');
       var val = parseInt(input?.value) || 3;
       if (val < 1 || val > 6) { showToast('Please enter 1-6 songs per player'); return; }
       
-      songsPerPlayer = val;
-      await fetch('/api/games/room/' + roomCode + '/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set_song_count', count: val })
-      });
-      showToast('Set to ' + val + ' songs per player');
-      fetchRoomState();
+      try {
+        var res = await fetch('/api/music-guesser/room/' + roomCode + '/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_song_count', count: val })
+        });
+        var data = await res.json();
+        if (data.error) { showToast(data.error); return; }
+        songsPerPlayer = val;
+        showToast('Set to ' + val + ' songs per player');
+        var neededEl = document.getElementById('needed-count');
+        if (neededEl) neededEl.textContent = val;
+        fetchRoomState();
+      } catch(e) {
+        showToast('Error setting song count');
+      }
     }
 
-    async function setPlayTime() {
+    window.setPlayTime = async function() {
       if (!isHost) return;
       var input = document.getElementById('play-time');
       var val = parseInt(input?.value) || 5;
       if (val < 3 || val > 15) { showToast('Please enter 3-15 seconds'); return; }
       
-      playTime = val;
-      await fetch('/api/games/room/' + roomCode + '/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'set_play_time', time: val })
-      });
-      showToast('Play time set to ' + val + ' seconds');
-      var displayEl = document.getElementById('play-duration-display');
-      if (displayEl) displayEl.textContent = val;
-      fetchRoomState();
+      try {
+        var res = await fetch('/api/music-guesser/room/' + roomCode + '/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_play_time', time: val })
+        });
+        var data = await res.json();
+        if (data.error) { showToast(data.error); return; }
+        playTime = val;
+        showToast('Play time set to ' + val + ' seconds');
+        var displayEl = document.getElementById('play-duration-display');
+        if (displayEl) displayEl.textContent = val;
+        fetchRoomState();
+      } catch(e) {
+        showToast('Error setting play time');
+      }
     }
 
     // ---- YouTube Search ----
-    async function searchYouTube() {
+    window.searchYouTube = async function() {
       var input = document.getElementById('youtube-search-input');
       var query = input?.value?.trim();
       if (!query) { showToast('Enter a search term'); return; }
@@ -1038,7 +1081,7 @@
             var songTitle = parts.length > 1 ? parts.slice(0,-1).join(' - ') : title;
             var alreadyAdded = mySongs.some(function(s) { return s.youtube_query === videoId; });
             var remaining = songsPerPlayer - mySongs.length;
-            return '<div class="search-result-item" style="' + (alreadyAdded || remaining <= 0 ? 'opacity:0.5;' : '') + '" onclick="' + ((alreadyAdded || remaining <= 0) ? '' : 'addSong(\'' + videoId + '\', \'' + esc(songTitle) + '\', \'' + esc(artist) + '\', \'' + thumb + '\')') + '">' +
+            return '<div class="search-result-item" style="' + (alreadyAdded || remaining <= 0 ? 'opacity:0.5;' : '') + '" onclick="' + ((alreadyAdded || remaining <= 0) ? '' : 'window.addSong(\'' + videoId + '\', \'' + esc(songTitle) + '\', \'' + esc(artist) + '\', \'' + thumb + '\')') + '">' +
               '<img src="' + thumb + '" alt="" loading="lazy" />' +
               '<div class="search-result-info">' +
                 '<div class="search-result-title">' + esc(songTitle) + '</div>' +
@@ -1052,7 +1095,7 @@
         if (statusEl) statusEl.textContent = 'Search failed: ' + e.message;
         searchKeyIndex++;
         if (searchKeyIndex < API_KEYS.length) {
-          setTimeout(searchYouTube, 500);
+          setTimeout(window.searchYouTube, 500);
         }
       }
     }
@@ -1066,7 +1109,7 @@
       return null;
     }
 
-    function addSong(videoId, title, artist, thumb) {
+    window.addSong = function(videoId, title, artist, thumb) {
       if (mySongs.some(function(s) { return s.youtube_query === videoId; })) {
         showToast('Already added this song');
         return;
@@ -1094,7 +1137,7 @@
       updateProgress();
     }
 
-    function removeSong(id) {
+    window.removeSong = function(id) {
       mySongs = mySongs.filter(function(s) { return s.id !== id; });
       renderAddedSongs();
       updateProgress();
@@ -1114,7 +1157,7 @@
             '<div class="song-title">' + esc(s.title) + '</div>' +
             '<div class="song-artist">' + esc(s.artist) + '</div>' +
           '</div>' +
-          '<button onclick="removeSong(\'' + s.id + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;" title="Remove">✕</button>' +
+          '<button onclick="window.removeSong(\'' + s.id + '\')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;" title="Remove">✕</button>' +
         '</div>';
       }).join('');
     }
@@ -1132,7 +1175,7 @@
       }
     }
 
-    async function doneAdding() {
+    window.doneAdding = async function() {
       if (mySongs.length < songsPerPlayer) {
         showToast('Add ' + (songsPerPlayer - mySongs.length) + ' more song' + (songsPerPlayer - mySongs.length > 1 ? 's' : ''));
         return;
@@ -1145,7 +1188,7 @@
 
       for (var i = 0; i < mySongs.length; i++) {
         var s = mySongs[i];
-        await fetch('/api/games/room/' + roomCode + '/action', {
+        await fetch('/api/music-guesser/room/' + roomCode + '/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'submit_song', song: s })
@@ -1156,7 +1199,7 @@
       updateProgress();
       if (statusEl) statusEl.textContent = 'Songs submitted! Waiting for others...';
 
-      await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+      await fetch('/api/music-guesser/room/' + roomCode + '/ready', { method: 'POST' });
 
       if (statusEl) statusEl.textContent = '⏳ Waiting for other players...';
     }
@@ -1307,7 +1350,7 @@
         // If no video, auto-skip after 2 seconds
         setTimeout(function() {
           if (isHost && currentIndex === index) {
-            skipSong();
+            window.skipSong();
           }
         }, 2000);
       }
@@ -1317,7 +1360,7 @@
     }
 
     // ---- Buzzer ----
-    function buzz() {
+    window.buzz = function() {
       if (!canBuzz || isGameFinished || hasBuzzed) return;
       if (currentSongOwner === ME) {
         showToast('❌ You can\'t guess your own song!');
@@ -1359,7 +1402,7 @@
     }
 
     // ---- Submit Guess ----
-    async function submitGuess() {
+    window.submitGuess = async function() {
       if (!hasBuzzed || guessSubmitted || isGameFinished) return;
       
       var input = document.getElementById('guess-input');
@@ -1373,7 +1416,7 @@
       var song = allSongs[currentIndex];
       
       // Send guess for verification
-      var res = await fetch('/api/games/room/' + roomCode + '/action', {
+      var res = await fetch('/api/music-guesser/room/' + roomCode + '/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1410,13 +1453,13 @@
     }
 
     // ---- Verify Guess ----
-    async function verifyGuess(isCorrect) {
+    window.verifyGuess = async function(isCorrect) {
       if (!awaitingVerification || isGameFinished) return;
       awaitingVerification = false;
 
       var guess = document.getElementById('verification-guess').textContent;
       
-      await fetch('/api/games/room/' + roomCode + '/action', {
+      await fetch('/api/music-guesser/room/' + roomCode + '/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1467,7 +1510,7 @@
     }
 
     // ---- Next Round ----
-    function nextRound() {
+    window.nextRound = function() {
       if (!isHost || isGameFinished) return;
       
       var nextIndex = currentIndex + 1;
@@ -1476,7 +1519,7 @@
         return;
       }
 
-      fetch('/api/games/room/' + roomCode + '/action', {
+      fetch('/api/music-guesser/room/' + roomCode + '/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'next_song', index: nextIndex })
@@ -1488,7 +1531,7 @@
     }
 
     // ---- Skip Song ----
-    function skipSong() {
+    window.skipSong = function() {
       if (!isHost || isGameFinished) return;
       
       clearInterval(playTimer);
@@ -1502,7 +1545,7 @@
     }
 
     // ---- Host Controls ----
-    function togglePlay() {
+    window.togglePlay = function() {
       if (!isHost) { showToast('Only the host can control playback'); return; }
       if (!ytReady || isGameFinished) return;
 
@@ -1565,7 +1608,7 @@
       clearInterval(progTimer);
       if (ytPlayer) ytPlayer.stopVideo();
 
-      await fetch('/api/games/room/' + roomCode + '/action', {
+      await fetch('/api/music-guesser/room/' + roomCode + '/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'finish' })
@@ -1722,7 +1765,7 @@
 
     async function fetchRoomState() {
       try {
-        var res = await fetch('/api/games/room/' + roomCode);
+        var res = await fetch('/api/music-guesser/room/' + roomCode);
         var room = await res.json();
         handleRoomState(room);
         return room;
@@ -1741,7 +1784,7 @@
     var searchInput = document.getElementById('youtube-search-input');
     if (searchInput) {
       searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') searchYouTube();
+        if (e.key === 'Enter') window.searchYouTube();
       });
     }
 
@@ -1750,7 +1793,7 @@
 
     window.addEventListener('beforeunload', function() {
       if (socket && roomCode) {
-        socket.emit('game_leave', { room_code: roomCode });
+        socket.emit('music_guesser_leave', { code: roomCode });
       }
     });
   </script>
