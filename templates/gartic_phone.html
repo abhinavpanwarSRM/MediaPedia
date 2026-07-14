@@ -79,7 +79,7 @@
         /* ===== LOBBY ===== */
         #lobby {
             max-width: 480px;
-            margin: 10vh auto;
+            margin: clamp(1.5rem, 8vh, 6rem) auto;
             padding: 2.5rem 2rem;
             background: linear-gradient(145deg, #1a1a1a, #141414);
             border-radius: 32px;
@@ -208,9 +208,9 @@
         #room {
             display: none;
             min-height: 100vh;
-            /* Fix 6: prevent horizontal overflow from toolbar wrapping */
             padding: 1rem;
-            max-width: 100vw;
+            max-width: 900px;
+            margin: 0 auto;
             overflow-x: hidden;
             background: #0a0a0a;
         }
@@ -224,14 +224,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1.2rem;
             background: linear-gradient(145deg, #1a1a1a, #141414);
-            border-radius: 20px;
+            border-radius: 16px;
             border: 1px solid #2a2a2a;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             flex-wrap: wrap;
-            gap: 0.8rem;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            gap: 0.6rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
         }
         
         .room-code {
@@ -253,17 +253,18 @@
         }
         
         .player-chip {
-            padding: 0.3rem 1rem;
+            padding: 0.35rem 1rem;
             background: rgba(255,255,255,0.05);
             border-radius: 20px;
-            font-size: 0.85rem;
-            border: 1px solid #2a2a2a;
-            transition: all 0.3s;
+            font-size: 0.82rem;
+            border: 1px solid #333;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 0.3rem;
-            font-weight: 500;
+            gap: 0.35rem;
+            font-weight: 600;
         }
+        .player-chip:hover { background: rgba(255,255,255,0.08); }
         
         .player-chip.host {
             border-color: #ffd93d;
@@ -310,34 +311,38 @@
             background: linear-gradient(145deg, #1a1a1a, #141414);
             border-radius: 20px;
             border: 1px solid #2a2a2a;
-            padding: 2rem;
+            padding: 1.5rem;
             min-height: 400px;
-            /* Fix 6: prevent toolbar overflow */
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            padding-bottom: 2.2rem;
         }
 
         .game-status {
-            color: #888;
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
+            color: #aaa;
+            font-size: 0.78rem;
+            margin-bottom: 0.8rem;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 500;
+            letter-spacing: 2.5px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            padding: 0.4rem 1rem;
+            display: inline-block;
+            width: 100%;
         }
         
         .game-prompt {
-            font-size: 1.4rem;
-            margin: 1rem 0 1.5rem 0;
+            font-size: 1.25rem;
+            margin: 0.6rem 0 1rem 0;
             text-align: center;
             color: #ffd93d;
-            padding: 1rem;
-            background: rgba(255,217,61,0.05);
-            border-radius: 16px;
-            border: 1px dashed rgba(255,217,61,0.2);
+            padding: 0.8rem 1rem;
+            background: rgba(255,217,61,0.06);
+            border-radius: 14px;
+            border: 1px solid rgba(255,217,61,0.18);
             font-weight: 600;
-            /* Fix 12: don't apply large font-size when prompt contains an image */
             line-height: 1.4;
         }
         /* When prompt contains an image, reset font size context */
@@ -369,13 +374,13 @@
             to   { opacity: 1; transform: scale(1) translateY(0); }
         }
         .waiting-player {
-            padding: 0.5rem 1.2rem;
+            padding: 0.45rem 1.1rem;
             background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            font-size: 0.95rem;
-            border: 1px solid #2a2a2a;
+            border-radius: 40px;
+            font-size: 0.88rem;
+            border: 1px solid #333;
             transition: all 0.3s;
-            font-weight: 500;
+            font-weight: 600;
             animation: chipIn 0.25s ease both;
         }
         
@@ -619,36 +624,43 @@
         #reveal-content::-webkit-scrollbar { width: 5px; }
         #reveal-content::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
         .reveal-chain {
-            background: rgba(255,255,255,0.03);
+            background: rgba(255,255,255,0.04);
             border-radius: 16px;
             padding: 1.5rem;
             margin-bottom: 1rem;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #333;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
         }
         
         .reveal-chain-title {
-            font-size: 1.1rem;
-            font-weight: 700;
+            font-size: 1.2rem;
+            font-weight: 800;
             color: #ffd93d;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid rgba(255,217,61,0.15);
         }
         
         /* Fix 3: remove transition:all from reveal-step — conflicts with stepIn animation */
         .reveal-step {
-            background: rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.03);
             border-radius: 12px;
-            padding: 1rem;
-            margin: 0.5rem 0;
+            padding: 1rem 1.2rem;
+            margin: 0.6rem 0;
             border-left: 3px solid #ff6b6b;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.25);
         }
+        .reveal-step.step-text { border-left-color: #4d96ff; }
+        .reveal-step.step-drawing { border-left-color: #6bcb77; }
         
         .reveal-step .step-author {
-            font-size: 0.8rem;
-            color: #888;
-            font-weight: 500;
+            font-size: 0.82rem;
+            color: #aaa;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
         }
         
         .reveal-step .step-content {
@@ -666,17 +678,18 @@
         }
         
         .btn-reveal-next {
-            padding: 0.8rem 2rem;
+            padding: 0.8rem 2.5rem;
             background: linear-gradient(135deg, #ffd93d, #f6b83d);
             border: none;
-            border-radius: 12px;
+            border-radius: 40px;
             color: #000;
-            font-weight: 700;
+            font-weight: 800;
             cursor: pointer;
             font-family: 'Poppins', sans-serif;
             font-size: 1rem;
             transition: all 0.3s;
-            box-shadow: 0 4px 20px rgba(255,217,61,0.3);
+            box-shadow: 0 4px 20px rgba(255,217,61,0.35);
+            letter-spacing: 0.3px;
         }
         
         .btn-reveal-next:hover {
@@ -886,7 +899,6 @@
                 <div class="submission-area">
                     <div class="drawing-container">
                         <canvas id="draw-canvas"></canvas>
-                        <canvas id="grid-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;"></canvas>
                     </div>
                     <div class="drawing-tools">
                         <div class="toolbar-row">
@@ -1305,6 +1317,10 @@
 
                 case 'reveal':
                     document.getElementById('reveal-state').classList.remove('hidden');
+                    if (roomData && roomData.state !== 'reveal') {
+                        _lastRevealChainIdx = -1;
+                        _lastRevealStepIdx = -2;
+                    }
                     renderReveal(data);
                     break;
 
@@ -1316,6 +1332,8 @@
 
         // ===== REVEAL =====
         let _revealReactions = {};
+        let _lastRevealChainIdx = -1;
+        let _lastRevealStepIdx = -2;
         function renderReveal(data) {
             _revealReactions = data.reactions || {};
             const container = document.getElementById('reveal-content');
@@ -1334,6 +1352,14 @@
             const chain = chains[chainOwner] || [];
             const steps = stepIdx < 0 ? [] : chain.slice(0, stepIdx + 1);
 
+            // Only rebuild HTML when chain or step actually changed — prevents image reload
+            if (chainIdx === _lastRevealChainIdx && stepIdx === _lastRevealStepIdx) {
+                _renderReactionBars(chainOwner, steps.length);
+                return;
+            }
+            _lastRevealChainIdx = chainIdx;
+            _lastRevealStepIdx = stepIdx;
+
             const chainNum = chainIdx + 1;
             const totalChains = players.length;
             let html = `<div class="reveal-chain">
@@ -1346,7 +1372,7 @@
                     ? `<span style="color:#fff;font-size:1.1rem;font-weight:600;">${step.content}</span>`
                     : `<img src="/api/gartic/drawing/${drawId}" alt="Drawing" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid #2a2a2a;display:block;" loading="lazy" onerror="this.alt='Image failed to load'">`;
                 const delay = i * 0.08;
-                html += `<div class="reveal-step" style="animation-delay:${delay}s;">
+                html += `<div class="reveal-step ${isText ? 'step-text' : 'step-drawing'}" style="animation-delay:${delay}s;">
                     <div class="step-author" style="color:${playerColor(step.author)};">${isText ? '\u270D\uFE0F' : '\uD83C\uDFA8'} ${step.author}</div>
                     <div class="step-content">${contentHtml}</div>
                     <div class="reaction-bar" id="rbar-${chainOwner}-${i}"></div>
@@ -1673,6 +1699,7 @@
             if (sprayInterval) { clearInterval(sprayInterval); sprayInterval = null; }
             shapeStart = null; shapeSnapshot = null;
             saveStateImmediate();
+            renderGrid();
         }
 
         // ===== SHAPES =====
@@ -1803,7 +1830,7 @@
             if (drawHistory.length <= 1) { showToast('Nothing to undo'); return; }
             redoHistory.push(drawHistory.pop());
             const img = new Image();
-            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); renderGrid(); };
             img.src = drawHistory[drawHistory.length - 1];
         }
 
@@ -1812,7 +1839,7 @@
             const snap = redoHistory.pop();
             drawHistory.push(snap);
             const img = new Image();
-            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+            img.onload = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); renderGrid(); };
             img.src = snap;
         }
 
@@ -1828,22 +1855,21 @@
         }
 
         // ===== GRID =====
+        // Draw grid on top of main canvas — purely visual, stripped before export
         function renderGrid() {
-            const g = document.getElementById('grid-overlay');
-            if (!g) return;
-            g.width = canvas.width; g.height = canvas.height;
-            const gc = g.getContext('2d');
-            gc.clearRect(0, 0, g.width, g.height);
-            if (!gridVisible) return;
+            if (!gridVisible || !canvas) return;
             const step = 40;
-            gc.strokeStyle = 'rgba(100,100,255,0.18)';
-            gc.lineWidth = 1;
-            for (let x = step; x < g.width; x += step) {
-                gc.beginPath(); gc.moveTo(x, 0); gc.lineTo(x, g.height); gc.stroke();
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(100,149,237,0.35)';
+            ctx.lineWidth = 0.5;
+            for (let x = step; x < canvas.width; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
-            for (let y = step; y < g.height; y += step) {
-                gc.beginPath(); gc.moveTo(0, y); gc.lineTo(g.width, y); gc.stroke();
+            for (let y = step; y < canvas.height; y += step) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
+            ctx.restore();
         }
 
         // ===== TOOL SWITCHERS =====
@@ -1926,15 +1952,20 @@
         }
 
         function drawGrid() {
-            const overlay = document.getElementById('grid-overlay');
-            if (!overlay) return;
-            overlay.style.display = gridVisible ? 'block' : 'none';
-            renderGrid();
+            // Redraw canvas from last history snapshot then overlay grid
+            if (!drawHistory.length) return;
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                renderGrid();
+            };
+            img.src = drawHistory[drawHistory.length - 1];
         }
 
         // ===== ZOOM / PAN =====
         window.zoomIn  = function() { setZoom(Math.min(zoomLevel * 1.25, 5)); }
-        window.zoomOut = function() { setZoom(Math.max(zoomLevel / 1.25, 0.5)); }
+        window.zoomOut = function() { setZoom(Math.max(zoomLevel / 1.25, 1)); }
         window.zoomReset = function() { zoomLevel = 1; panX = 0; panY = 0; applyTransform(); }
 
         function setZoom(z) {
@@ -2058,48 +2089,48 @@
                 return;
             }
             
-            // Composite onto white background before export
+            // Export from last history snapshot (no grid lines)
             const exportCanvas = document.createElement('canvas');
             exportCanvas.width = canvas.width;
             exportCanvas.height = canvas.height;
             const ectx = exportCanvas.getContext('2d');
             ectx.fillStyle = '#ffffff';
             ectx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ectx.drawImage(canvas, 0, 0);
-            
-            // Convert to JPEG with quality 0.85
-            const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.6);
-            
-            isSubmitting = true;
-            document.getElementById('drawing-submit').disabled = true;
-            document.getElementById('drawing-submit').textContent = 'Submitting...';
-            
-            try {
-                const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: dataUrl })
-                });
-                const data = await res.json();
-                if (data.error) { 
-                    showToast(data.error); 
+            const snapImg = new Image();
+            snapImg.onload = async () => {
+                ectx.drawImage(snapImg, 0, 0);
+                const dataUrl = exportCanvas.toDataURL('image/jpeg', 0.6);
+                isSubmitting = true;
+                document.getElementById('drawing-submit').disabled = true;
+                document.getElementById('drawing-submit').textContent = 'Submitting...';
+                try {
+                    const res = await fetch('/api/gartic/room/' + roomCode + '/submit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: dataUrl })
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        showToast(data.error);
+                        document.getElementById('drawing-submit').disabled = false;
+                        document.getElementById('drawing-submit').textContent = 'Submit Drawing';
+                        isSubmitting = false;
+                        return;
+                    }
+                    hasSubmitted = true;
+                    persistSubmit();
+                    showToast('✅ Drawing submitted! Waiting for others...');
+                    if (socket) socket.emit('gartic_submitted', { code: roomCode });
+                    fetchRoom();
+                } catch(e) {
+                    console.error('Submit error:', e);
+                    showToast('❌ Failed to submit drawing');
                     document.getElementById('drawing-submit').disabled = false;
                     document.getElementById('drawing-submit').textContent = 'Submit Drawing';
                     isSubmitting = false;
-                    return; 
                 }
-                hasSubmitted = true;
-                persistSubmit();
-                showToast('✅ Drawing submitted! Waiting for others...');
-                if (socket) socket.emit('gartic_submitted', { code: roomCode });
-                fetchRoom();
-            } catch(e) {
-                console.error('Submit error:', e);
-                showToast('❌ Failed to submit drawing');
-                document.getElementById('drawing-submit').disabled = false;
-                document.getElementById('drawing-submit').textContent = 'Submit Drawing';
-                isSubmitting = false;
-            }
+            };
+            snapImg.src = drawHistory[drawHistory.length - 1];
         }
 
         // ===== HELPERS =====
@@ -2143,7 +2174,7 @@
         // Zoom via scroll wheel on canvas
         document.getElementById('draw-canvas').addEventListener('wheel', function(e) {
             e.preventDefault();
-            if (e.deltaY < 0) window.zoomIn();
+            if (e.deltaY < 0) window.zoomIn(); else window.zoomOut();
         }, { passive: false });
 
         window.toggleTimerSetting = function() {
