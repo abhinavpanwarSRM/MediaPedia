@@ -707,6 +707,13 @@
           <button class="btn btn-purple" id="ready-btn" onclick="markReady()">
             Ready ✓
           </button>
+          <button
+            class="btn btn-gold"
+            onclick="requestFullState()"
+            style="margin-top: 0.5rem; font-size: 0.8rem"
+          >
+            🔄 Refresh Game Data
+          </button>
           <div class="status-msg" id="ready-status"></div>
         </div>
       </div>
@@ -918,13 +925,30 @@
           .replace(/>/g, "&gt;");
       }
 
+      // ---- Request Full State ----
+      function requestFullState() {
+        if (socket && roomCode) {
+          console.log("📤 Requesting full state from server...");
+          showToast("Requesting game data...");
+          socket.emit("request_full_state", { room_code: roomCode });
+        } else {
+          showToast("Socket not connected. Please refresh.");
+        }
+      }
+
       // ---- Socket.IO ----
       function connectSocket() {
         if (socket) return;
         socket = io();
 
         socket.on("connect", function () {
+          console.log("🔌 Socket connected");
           socket.emit("game_join", { room_code: roomCode, username: ME });
+
+          // Request full state after a short delay
+          setTimeout(() => {
+            requestFullState();
+          }, 500);
         });
 
         socket.on("game_state", function (data) {
@@ -956,9 +980,70 @@
                 "Impostor:",
                 pair[1]?.title,
               );
+              console.log(
+                "🕵️ You are",
+                amImpostor ? "the IMPOSTOR" : "a normal player",
+              );
             }
 
             handleRoomState(data.room);
+          }
+        });
+
+        // ===== FULL STATE HANDLER =====
+        socket.on("full_state", function (data) {
+          console.log("📦 Full state received from server");
+          if (data.room) {
+            const impostor = data.room?.data?.impostor;
+            const pair = data.room?.data?.movie_pair || [];
+
+            console.log("📦 Full state data:", {
+              impostor,
+              pair_length: pair.length,
+              pair0: pair[0]?.title,
+              pair1: pair[1]?.title,
+            });
+
+            if (impostor !== undefined && pair.length >= 2) {
+              const amImpostor = impostor === ME;
+              sessionStorage.setItem(
+                "mi_impostor_" + roomCode,
+                amImpostor ? "1" : "0",
+              );
+              sessionStorage.setItem(
+                "mi_normal_movie_" + roomCode,
+                JSON.stringify(pair[0]),
+              );
+              sessionStorage.setItem(
+                "mi_impostor_movie_" + roomCode,
+                JSON.stringify(pair[1]),
+              );
+
+              console.log(
+                "🎬 Stored - Normal:",
+                pair[0]?.title,
+                "Impostor:",
+                pair[1]?.title,
+              );
+              console.log(
+                "🕵️ You are",
+                amImpostor ? "the IMPOSTOR" : "a normal player",
+              );
+
+              // Reset and reveal the movie
+              movieDataLoaded = false;
+              myMovie = null;
+              revealMovie(data.room);
+              showToast("✅ Game data refreshed!");
+            } else {
+              console.warn("⚠️ Full state missing required data:", {
+                impostor,
+                pair_length: pair.length,
+              });
+              showToast(
+                "Could not retrieve game data. Please refresh the page.",
+              );
+            }
           }
         });
 
@@ -990,6 +1075,7 @@
         socket.on("reconnect", function () {
           showToast("Reconnected!");
           socket.emit("game_join", { room_code: roomCode, username: ME });
+          setTimeout(() => requestFullState(), 500);
         });
       }
 
@@ -1103,12 +1189,23 @@
           .classList.toggle("hidden", !isHost);
 
         if (room.state === "playing" && room.round >= 1) {
+          // Check if we have stored impostor data
+          const hasImpostorData =
+            sessionStorage.getItem("mi_impostor_" + roomCode) !== null;
+          const hasMovieData =
+            sessionStorage.getItem("mi_normal_movie_" + roomCode) !== null;
+
+          if (!hasImpostorData || !hasMovieData) {
+            // Request full state from server
+            console.log("⏳ Missing impostor data, requesting full state...");
+            requestFullState();
+            return;
+          }
+
           if (!movieDataLoaded) {
             revealMovie(room);
           } else {
             // If movieDataLoaded is true, we might need to update the UI with new data
-            // But only if the room data changed significantly
-            const currentRoom = room;
             const storedPair = sessionStorage.getItem(
               "mi_normal_movie_" + roomCode,
             );
@@ -1167,12 +1264,17 @@
           const stored = sessionStorage.getItem("mi_impostor_" + roomCode);
           if (stored !== null) {
             amImpostor = stored === "1";
-          } else {
-            // If we don't have stored data, default to false
-            amImpostor = false;
-            console.warn(
-              "⚠️ No stored impostor data, defaulting to normal player",
+            console.log(
+              "🔄 Retrieved impostor status from storage:",
+              amImpostor,
             );
+          } else {
+            // If we don't have stored data, request full state
+            console.warn(
+              "⚠️ No stored impostor data, requesting full state...",
+            );
+            requestFullState();
+            return;
           }
         }
 
@@ -1211,6 +1313,9 @@
               } else {
                 myMovie = pair[0];
                 console.warn("⚠️ No impostor movie found, using normal movie");
+                // Request full state to get the correct movie
+                requestFullState();
+                return;
               }
             }
           } else {

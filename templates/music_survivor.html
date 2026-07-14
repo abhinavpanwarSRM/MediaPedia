@@ -1099,7 +1099,13 @@
             // Clear any existing preview interval
             clearInterval(previewInterval);
 
-            const newIndex = data.index;
+            // FIX: Ensure index is valid
+            let newIndex = data.index;
+            if (newIndex < 0) {
+              newIndex = 0;
+              console.warn("Received negative index, resetting to 0");
+            }
+
             const onPreview = document
               .getElementById("screen-preview")
               ?.classList?.contains("active");
@@ -1164,6 +1170,8 @@
 
       function syncNextSong(idx) {
         if (!isHost || !socket || isGameFinished) return;
+        // Ensure idx is valid
+        if (idx < 0) idx = 0;
         socket.emit("game_next_song", { room_code: roomCode, index: idx });
       }
 
@@ -1374,6 +1382,8 @@
           document.getElementById("preview-duration-display").textContent =
             previewDuration;
         }
+
+        // FIX: Reset previewIndex to 0, not -1
         previewIndex = 0;
         hasVotedThisRound = false;
         voteLocked = false;
@@ -1410,6 +1420,12 @@
           document.getElementById("preview-status").textContent =
             "No songs to preview!";
           return;
+        }
+
+        // FIX: Ensure idx is valid (not negative)
+        if (idx < 0) {
+          console.warn("Invalid index", idx, "resetting to 0");
+          idx = 0;
         }
 
         if (idx >= previewSongs.length) {

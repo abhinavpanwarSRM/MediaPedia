@@ -4780,21 +4780,36 @@ def on_game_join(data):
     
     game_type = room.get('game_type')
     emit_room = room
+    
+    # For movie_impostor, always send the full data (including impostor and both movies)
+    # The frontend handles filtering based on the user's role
     if game_type == 'movie_impostor' and room.get('state') != 'finished':
         import copy
         emit_room = copy.deepcopy(room)
-        d = emit_room.get('data', {})
-        real_impostor = d.get('impostor')
-        pair = d.get('movie_pair', [])
-        if username != real_impostor:
-            d.pop('impostor', None)
-            if len(pair) == 2:
-                d['movie_pair'] = [pair[0]]
-        emit_room['data'] = d
+        # Don't strip anything - send the full data so the frontend can determine
+        # which movie to show based on the user's username
+    
     emit('game_state', {
         'room': emit_room,
         'game_type': game_type
     }, to=request.sid)
+
+@socketio.on('request_full_state')
+def on_request_full_state(data):
+    """Send the full room state to the requesting client."""
+    room_code = data.get('room_code')
+    if not room_code:
+        return
+    
+    if game_rooms_collection is None:
+        return
+    
+    room = game_rooms_collection.find_one({'code': room_code}, {'_id': 0})
+    if not room:
+        return
+    
+    # Send the full room data (not stripped)
+    emit('full_state', {'room': room}, to=request.sid)
 
 # ===== MOVIE IMPOSTOR SOCKET EVENTS =====
 
