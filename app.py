@@ -4794,6 +4794,7 @@ def on_game_join(data):
         'game_type': game_type
     }, to=request.sid)
 
+
 @socketio.on('request_full_state')
 def on_request_full_state(data):
     """Send the full room state to the requesting client."""
@@ -4811,6 +4812,7 @@ def on_request_full_state(data):
     # Send the full room data (not stripped)
     emit('full_state', {'room': room}, to=request.sid)
 
+
 # ===== MOVIE IMPOSTOR SOCKET EVENTS =====
 
 @socketio.on('movie_reveal')
@@ -4825,6 +4827,7 @@ def on_movie_reveal(data):
         'username': username,
         'room_code': room_code
     }, to=room_code, include_self=False)
+
 
 @socketio.on('answers_submitted')
 def on_answers_submitted(data):
@@ -4842,6 +4845,7 @@ def on_answers_submitted(data):
                 'room': room
             }, to=room_code, include_self=False)
 
+
 @socketio.on('vote_cast')
 def on_vote_cast(data):
     room_code = data.get('room_code')
@@ -4858,6 +4862,7 @@ def on_vote_cast(data):
         'username': username,
         'room': room
     }, to=room_code, include_self=False)
+
 
 # ===== SONG DETECTIVE & MUSIC SURVIVOR SOCKET EVENTS =====
 
@@ -4893,6 +4898,7 @@ def on_game_play(data):
         'by': username
     }, to=room_code)
 
+
 @socketio.on('game_pause')
 def on_game_pause(data):
     room_code = data.get('room_code')
@@ -4925,8 +4931,10 @@ def on_game_pause(data):
         'by': username
     }, to=room_code)
 
+
 @socketio.on('game_next_song')
 def on_game_next_song(data):
+    """Broadcast the next song index to all players in the room."""
     room_code = data.get('room_code')
     username = session.get('username')
 
@@ -4943,14 +4951,30 @@ def on_game_next_song(data):
     if room.get('host') != username:
         return
 
-    # Only broadcast the index to non-host clients — the HTTP next_song action
-    # already updated current_index in the DB, so just read it back and relay.
+    game_type = room.get('game_type')
     current_index = room.get('data', {}).get('current_index', 0)
+    preview_done = room.get('data', {}).get('preview_done', False)
+
+    # For Music Survivor, only broadcast if preview is done (voting phase)
+    if game_type == 'music_survivor':
+        # During preview, don't broadcast - host syncs via syncNextSong()
+        if not preview_done:
+            return
+        # Don't broadcast negative indices either
+        if current_index < 0:
+            return
+
+    # For Song Detective, always broadcast
+    # For Music Survivor, only broadcast after preview is done
+    # Also ensure current_index is valid (>= 0)
+    if current_index < 0:
+        current_index = 0
 
     emit('game_next_song', {
         'index': current_index,
         'by': username
     }, to=room_code, include_self=False)
+
 
 @socketio.on('game_sync_request')
 def on_game_sync_request(data):
@@ -4972,6 +4996,7 @@ def on_game_sync_request(data):
         'game_type': room.get('game_type')
     }, to=request.sid)
 
+
 @socketio.on('game_leave')
 def on_game_leave(data):
     room_code = data.get('room_code')
@@ -4986,6 +5011,7 @@ def on_game_leave(data):
         game_socket_rooms[room_code].discard(username)
         if not game_socket_rooms[room_code]:
             del game_socket_rooms[room_code]
+
 
 # ===== GARTIC PHONE =====
 gartic_collection = None
