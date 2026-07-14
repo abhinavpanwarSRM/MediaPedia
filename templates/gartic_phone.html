@@ -927,8 +927,8 @@
                             <div class="toolbar-sep"></div>
                             <button class="tool-btn" id="grid-btn" onclick="window.toggleGrid()">⊞ <span id="grid-label">OFF</span></button>
                             <button class="tool-btn" onclick="window.zoomIn()">🔍+</button>
-                            <button class="tool-btn" onclick="window.zoomOut()">🔍-</button>
-                            <button class="tool-btn" onclick="window.zoomReset()">1:1</button>
+                            
+                            
                             <div class="toolbar-sep"></div>
                             <button class="tool-btn" onclick="window.undoDraw()">↩</button>
                             <button class="tool-btn" id="redo-btn" onclick="window.redoDraw()">↪</button>
@@ -1329,7 +1329,7 @@
             const chainNum = chainIdx + 1;
             const totalChains = players.length;
             let html = `<div class="reveal-chain">
-                <div class="reveal-chain-title">\uD83D\uDD17 Chain ${chainNum}/${totalChains} \u2014 ${chainOwner}'s Chain</div>`;
+                <div class="reveal-chain-title">🔗 Chain ${chainNum}/${totalChains} — ${chainOwner}'s Chain</div>`;
 
             steps.forEach((step, i) => {
                 const isText = step.type === 'text';
@@ -1360,11 +1360,22 @@
                 nextBtn.style.cursor = 'pointer';
                 nextBtn.textContent = stepIdx + 1 >= chain.length && chainIdx + 1 >= players.length ? '🎉 Finish' : 'Next ➜';
             } else {
-                nextBtn.style.display = 'block';
-                nextBtn.disabled = true;
-                nextBtn.textContent = 'Waiting for host...';
-                nextBtn.style.opacity = '0.5';
-                nextBtn.style.cursor = 'default';
+                nextBtn.style.display = 'none';
+            }
+        }
+
+        function _renderReactionBars(chainOwner, stepCount) {
+            const EMOJIS = ['😂','❤️','🔥','😮','👏'];
+            for (let i = 0; i < stepCount; i++) {
+                const bar = document.getElementById('rbar-' + chainOwner + '-' + i);
+                if (!bar) continue;
+                const stepReactions = (_revealReactions[chainOwner] || {})[i] || {};
+                const counts = {};
+                Object.values(stepReactions).forEach(e => { counts[e] = (counts[e] || 0) + 1; });
+                const myReaction = stepReactions[ME] || '';
+                bar.innerHTML = EMOJIS.map(em =>
+                    `<button class="reaction-btn ${myReaction === em ? 'mine' : ''}" onclick="window.sendReaction('${chainOwner}',${i},'${em}')">${em}<span class="reaction-count">${counts[em] || ''}</span></button>`
+                ).join('');
             }
         }
 
@@ -2124,7 +2135,7 @@
         // Zoom via scroll wheel on canvas
         document.getElementById('draw-canvas').addEventListener('wheel', function(e) {
             e.preventDefault();
-            if (e.deltaY < 0) window.zoomIn(); else window.zoomOut();
+            if (e.deltaY < 0) window.zoomIn();
         }, { passive: false });
 
         window.toggleTimerSetting = function() {
