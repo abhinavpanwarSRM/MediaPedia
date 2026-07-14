@@ -1,774 +1,1631 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>{{ username }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --primary: #e50914; --green: #1db954; --blue: #5799ef;
-      --bg: #141414; --card: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08);
-      --text: #fff; --muted: #888;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Poppins', 'Segoe UI', sans-serif;
-           padding: 0 0 3rem; min-height: 100vh; animation: pageFadeIn 0.4s ease-out; }
-    @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  <head>
+    <title>{{ username }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+      type="image/x-icon"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #e50914;
+        --green: #1db954;
+        --blue: #5799ef;
+        --bg: #141414;
+        --card: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #fff;
+        --muted: #888;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Poppins", "Segoe UI", sans-serif;
+        padding: 0 0 3rem;
+        min-height: 100vh;
+        animation: pageFadeIn 0.4s ease-out;
+      }
+      @keyframes pageFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-    /* Nav */
-    .topnav { display: flex; justify-content: space-between; align-items: center;
-              padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--border);
-              position: sticky; top: 0; background: rgba(20,20,20,0.95);
-              backdrop-filter: blur(8px); z-index: 100; gap: 0.8rem;
-              min-height: 57px; }
-    .topnav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; white-space: nowrap; }
-    .topnav a:hover { color: #fff; }
-    .topnav .brand { color: var(--primary); font-weight: 700; font-size: 1rem; flex-shrink: 0; }
-    .nav-right { display: flex; gap: 1rem; align-items: center; flex-wrap: nowrap; overflow: hidden; }
-    .topnav .nav-user { color: var(--primary) !important; font-weight: 600; }
+      /* Nav */
+      .topnav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.9rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        background: rgba(20, 20, 20, 0.95);
+        backdrop-filter: blur(8px);
+        z-index: 100;
+        gap: 0.8rem;
+        min-height: 57px;
+      }
+      .topnav a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: color 0.2s;
+        white-space: nowrap;
+      }
+      .topnav a:hover {
+        color: #fff;
+      }
+      .topnav .brand {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+      .nav-right {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: nowrap;
+        overflow: hidden;
+      }
+      .topnav .nav-user {
+        color: var(--primary) !important;
+        font-weight: 600;
+      }
 
-    /* Hamburger — shown only on small screens */
-    .nav-burger { display: none; flex-direction: column; gap: 4px; background: none;
-                  border: none; cursor: pointer; padding: 4px; flex-shrink: 0; }
-    .nav-burger span { display: block; width: 22px; height: 2px; background: #fff;
-                       border-radius: 2px; transition: all 0.2s; }
+      /* Hamburger — shown only on small screens */
+      .nav-burger {
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        flex-shrink: 0;
+      }
+      .nav-burger span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        background: #fff;
+        border-radius: 2px;
+        transition: all 0.2s;
+      }
 
-    /* Mobile drawer */
-    .nav-drawer { display: none; flex-direction: column; gap: 0;
-                  background: rgba(20,20,20,0.98); border-bottom: 1px solid var(--border);
-                  position: sticky; top: 57px; z-index: 99; }
-    .nav-drawer.open { display: flex; }
-    .nav-drawer a { padding: 0.75rem 1.5rem; color: var(--muted); text-decoration: none;
-                    font-size: 0.9rem; border-bottom: 1px solid var(--border); transition: color 0.2s; }
-    .nav-drawer a:last-child { border-bottom: none; }
-    .nav-drawer a:hover { color: #fff; background: rgba(255,255,255,0.04); }
+      /* Mobile drawer */
+      .nav-drawer {
+        display: none;
+        flex-direction: column;
+        gap: 0;
+        background: rgba(20, 20, 20, 0.98);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 57px;
+        z-index: 99;
+      }
+      .nav-drawer.open {
+        display: flex;
+      }
+      .nav-drawer a {
+        padding: 0.75rem 1.5rem;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        border-bottom: 1px solid var(--border);
+        transition: color 0.2s;
+      }
+      .nav-drawer a:last-child {
+        border-bottom: none;
+      }
+      .nav-drawer a:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.04);
+      }
 
-    @media (max-width: 600px) {
-      .nav-right  { display: none; }
-      .nav-burger { display: flex; }
-    }
+      @media (max-width: 600px) {
+        .nav-right {
+          display: none;
+        }
+        .nav-burger {
+          display: flex;
+        }
+      }
 
-    .container { max-width: 820px; margin: 0 auto; padding: 0 1rem; }
+      .container {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
 
-    /* Banner + avatar */
-    .profile-banner { height: 160px;
-      background: linear-gradient(135deg, #1a0505 0%, #2d0000 25%, #1a0a0a 55%, #0a0a1f 80%, #0d0d0d 100%);
-      position: relative; margin-bottom: 56px;
-      border-bottom: 1px solid rgba(229,9,20,0.15); }
-    .profile-banner::after { content:''; position:absolute; inset:0;
-      background: radial-gradient(ellipse at 30% 50%, rgba(229,9,20,0.12) 0%, transparent 60%);
-      pointer-events:none; }
-    .avatar-wrap { position: absolute; bottom: -44px; left: 1.5rem; }
-    .avatar { width: 88px; height: 88px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), #ff6b6b);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2.2rem; font-weight: 800; border: 4px solid var(--bg);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; cursor: pointer; }
-    .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .avatar-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-      z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
-    .avatar-modal-overlay.open { display: flex; }
-    .avatar-modal { background: #1c1c1c; border: 1px solid var(--border); border-radius: 14px;
-      width: 100%; max-width: 380px; padding: 1.4rem; }
-    .avatar-modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
-    .avatar-modal input { width: 100%; padding: 0.6rem 0.85rem; background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 0.88rem;
-      margin-bottom: 0.8rem; }
-    .avatar-modal input:focus { outline: none; border-color: var(--primary); }
-    .avatar-modal-preview { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 0.9rem;
-      background: linear-gradient(135deg, var(--primary), #ff6b6b);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; font-weight: 800; overflow: hidden; }
-    .avatar-modal-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .avatar-modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+      /* Banner + avatar */
+      .profile-banner {
+        height: 160px;
+        background: linear-gradient(
+          135deg,
+          #1a0505 0%,
+          #2d0000 25%,
+          #1a0a0a 55%,
+          #0a0a1f 80%,
+          #0d0d0d 100%
+        );
+        position: relative;
+        margin-bottom: 56px;
+        border-bottom: 1px solid rgba(229, 9, 20, 0.15);
+      }
+      .profile-banner::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse at 30% 50%,
+          rgba(229, 9, 20, 0.12) 0%,
+          transparent 60%
+        );
+        pointer-events: none;
+      }
+      .avatar-wrap {
+        position: absolute;
+        bottom: -44px;
+        left: 1.5rem;
+      }
+      .avatar {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), #ff6b6b);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        font-weight: 800;
+        border: 4px solid var(--bg);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      .avatar-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 400;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      .avatar-modal-overlay.open {
+        display: flex;
+      }
+      .avatar-modal {
+        background: #1c1c1c;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        width: 100%;
+        max-width: 380px;
+        padding: 1.4rem;
+      }
+      .avatar-modal h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+      }
+      .avatar-modal input {
+        width: 100%;
+        padding: 0.6rem 0.85rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 0.88rem;
+        margin-bottom: 0.8rem;
+      }
+      .avatar-modal input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+      .avatar-modal-preview {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 0.9rem;
+        background: linear-gradient(135deg, var(--primary), #ff6b6b);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        font-weight: 800;
+        overflow: hidden;
+      }
+      .avatar-modal-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      .avatar-modal-actions {
+        display: flex;
+        gap: 0.6rem;
+        justify-content: flex-end;
+      }
 
-    /* Profile head */
-    .profile-head { display: flex; align-items: flex-start; justify-content: space-between;
-                    gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; padding: 0 0.2rem; }
-    .profile-head h1 { font-size: clamp(1.3rem, 4vw, 1.9rem); font-weight: 800; }
-    .profile-head .handle { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
-    .head-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.3rem; }
+      /* Profile head */
+      .profile-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.2rem;
+        padding: 0 0.2rem;
+      }
+      .profile-head h1 {
+        font-size: clamp(1.3rem, 4vw, 1.9rem);
+        font-weight: 800;
+      }
+      .profile-head .handle {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-top: 0.15rem;
+      }
+      .head-actions {
+        display: flex;
+        gap: 0.6rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 0.3rem;
+      }
 
-    /* Bio */
-    .bio-text { color: #bbb; font-size: 0.88rem; line-height: 1.6; margin-bottom: 1.4rem;
-                max-width: 500px; padding: 0 0.2rem; }
-    .bio-edit-row { display: flex; gap: 0.5rem; margin-bottom: 1.4rem; }
-    .bio-edit-row textarea { flex: 1; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.06);
-                              border: 1px solid var(--border); border-radius: 8px; color: #fff;
-                              font-size: 0.88rem; resize: none; height: 68px;
-                              font-family: inherit; display: none; }
-    .bio-edit-row textarea:focus { outline: none; border-color: var(--primary); }
+      /* Bio */
+      .bio-text {
+        color: #bbb;
+        font-size: 0.88rem;
+        line-height: 1.6;
+        margin-bottom: 1.4rem;
+        max-width: 500px;
+        padding: 0 0.2rem;
+      }
+      .bio-edit-row {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.4rem;
+      }
+      .bio-edit-row textarea {
+        flex: 1;
+        padding: 0.55rem 0.8rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 0.88rem;
+        resize: none;
+        height: 68px;
+        font-family: inherit;
+        display: none;
+      }
+      .bio-edit-row textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
 
-    /* Stats */
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-             gap: 0.7rem; margin-bottom: 2rem; }
-    .stat { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            padding: 0.9rem 1rem; border-radius: 10px;
-            border: 1px solid var(--border); text-align: center; transition: all 0.2s; }
-    .stat:hover { border-color: rgba(229,9,20,0.4); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
-    .stat.clickable { cursor: pointer; }
-    .stat.clickable:hover { border-color: rgba(229,9,20,0.6); background: rgba(229,9,20,0.06); }
-    .stat-val { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
-    .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
-                  letter-spacing: 0.5px; margin-top: 0.2rem; }
+      /* Stats */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.7rem;
+        margin-bottom: 2rem;
+      }
+      .stat {
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 0.9rem 1rem;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        text-align: center;
+        transition: all 0.2s;
+      }
+      .stat:hover {
+        border-color: rgba(229, 9, 20, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+      .stat.clickable {
+        cursor: pointer;
+      }
+      .stat.clickable:hover {
+        border-color: rgba(229, 9, 20, 0.6);
+        background: rgba(229, 9, 20, 0.06);
+      }
+      .stat-val {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--primary);
+      }
+      .stat-label {
+        font-size: 0.72rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.2rem;
+      }
 
-    /* Tabs */
-    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; overflow-x: auto; }
-    .tab { padding: 0.7rem 1.2rem; font-size: 0.88rem; font-weight: 600; cursor: pointer;
-           color: var(--muted); border-bottom: 2px solid transparent; transition: all 0.2s;
-           background: none; border-top: none; border-left: none; border-right: none;
-           white-space: nowrap; flex-shrink: 0; }
-    .tab:hover { color: #fff; }
-    .tab.active { color: #fff; border-bottom-color: var(--primary); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+      }
+      .tab {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        background: none;
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .tab:hover {
+        color: #fff;
+      }
+      .tab.active {
+        color: #fff;
+        border-bottom-color: var(--primary);
+      }
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
 
-    /* Buttons */
-    .btn { padding: 0.55rem 1.1rem; border-radius: 8px; font-size: 0.88rem;
-           font-weight: 600; cursor: pointer; border: 1px solid; transition: all 0.2s; }
-    .btn-blue { background: rgba(87,153,239,0.15); border-color: var(--blue); color: var(--blue); }
-    .btn-blue:hover { background: rgba(87,153,239,0.3); }
-    .btn-green { background: rgba(29,185,84,0.15); border-color: var(--green); color: var(--green); }
-    .btn-green:hover { background: rgba(29,185,84,0.3); }
-    .btn-red { background: rgba(229,9,20,0.15); border-color: var(--primary); color: var(--primary); }
-    .btn-red:hover { background: rgba(229,9,20,0.3); }
+      /* Buttons */
+      .btn {
+        padding: 0.55rem 1.1rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid;
+        transition: all 0.2s;
+      }
+      .btn-blue {
+        background: rgba(87, 153, 239, 0.15);
+        border-color: var(--blue);
+        color: var(--blue);
+      }
+      .btn-blue:hover {
+        background: rgba(87, 153, 239, 0.3);
+      }
+      .btn-green {
+        background: rgba(29, 185, 84, 0.15);
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .btn-green:hover {
+        background: rgba(29, 185, 84, 0.3);
+      }
+      .btn-red {
+        background: rgba(229, 9, 20, 0.15);
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+      .btn-red:hover {
+        background: rgba(229, 9, 20, 0.3);
+      }
 
-    /* Create form */
-    .create-form { display: flex; gap: 0.6rem; margin-bottom: 1.2rem; }
-    .create-form input { flex: 1; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.06);
-                         border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 0.9rem; }
-    .create-form input:focus { outline: none; border-color: var(--blue); }
-    .create-form input.green:focus { border-color: var(--green); }
+      /* Create form */
+      .create-form {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 1.2rem;
+      }
+      .create-form input {
+        flex: 1;
+        padding: 0.55rem 0.85rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: #fff;
+        font-size: 0.9rem;
+      }
+      .create-form input:focus {
+        outline: none;
+        border-color: var(--blue);
+      }
+      .create-form input.green:focus {
+        border-color: var(--green);
+      }
 
-    /* Item cards */
-    .item-card { display: flex; align-items: center;
-                 background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-                 border: 1px solid var(--border); border-radius: 10px;
-                 padding: 0.9rem 1.1rem; margin-bottom: 0.6rem; text-decoration: none; color: var(--text);
-                 transition: all 0.2s; }
-    .item-card:hover { border-color: rgba(87,153,239,0.4); background: rgba(87,153,239,0.06); transform: translateX(3px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
-    .item-card.green:hover { border-color: rgba(29,185,84,0.4); background: rgba(29,185,84,0.06); }
-    .card-icon { font-size: 1.4rem; flex-shrink: 0; }
-    .card-body { flex: 1; min-width: 0; padding: 0 0.8rem; }
-    .card-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.15rem; }
-    .card-arrow { color: var(--blue); font-size: 1rem; flex-shrink: 0; }
-    .item-card.green .card-arrow { color: var(--green); }
+      /* Item cards */
+      .item-card {
+        display: flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.6rem;
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.2s;
+      }
+      .item-card:hover {
+        border-color: rgba(87, 153, 239, 0.4);
+        background: rgba(87, 153, 239, 0.06);
+        transform: translateX(3px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      }
+      .item-card.green:hover {
+        border-color: rgba(29, 185, 84, 0.4);
+        background: rgba(29, 185, 84, 0.06);
+      }
+      .card-icon {
+        font-size: 1.4rem;
+        flex-shrink: 0;
+      }
+      .card-body {
+        flex: 1;
+        min-width: 0;
+        padding: 0 0.8rem;
+      }
+      .card-name {
+        font-weight: 600;
+        font-size: 0.92rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .card-sub {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 0.15rem;
+      }
+      .card-arrow {
+        color: var(--blue);
+        font-size: 1rem;
+        flex-shrink: 0;
+      }
+      .item-card.green .card-arrow {
+        color: var(--green);
+      }
 
-    /* Follow button */
-    .follow-btn { padding: 0.45rem 1.2rem; border-radius: 20px; font-size: 0.85rem;
-                  font-weight: 600; cursor: pointer; border: 1px solid var(--primary);
-                  background: rgba(229,9,20,0.15); color: #fff; transition: all 0.2s; }
-    .follow-btn:hover { background: rgba(229,9,20,0.3); }
-    .follow-btn.following { background: transparent; border-color: var(--border); color: var(--muted); }
-    .follow-btn.following:hover { border-color: #ff4757; color: #ff4757; }
+      /* Follow button */
+      .follow-btn {
+        padding: 0.45rem 1.2rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--primary);
+        background: rgba(229, 9, 20, 0.15);
+        color: #fff;
+        transition: all 0.2s;
+      }
+      .follow-btn:hover {
+        background: rgba(229, 9, 20, 0.3);
+      }
+      .follow-btn.following {
+        background: transparent;
+        border-color: var(--border);
+        color: var(--muted);
+      }
+      .follow-btn.following:hover {
+        border-color: #ff4757;
+        color: #ff4757;
+      }
 
-    /* Review card */
-    .review-card { background: rgba(255,255,255,0.04); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-                   border: 1px solid var(--border); border-radius: 10px;
-                   padding: 1rem 1.2rem; margin-bottom: 0.8rem; transition: all 0.2s; }
-    .review-card:hover { border-color: rgba(255,193,7,0.35); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
-    .review-meta { display: flex; justify-content: space-between; align-items: center;
-                   font-size: 0.78rem; color: var(--muted); margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.4rem; }
-    .review-meta a { color: var(--blue); text-decoration: none; }
-    .review-meta a:hover { text-decoration: underline; }
-    .review-stars { color: #ffc107; font-size: 0.88rem; letter-spacing: 1px; }
-    .review-text { font-size: 0.9rem; color: #ddd; line-height: 1.55; }
-    .review-likes { font-size: 0.75rem; color: var(--muted); margin-top: 0.6rem; }
+      /* Review card */
+      .review-card {
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem 1.2rem;
+        margin-bottom: 0.8rem;
+        transition: all 0.2s;
+      }
+      .review-card:hover {
+        border-color: rgba(255, 193, 7, 0.35);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      }
+      .review-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .review-meta a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+      .review-meta a:hover {
+        text-decoration: underline;
+      }
+      .review-stars {
+        color: #ffc107;
+        font-size: 0.88rem;
+        letter-spacing: 1px;
+      }
+      .review-text {
+        font-size: 0.9rem;
+        color: #ddd;
+        line-height: 1.55;
+      }
+      .review-likes {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-top: 0.6rem;
+      }
 
-    /* User row (used in modal + connect tab) */
-    .user-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.7rem 0;
-                border-bottom: 1px solid var(--border); }
-    .user-row:last-child { border-bottom: none; }
-    .user-av { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
-               background: linear-gradient(135deg, var(--primary), #ff6b6b);
-               display: flex; align-items: center; justify-content: center;
-               font-weight: 700; font-size: 1rem; text-decoration: none; color: #fff; }
-    .user-info { flex: 1; min-width: 0; }
-    .user-info a { font-weight: 600; font-size: 0.9rem; color: #fff; text-decoration: none; }
-    .user-info a:hover { color: var(--primary); }
-    .user-bio-text { font-size: 0.74rem; color: var(--muted); white-space: nowrap;
-                     overflow: hidden; text-overflow: ellipsis; margin-top: 0.1rem; }
-    .mini-follow-btn { padding: 0.28rem 0.75rem; border-radius: 14px; font-size: 0.78rem;
-                       font-weight: 600; cursor: pointer; border: 1px solid var(--primary);
-                       background: rgba(229,9,20,0.15); color: #fff; transition: all 0.2s;
-                       white-space: nowrap; flex-shrink: 0; }
-    .mini-follow-btn:hover { background: rgba(229,9,20,0.3); }
-    .mini-follow-btn.following { border-color: var(--border); color: var(--muted); background: transparent; }
-    .mini-follow-btn.following:hover { border-color: #ff4757; color: #ff4757; }
-    .mutual-badge { font-size: 0.65rem; background: rgba(29,185,84,0.2); color: var(--green);
-                    border-radius: 8px; padding: 0.1rem 0.4rem; margin-left: 0.3rem; vertical-align: middle; }
+      /* User row (used in modal + connect tab) */
+      .user-row {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .user-row:last-child {
+        border-bottom: none;
+      }
+      .user-av {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--primary), #ff6b6b);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        text-decoration: none;
+        color: #fff;
+      }
+      .user-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .user-info a {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #fff;
+        text-decoration: none;
+      }
+      .user-info a:hover {
+        color: var(--primary);
+      }
+      .user-bio-text {
+        font-size: 0.74rem;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 0.1rem;
+      }
+      .mini-follow-btn {
+        padding: 0.28rem 0.75rem;
+        border-radius: 14px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--primary);
+        background: rgba(229, 9, 20, 0.15);
+        color: #fff;
+        transition: all 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .mini-follow-btn:hover {
+        background: rgba(229, 9, 20, 0.3);
+      }
+      .mini-follow-btn.following {
+        border-color: var(--border);
+        color: var(--muted);
+        background: transparent;
+      }
+      .mini-follow-btn.following:hover {
+        border-color: #ff4757;
+        color: #ff4757;
+      }
+      .mutual-badge {
+        font-size: 0.65rem;
+        background: rgba(29, 185, 84, 0.2);
+        color: var(--green);
+        border-radius: 8px;
+        padding: 0.1rem 0.4rem;
+        margin-left: 0.3rem;
+        vertical-align: middle;
+      }
 
-    /* Social Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-                     z-index: 300; align-items: center; justify-content: center; padding: 1rem; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: #1c1c1c; border: 1px solid var(--border); border-radius: 14px;
-             width: 100%; max-width: 400px; max-height: 72vh; display: flex; flex-direction: column; }
-    .modal-head { display: flex; justify-content: space-between; align-items: center;
-                  padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .modal-head h3 { font-size: 1rem; font-weight: 700; }
-    .modal-close { background: none; border: none; color: var(--muted); font-size: 1.3rem;
-                   cursor: pointer; padding: 0.1rem 0.4rem; border-radius: 4px; line-height: 1; }
-    .modal-close:hover { color: #fff; }
-    .modal-body { overflow-y: auto; padding: 0.4rem 1.2rem; flex: 1; }
-    .modal-empty { padding: 2rem; text-align: center; color: var(--muted);
-                   font-style: italic; font-size: 0.88rem; }
+      /* Social Modal */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 300;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      .modal-overlay.open {
+        display: flex;
+      }
+      .modal {
+        background: #1c1c1c;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        width: 100%;
+        max-width: 400px;
+        max-height: 72vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .modal-head h3 {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 1.3rem;
+        cursor: pointer;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        line-height: 1;
+      }
+      .modal-close:hover {
+        color: #fff;
+      }
+      .modal-body {
+        overflow-y: auto;
+        padding: 0.4rem 1.2rem;
+        flex: 1;
+      }
+      .modal-empty {
+        padding: 2rem;
+        text-align: center;
+        color: var(--muted);
+        font-style: italic;
+        font-size: 0.88rem;
+      }
 
-    /* Connect tab sections */
-    .connect-section { margin-bottom: 1.5rem; }
-    .connect-section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px;
-                              color: var(--muted); margin-bottom: 0.8rem; }
+      /* Connect tab sections */
+      .connect-section {
+        margin-bottom: 1.5rem;
+      }
+      .connect-section-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--muted);
+        margin-bottom: 0.8rem;
+      }
 
-    .empty { color: var(--muted); font-style: italic; padding: 1rem 0; font-size: 0.88rem; }
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+        padding: 1rem 0;
+        font-size: 0.88rem;
+      }
 
-    /* Toast */
-    .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-             background: #222; color: #fff; border: 1px solid var(--border);
-             padding: 0.55rem 1.3rem; border-radius: 20px; font-size: 0.85rem;
-             z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; }
+      /* Toast */
+      .toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #222;
+        color: #fff;
+        border: 1px solid var(--border);
+        padding: 0.55rem 1.3rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+      }
 
-    @media (max-width: 500px) {
-      .stats { grid-template-columns: repeat(3, 1fr); }
-      .tab { padding: 0.6rem 0.8rem; font-size: 0.82rem; }
-    }
-  </style>
+      @media (max-width: 500px) {
+        .stats {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .tab {
+          padding: 0.6rem 0.8rem;
+          font-size: 0.82rem;
+        }
+      }
+    </style>
     <link rel="manifest" href="/static/manifest.json" />
-</head>
-<body>
-  <nav class="topnav">
-    <a href="/" class="brand">MediaPedia</a>
-    <div class="nav-right">
-      {% if viewer %}
+  </head>
+  <body>
+    <nav class="topnav">
+      <a href="/" class="brand">MediaPedia</a>
+      <div class="nav-right">
+        {% if viewer %}
         <a href="/u/{{ viewer }}" class="nav-user">{{ viewer }}</a>
         <a href="/feed">Feed</a>
-        <a href="/party" style="color:var(--green);font-weight:600;">Party</a>
-        <a href="/messages" style="position:relative;">
-          Messages<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-10px;background:#e50914;color:#fff;font-size:0.6rem;font-weight:700;border-radius:10px;padding:0.1rem 0.35rem;"></span>
+        <a href="/party" style="color: var(--green); font-weight: 600">Party</a>
+        <a href="/messages" style="position: relative">
+          Messages<span
+            id="msg-badge"
+            style="
+              display: none;
+              position: absolute;
+              top: -6px;
+              right: -10px;
+              background: #e50914;
+              color: #fff;
+              font-size: 0.6rem;
+              font-weight: 700;
+              border-radius: 10px;
+              padding: 0.1rem 0.35rem;
+            "
+          ></span>
         </a>
         <a href="/logout">Logout</a>
-      {% else %}
+        {% else %}
         <a href="/login">Login</a>
-        <a href="/register" style="color:var(--primary);font-weight:600;">Register</a>
-      {% endif %}
-    </div>
-    <button class="nav-burger" onclick="toggleDrawer()" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-  </nav>
-  <div class="nav-drawer" id="nav-drawer">
-    {% if viewer %}
-      <a href="/u/{{ viewer }}" style="color:var(--primary);font-weight:600;">{{ viewer }}</a>
+        <a href="/register" style="color: var(--primary); font-weight: 600"
+          >Register</a
+        >
+        {% endif %}
+      </div>
+      <button class="nav-burger" onclick="toggleDrawer()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+    <div class="nav-drawer" id="nav-drawer">
+      {% if viewer %}
+      <a href="/u/{{ viewer }}" style="color: var(--primary); font-weight: 600"
+        >{{ viewer }}</a
+      >
       <a href="/feed">Feed</a>
-      <a href="/party" style="color:var(--green);font-weight:600;">Party</a>
+      <a href="/party" style="color: var(--green); font-weight: 600">Party</a>
       <a href="/messages">Messages</a>
       <a href="/logout">Logout</a>
-    {% else %}
+      {% else %}
       <a href="/login">Login</a>
-      <a href="/register" style="color:var(--primary);font-weight:600;">Register</a>
-    {% endif %}
-  </div>
+      <a href="/register" style="color: var(--primary); font-weight: 600"
+        >Register</a
+      >
+      {% endif %}
+    </div>
 
-  <div class="profile-banner">
-    <div class="avatar-wrap">
-      <div class="avatar" id="avatar-circle" {% if viewer == username %}onclick="openAvatarModal()" title="Change profile picture"{% endif %}>
-        {% if avatar_url %}
-          <img src="{{ avatar_url }}" alt="{{ username }}" id="avatar-img" onerror="this.style.display='none';document.getElementById('avatar-letter').style.display='flex'">
-          <span id="avatar-letter" style="display:none;">{{ username[0]|upper }}</span>
-        {% else %}
+    <div class="profile-banner">
+      <div class="avatar-wrap">
+        <div
+          class="avatar"
+          id="avatar-circle"
+          {%
+          if
+          viewer=""
+          ="username"
+          %}onclick="openAvatarModal()"
+          title="Change profile picture"
+          {%
+          endif
+          %}
+        >
+          {% if avatar_url %}
+          <img
+            src="{{ avatar_url }}"
+            alt="{{ username }}"
+            id="avatar-img"
+            onerror="
+              this.style.display = 'none';
+              document.getElementById('avatar-letter').style.display = 'flex';
+            "
+          />
+          <span id="avatar-letter" style="display: none"
+            >{{ username[0]|upper }}</span
+          >
+          {% else %}
           <span id="avatar-letter">{{ username[0]|upper }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="profile-head">
+        <div>
+          <h1>{{ username }}</h1>
+          <div class="handle">@{{ username }}</div>
+        </div>
+        <div class="head-actions">
+          {% if viewer and viewer != username %}
+          <button
+            class="follow-btn {{ 'following' if is_following else '' }}"
+            id="follow-btn"
+            onclick="toggleFollow('{{ username }}')"
+          >
+            {{ 'Following' if is_following else 'Follow' }}
+          </button>
+          <a
+            href="/messages/{{ username }}"
+            class="btn btn-blue"
+            style="text-decoration: none"
+            >&#10148; Message</a
+          >
+          {% endif %} {% if viewer == username %}
+          <button class="btn btn-red" onclick="toggleBioEdit()" id="bio-btn">
+            Edit Bio
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if viewer == username %}
+      <div class="bio-edit-row" id="bio-edit-row">
+        <textarea
+          id="bio-input"
+          placeholder="Write a short bio..."
+          maxlength="200"
+        >
+{{ bio or '' }}</textarea
+        >
+        <div style="display: flex; flex-direction: column; gap: 0.4rem">
+          <button
+            class="btn btn-red"
+            id="bio-save-btn"
+            onclick="saveBio()"
+            style="display: none"
+          >
+            Save
+          </button>
+          <button
+            class="btn"
+            style="
+              border-color: var(--border);
+              color: var(--muted);
+              display: none;
+            "
+            id="bio-cancel-btn"
+            onclick="cancelBioEdit()"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+      {% endif %}
+      <p class="bio-text" id="bio-display">{{ bio or 'No bio yet.' }}</p>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-val">{{ comments|length }}</div>
+          <div class="stat-label">Reviews</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">{{ total_likes }}</div>
+          <div class="stat-label">Likes</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val">{{ avg_rating }}</div>
+          <div class="stat-label">Avg ★</div>
+        </div>
+        <div class="stat clickable" onclick="openModal('followers')">
+          <div class="stat-val">{{ followers }}</div>
+          <div class="stat-label">Followers</div>
+        </div>
+        <div class="stat clickable" onclick="openModal('following')">
+          <div class="stat-val">{{ following }}</div>
+          <div class="stat-label">Following</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="stat-lists">{{ user_lists|length }}</div>
+          <div class="stat-label">Lists</div>
+        </div>
+      </div>
+
+      <div id="koc-section" style="display: none; margin-bottom: 2rem"></div>
+      <div id="games-section" style="display: none; margin-bottom: 2rem"></div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('lists', this)">
+          Lists
+        </button>
+        <button class="tab" onclick="switchTab('playlists', this)">
+          &#127925; Playlists
+        </button>
+        <button class="tab" onclick="switchTab('reviews', this)">
+          Reviews
+        </button>
+        <button class="tab" onclick="switchTab('connect', this)">
+          &#128101; People
+        </button>
+      </div>
+
+      <!-- Lists -->
+      <div class="tab-panel active" id="tab-lists">
+        {% if viewer == username %}
+        <div class="create-form">
+          <input
+            type="text"
+            id="new-list-name"
+            placeholder="New list name..."
+            maxlength="50"
+            onkeydown="if (event.key === 'Enter') createList();"
+          />
+          <button class="btn btn-blue" onclick="createList()">+ Create</button>
+        </div>
+        {% endif %}
+        <div id="lists-container">
+          {% for lst in user_lists %}
+          <a class="item-card" href="/list/{{ lst.list_id }}">
+            <div class="card-icon">📋</div>
+            <div class="card-body">
+              <div class="card-name">{{ lst.name }}</div>
+              <div class="card-sub">
+                {{ lst['items']|length }} item{{ 's' if lst['items']|length != 1
+                else '' }}
+              </div>
+            </div>
+            <div class="card-arrow">→</div>
+          </a>
+          {% else %}
+          <p class="empty">No lists yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Playlists -->
+      <div class="tab-panel" id="tab-playlists">
+        {% if viewer == username %}
+        <div class="create-form">
+          <input
+            type="text"
+            id="new-playlist-name"
+            placeholder="New playlist name..."
+            maxlength="50"
+            class="green"
+            onkeydown="if (event.key === 'Enter') createPlaylist();"
+          />
+          <button class="btn btn-green" onclick="createPlaylist()">
+            + Create
+          </button>
+        </div>
+        {% endif %}
+        <div id="playlists-container">
+          <p class="empty">Loading...</p>
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      <div class="tab-panel" id="tab-reviews">
+        {% for c in comments %}
+        <div
+          class="review-card"
+          style="display: flex; gap: 0.9rem; align-items: flex-start"
+        >
+          <img
+            id="rp_{{ loop.index }}"
+            src=""
+            alt=""
+            loading="lazy"
+            style="
+              display: none;
+              width: 44px;
+              height: 64px;
+              object-fit: cover;
+              border-radius: 5px;
+              flex-shrink: 0;
+              margin-top: 0.1rem;
+            "
+            onerror="this.style.display = 'none'"
+          />
+          <div style="flex: 1; min-width: 0">
+            <div class="review-meta">
+              <span>{{ c.get('created_at','')[:10] }}</span>
+              {% if c.get('content_type') and c.get('id') %}
+              <a href="/{{ c['content_type'] }}/{{ c['id'] }}"
+                >{{ c.get('content_title', c.get('content_type','')) }}</a
+              >
+              {% endif %}
+            </div>
+            <div class="review-stars">
+              {{ '★' * c.get('rating',0) }}{{ '☆' * (5 - c.get('rating',0)) }}
+            </div>
+            <div class="review-text">{{ c.get('text','') }}</div>
+            <div class="review-likes">👍 {{ c.get('likes',0) }}</div>
+          </div>
+        </div>
+        <script>
+          (function(){
+            var kind = '{{ c.get("content_type","movie") }}' === 'series' ? 'tv' : 'movie';
+            fetch('/api/poster?title=' + encodeURIComponent('{{ c.get("content_title","")|replace("'","") }}') + '&kind=' + kind)
+              .then(r=>r.json()).then(d=>{
+                var el = document.getElementById('rp_{{ loop.index }}');
+                if(el && d.poster){el.src=d.poster;el.style.display='block';}
+              }).catch(function(){});
+          })();
+        </script>
+        {% else %}
+        <p class="empty">No reviews yet.</p>
+        {% endfor %}
+      </div>
+
+      <!-- People / Connect -->
+      <div class="tab-panel" id="tab-connect">
+        <div class="connect-section">
+          <div class="connect-section-title">Followers of {{ username }}</div>
+          <div id="connect-followers"><p class="empty">Loading...</p></div>
+        </div>
+        <div class="connect-section">
+          <div class="connect-section-title">{{ username }} is following</div>
+          <div id="connect-following"><p class="empty">Loading...</p></div>
+        </div>
+        {% if viewer and viewer != username %}
+        <div class="connect-section">
+          <div class="connect-section-title">
+            Discover — people you might know
+          </div>
+          <div id="connect-discover"><p class="empty">Loading...</p></div>
+        </div>
         {% endif %}
       </div>
     </div>
-  </div>
 
-  <div class="container">
-
-    <div class="profile-head">
-      <div>
-        <h1>{{ username }}</h1>
-        <div class="handle">@{{ username }}</div>
-      </div>
-      <div class="head-actions">
-        {% if viewer and viewer != username %}
-          <button class="follow-btn {{ 'following' if is_following else '' }}"
-                  id="follow-btn" onclick="toggleFollow('{{ username }}')">
-            {{ 'Following' if is_following else 'Follow' }}
-          </button>
-          <a href="/messages/{{ username }}" class="btn btn-blue" style="text-decoration:none;">&#10148; Message</a>
-        {% endif %}
-        {% if viewer == username %}
-          <button class="btn btn-red" onclick="toggleBioEdit()" id="bio-btn">Edit Bio</button>
-        {% endif %}
+    <!-- Followers / Following Modal -->
+    <div
+      class="modal-overlay"
+      id="social-modal"
+      onclick="if (event.target === this) closeModal();"
+    >
+      <div class="modal">
+        <div class="modal-head">
+          <h3 id="modal-title">Followers</h3>
+          <button class="modal-close" onclick="closeModal()">&#10005;</button>
+        </div>
+        <div class="modal-body" id="modal-body">
+          <p class="modal-empty">Loading...</p>
+        </div>
       </div>
     </div>
 
     {% if viewer == username %}
-    <div class="bio-edit-row" id="bio-edit-row">
-      <textarea id="bio-input" placeholder="Write a short bio..." maxlength="200">{{ bio or '' }}</textarea>
-      <div style="display:flex;flex-direction:column;gap:0.4rem;">
-        <button class="btn btn-red" id="bio-save-btn" onclick="saveBio()" style="display:none;">Save</button>
-        <button class="btn" style="border-color:var(--border);color:var(--muted);display:none;" id="bio-cancel-btn" onclick="cancelBioEdit()">Cancel</button>
+    <!-- Avatar Modal -->
+    <div
+      class="avatar-modal-overlay"
+      id="avatar-modal-overlay"
+      onclick="if (event.target === this) closeAvatarModal();"
+    >
+      <div class="avatar-modal">
+        <h3>Change Profile Picture</h3>
+        <div class="avatar-modal-preview" id="avatar-preview">
+          {% if avatar_url %}
+          <img
+            src="{{ avatar_url }}"
+            id="avatar-preview-img"
+            onerror="this.style.display = 'none'"
+          />
+          {% else %}
+          <span id="avatar-preview-letter">{{ username[0]|upper }}</span>
+          {% endif %}
+        </div>
+        <input
+          type="url"
+          id="avatar-url-input"
+          placeholder="Paste image URL (https://...)"
+          value="{{ avatar_url or '' }}"
+          oninput="previewAvatar(this.value)"
+        />
+        <div class="avatar-modal-actions">
+          <button
+            class="btn"
+            style="border-color: var(--border); color: var(--muted)"
+            onclick="closeAvatarModal()"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-red" onclick="saveAvatar()">Save</button>
+        </div>
       </div>
     </div>
     {% endif %}
-    <p class="bio-text" id="bio-display">{{ bio or 'No bio yet.' }}</p>
 
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-val">{{ comments|length }}</div>
-        <div class="stat-label">Reviews</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val">{{ total_likes }}</div>
-        <div class="stat-label">Likes</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val">{{ avg_rating }}</div>
-        <div class="stat-label">Avg ★</div>
-      </div>
-      <div class="stat clickable" onclick="openModal('followers')">
-        <div class="stat-val">{{ followers }}</div>
-        <div class="stat-label">Followers</div>
-      </div>
-      <div class="stat clickable" onclick="openModal('following')">
-        <div class="stat-val">{{ following }}</div>
-        <div class="stat-label">Following</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val" id="stat-lists">{{ user_lists|length }}</div>
-        <div class="stat-label">Lists</div>
-      </div>
-    </div>
+    <div class="toast" id="toast"></div>
 
-    <div id="koc-section" style="display:none;margin-bottom:2rem;"></div>
-    <div id="games-section" style="display:none;margin-bottom:2rem;"></div>
+    <script>
+      const PROFILE_USER = "{{ username }}";
+      const VIEWER = '{{ viewer or "" }}';
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('lists',this)">Lists</button>
-      <button class="tab" onclick="switchTab('playlists',this)">&#127925; Playlists</button>
-      <button class="tab" onclick="switchTab('reviews',this)">Reviews</button>
-      <button class="tab" onclick="switchTab('connect',this)">&#128101; People</button>
-    </div>
-
-    <!-- Lists -->
-    <div class="tab-panel active" id="tab-lists">
-      {% if viewer == username %}
-      <div class="create-form">
-        <input type="text" id="new-list-name" placeholder="New list name..." maxlength="50" onkeydown="if(event.key==='Enter')createList()" />
-        <button class="btn btn-blue" onclick="createList()">+ Create</button>
-      </div>
-      {% endif %}
-      <div id="lists-container">
-        {% for lst in user_lists %}
-        <a class="item-card" href="/list/{{ lst.list_id }}">
-          <div class="card-icon">📋</div>
-          <div class="card-body">
-            <div class="card-name">{{ lst.name }}</div>
-            <div class="card-sub">{{ lst['items']|length }} item{{ 's' if lst['items']|length != 1 else '' }}</div>
-          </div>
-          <div class="card-arrow">→</div>
-        </a>
-        {% else %}
-        <p class="empty">No lists yet.</p>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- Playlists -->
-    <div class="tab-panel" id="tab-playlists">
-      {% if viewer == username %}
-      <div class="create-form">
-        <input type="text" id="new-playlist-name" placeholder="New playlist name..." maxlength="50" class="green" onkeydown="if(event.key==='Enter')createPlaylist()" />
-        <button class="btn btn-green" onclick="createPlaylist()">+ Create</button>
-      </div>
-      {% endif %}
-      <div id="playlists-container">
-        <p class="empty">Loading...</p>
-      </div>
-    </div>
-
-    <!-- Reviews -->
-    <div class="tab-panel" id="tab-reviews">
-      {% for c in comments %}
-      <div class="review-card" style="display:flex;gap:.9rem;align-items:flex-start;">
-        <img id="rp_{{ loop.index }}" src="" alt="" loading="lazy"
-          style="display:none;width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0;margin-top:.1rem;"
-          onerror="this.style.display='none'" />
-        <div style="flex:1;min-width:0;">
-        <div class="review-meta">
-          <span>{{ c.get('created_at','')[:10] }}</span>
-          {% if c.get('content_type') and c.get('id') %}
-          <a href="/{{ c['content_type'] }}/{{ c['id'] }}">{{ c.get('content_title', c.get('content_type','')) }}</a>
-          {% endif %}
-        </div>
-        <div class="review-stars">{{ '★' * c.get('rating',0) }}{{ '☆' * (5 - c.get('rating',0)) }}</div>
-        <div class="review-text">{{ c.get('text','') }}</div>
-        <div class="review-likes">👍 {{ c.get('likes',0) }}</div>
-        </div>
-      </div>
-      <script>
-        (function(){
-          var kind = '{{ c.get("content_type","movie") }}' === 'series' ? 'tv' : 'movie';
-          fetch('/api/poster?title=' + encodeURIComponent('{{ c.get("content_title","")|replace("'","") }}') + '&kind=' + kind)
-            .then(r=>r.json()).then(d=>{
-              var el = document.getElementById('rp_{{ loop.index }}');
-              if(el && d.poster){el.src=d.poster;el.style.display='block';}
-            }).catch(function(){});
-        })();
-      </script>
-      {% else %}
-      <p class="empty">No reviews yet.</p>
-      {% endfor %}
-    </div>
-
-    <!-- People / Connect -->
-    <div class="tab-panel" id="tab-connect">
-      <div class="connect-section">
-        <div class="connect-section-title">Followers of {{ username }}</div>
-        <div id="connect-followers"><p class="empty">Loading...</p></div>
-      </div>
-      <div class="connect-section">
-        <div class="connect-section-title">{{ username }} is following</div>
-        <div id="connect-following"><p class="empty">Loading...</p></div>
-      </div>
-      {% if viewer and viewer != username %}
-      <div class="connect-section">
-        <div class="connect-section-title">Discover — people you might know</div>
-        <div id="connect-discover"><p class="empty">Loading...</p></div>
-      </div>
-      {% endif %}
-    </div>
-
-  </div>
-
-  <!-- Followers / Following Modal -->
-  <div class="modal-overlay" id="social-modal" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-      <div class="modal-head">
-        <h3 id="modal-title">Followers</h3>
-        <button class="modal-close" onclick="closeModal()">&#10005;</button>
-      </div>
-      <div class="modal-body" id="modal-body">
-        <p class="modal-empty">Loading...</p>
-      </div>
-    </div>
-  </div>
-
-  {% if viewer == username %}
-  <!-- Avatar Modal -->
-  <div class="avatar-modal-overlay" id="avatar-modal-overlay" onclick="if(event.target===this)closeAvatarModal()">
-    <div class="avatar-modal">
-      <h3>Change Profile Picture</h3>
-      <div class="avatar-modal-preview" id="avatar-preview">
-        {% if avatar_url %}
-          <img src="{{ avatar_url }}" id="avatar-preview-img" onerror="this.style.display='none'">
-        {% else %}
-          <span id="avatar-preview-letter">{{ username[0]|upper }}</span>
-        {% endif %}
-      </div>
-      <input type="url" id="avatar-url-input" placeholder="Paste image URL (https://...)" value="{{ avatar_url or '' }}" oninput="previewAvatar(this.value)" />
-      <div class="avatar-modal-actions">
-        <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="closeAvatarModal()">Cancel</button>
-        <button class="btn btn-red" onclick="saveAvatar()">Save</button>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <div class="toast" id="toast"></div>
-
-  <script>
-    const PROFILE_USER = '{{ username }}';
-    const VIEWER       = '{{ viewer or "" }}';
-
-    function toggleDrawer() {
-      document.getElementById('nav-drawer').classList.toggle('open');
-    }
-    document.addEventListener('click', function(e) {
-      const drawer = document.getElementById('nav-drawer');
-      if (drawer.classList.contains('open') &&
-          !drawer.contains(e.target) &&
-          !e.target.closest('.nav-burger')) {
-        drawer.classList.remove('open');
+      function toggleDrawer() {
+        document.getElementById("nav-drawer").classList.toggle("open");
       }
-    });
-    // Tabs
-    let connectLoaded = false;
-    function switchTab(name, btn) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('tab-' + name).classList.add('active');
-      if (name === 'connect' && !connectLoaded) { connectLoaded = true; loadConnectTab(); }
-    }
+      document.addEventListener("click", function (e) {
+        const drawer = document.getElementById("nav-drawer");
+        if (
+          drawer.classList.contains("open") &&
+          !drawer.contains(e.target) &&
+          !e.target.closest(".nav-burger")
+        ) {
+          drawer.classList.remove("open");
+        }
+      });
+      // Tabs
+      let connectLoaded = false;
+      function switchTab(name, btn) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-panel")
+          .forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + name).classList.add("active");
+        if (name === "connect" && !connectLoaded) {
+          connectLoaded = true;
+          loadConnectTab();
+        }
+      }
 
-    // Main follow button
-    function toggleFollow(target) {
-      fetch('/api/follow/' + target, { method: 'POST' })
-        .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
-        .then(d => {
-          if (!d) return;
-          const btn = document.getElementById('follow-btn');
-          if (d.status === 'followed') { btn.textContent = 'Following'; btn.classList.add('following'); showToast('Now following ' + target); }
-          else { btn.textContent = 'Follow'; btn.classList.remove('following'); showToast('Unfollowed ' + target); }
-        });
-    }
+      // Main follow button
+      function toggleFollow(target) {
+        fetch("/api/follow/" + target, { method: "POST" })
+          .then((r) => {
+            if (r.status === 401) {
+              window.location.href = "/login";
+              return null;
+            }
+            return r.json();
+          })
+          .then((d) => {
+            if (!d) return;
+            const btn = document.getElementById("follow-btn");
+            if (d.status === "followed") {
+              btn.textContent = "Following";
+              btn.classList.add("following");
+              showToast("Now following " + target);
+            } else {
+              btn.textContent = "Follow";
+              btn.classList.remove("following");
+              showToast("Unfollowed " + target);
+            }
+          });
+      }
 
-    // Inline follow (modal + connect tab)
-    function doFollow(btn, target) {
-      if (!VIEWER) { window.location.href = '/login'; return; }
-      fetch('/api/follow/' + target, { method: 'POST' })
-        .then(r => r.json())
-        .then(d => {
-          if (d.status === 'followed') {
-            btn.textContent = 'Following'; btn.classList.add('following');
-            showToast('Now following ' + target);
-          } else {
-            btn.textContent = 'Follow'; btn.classList.remove('following');
-            showToast('Unfollowed ' + target);
-          }
-          // sync main follow-btn if target is the profile owner
-          if (target === PROFILE_USER) {
-            const mb = document.getElementById('follow-btn');
-            if (mb) { mb.textContent = d.status === 'followed' ? 'Following' : 'Follow'; mb.classList.toggle('following', d.status === 'followed'); }
-          }
-        });
-    }
+      // Inline follow (modal + connect tab)
+      function doFollow(btn, target) {
+        if (!VIEWER) {
+          window.location.href = "/login";
+          return;
+        }
+        fetch("/api/follow/" + target, { method: "POST" })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.status === "followed") {
+              btn.textContent = "Following";
+              btn.classList.add("following");
+              showToast("Now following " + target);
+            } else {
+              btn.textContent = "Follow";
+              btn.classList.remove("following");
+              showToast("Unfollowed " + target);
+            }
+            // sync main follow-btn if target is the profile owner
+            if (target === PROFILE_USER) {
+              const mb = document.getElementById("follow-btn");
+              if (mb) {
+                mb.textContent =
+                  d.status === "followed" ? "Following" : "Follow";
+                mb.classList.toggle("following", d.status === "followed");
+              }
+            }
+          });
+      }
 
-    // Build a user row HTML
-    function userRowHtml(u) {
-      const isMe = u.username === VIEWER;
-      const mutual = (u.is_following && !isMe) ? '<span class="mutual-badge">Mutual</span>' : '';
-      const btnHtml = (VIEWER && !isMe)
-        ? `<button class="mini-follow-btn ${u.is_following ? 'following' : ''}" onclick="doFollow(this,'${escAttr(u.username)}')">${u.is_following ? 'Following' : 'Follow'}</button>`
-        : '';
-      const avContent = u.avatar_url
-        ? `<img src="${escAttr(u.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextSibling.style.display=''"><span style="display:none">${u.username[0].toUpperCase()}</span>`
-        : u.username[0].toUpperCase();
-      return `<div class="user-row">
+      // Build a user row HTML
+      function userRowHtml(u) {
+        const isMe = u.username === VIEWER;
+        const mutual =
+          u.is_following && !isMe
+            ? '<span class="mutual-badge">Mutual</span>'
+            : "";
+        const btnHtml =
+          VIEWER && !isMe
+            ? `<button class="mini-follow-btn ${u.is_following ? "following" : ""}" onclick="doFollow(this,'${escAttr(u.username)}')">${u.is_following ? "Following" : "Follow"}</button>`
+            : "";
+        const avContent = u.avatar_url
+          ? `<img src="${escAttr(u.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextSibling.style.display=''"><span style="display:none">${u.username[0].toUpperCase()}</span>`
+          : u.username[0].toUpperCase();
+        return `<div class="user-row">
         <a class="user-av" href="/u/${escAttr(u.username)}">${avContent}</a>
         <div class="user-info">
           <a href="/u/${escAttr(u.username)}">${escHtml(u.username)}</a>${mutual}
-          <div class="user-bio-text">${escHtml(u.bio || 'No bio')}</div>
+          <div class="user-bio-text">${escHtml(u.bio || "No bio")}</div>
         </div>
         ${btnHtml}
       </div>`;
-    }
-
-    // Modal (followers / following)
-    function openModal(type) {
-      document.getElementById('modal-title').textContent = type === 'followers' ? 'Followers' : 'Following';
-      const body = document.getElementById('modal-body');
-      body.innerHTML = '<p class="modal-empty">Loading...</p>';
-      document.getElementById('social-modal').classList.add('open');
-      fetch(`/api/${type}/${PROFILE_USER}`)
-        .then(r => r.json())
-        .then(users => {
-          if (!users.length) { body.innerHTML = '<p class="modal-empty">Nobody here yet.</p>'; return; }
-          body.innerHTML = users.map(u => userRowHtml(u)).join('');
-        })
-        .catch(() => { body.innerHTML = '<p class="modal-empty">Could not load.</p>'; });
-    }
-    function closeModal() { document.getElementById('social-modal').classList.remove('open'); }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    // Connect tab
-    function loadConnectTab() {
-      fetch('/api/followers/' + PROFILE_USER)
-        .then(r => r.json())
-        .then(users => {
-          const el = document.getElementById('connect-followers');
-          const list = users.filter(u => u.username !== VIEWER);
-          el.innerHTML = list.length ? list.map(u => userRowHtml(u)).join('') : '<p class="empty">No followers yet.</p>';
-        })
-        .catch(() => { document.getElementById('connect-followers').innerHTML = '<p class="empty">Could not load.</p>'; });
-
-      fetch('/api/following/' + PROFILE_USER)
-        .then(r => r.json())
-        .then(users => {
-          const el = document.getElementById('connect-following');
-          const list = users.filter(u => u.username !== VIEWER);
-          el.innerHTML = list.length ? list.map(u => userRowHtml(u)).join('') : '<p class="empty">Not following anyone yet.</p>';
-        })
-        .catch(() => { document.getElementById('connect-following').innerHTML = '<p class="empty">Could not load.</p>'; });
-
-      const discoverEl = document.getElementById('connect-discover');
-      if (discoverEl) {
-        fetch('/api/users/discover')
-          .then(r => r.json())
-          .then(users => {
-            discoverEl.innerHTML = users.length ? users.map(u => userRowHtml(u)).join('') : '<p class="empty">No suggestions right now.</p>';
-          })
-          .catch(() => { discoverEl.innerHTML = '<p class="empty">Could not load.</p>'; });
       }
-    }
 
-    // Bio edit
-    function toggleBioEdit() {
-      document.getElementById('bio-input').style.display = 'block';
-      document.getElementById('bio-save-btn').style.display = 'block';
-      document.getElementById('bio-cancel-btn').style.display = 'block';
-      document.getElementById('bio-display').style.display = 'none';
-      document.getElementById('bio-btn').style.display = 'none';
-      document.getElementById('bio-input').focus();
-    }
-    function cancelBioEdit() {
-      document.getElementById('bio-input').style.display = 'none';
-      document.getElementById('bio-save-btn').style.display = 'none';
-      document.getElementById('bio-cancel-btn').style.display = 'none';
-      document.getElementById('bio-display').style.display = '';
-      document.getElementById('bio-btn').style.display = '';
-    }
-    function saveBio() {
-      const bio = document.getElementById('bio-input').value.trim();
-      fetch('/api/profile/bio', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({bio}) })
-        .then(r => r.json()).then(d => {
-          if (d.success) { document.getElementById('bio-display').textContent = bio || 'No bio yet.'; cancelBioEdit(); showToast('Bio updated'); }
-        });
-    }
+      // Modal (followers / following)
+      function openModal(type) {
+        document.getElementById("modal-title").textContent =
+          type === "followers" ? "Followers" : "Following";
+        const body = document.getElementById("modal-body");
+        body.innerHTML = '<p class="modal-empty">Loading...</p>';
+        document.getElementById("social-modal").classList.add("open");
+        fetch(`/api/${type}/${PROFILE_USER}`)
+          .then((r) => r.json())
+          .then((users) => {
+            if (!users.length) {
+              body.innerHTML = '<p class="modal-empty">Nobody here yet.</p>';
+              return;
+            }
+            body.innerHTML = users.map((u) => userRowHtml(u)).join("");
+          })
+          .catch(() => {
+            body.innerHTML = '<p class="modal-empty">Could not load.</p>';
+          });
+      }
+      function closeModal() {
+        document.getElementById("social-modal").classList.remove("open");
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+      });
 
-    // Create list
-    function createList() {
-      const inp = document.getElementById('new-list-name');
-      const name = inp.value.trim(); if (!name) return;
-      fetch('/api/lists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
-        .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
-        .then(d => {
-          if (!d || d.error) { showToast(d?.error || 'Error'); return; }
-          inp.value = '';
-          const c = document.getElementById('lists-container');
-          const e = c.querySelector('.empty'); if (e) e.remove();
-          const a = document.createElement('a');
-          a.className = 'item-card'; a.href = '/list/' + d.list_id;
-          a.innerHTML = `<div class="card-icon">📋</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 items</div></div><div class="card-arrow">→</div>`;
-          c.prepend(a);
-          const sv = document.getElementById('stat-lists');
-          if (sv) sv.textContent = parseInt(sv.textContent || 0) + 1;
-          showToast('List "' + escHtml(d.name) + '" created');
-        });
-    }
+      // Connect tab
+      function loadConnectTab() {
+        fetch("/api/followers/" + PROFILE_USER)
+          .then((r) => r.json())
+          .then((users) => {
+            const el = document.getElementById("connect-followers");
+            const list = users.filter((u) => u.username !== VIEWER);
+            el.innerHTML = list.length
+              ? list.map((u) => userRowHtml(u)).join("")
+              : '<p class="empty">No followers yet.</p>';
+          })
+          .catch(() => {
+            document.getElementById("connect-followers").innerHTML =
+              '<p class="empty">Could not load.</p>';
+          });
 
-    // Create playlist
-    function createPlaylist() {
-      const inp = document.getElementById('new-playlist-name');
-      const name = inp.value.trim(); if (!name) return;
-      fetch('/api/playlists', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
-        .then(r => { if (r.status === 401) { window.location.href = '/login'; return null; } return r.json(); })
-        .then(d => {
-          if (!d || d.error) { showToast(d?.error || 'Error'); return; }
-          inp.value = '';
-          const c = document.getElementById('playlists-container');
-          const e = c.querySelector('.empty'); if (e) e.remove();
-          const a = document.createElement('a');
-          a.className = 'item-card green'; a.href = '/playlist/' + d.playlist_id;
-          a.innerHTML = `<div class="card-icon">🎵</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 songs</div></div><div class="card-arrow" style="color:var(--green);">→</div>`;
-          c.prepend(a);
-          showToast('Playlist "' + escHtml(d.name) + '" created');
-        });
-    }
+        fetch("/api/following/" + PROFILE_USER)
+          .then((r) => r.json())
+          .then((users) => {
+            const el = document.getElementById("connect-following");
+            const list = users.filter((u) => u.username !== VIEWER);
+            el.innerHTML = list.length
+              ? list.map((u) => userRowHtml(u)).join("")
+              : '<p class="empty">Not following anyone yet.</p>';
+          })
+          .catch(() => {
+            document.getElementById("connect-following").innerHTML =
+              '<p class="empty">Could not load.</p>';
+          });
 
-    // Load playlists
-    fetch('/api/playlists/user/{{ username }}')
-      .then(r => r.json())
-      .then(playlists => {
-        const c = document.getElementById('playlists-container');
-        if (!playlists.length) { c.innerHTML = '<p class="empty">No playlists yet.</p>'; return; }
-        c.innerHTML = playlists.map(pl => {
-          const n = (pl.songs || []).length;
-          return `<a class="item-card green" href="/playlist/${pl.playlist_id}">
+        const discoverEl = document.getElementById("connect-discover");
+        if (discoverEl) {
+          fetch("/api/users/discover")
+            .then((r) => r.json())
+            .then((users) => {
+              discoverEl.innerHTML = users.length
+                ? users.map((u) => userRowHtml(u)).join("")
+                : '<p class="empty">No suggestions right now.</p>';
+            })
+            .catch(() => {
+              discoverEl.innerHTML = '<p class="empty">Could not load.</p>';
+            });
+        }
+      }
+
+      // Bio edit
+      function toggleBioEdit() {
+        document.getElementById("bio-input").style.display = "block";
+        document.getElementById("bio-save-btn").style.display = "block";
+        document.getElementById("bio-cancel-btn").style.display = "block";
+        document.getElementById("bio-display").style.display = "none";
+        document.getElementById("bio-btn").style.display = "none";
+        document.getElementById("bio-input").focus();
+      }
+      function cancelBioEdit() {
+        document.getElementById("bio-input").style.display = "none";
+        document.getElementById("bio-save-btn").style.display = "none";
+        document.getElementById("bio-cancel-btn").style.display = "none";
+        document.getElementById("bio-display").style.display = "";
+        document.getElementById("bio-btn").style.display = "";
+      }
+      function saveBio() {
+        const bio = document.getElementById("bio-input").value.trim();
+        fetch("/api/profile/bio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bio }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.success) {
+              document.getElementById("bio-display").textContent =
+                bio || "No bio yet.";
+              cancelBioEdit();
+              showToast("Bio updated");
+            }
+          });
+      }
+
+      // Create list
+      function createList() {
+        const inp = document.getElementById("new-list-name");
+        const name = inp.value.trim();
+        if (!name) return;
+        fetch("/api/lists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        })
+          .then((r) => {
+            if (r.status === 401) {
+              window.location.href = "/login";
+              return null;
+            }
+            return r.json();
+          })
+          .then((d) => {
+            if (!d || d.error) {
+              showToast(d?.error || "Error");
+              return;
+            }
+            inp.value = "";
+            const c = document.getElementById("lists-container");
+            const e = c.querySelector(".empty");
+            if (e) e.remove();
+            const a = document.createElement("a");
+            a.className = "item-card";
+            a.href = "/list/" + d.list_id;
+            a.innerHTML = `<div class="card-icon">📋</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 items</div></div><div class="card-arrow">→</div>`;
+            c.prepend(a);
+            const sv = document.getElementById("stat-lists");
+            if (sv) sv.textContent = parseInt(sv.textContent || 0) + 1;
+            showToast('List "' + escHtml(d.name) + '" created');
+          });
+      }
+
+      // Create playlist
+      function createPlaylist() {
+        const inp = document.getElementById("new-playlist-name");
+        const name = inp.value.trim();
+        if (!name) return;
+        fetch("/api/playlists", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        })
+          .then((r) => {
+            if (r.status === 401) {
+              window.location.href = "/login";
+              return null;
+            }
+            return r.json();
+          })
+          .then((d) => {
+            if (!d || d.error) {
+              showToast(d?.error || "Error");
+              return;
+            }
+            inp.value = "";
+            const c = document.getElementById("playlists-container");
+            const e = c.querySelector(".empty");
+            if (e) e.remove();
+            const a = document.createElement("a");
+            a.className = "item-card green";
+            a.href = "/playlist/" + d.playlist_id;
+            a.innerHTML = `<div class="card-icon">🎵</div><div class="card-body"><div class="card-name">${escHtml(d.name)}</div><div class="card-sub">0 songs</div></div><div class="card-arrow" style="color:var(--green);">→</div>`;
+            c.prepend(a);
+            showToast('Playlist "' + escHtml(d.name) + '" created');
+          });
+      }
+
+      // Load playlists
+      fetch("/api/playlists/user/{{ username }}")
+        .then((r) => r.json())
+        .then((playlists) => {
+          const c = document.getElementById("playlists-container");
+          if (!playlists.length) {
+            c.innerHTML = '<p class="empty">No playlists yet.</p>';
+            return;
+          }
+          c.innerHTML = playlists
+            .map((pl) => {
+              const n = (pl.songs || []).length;
+              return `<a class="item-card green" href="/playlist/${pl.playlist_id}">
             <div class="card-icon">🎵</div>
-            <div class="card-body"><div class="card-name">${escHtml(pl.name)}</div><div class="card-sub">${n} song${n !== 1 ? 's' : ''}</div></div>
+            <div class="card-body"><div class="card-name">${escHtml(pl.name)}</div><div class="card-sub">${n} song${n !== 1 ? "s" : ""}</div></div>
             <div class="card-arrow" style="color:var(--green);">→</div>
           </a>`;
-        }).join('');
-      })
-      .catch(() => { document.getElementById('playlists-container').innerHTML = '<p class="empty">Could not load playlists.</p>'; });
-
-    // Toast
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg; t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
-    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
-
-    // Avatar modal
-    function openAvatarModal() { document.getElementById('avatar-modal-overlay').classList.add('open'); }
-    function closeAvatarModal() { document.getElementById('avatar-modal-overlay').classList.remove('open'); }
-    function previewAvatar(url) {
-      const preview = document.getElementById('avatar-preview');
-      const existing = preview.querySelector('img');
-      if (url) {
-        if (existing) { existing.src = url; existing.style.display = ''; }
-        else { preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` + (preview.querySelector('span') ? preview.querySelector('span').outerHTML : ''); }
-        const letter = preview.querySelector('span');
-        if (letter) letter.style.display = 'none';
-      } else {
-        if (existing) existing.style.display = 'none';
-        const letter = preview.querySelector('span');
-        if (letter) letter.style.display = '';
-      }
-    }
-    function saveAvatar() {
-      const url = document.getElementById('avatar-url-input').value.trim();
-      fetch('/api/profile/avatar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url}) })
-        .then(r => r.json()).then(d => {
-          if (d.error) { showToast(d.error); return; }
-          const circle = document.getElementById('avatar-circle');
-          const letter = document.getElementById('avatar-letter');
-          let img = document.getElementById('avatar-img');
-          if (url) {
-            if (!img) {
-              img = document.createElement('img');
-              img.id = 'avatar-img';
-              img.onerror = function() { this.style.display='none'; letter.style.display='flex'; };
-              circle.insertBefore(img, letter);
-            }
-            img.src = url; img.style.display = '';
-            if (letter) letter.style.display = 'none';
-          } else {
-            if (img) img.style.display = 'none';
-            if (letter) letter.style.display = 'flex';
-          }
-          closeAvatarModal();
-          showToast('Profile picture updated');
+            })
+            .join("");
+        })
+        .catch(() => {
+          document.getElementById("playlists-container").innerHTML =
+            '<p class="empty">Could not load playlists.</p>';
         });
-    }
-  </script>
-  {% if viewer %}
-  <script>
-    function checkUnread() {
-      fetch('/api/messages/unread_count').then(r=>r.json()).then(d=>{
-        const b = document.getElementById('msg-badge');
-        if (b) { if(d.count>0){b.textContent=d.count;b.style.display='inline';}else{b.style.display='none';} }
-      }).catch(()=>{});
-    }
-    checkUnread();
-    setInterval(checkUnread, 15000);
-  </script>
-  {% endif %}
-  <script src="/static/pwa.js"></script>
-  <script>
-    // ===== KOC PROFILE SECTION =====
-    fetch('/api/koc/player/{{ username }}')
-      .then(r => r.json())
-      .then(d => {
-        if (!d.is_koc_player) return;
-        const sec = document.getElementById('koc-section');
-        const gameEmoji = {monopoly:'',bluff:'',spoon:'',uno:''};
-        const historyRows = (d.history || []).map(h =>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,215,0,0.07);font-size:0.82rem;">
+
+      // Toast
+      function showToast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        setTimeout(() => t.classList.remove("show"), 2500);
+      }
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function escAttr(s) {
+        return String(s).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      }
+
+      // Avatar modal
+      function openAvatarModal() {
+        document.getElementById("avatar-modal-overlay").classList.add("open");
+      }
+      function closeAvatarModal() {
+        document
+          .getElementById("avatar-modal-overlay")
+          .classList.remove("open");
+      }
+      function previewAvatar(url) {
+        const preview = document.getElementById("avatar-preview");
+        const existing = preview.querySelector("img");
+        if (url) {
+          if (existing) {
+            existing.src = url;
+            existing.style.display = "";
+          } else {
+            preview.innerHTML =
+              `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` +
+              (preview.querySelector("span")
+                ? preview.querySelector("span").outerHTML
+                : "");
+          }
+          const letter = preview.querySelector("span");
+          if (letter) letter.style.display = "none";
+        } else {
+          if (existing) existing.style.display = "none";
+          const letter = preview.querySelector("span");
+          if (letter) letter.style.display = "";
+        }
+      }
+      function saveAvatar() {
+        const url = document.getElementById("avatar-url-input").value.trim();
+        fetch("/api/profile/avatar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.error) {
+              showToast(d.error);
+              return;
+            }
+            const circle = document.getElementById("avatar-circle");
+            const letter = document.getElementById("avatar-letter");
+            let img = document.getElementById("avatar-img");
+            if (url) {
+              if (!img) {
+                img = document.createElement("img");
+                img.id = "avatar-img";
+                img.onerror = function () {
+                  this.style.display = "none";
+                  letter.style.display = "flex";
+                };
+                circle.insertBefore(img, letter);
+              }
+              img.src = url;
+              img.style.display = "";
+              if (letter) letter.style.display = "none";
+            } else {
+              if (img) img.style.display = "none";
+              if (letter) letter.style.display = "flex";
+            }
+            closeAvatarModal();
+            showToast("Profile picture updated");
+          });
+      }
+    </script>
+    {% if viewer %}
+    <script>
+      function checkUnread() {
+        fetch("/api/messages/unread_count")
+          .then((r) => r.json())
+          .then((d) => {
+            const b = document.getElementById("msg-badge");
+            if (b) {
+              if (d.count > 0) {
+                b.textContent = d.count;
+                b.style.display = "inline";
+              } else {
+                b.style.display = "none";
+              }
+            }
+          })
+          .catch(() => {});
+      }
+      checkUnread();
+      setInterval(checkUnread, 15000);
+    </script>
+    {% endif %}
+    <script src="/static/pwa.js"></script>
+    <script>
+      // ===== KOC PROFILE SECTION =====
+      fetch("/api/koc/player/{{ username }}")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d.is_koc_player) return;
+          const sec = document.getElementById("koc-section");
+          const gameEmoji = { monopoly: "", bluff: "", spoon: "", uno: "" };
+          const historyRows = (d.history || [])
+            .map(
+              (h) =>
+                `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,215,0,0.07);font-size:0.82rem;">
             <span style="color:#aaa;">Edition ${h.edition}</span>
             <span style="color:#888;">${h.played_on}</span>
             <span style="color:#ffd700;font-weight:600;">${h.points} pts</span>
-          </div>`
-        ).join('');
-        sec.style.display = 'block';
-        sec.innerHTML = `
+          </div>`,
+            )
+            .join("");
+          sec.style.display = "block";
+          sec.innerHTML = `
           <div style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:14px;padding:1.4rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
 
@@ -792,48 +1649,53 @@
                 <div style="font-size:0.68rem;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:0.2rem;">Editions</div>
               </div>
             </div>
-            ${d.best_game ? `<div style="font-size:0.8rem;color:#b8860b;margin-bottom:1rem;">Best game: <strong style="color:#ffd700;">${gameEmoji[d.best_game]||''} ${d.best_game.charAt(0).toUpperCase()+d.best_game.slice(1)}</strong></div>` : ''}
-            ${historyRows ? `<div>${historyRows}</div>` : ''}
+            ${d.best_game ? `<div style="font-size:0.8rem;color:#b8860b;margin-bottom:1rem;">Best game: <strong style="color:#ffd700;">${gameEmoji[d.best_game] || ""} ${d.best_game.charAt(0).toUpperCase() + d.best_game.slice(1)}</strong></div>` : ""}
+            ${historyRows ? `<div>${historyRows}</div>` : ""}
             <a href="/kingofcards" style="display:inline-block;margin-top:1rem;font-size:0.8rem;color:#b8860b;text-decoration:none;">View full tournament →</a>
           </div>`;
-      })
-      .catch(() => {});
-  </script>
-  <script>
-    // ===== GAMES PROFILE SECTION =====
-    fetch('/api/games/stats/{{ username }}')
-      .then(r => r.json())
-      .then(d => {
-        if (!d || !d.username) return;
-        const games = [
-          {key:'music_survivor', label:'Music Survivor', emoji:'🎵'},
-          {key:'movie_impostor', label:'Movie Impostor', emoji:'🎬'},
-          {key:'song_detective', label:'Song Detective', emoji:'🕵️'},
-          {key:'movie_battle', label:'Movie Battle', emoji:'⚔️'},
-        ];
-        const hasAny = games.some(g => d[g.key + '_played'] > 0);
-        if (!hasAny) return;
-        const sec = document.getElementById('games-section');
-        sec.style.display = 'block';
-        sec.innerHTML = `
+        })
+        .catch(() => {});
+    </script>
+    <script>
+      // ===== GAMES PROFILE SECTION =====
+      fetch("/api/games/stats/{{ username }}")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!d || !d.username) return;
+          const games = [
+            { key: "music_survivor", label: "Music Survivor", emoji: "🎵" },
+            { key: "movie_impostor", label: "Movie Impostor", emoji: "🎬" },
+            { key: "song_detective", label: "Song Detective", emoji: "🕵️" },
+            { key: "movie_battle", label: "Movie Battle", emoji: "⚔️" },
+            { key: "music_guesser", label: "Music Guesser", emoji: "🔔" },
+            { key: "gartic_phone", label: "Gartic Phone", emoji: "🎨" },
+          ];
+          const hasAny = games.some((g) => d[g.key + "_played"] > 0);
+          if (!hasAny) return;
+          const sec = document.getElementById("games-section");
+          sec.style.display = "block";
+          sec.innerHTML = `
           <div style="background:rgba(156,111,228,0.04);border:1px solid rgba(156,111,228,0.15);border-radius:14px;padding:1.4rem;">
             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1rem;">
               <span style="font-size:1.1rem;font-weight:700;color:#9c6fe4;letter-spacing:1px;">🎮 Games</span>
               <a href="/games" style="font-size:0.75rem;color:#9c6fe4;text-decoration:none;margin-left:auto;">Play →</a>
             </div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.6rem;">
-              ${games.filter(g => d[g.key+'_played'] > 0).map(g => {
-                const played = d[g.key+'_played'] || 0;
-                const wins = d[g.key+'_wins'] || 0;
-                return `<div style="background:rgba(156,111,228,0.06);border:1px solid rgba(156,111,228,0.15);border-radius:10px;padding:0.7rem;">
+              ${games
+                .filter((g) => d[g.key + "_played"] > 0)
+                .map((g) => {
+                  const played = d[g.key + "_played"] || 0;
+                  const wins = d[g.key + "_wins"] || 0;
+                  return `<div style="background:rgba(156,111,228,0.06);border:1px solid rgba(156,111,228,0.15);border-radius:10px;padding:0.7rem;">
                   <div style="font-size:0.75rem;color:#888;margin-bottom:0.3rem;">${g.emoji} ${g.label}</div>
                   <div style="font-size:1.1rem;font-weight:700;color:#9c6fe4;">${wins}W / ${played}P</div>
                 </div>`;
-              }).join('')}
+                })
+                .join("")}
             </div>
           </div>`;
-      })
-      .catch(() => {});
-  </script>
-</body>
+        })
+        .catch(() => {});
+    </script>
+  </body>
 </html>
