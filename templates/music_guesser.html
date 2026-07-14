@@ -612,6 +612,7 @@
     async function verify(correct) {
       document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=true);
       await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',correct:correct})});
+      document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
       fetchState();
     }
 
