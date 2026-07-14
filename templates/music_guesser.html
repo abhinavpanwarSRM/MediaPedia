@@ -493,6 +493,9 @@
       renderScores(data.scores||{},room.players||[]);
 
       if(phase==='playing') {
+        // Reset guess input for next attempt
+        const gi=document.getElementById('guess-input');
+        gi.value=''; gi.disabled=false;
         document.getElementById('phase-playing').style.display='block';
         const isOwner=song.owner===ME;
         document.getElementById('buzzer-wrap').style.display=isOwner?'none':'block';
@@ -500,8 +503,10 @@
         const buzzerBtn=document.getElementById('buzzer-btn');
         buzzerBtn.disabled=isOwner||buzzLocked;
 
-        // Play clip if phase just changed to playing
-        if(lastPhase!==phase||lastPhase===null) {
+        // Play clip if phase just changed to playing, or on retry (attempt changed)
+        const songKey = (data.current_index||0)+'-'+(data.attempt||0);
+        if(lastPhase!==phase||lastPhase===null||window._lastSongKey!==songKey) {
+          window._lastSongKey=songKey;
           buzzLocked=false;
           buzzerBtn.disabled=isOwner;
           if(song.youtube_query&&ytReady) {
@@ -629,6 +634,16 @@
     // ---- State ----
     function handleState(room) {
       if(!room||room.error) return;
+      // Reset local state when song advances
+      const newIdx=(room.data||{}).current_index;
+      if(gameState&&newIdx!==(gameState.data||{}).current_index){
+        buzzLocked=false;
+        lastPhase=null;
+        window._lastSongKey=null;
+        const gi=document.getElementById('guess-input');
+        if(gi){gi.value='';gi.disabled=false;}
+        document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
+      }
       gameState=room;
       isHost=room.host===ME;
 
