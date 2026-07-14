@@ -68,22 +68,17 @@
       })
       .then(function(reg) {
         _swReg = reg;
-        
-        // Use navigator.serviceWorker.ready instead of reg.ready for reliability
-        return navigator.serviceWorker.ready;
-      })
-      .then(function(reg) {
-        if (!reg) return;
-        
-        if ('Notification' in window) {
-          if (Notification.permission === 'granted') {
-            initPushNotifications(reg);
-          } else if (Notification.permission === 'default') {
-            setTimeout(requestNotificationPermission, 3000);
+        reg.ready.then(function() {
+          if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+              initPushNotifications(reg);
+            } else if (Notification.permission === 'default') {
+              setTimeout(requestNotificationPermission, 3000);
+            }
           }
-        }
-        registerPeriodicSync(reg);
-        setupPushSubscriptionListener(reg);
+          registerPeriodicSync(reg);
+          setupPushSubscriptionListener(reg);
+        }).catch(function() {});
       })
       .catch(function(err) { 
         console.warn('SW registration failed:', err); 
@@ -390,7 +385,6 @@
     swReg: function() { return _swReg; }, 
     urlBase64ToUint8Array: urlBase64ToUint8Array,
     checkPendingInvites: checkPendingInvites,
-    initPushNotifications: initPushNotifications,
-    registerServiceWorker: registerServiceWorker
+    initPushNotifications: initPushNotifications
   };
 })();

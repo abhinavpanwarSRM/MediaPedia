@@ -3693,19 +3693,6 @@ def _save_game_stats(username, game_type, won):
 def games_hub():
     return render_template('games.html', username=current_user())
 
-@app.route('/games/music-guesser')
-def music_guesser_page():
-    username = current_user()
-    if not username:
-        return redirect('/login')
-    return render_template('music_guesser.html',
-        username=username,
-        api_key_1=os.getenv('YOUTUBE_API_KEY_1',''),
-        api_key_2=os.getenv('YOUTUBE_API_KEY_2',''),
-        api_key_3=os.getenv('YOUTUBE_API_KEY_3',''),
-        api_key_4=os.getenv('YOUTUBE_API_KEY_4',''),
-        api_key_5=os.getenv('YOUTUBE_API_KEY_5',''))
-
 @app.route('/games/music-survivor')
 def music_survivor_page():
     username = current_user()
@@ -3844,7 +3831,7 @@ def create_game_room():
         return jsonify({'error': 'DB unavailable'}), 500
     data = request.json or {}
     game_type = data.get('game_type', '')
-    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective', 'movie_battle', 'music_guesser'):
+    if game_type not in ('music_survivor', 'movie_impostor', 'song_detective', 'movie_battle'):
         return jsonify({'error': 'Invalid game type'}), 400
     code = ''.join([str(_random.randint(0, 9)) for _ in range(6)])
     room = {
@@ -3889,18 +3876,6 @@ def create_game_room():
         room['data']['song_states'] = {}
         room['data']['_shuffled'] = False
         room['data']['vote_records'] = {}  # Store all votes for reveal
-    elif game_type == 'music_guesser':
-        room['data']['songs_per_player'] = 1
-        room['data']['clip_duration'] = 5
-        room['data']['player_songs'] = {}
-        room['data']['songs'] = []
-        room['data']['current_index'] = -1
-        room['data']['phase'] = 'lobby'  # lobby|playing|buzzer|guessing|verifying|reveal|done
-        room['data']['scores'] = {username: 0}
-        room['data']['buzzer_winner'] = None
-        room['data']['current_guess'] = None
-        room['data']['attempt'] = 0  # 0=first, 1=retry
-        room['data']['buzz_times'] = {}
     elif game_type == 'movie_battle':
         room['data']['scores'] = {username: 0}
         room['data']['round'] = 0
@@ -4250,143 +4225,6 @@ def game_action(code):
             update['data.winner'] = winner
             for p in room['players']:
                 _save_game_stats(p['username'], 'song_detective', p['username'] == winner)
-
-    # ============ MUSIC GUESSER ============
-    elif game_type == 'music_guesser':
-
-        if action == 'set_config':
-            if room.get('host') != username:
-                return jsonify({'error': 'Only host'}), 403
-            spp = int(data.get('songs_per_player', 1))
-            cd = int(data.get('clip_duration', 5))
-            update['data.songs_per_player'] = max(1, min(5, spp))
-            update['data.clip_duration'] = max(3, min(10, cd))
-
-        elif action == 'submit_song':
-            song = data.get('song', {})
-            if not song.get('youtube_query'):
-                return jsonify({'error': 'Invalid song'}), 400
-            player_songs = room['data'].get('player_songs', {})
-            spp = room['data'].get('songs_per_player', 1)
-            if len(player_songs.get(username, [])) >= spp:
-                return jsonify({'error': f'Max {spp} songs'}), 400
-            entry = {
-                'id': str(uuid.uuid4())[:8],
-                'youtube_query': song['youtube_query'],
-                'title': song.get('title', 'Untitled')[:100],
-                'artist': song.get('artist', 'Unknown')[:100],
-                'thumbnail': song.get('thumbnail', ''),
-                'owner': username
-            }
-            if username not in player_songs:
-                player_songs[username] = []
-            player_songs[username].append(entry)
-            update['data.player_songs'] = player_songs
-            # Check if all submitted
-            all_players = [p['username'] for p in room['players']]
-            all_submitted = all(len(player_songs.get(p, [])) >= spp for p in all_players)
-            if all_submitted and len(all_players) >= 2:
-                all_songs = [s for songs in player_songs.values() for s in songs]
-                _random.shuffle(all_songs)
-                scores = {p: 0 for p in all_players}
-                update['data.songs'] = all_songs
-                update['data.scores'] = scores
-                update['state'] = 'playing'
-                update['data.phase'] = 'playing'
-                update['data.current_index'] = 0
-                update['data.buzzer_winner'] = None
-                update['data.current_guess'] = None
-                update['data.attempt'] = 0
-                update['data.buzz_times'] = {}
-
-        elif action == 'buzz':
-            if room['data'].get('phase') != 'playing':
-                return jsonify({'error': 'Not in playing phase'}), 400
-            songs = room['data'].get('songs', [])
-            idx = room['data'].get('current_index', 0)
-            if idx >= len(songs):
-                return jsonify({'error': 'No song'}), 400
-            owner = songs[idx]['owner']
-            if username == owner:
-                return jsonify({'error': 'Cannot buzz your own song'}), 403
-            # First buzz wins
-            buzz_times = room['data'].get('buzz_times', {})
-            if buzz_times:  # already buzzed
-                return jsonify({'ok': False})
-            buzz_times[username] = datetime.now(timezone.utc).isoformat()
-            update['data.buzz_times'] = buzz_times
-            update['data.buzzer_winner'] = username
-            update['data.phase'] = 'guessing'
-
-        elif action == 'submit_guess':
-            if room['data'].get('phase') != 'guessing':
-                return jsonify({'error': 'Not guessing phase'}), 400
-            if room['data'].get('buzzer_winner') != username:
-                return jsonify({'error': 'Not your turn'}), 403
-            guess = data.get('guess', '').strip()[:200]
-            if not guess:
-                return jsonify({'error': 'Empty guess'}), 400
-            update['data.current_guess'] = guess
-            update['data.phase'] = 'verifying'
-
-        elif action == 'verify':
-            songs = room['data'].get('songs', [])
-            idx = room['data'].get('current_index', 0)
-            if idx >= len(songs):
-                return jsonify({'error': 'No song'}), 400
-            owner = songs[idx]['owner']
-            if username != owner:
-                return jsonify({'error': 'Only song owner can verify'}), 403
-            if room['data'].get('phase') != 'verifying':
-                return jsonify({'error': 'Not verifying phase'}), 400
-            correct = bool(data.get('correct', False))
-            if correct:
-                guesser = room['data'].get('buzzer_winner')
-                scores = room['data'].get('scores', {})
-                scores[guesser] = scores.get(guesser, 0) + 1
-                update['data.scores'] = scores
-                update['data.phase'] = 'reveal'
-                update['data.reveal_correct'] = True
-            else:
-                attempt = room['data'].get('attempt', 0)
-                if attempt == 0:
-                    # Give retry — replay song, open buzzer again
-                    update['data.attempt'] = 1
-                    update['data.phase'] = 'playing'
-                    update['data.buzzer_winner'] = None
-                    update['data.current_guess'] = None
-                    update['data.buzz_times'] = {}
-                else:
-                    # Skip — reveal song
-                    update['data.phase'] = 'reveal'
-                    update['data.reveal_correct'] = False
-
-        elif action == 'next_song':
-            if room.get('host') != username:
-                return jsonify({'error': 'Only host'}), 403
-            songs = room['data'].get('songs', [])
-            next_idx = room['data'].get('current_index', 0) + 1
-            if next_idx >= len(songs):
-                scores = room['data'].get('scores', {})
-                if scores:
-                    top = max(scores.values())
-                    winners = [u for u, s in scores.items() if s == top]
-                    winner = winners[0] if len(winners) == 1 else None
-                else:
-                    winner = None
-                update['data.phase'] = 'done'
-                update['state'] = 'finished'
-                update['data.winner'] = winner
-                update['data.tied'] = len([u for u, s in scores.items() if s == max(scores.values())]) > 1 if scores else False
-                for p in room['players']:
-                    _save_game_stats(p['username'], 'music_guesser', p['username'] == winner)
-            else:
-                update['data.current_index'] = next_idx
-                update['data.phase'] = 'playing'
-                update['data.buzzer_winner'] = None
-                update['data.current_guess'] = None
-                update['data.attempt'] = 0
-                update['data.buzz_times'] = {}
 
     # ============ MUSIC SURVIVOR ============
     elif game_type == 'music_survivor':
@@ -4996,10 +4834,6 @@ def gartic_create_room():
     else:
         return jsonify({'error': 'Failed to generate unique code'}), 500
     
-    req = request.json or {}
-    time_limit = int(req.get('time_limit', 0))
-    if time_limit not in (0, 30, 60, 90, 120):
-        time_limit = 0
     room = {
         'code': code,
         'host': username,
@@ -5007,14 +4841,11 @@ def gartic_create_room():
         'state': 'lobby',
         'round': 0,
         'total_rounds': 0,
-        'time_limit': time_limit,
         'chains': {},
         'submissions': {},
         'assignments': {},
-        'reactions': {},
         'reveal_chain_idx': 0,
         'reveal_step_idx': 0,
-        'round_started_at': None,
         'created_at': datetime.now(timezone.utc)
     }
     gartic_collection.insert_one(room)
@@ -5093,10 +4924,8 @@ def gartic_start(code):
         'chains': chains,
         'submissions': {},
         'assignments': assignments,
-        'reactions': {},
         'reveal_chain_idx': 0,
-        'reveal_step_idx': -1,
-        'round_started_at': datetime.now(timezone.utc).isoformat()
+        'reveal_step_idx': -1
     }})
     socketio.emit('gartic_refresh', {}, to=code)
     return jsonify({'started': True})
@@ -5168,8 +4997,7 @@ def gartic_submit(code):
                 'submissions': {},
                 'state': 'reveal',
                 'reveal_chain_idx': 0,
-                'reveal_step_idx': -1,
-                'round_started_at': None
+                'reveal_step_idx': -1
             }})
         else:
             new_assignments = _gartic_rotate(players, assignments)
@@ -5179,8 +5007,7 @@ def gartic_submit(code):
                 'submissions': {},
                 'assignments': new_assignments,
                 'state': next_state,
-                'round': current_round + 1,
-                'round_started_at': datetime.now(timezone.utc).isoformat()
+                'round': current_round + 1
             }})
         socketio.emit('gartic_refresh', {}, to=code)
 
@@ -5231,36 +5058,6 @@ def gartic_get_drawing(drawing_id):
     return jsonify({'error': 'Invalid drawing data'}), 400
 
 
-
-
-@app.route('/api/gartic/room/<code>/react', methods=['POST'])
-def gartic_react(code):
-    username = current_user()
-    if not username:
-        return jsonify({'error': 'Login required'}), 401
-    if gartic_collection is None:
-        return jsonify({'error': 'DB unavailable'}), 500
-    room = gartic_collection.find_one({'code': code})
-    if not room:
-        return jsonify({'error': 'Room not found'}), 404
-    if username not in room.get('players', []):
-        return jsonify({'error': 'Not in this room'}), 403
-    if room.get('state') != 'reveal':
-        return jsonify({'error': 'Not in reveal state'}), 400
-    data = request.json or {}
-    chain_owner = data.get('chain_owner', '')
-    step_idx = str(data.get('step_idx', 0))
-    emoji = data.get('emoji', '')
-    if not emoji or len(emoji) > 10:
-        return jsonify({'error': 'Invalid reaction'}), 400
-    if not chain_owner or chain_owner not in room.get('players', []):
-        return jsonify({'error': 'Invalid chain owner'}), 400
-    key = f'reactions.{chain_owner}.{step_idx}.{username}'
-    gartic_collection.update_one({'code': code}, {'$set': {key: emoji}})
-    room = gartic_collection.find_one({'code': code}, {'reactions': 1, '_id': 0})
-    socketio.emit('gartic_reactions', {'reactions': room.get('reactions', {})}, to=code)
-    return jsonify({'ok': True})
-
 @app.route('/api/gartic/room/<code>/reveal_next', methods=['POST'])
 def gartic_reveal_next(code):
     username = current_user()
@@ -5282,8 +5079,6 @@ def gartic_reveal_next(code):
     step_idx = room.get('reveal_step_idx', 0)
 
     if chain_idx >= len(players):
-        gartic_collection.update_one({'code': code}, {'$set': {'state': 'done'}})
-        socketio.emit('gartic_refresh', {}, to=code)
         return jsonify({'done': True})
 
     chain_owner = players[chain_idx]
@@ -5348,8 +5143,7 @@ def gartic_leave(code):
                 nxt = 'drawing' if updated['state'] == 'writing' else 'writing'
                 gartic_collection.update_one({'code': code}, {'$set': {
                     'chains': chains, 'submissions': {}, 'assignments': new_asgn,
-                    'state': nxt, 'round': cur_round + 1,
-                    'round_started_at': datetime.now(timezone.utc).isoformat()
+                    'state': nxt, 'round': cur_round + 1
                 }})
     if room['host'] == username:
         remaining = [p for p in room['players'] if p != username]
