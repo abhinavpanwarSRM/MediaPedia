@@ -19,6 +19,13 @@
             -webkit-user-select: none;
             user-select: none;
         }
+        /* Fix 1: allow text selection in inputs and readable content */
+        input, textarea, select,
+        .game-prompt, .reveal-step .step-content,
+        .step-author, .reveal-chain-title, .room-code {
+            -webkit-user-select: text;
+            user-select: text;
+        }
         
         body {
             background: #0a0a0a;
@@ -26,7 +33,13 @@
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
+            /* Fix 7: custom thin scrollbar */
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #0a0a0a;
         }
+        body::-webkit-scrollbar { width: 6px; }
+        body::-webkit-scrollbar-track { background: #0a0a0a; }
+        body::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
 
         /* ===== TOP NAV ===== */
         .topnav {
@@ -195,7 +208,10 @@
         #room {
             display: none;
             min-height: 100vh;
+            /* Fix 6: prevent horizontal overflow from toolbar wrapping */
             padding: 1rem;
+            max-width: 100vw;
+            overflow-x: hidden;
             background: #0a0a0a;
         }
         
@@ -296,6 +312,8 @@
             border: 1px solid #2a2a2a;
             padding: 2rem;
             min-height: 400px;
+            /* Fix 6: prevent toolbar overflow */
+            overflow: hidden;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
@@ -319,6 +337,14 @@
             border-radius: 16px;
             border: 1px dashed rgba(255,217,61,0.2);
             font-weight: 600;
+            /* Fix 12: don't apply large font-size when prompt contains an image */
+            line-height: 1.4;
+        }
+        /* When prompt contains an image, reset font size context */
+        .game-prompt img {
+            font-size: 0;
+            display: block;
+            margin: 0.5rem auto 0;
         }
         
         .game-prompt strong {
@@ -337,6 +363,11 @@
             margin: 1.5rem 0;
         }
         
+        /* Fix 9: waiting player entrance animation */
+        @keyframes chipIn {
+            from { opacity: 0; transform: scale(0.85) translateY(4px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
         .waiting-player {
             padding: 0.5rem 1.2rem;
             background: rgba(255,255,255,0.05);
@@ -345,6 +376,7 @@
             border: 1px solid #2a2a2a;
             transition: all 0.3s;
             font-weight: 500;
+            animation: chipIn 0.25s ease both;
         }
         
         .waiting-player.you {
@@ -370,7 +402,10 @@
             resize: vertical;
             min-height: 120px;
             font-family: 'Poppins', sans-serif;
-            transition: all 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            /* Fix 1: allow typing on mobile */
+            -webkit-user-select: text;
+            user-select: text;
         }
         
         .submission-area textarea:focus {
@@ -401,9 +436,15 @@
             border-radius: 14px 14px 0 0;
             border: 2px solid #2a2a2a;
             border-bottom: none;
+            /* Fix 6: clip canvas overflow cleanly */
             overflow: hidden;
             touch-action: none;
             background: #fff;
+            /* smooth border glow on active drawing */
+            transition: border-color 0.3s;
+        }
+        .drawing-container:focus-within {
+            border-color: #ff6b6b44;
         }
         .drawing-container canvas {
             display: block;
@@ -426,13 +467,22 @@
             display: flex;
             flex-direction: column;
             gap: 0.45rem;
+            /* Fix 6: toolbar must not overflow game-area */
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #111;
         }
+        .drawing-tools::-webkit-scrollbar { height: 3px; }
+        .drawing-tools::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
         .toolbar-row {
             display: flex;
             align-items: center;
             gap: 0.4rem;
             flex-wrap: wrap;
+            /* Fix 6: min-width so rows don't collapse weirdly */
+            min-width: min-content;
         }
+        /* Fix 4: remove duplicate .toolbar-sep — keep only one definition */
         .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
         .toolbar-sep-h { width: 100%; height: 1px; background: #1e1e1e; }
 
@@ -478,8 +528,7 @@
         .tool-btn:hover { background: #252525; color: #fff; border-color: #444; }
         .tool-btn.active { border-color: #ff6b6b; background: rgba(255,107,107,0.15); color: #ff6b6b; }
         .tool-btn.danger:hover { border-color: #ff6b6b; color: #ff6b6b; background: rgba(255,107,107,0.08); }
-
-        .toolbar-sep { width: 1px; height: 26px; background: #2a2a2a; flex-shrink: 0; }
+        /* Fix 4: duplicate .toolbar-sep removed — defined once above */
 
         .size-track { display: flex; align-items: center; gap: 0.35rem; }
         .size-dot-preview {
@@ -539,10 +588,15 @@
             box-shadow: 0 8px 30px rgba(29,185,84,0.4);
         }
         
+        /* Fix 10: distinguish submitted state from just disabled */
         .btn-submit:disabled {
-            opacity: 0.4;
+            opacity: 0.45;
             cursor: not-allowed;
             transform: none;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            box-shadow: none;
+            color: #6bcb77;
+            border: 1px solid #6bcb7744;
         }
         
         .waiting-players {
@@ -554,6 +608,16 @@
         }
 
         /* ===== REVEAL ===== */
+        /* Fix 8: scrollable reveal content with custom scrollbar */
+        #reveal-content {
+            max-height: 65vh;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #2a2a2a #0a0a0a;
+            padding-right: 4px;
+        }
+        #reveal-content::-webkit-scrollbar { width: 5px; }
+        #reveal-content::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
         .reveal-chain {
             background: rgba(255,255,255,0.03);
             border-radius: 16px;
@@ -572,13 +636,13 @@
             gap: 0.5rem;
         }
         
+        /* Fix 3: remove transition:all from reveal-step — conflicts with stepIn animation */
         .reveal-step {
             background: rgba(0,0,0,0.3);
             border-radius: 12px;
             padding: 1rem;
             margin: 0.5rem 0;
             border-left: 3px solid #ff6b6b;
-            transition: all 0.3s;
         }
         
         .reveal-step .step-author {
@@ -642,11 +706,12 @@
         }
 
         /* ===== TOAST ===== */
+        /* Fix 5: toast slides up from below instead of just fading */
         .toast {
             position: fixed;
             bottom: 2rem;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(16px);
             background: rgba(20,20,20,0.95);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.1);
@@ -657,7 +722,7 @@
             font-size: 0.9rem;
             z-index: 9999;
             opacity: 0;
-            transition: all 0.3s;
+            transition: opacity 0.25s ease, transform 0.25s ease;
             pointer-events: none;
             max-width: 90%;
             text-align: center;
@@ -670,9 +735,10 @@
         }
 
         /* ===== REACTIONS & REVEAL ANIMATION ===== */
-        .reveal-step { animation: stepIn 0.4s ease both; }
+        /* Fix 3: animation only — no conflicting transition on reveal-step */
+        .reveal-step { animation: stepIn 0.35s ease both; }
         @keyframes stepIn {
-            from { opacity:0; transform:translateY(12px); }
+            from { opacity:0; transform:translateY(10px); }
             to   { opacity:1; transform:translateY(0); }
         }
         .reaction-bar { display:flex; gap:0.4rem; margin-top:0.5rem; flex-wrap:wrap; }
@@ -693,17 +759,30 @@
         /* ===== TIMER ===== */
         #timer-text.danger { color: #ff6b6b !important; }
         #timer-fill.danger { background: linear-gradient(90deg,#ff4757,#ff6b6b) !important; }
+        /* Fix 11: room settings panel smooth show/hide */
+        #room-settings {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        /* Fix 2: writing-prompt readable text */
+        #writing-prompt {
+            -webkit-user-select: text;
+            user-select: text;
+        }
         @media (max-width: 768px) {
             #lobby { margin: 5vh auto; padding: 2rem 1.5rem; }
             #lobby h1 { font-size: 2.2rem; }
-            .game-area { padding: 1rem; }
+            /* Fix 6: game area no side padding on tablet */
+            .game-area { padding: 1rem; overflow: hidden; }
             .drawing-container canvas { min-height: 260px; }
             .room-header { padding: 0.8rem 1rem; }
+            /* Fix 8: taller reveal scroll area on tablet */
+            #reveal-content { max-height: 70vh; }
         }
         
         @media (max-width: 480px) {
             .topnav { padding: 0.6rem 1rem; }
-            .game-prompt { font-size: 1rem; padding: 0.7rem; }
+            /* Fix 12: smaller font on mobile so image prompt fits */
+            .game-prompt { font-size: 0.95rem; padding: 0.7rem; }
             .drawing-container canvas { min-height: 220px; }
             .tool-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
             .btn { font-size: 0.9rem; padding: 0.8rem; }
@@ -711,6 +790,10 @@
             .reveal-step .step-content img { max-height: 220px; }
             .size-slider { width: 60px; }
             .opacity-slider { width: 45px; }
+            /* Fix 8: full-height reveal scroll on mobile */
+            #reveal-content { max-height: 60vh; }
+            /* Fix 9: faster chip animation on mobile */
+            .waiting-player { animation-duration: 0.18s; }
         }
     </style>
 </head>
