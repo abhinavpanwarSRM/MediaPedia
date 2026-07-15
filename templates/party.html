@@ -163,8 +163,10 @@
       #room {
         display: none;
         min-height: 100vh;
-        grid-template-columns: 1fr 280px;
+        grid-template-columns: minmax(0, 1fr) 280px;
         grid-template-rows: auto 1fr;
+        max-width: 100vw;
+        overflow-x: hidden;
       }
 
       #room.active {
@@ -991,7 +993,7 @@
       /* Responsive */
       @media (max-width: 900px) {
         #room.active {
-          grid-template-columns: 1fr 240px;
+          grid-template-columns: minmax(0, 1fr) 240px;
         }
       }
 
