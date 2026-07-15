@@ -845,17 +845,27 @@
         background: rgba(0, 0, 0, 0.9);
         backdrop-filter: blur(8px);
         animation: fadeIn 0.2s ease;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+
+      .modal[style*="display: block"] {
+        display: flex !important;
       }
 
       .modal-content {
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: 24px;
-        max-width: 400px;
-        margin: 15% auto;
+        width: 100%;
+        max-width: 420px;
+        max-height: 90vh;
         padding: 1.5rem;
         position: relative;
         animation: slideUp 0.3s ease;
+        display: flex;
+        flex-direction: column;
       }
 
       @keyframes slideUp {
@@ -891,9 +901,10 @@
       }
 
       .invite-list {
-        max-height: 350px;
+        flex: 1;
         overflow-y: auto;
         margin: 1rem 0;
+        min-height: 0;
       }
 
       .invite-item {
@@ -1044,8 +1055,7 @@
         }
 
         .modal-content {
-          margin: 30% auto;
-          width: 90%;
+          max-height: 85vh;
         }
       }
 
