@@ -1419,55 +1419,51 @@
         const container = document.getElementById("movie-details-grid");
         const loading = document.getElementById("movie-details-loading");
 
-        fetch(
-          "/api/poster?title=" +
-            encodeURIComponent(title) +
-            "&year=" +
-            encodeURIComponent(year || "") +
-            "&kind=movie",
-        )
+        fetch("/api/movie_data?title=" + encodeURIComponent(title) + "&year=" + encodeURIComponent(year || ""))
           .then((r) => r.json())
           .then((d) => {
             loading.classList.add("hidden");
             container.classList.remove("hidden");
 
-            // Show basic details
+            const genres = (d.genres || []).map(g => g.name).join(", ") || esc(myMovie?.genre || "N/A");
+            const runtime = d.runtime ? d.runtime + " min" : "N/A";
+            const releaseYear = (d.release_date || myMovie?.year || "").slice(0, 4) || "N/A";
+            const tmdbRating = d.vote_average ? d.vote_average.toFixed(1) : (myMovie?.rating || "N/A");
+            const plot = d.overview || "N/A";
+            const language = d.original_language ? d.original_language.toUpperCase() : (myMovie?.language || "N/A");
+            const budget = d.budget ? "$" + d.budget.toLocaleString() : "N/A";
+            const revenue = d.revenue ? "$" + d.revenue.toLocaleString() : "N/A";
+            const tagline = d.tagline || "";
+            const status = d.status || "N/A";
+            const productionCompanies = (d.production_companies || []).map(c => c.name).join(", ") || "N/A";
+            const productionCountries = (d.production_countries || []).map(c => c.name).join(", ") || "N/A";
+            const spokenLanguages = (d.spoken_languages || []).map(l => l.english_name || l.name).join(", ") || language;
+
             container.innerHTML = `
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Title</span>
-              <span class="movie-detail-value">${esc(myMovie?.title || "")}</span>
-            </div>
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Genre</span>
-              <span class="movie-detail-value">${esc(myMovie?.genre || "N/A")}</span>
-            </div>
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Year</span>
-              <span class="movie-detail-value">${esc(myMovie?.year || "N/A")}</span>
-            </div>
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Rating</span>
-              <span class="movie-detail-value"><span class="rating-badge">★ ${myMovie?.rating || "N/A"}</span></span>
-            </div>
-          `;
+              <div class="movie-detail-item"><span class="movie-detail-label">Title</span><span class="movie-detail-value">${esc(myMovie?.title || "")}</span></div>
+              ${tagline ? `<div class="movie-detail-item"><span class="movie-detail-label">Tagline</span><span class="movie-detail-value" style="font-style:italic;color:#aaa;">${esc(tagline)}</span></div>` : ""}
+              <div class="movie-detail-item"><span class="movie-detail-label">Genre</span><span class="movie-detail-value">${esc(genres)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Release Year</span><span class="movie-detail-value">${esc(releaseYear)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Runtime</span><span class="movie-detail-value">${esc(runtime)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Rating</span><span class="movie-detail-value"><span class="rating-badge">★ ${esc(String(tmdbRating))}</span> <span style="color:var(--muted);font-size:0.8rem;">(${(d.vote_count || 0).toLocaleString()} votes)</span></span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Language</span><span class="movie-detail-value">${esc(spokenLanguages)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Status</span><span class="movie-detail-value">${esc(status)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Budget</span><span class="movie-detail-value">${esc(budget)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Box Office</span><span class="movie-detail-value">${esc(revenue)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Production</span><span class="movie-detail-value">${esc(productionCompanies)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Country</span><span class="movie-detail-value">${esc(productionCountries)}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Plot</span><span class="movie-detail-value" style="line-height:1.6;">${esc(plot)}</span></div>
+            `;
           })
           .catch(() => {
             loading.classList.add("hidden");
             container.classList.remove("hidden");
             container.innerHTML = `
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Title</span>
-              <span class="movie-detail-value">${esc(myMovie?.title || "")}</span>
-            </div>
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Genre</span>
-              <span class="movie-detail-value">${esc(myMovie?.genre || "N/A")}</span>
-            </div>
-            <div class="movie-detail-item">
-              <span class="movie-detail-label">Year</span>
-              <span class="movie-detail-value">${esc(myMovie?.year || "N/A")}</span>
-            </div>
-          `;
+              <div class="movie-detail-item"><span class="movie-detail-label">Title</span><span class="movie-detail-value">${esc(myMovie?.title || "")}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Genre</span><span class="movie-detail-value">${esc(myMovie?.genre || "N/A")}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Year</span><span class="movie-detail-value">${esc(myMovie?.year || "N/A")}</span></div>
+              <div class="movie-detail-item"><span class="movie-detail-label">Rating</span><span class="movie-detail-value"><span class="rating-badge">★ ${myMovie?.rating || "N/A"}</span></span></div>
+            `;
           });
       }
 
