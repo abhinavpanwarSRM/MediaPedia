@@ -5041,27 +5041,12 @@ def on_game_next_song(data):
     if room.get('host') != username:
         return
 
-    game_type = room.get('game_type')
-    current_index = room.get('data', {}).get('current_index', 0)
-    preview_done = room.get('data', {}).get('preview_done', False)
-
-    # For Music Survivor, only broadcast if preview is done (voting phase)
-    if game_type == 'music_survivor':
-        # During preview, don't broadcast - host syncs via syncNextSong()
-        if not preview_done:
-            return
-        # Don't broadcast negative indices either
-        if current_index < 0:
-            return
-
-    # For Song Detective, always broadcast
-    # For Music Survivor, only broadcast after preview is done
-    # Also ensure current_index is valid (>= 0)
-    if current_index < 0:
-        current_index = 0
+    index = data.get('index')
+    if index is None or index < 0:
+        return
 
     emit('game_next_song', {
-        'index': current_index,
+        'index': index,
         'by': username
     }, to=room_code, include_self=False)
 
