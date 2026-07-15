@@ -1110,6 +1110,7 @@
         });
 
         socket.on("game_next_song", function (data) {
+          if (isHost) return;
           if (data.index === undefined || isGameFinished) return;
           if (data.index < 0) return;
           clearInterval(previewInterval);
