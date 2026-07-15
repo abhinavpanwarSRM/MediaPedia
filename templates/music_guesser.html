@@ -512,7 +512,17 @@
         const gi=document.getElementById('guess-input');
         gi.value=''; gi.disabled=false;
 
-        // If buzzer is locked (clip ended, no one buzzed), keep showing no-buzz panel
+        // Check songKey FIRST — a new key (retry/next) must reset buzzLocked before the guard below
+        const songKey = (data.current_index||0)+'-'+(data.attempt||0);
+        const keyChanged = window._lastSongKey !== songKey;
+        if(keyChanged) {
+          window._lastSongKey=songKey;
+          buzzLocked=false;
+          document.getElementById('phase-no-buzz').style.display='none';
+          document.querySelectorAll('#no-buzz-host button').forEach(b=>b.disabled=false);
+        }
+
+        // If buzzer is locked (clip ended, no one buzzed yet), keep showing no-buzz panel
         if(buzzLocked) {
           document.getElementById('phase-no-buzz').style.display='block';
           document.getElementById('no-buzz-host').style.display=isHost?'block':'none';
@@ -525,20 +535,10 @@
         document.getElementById('buzzer-wrap').style.display=isOwner?'none':'block';
         document.getElementById('owner-wait').style.display=isOwner?'block':'none';
         const buzzerBtn=document.getElementById('buzzer-btn');
-        buzzerBtn.disabled=isOwner||buzzLocked;
+        buzzerBtn.disabled=isOwner;
 
-        // Play clip if phase just changed to playing, or on retry (attempt changed)
-        const songKey = (data.current_index||0)+'-'+(data.attempt||0);
-        if(window._lastSongKey!==songKey) {
-          window._lastSongKey=songKey;
-          buzzLocked=false;
-          buzzerBtn.disabled=isOwner;
-          // hide no-buzz panel in case it was shown locally
-          document.getElementById('phase-no-buzz').style.display='none';
-          document.querySelectorAll('#no-buzz-host button').forEach(b=>b.disabled=false);
-          if(song.youtube_query&&ytReady) {
-            playClip(song.youtube_query);
-          }
+        if(keyChanged&&song.youtube_query&&ytReady) {
+          playClip(song.youtube_query);
         }
 
       } else if(phase==='guessing') {
