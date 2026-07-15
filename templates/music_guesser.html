@@ -659,7 +659,7 @@
     async function noBuzzAction(forceSkip) {
       document.querySelectorAll('#no-buzz-host button').forEach(b=>b.disabled=true);
       await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'no_buzz',force_skip:forceSkip})});
-      lastPhase=null; buzzLocked=false;
+      lastPhase=null; buzzLocked=false; window._lastSongKey=null;
       fetchState();
     }
 

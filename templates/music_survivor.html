@@ -1117,15 +1117,18 @@
           clearInterval(previewInterval);
           if (ytPlayer) ytPlayer.stopVideo();
           const onPreview = document.getElementById("screen-preview")?.classList?.contains("active");
-          if (onPreview) {
-            previewIndex = data.index;
-            playPreviewSong(data.index);
-          } else if (gameState && gameState.data?.songs?.length) {
-            previewSongs = (gameState.data.songs || []).filter(s => s && s.youtube_query);
+          // Always refresh previewSongs from latest gameState before playing
+          if (gameState?.data?.songs?.length) {
+            previewSongs = gameState.data.songs.filter(s => s && s.youtube_query);
             if (gameState.data?.preview_duration) {
               previewDuration = gameState.data.preview_duration;
               document.getElementById("preview-duration-display").textContent = previewDuration;
             }
+          }
+          if (onPreview) {
+            previewIndex = data.index;
+            playPreviewSong(data.index);
+          } else if (previewSongs.length) {
             document.getElementById("host-controls-preview").style.display = "none";
             document.getElementById("host-controls-hint").style.display = "block";
             document.getElementById("host-badge-preview").classList.add("hidden");
@@ -1483,21 +1486,16 @@
         document.getElementById("play-pause-btn").textContent = "⏸ Pause";
         ytPlayer.playVideo();
 
-        if (!isHost) return;
-
-        // Only host runs the interval to advance songs
+        // All clients run the UI interval; only host advances songs
         previewInterval = setInterval(() => {
           if (!isPlaying) return;
           previewSeconds++;
-          const progress = Math.min(
-            100,
-            (previewSeconds / previewDuration) * 100,
-          );
-          document.getElementById("preview-progress").style.width =
-            progress + "%";
+          const progress = Math.min(100, (previewSeconds / previewDuration) * 100);
+          document.getElementById("preview-progress").style.width = progress + "%";
           document.getElementById("preview-timer").textContent =
             `${Math.floor(previewSeconds / 60)}:${String(previewSeconds % 60).padStart(2, "0")} / ${previewDuration}s`;
 
+          if (!isHost) return;
           if (previewSeconds >= previewDuration) {
             clearInterval(previewInterval);
             const nextIdx = previewIndex + 1;
