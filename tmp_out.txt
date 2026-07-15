@@ -1,2 +1,10 @@
-     <!-- PHASE: buzzer pressed — show who buzzed -->
-        <div i
+previewSeconds >= previewDuration) {
+            clearInterval(previewInterval);
+            if (isHost && !_previewAdvancing) {
+              _previewAdvancing = true;
+              setTimeout(() => {
+                _previewAdvancing = false;
+                const nextIdx = previewIndex + 1;
+                if (nextIdx < previewSongs.length) {
+                  playPreviewSong(nextIdx);
+        
