@@ -1567,7 +1567,7 @@ def birthday_trigger():
     if not mutuals:
         users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
         return jsonify({'ok': True, 'sent': 0})
-    msg_text = f"🎂 It's {username}'s birthday today! Wish them on their profile → /u/{username}"
+    msg_text = f"🎂 It's {username}'s birthday today!"
     sent = 0
     for mutual in mutuals:
         msg = {
@@ -3728,20 +3728,13 @@ IMPOSTOR_QUESTIONS = [
 ]
 
 def _get_movie_pair():
-    """Return two similar-but-different popular Hindi/English movies for Movie Impostor."""
+    """Return two similar-but-different popular movies for Movie Impostor."""
     pool = df.copy()
-    # Filter to Hindi and English only
-    lang_mask = pool['Language'].str.lower().str.contains(r'hindi|english', na=False, regex=True)
-    pool = pool[lang_mask]
-    # Filter by high votes (popular) and good rating
     pool['_votes_num'] = pd.to_numeric(pool['Votes'].astype(str).str.replace(',', ''), errors='coerce')
     pool['_rating_num'] = pd.to_numeric(pool['Rating'], errors='coerce')
     pool = pool[(pool['_votes_num'] >= 100000) & (pool['_rating_num'] >= 7.0)]
     if len(pool) < 2:
-        # Fallback: just rating filter on Hindi/English
         pool = df.copy()
-        lang_mask = df['Language'].str.lower().str.contains(r'hindi|english', na=False, regex=True)
-        pool = pool[lang_mask]
         pool['_rating_num'] = pd.to_numeric(pool['Rating'], errors='coerce')
         pool = pool[pool['_rating_num'] >= 7.0]
     if len(pool) < 2:
@@ -3756,8 +3749,8 @@ def _get_movie_pair():
         same_genre = pool[pool['ID'] != m1['ID']]
     m2 = same_genre.sample(1).iloc[0]
     return (
-        {'id': int(m1['ID']), 'title': m1['Movie Name'], 'genre': m1.get('Genre', ''), 'year': m1.get('Year', ''), 'rating': m1.get('Rating', ''), 'language': m1.get('Language', '')},
-        {'id': int(m2['ID']), 'title': m2['Movie Name'], 'genre': m2.get('Genre', ''), 'year': m2.get('Year', ''), 'rating': m2.get('Rating', ''), 'language': m2.get('Language', '')}
+        {'id': int(m1['ID']), 'title': m1['Movie Name'], 'genre': m1.get('Genre', ''), 'year': m1.get('Year', ''), 'rating': m1.get('Rating', '')},
+        {'id': int(m2['ID']), 'title': m2['Movie Name'], 'genre': m2.get('Genre', ''), 'year': m2.get('Year', ''), 'rating': m2.get('Rating', '')}
     )
 
 def _save_game_stats(username, game_type, won):

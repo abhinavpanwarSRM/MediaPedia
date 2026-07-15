@@ -520,10 +520,13 @@
 
         // Play clip if phase just changed to playing, or on retry (attempt changed)
         const songKey = (data.current_index||0)+'-'+(data.attempt||0);
-        if(lastPhase!==phase||lastPhase===null||window._lastSongKey!==songKey) {
+        if(window._lastSongKey!==songKey) {
           window._lastSongKey=songKey;
           buzzLocked=false;
           buzzerBtn.disabled=isOwner;
+          // hide no-buzz panel in case it was shown locally
+          document.getElementById('phase-no-buzz').style.display='none';
+          document.querySelectorAll('#no-buzz-host button').forEach(b=>b.disabled=false);
           if(song.youtube_query&&ytReady) {
             playClip(song.youtube_query);
           }
