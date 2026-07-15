@@ -1067,17 +1067,20 @@ def user_profile(username):
 
     bio = ''
     avatar_url = ''
+    birthdate = ''
     if users_collection is not None:
-        user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'bio': 1, 'avatar_url': 1})
+        user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'bio': 1, 'avatar_url': 1, 'birthdate': 1})
         if user_doc:
             bio = user_doc.get('bio', '')
             avatar_url = user_doc.get('avatar_url', '')
+            birthdate = user_doc.get('birthdate', '')
 
     return render_template('profile.html', username=username, comments=user_comments,
                            total_likes=total_likes, avg_rating=avg_rating,
                            followers=followers, following=following,
                            is_following=is_following, viewer=viewer,
-                           user_lists=user_lists, bio=bio, avatar_url=avatar_url)
+                           user_lists=user_lists, bio=bio, avatar_url=avatar_url,
+                           birthdate=birthdate)
 
 # ===== Hot Takes Feed =====
 @app.route("/api/hot_takes")
@@ -1524,6 +1527,69 @@ def discover_users():
         if len(result) >= 8:
             break
     return jsonify(result)
+
+# ===== Birthdate =====
+@app.route('/api/profile/birthdate', methods=['POST'])
+def update_birthdate():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bd = (request.json or {}).get('birthdate', '').strip()  # format MM-DD
+    import re
+    if bd and not re.match(r'^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$', bd):
+        return jsonify({'error': 'Invalid format, use MM-DD'}), 400
+    users_collection.update_one({'username': username}, {'$set': {'birthdate': bd}})
+    return jsonify({'success': True})
+
+@app.route('/api/birthday/trigger', methods=['POST'])
+def birthday_trigger():
+    """Called when a user loads any page. Sends birthday DMs to mutuals if today is their birthday."""
+    username = current_user()
+    if not username or users_collection is None or messages_collection is None:
+        return jsonify({'ok': False})
+    user_doc = users_collection.find_one({'username': username}, {'_id': 0, 'birthdate': 1, 'last_birthday_dm_date': 1})
+    if not user_doc or not user_doc.get('birthdate'):
+        return jsonify({'ok': False})
+    today = datetime.now().strftime('%m-%d')
+    if user_doc.get('birthdate') != today:
+        return jsonify({'ok': False})
+    today_full = datetime.now().strftime('%Y-%m-%d')
+    if user_doc.get('last_birthday_dm_date') == today_full:
+        return jsonify({'ok': True, 'already_sent': True})
+    # Get mutuals
+    if follows_collection is None:
+        return jsonify({'ok': False})
+    following = {f['following'] for f in follows_collection.find({'follower': username})}
+    followers = {f['follower'] for f in follows_collection.find({'following': username})}
+    mutuals = list(following & followers)
+    if not mutuals:
+        users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
+        return jsonify({'ok': True, 'sent': 0})
+    msg_text = f"🎂 It's {username}'s birthday today! Wish them on their profile → /u/{username}"
+    sent = 0
+    for mutual in mutuals:
+        msg = {
+            'msg_id': str(uuid.uuid4())[:12],
+            'sender': 'MediaPedia',
+            'text': msg_text,
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'read': False
+        }
+        key = sorted(['MediaPedia', mutual])
+        messages_collection.update_one(
+            {'participants': key},
+            {
+                '$push': {'messages': msg},
+                '$set': {'updated_at': datetime.now(timezone.utc)},
+                '$setOnInsert': {'participants': key}
+            },
+            upsert=True
+        )
+        sent += 1
+    users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
+    return jsonify({'ok': True, 'sent': sent})
 
 # ===== Bio Update =====
 @app.route('/api/profile/bio', methods=['POST'])

@@ -301,6 +301,7 @@
         {% endif %}
         {% if viewer == username %}
           <button class="btn btn-red" onclick="toggleBioEdit()" id="bio-btn">Edit Bio</button>
+          <button class="btn btn-red" onclick="openBirthdateModal()" id="bday-btn" style="font-size:0.82rem;">🎂 Birthday</button>
         {% endif %}
       </div>
     </div>
@@ -315,6 +316,18 @@
     </div>
     {% endif %}
     <p class="bio-text" id="bio-display">{{ bio or 'No bio yet.' }}</p>
+
+    <!-- Birthday banner (shown to mutuals on birthday) -->
+    <div id="bday-banner" style="display:none;background:linear-gradient(135deg,rgba(255,105,180,0.12),rgba(255,215,0,0.1));border:1px solid rgba(255,215,0,0.3);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.4rem;display:none;align-items:center;gap:0.8rem;flex-wrap:wrap;">
+      <span style="font-size:1.6rem;">🎂</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;color:#ffd700;font-size:0.95rem;">It's {{ username }}'s birthday today!</div>
+        <div style="font-size:0.8rem;color:#aaa;margin-top:0.2rem;">Send them a birthday wish 🎉</div>
+      </div>
+      {% if viewer and viewer != username %}
+      <a href="/messages/{{ username }}" style="padding:0.45rem 1rem;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);border-radius:20px;color:#ffd700;text-decoration:none;font-size:0.82rem;font-weight:600;white-space:nowrap;">🎉 Wish them!</a>
+      {% endif %}
+    </div>
 
     <div class="stats">
       <div class="stat">
@@ -458,6 +471,20 @@
   </div>
 
   {% if viewer == username %}
+  <!-- Birthdate Modal -->
+  <div class="avatar-modal-overlay" id="bday-modal-overlay" onclick="if(event.target===this)closeBirthdateModal()">
+    <div class="avatar-modal">
+      <h3>🎂 Set Your Birthday</h3>
+      <p style="font-size:0.82rem;color:#888;margin-bottom:1rem;">Only the day and month are stored. Your mutuals will receive a birthday message on your birthday.</p>
+      <label style="font-size:0.8rem;color:#888;display:block;margin-bottom:0.4rem;">Birthday (MM-DD)</label>
+      <input type="text" id="bday-input" placeholder="e.g. 03-15 for March 15" maxlength="5" value="{{ birthdate or '' }}" style="margin-bottom:1rem;" />
+      <div class="avatar-modal-actions">
+        <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="closeBirthdateModal()">Cancel</button>
+        <button class="btn btn-red" onclick="saveBirthdate()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Avatar Modal -->
   <div class="avatar-modal-overlay" id="avatar-modal-overlay" onclick="if(event.target===this)closeAvatarModal()">
     <div class="avatar-modal">
@@ -695,6 +722,41 @@
     }
     function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+    // Birthdate modal
+    function openBirthdateModal() { document.getElementById('bday-modal-overlay').classList.add('open'); }
+    function closeBirthdateModal() { document.getElementById('bday-modal-overlay').classList.remove('open'); }
+    function saveBirthdate() {
+      const bd = document.getElementById('bday-input').value.trim();
+      fetch('/api/profile/birthdate', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({birthdate: bd}) })
+        .then(r => r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          closeBirthdateModal();
+          showToast(bd ? 'Birthday saved! 🎂' : 'Birthday removed');
+        });
+    }
+
+    // Birthday banner — show if today is profile user's birthday and viewer is mutual
+    (function checkBirthday() {
+      {% if birthdate %}
+      const bd = '{{ birthdate }}';
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const today = mm + '-' + dd;
+      if (bd === today) {
+        {% if viewer and viewer != username %}
+        // Show banner to viewer (mutual check happens server-side via DM trigger)
+        const banner = document.getElementById('bday-banner');
+        if (banner) banner.style.display = 'flex';
+        {% endif %}
+        {% if viewer == username %}
+        // Trigger DMs to mutuals (only fires once per day server-side)
+        fetch('/api/birthday/trigger', { method: 'POST' }).catch(() => {});
+        {% endif %}
+      }
+      {% endif %}
+    })();
 
     // Avatar modal
     function openAvatarModal() { document.getElementById('avatar-modal-overlay').classList.add('open'); }
