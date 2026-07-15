@@ -845,10 +845,6 @@
         padding: 1rem;
       }
 
-      .modal[style*="display: block"] {
-        display: flex !important;
-      }
-
       .modal-content {
         background: var(--card);
         border: 1px solid var(--border);
@@ -1376,7 +1372,7 @@
         var modal = document.getElementById('inviteModal');
         var listDiv = document.getElementById('mutualFollowersList');
         listDiv.innerHTML = '<div class="empty-mutuals">Loading mutual followers...</div>';
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
 
         // Fetch mutual followers from backend
         fetch('/api/mutual_followers')
