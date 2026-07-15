@@ -511,6 +511,15 @@
         // Reset guess input for next attempt
         const gi=document.getElementById('guess-input');
         gi.value=''; gi.disabled=false;
+
+        // If buzzer is locked (clip ended, no one buzzed), keep showing no-buzz panel
+        if(buzzLocked) {
+          document.getElementById('phase-no-buzz').style.display='block';
+          document.getElementById('no-buzz-host').style.display=isHost?'block':'none';
+          document.getElementById('no-buzz-wait').style.display=isHost?'none':'block';
+          return;
+        }
+
         document.getElementById('phase-playing').style.display='block';
         const isOwner=song.owner===ME;
         document.getElementById('buzzer-wrap').style.display=isOwner?'none':'block';

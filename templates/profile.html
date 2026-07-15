@@ -236,6 +236,18 @@
     }
   </style>
     <link rel="manifest" href="/static/manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script>
+    function launchConfetti() {
+      const end = Date.now() + 4000;
+      const colors = ['#ffd700','#ff69b4','#ff4500','#00cfff','#1db954'];
+      (function frame() {
+        confetti({ particleCount: 6, angle: 60, spread: 70, origin: { x: 0 }, colors });
+        confetti({ particleCount: 6, angle: 120, spread: 70, origin: { x: 1 }, colors });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+    }
+  </script>
 </head>
 <body>
   <nav class="topnav">
@@ -814,18 +826,6 @@
     setInterval(checkUnread, 15000);
   </script>
   {% endif %}
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-  <script>
-    function launchConfetti() {
-      const end = Date.now() + 4000;
-      const colors = ['#ffd700','#ff69b4','#ff4500','#00cfff','#1db954'];
-      (function frame() {
-        confetti({ particleCount: 6, angle: 60, spread: 70, origin: { x: 0 }, colors });
-        confetti({ particleCount: 6, angle: 120, spread: 70, origin: { x: 1 }, colors });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      })();
-    }
-  </script>
   <script src="/static/pwa.js"></script>
   <script>
     // ===== KOC PROFILE SECTION =====

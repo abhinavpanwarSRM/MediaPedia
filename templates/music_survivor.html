@@ -949,9 +949,10 @@
                   "⏸ Pause";
               }
               if (e.data === YT.PlayerState.PAUSED) {
-                isPlaying = false;
-                document.getElementById("play-pause-btn").textContent =
-                  "▶ Play";
+                if (isHost) {
+                  isPlaying = false;
+                  document.getElementById("play-pause-btn").textContent = "▶ Play";
+                }
               }
             },
             onError: function (e) {
@@ -1478,7 +1479,13 @@
         });
 
         previewSeconds = 0;
-        // Start the interval for progress tracking
+        isPlaying = true;
+        document.getElementById("play-pause-btn").textContent = "⏸ Pause";
+        ytPlayer.playVideo();
+
+        if (!isHost) return;
+
+        // Only host runs the interval to advance songs
         previewInterval = setInterval(() => {
           if (!isPlaying) return;
           previewSeconds++;
@@ -1493,22 +1500,16 @@
 
           if (previewSeconds >= previewDuration) {
             clearInterval(previewInterval);
-            if (isHost) {
-              const nextIdx = previewIndex + 1;
-              if (nextIdx < previewSongs.length) {
-                previewIndex = nextIdx;
-                syncNextSong(nextIdx);
-                playPreviewSong(nextIdx);
-              } else {
-                playPreviewSong(previewSongs.length);
-              }
+            const nextIdx = previewIndex + 1;
+            if (nextIdx < previewSongs.length) {
+              previewIndex = nextIdx;
+              syncNextSong(nextIdx);
+              playPreviewSong(nextIdx);
+            } else {
+              playPreviewSong(previewSongs.length);
             }
           }
         }, 1000);
-
-        ytPlayer.playVideo();
-        isPlaying = true;
-        document.getElementById("play-pause-btn").textContent = "⏸ Pause";
       }
 
       function togglePreviewPlay() {
