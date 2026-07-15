@@ -204,6 +204,21 @@
           </div>
         </div>
 
+        <!-- PHASE: no buzz -->
+        <div id="phase-no-buzz" style="display:none;">
+          <div style="text-align:center;padding:0.8rem;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:12px;">
+            <div style="font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:0.6rem;">No one buzzed!</div>
+            <div id="no-buzz-host" style="display:none;">
+              <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.8rem;" id="no-buzz-hint">Give everyone a retry?</div>
+              <div style="display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-gold" id="no-buzz-retry-btn" onclick="noBuzzAction(false)">&#x1F501; Retry</button>
+                <button class="btn btn-red" onclick="noBuzzAction(true)">&#x23ED; Skip Song</button>
+              </div>
+            </div>
+            <div id="no-buzz-wait" style="display:none;"><div class="status-msg">&#x23F3; Waiting for host...</div></div>
+          </div>
+        </div>
+
         <!-- PHASE: buzzer pressed — show who buzzed -->
         <div id="phase-buzzed" style="display:none;">
           <div class="buzzer-pressed" id="buzzed-banner">🔔 — buzzed first!</div>
@@ -486,7 +501,7 @@
       attemptBadge.style.display=attempt>0?'inline-block':'none';
 
       // Hide all phases
-      ['phase-playing','phase-buzzed','phase-verifying','phase-reveal'].forEach(id=>{
+      ['phase-playing','phase-buzzed','phase-verifying','phase-reveal','phase-no-buzz'].forEach(id=>{
         document.getElementById(id).style.display='none';
       });
 
@@ -575,6 +590,13 @@
           buzzLocked=true;
           const btn=document.getElementById('buzzer-btn');
           if(btn) btn.disabled=true;
+          document.getElementById('phase-no-buzz').style.display='block';
+          document.getElementById('no-buzz-host').style.display=isHost?'block':'none';
+          document.getElementById('no-buzz-wait').style.display=isHost?'none':'block';
+          const _att=(gameState&&gameState.data)?gameState.data.attempt||0:0;
+          document.getElementById('no-buzz-hint').textContent=_att>0?'No one buzzed again — skip this song?':'Give everyone a retry?';
+          const _rb=document.getElementById('no-buzz-retry-btn');
+          if(_rb) _rb.style.display=_att>0?'none':'inline-block';
         }
       },1000);
     }
@@ -618,6 +640,14 @@
       document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=true);
       await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'verify',correct:correct})});
       document.querySelectorAll('.verify-btns button').forEach(b=>b.disabled=false);
+      fetchState();
+    }
+
+    // ---- No Buzz ----
+    async function noBuzzAction(forceSkip) {
+      document.querySelectorAll('#no-buzz-host button').forEach(b=>b.disabled=true);
+      await fetch('/api/games/room/'+roomCode+'/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'no_buzz',force_skip:forceSkip})});
+      lastPhase=null; buzzLocked=false;
       fetchState();
     }
 

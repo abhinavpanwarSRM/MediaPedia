@@ -4361,6 +4361,23 @@ def game_action(code):
                     update['data.phase'] = 'reveal'
                     update['data.reveal_correct'] = False
 
+        elif action == 'no_buzz':
+            if room.get('host') != username:
+                return jsonify({'error': 'Only host'}), 403
+            if room['data'].get('phase') != 'playing':
+                return jsonify({'error': 'Not in playing phase'}), 400
+            force_skip = bool(data.get('force_skip', False))
+            attempt = room['data'].get('attempt', 0)
+            if not force_skip and attempt == 0:
+                update['data.attempt'] = 1
+                update['data.phase'] = 'playing'
+                update['data.buzzer_winner'] = None
+                update['data.current_guess'] = None
+                update['data.buzz_times'] = {}
+            else:
+                update['data.phase'] = 'reveal'
+                update['data.reveal_correct'] = False
+
         elif action == 'next_song':
             if room.get('host') != username:
                 return jsonify({'error': 'Only host'}), 403
