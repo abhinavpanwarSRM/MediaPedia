@@ -1653,6 +1653,9 @@
             ) {
               startPreview(room);
             } else {
+              // Keep previewSongs fresh on every poll, like Song Detective keeps allSongs fresh
+              previewSongs = (room.data.songs || []).filter(s => s && s.youtube_query);
+              if (room.data?.preview_duration) previewDuration = room.data.preview_duration;
               document.getElementById("host-controls-preview").style.display =
                 isHost ? "flex" : "none";
               document.getElementById("host-controls-hint").style.display =
