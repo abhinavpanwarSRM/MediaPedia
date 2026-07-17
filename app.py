@@ -80,19 +80,64 @@ except Exception as e:
 
 @app.route('/api/poster')
 def get_poster():
+    tmdb_id = request.args.get('id', '').strip()
     title = request.args.get('title', '').strip()
     year  = request.args.get('year', '').strip()
     kind  = request.args.get('kind', 'movie')   # 'movie' or 'tv'
+    
+    # If we have a TMDB ID, use it directly (more accurate!)
+    if tmdb_id and tmdb_id != '0':
+        cache_key = f"{kind}:id:{tmdb_id}"
+        if poster_cache_collection is not None:
+            cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'poster': 1, 'backdrop': 1})
+            if cached:
+                return jsonify({'poster': cached.get('poster',''), 'backdrop': cached.get('backdrop','')})
+        
+        token = os.getenv('TMDB_TOKEN', '')
+        if not token:
+            return jsonify({'poster': '', 'backdrop': ''})
+        
+        try:
+            # Use the /movie/{id} or /tv/{id} endpoint
+            endpoint = f"{kind}/{tmdb_id}"
+            resp = http_requests.get(
+                f'https://api.themoviedb.org/3/{endpoint}',
+                headers={'Authorization': f'Bearer {token}'},
+                params={'language': 'en-US'},
+                timeout=5
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            p = data.get('poster_path', '')
+            b = data.get('backdrop_path', '')
+            poster = f'https://image.tmdb.org/t/p/w342{p}' if p else ''
+            backdrop = f'https://image.tmdb.org/t/p/original{b}' if b else ''
+            
+            if poster_cache_collection is not None:
+                poster_cache_collection.update_one(
+                    {'title': cache_key},
+                    {'$set': {'title': cache_key, 'poster': poster, 'backdrop': backdrop}},
+                    upsert=True
+                )
+            return jsonify({'poster': poster, 'backdrop': backdrop})
+        except Exception as e:
+            log.error('TMDB poster by ID error: %s', e)
+            # If ID lookup fails, fall through to title search
+    
+    # If no valid ID or ID lookup failed, search by title
     if not title:
         return jsonify({'poster': ''})
+    
     cache_key = f"{kind}:{title}:{year}"
     if poster_cache_collection is not None:
         cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'poster': 1, 'backdrop': 1})
         if cached:
             return jsonify({'poster': cached.get('poster',''), 'backdrop': cached.get('backdrop','')})
+    
     token = os.getenv('TMDB_TOKEN', '')
     if not token:
         return jsonify({'poster': '', 'backdrop': ''})
+    
     try:
         endpoint = 'search/movie' if kind == 'movie' else 'search/tv'
         params = {'query': title, 'language': 'en-US'}
@@ -112,6 +157,7 @@ def get_poster():
             b = r.get('backdrop_path', '')
             poster   = f'https://image.tmdb.org/t/p/w342{p}'   if p else ''
             backdrop = f'https://image.tmdb.org/t/p/original{b}' if b else ''
+        
         if poster_cache_collection is not None:
             poster_cache_collection.update_one(
                 {'title': cache_key},
