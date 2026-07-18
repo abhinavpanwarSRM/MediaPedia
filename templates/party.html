@@ -159,6 +159,8 @@
       #room {
         display: none;
         min-height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
         grid-template-columns: minmax(0, 1fr) 280px;
         grid-template-rows: auto 1fr;
         max-width: 100vw;
@@ -182,6 +184,7 @@
         top: 0;
         z-index: 100;
         flex-wrap: wrap;
+        flex-shrink: 0;
       }
       .room-name {
         font-weight: 700;
@@ -276,6 +279,7 @@
         font-weight: 600;
         white-space: nowrap;
         border: none;
+        flex-shrink: 0;
       }
       .btn-invite {
         background: rgba(29, 185, 84, 0.15);
@@ -304,6 +308,8 @@
         flex-direction: column;
         gap: 1.2rem;
         height: calc(100vh - 60px);
+        min-height: 0;
+        flex: 1;
       }
 
       /* NOW PLAYING */
@@ -314,6 +320,7 @@
         padding: 1.2rem;
         text-align: center;
         transition: var(--transition);
+        flex-shrink: 0;
       }
       .now-playing:hover {
         border-color: rgba(29, 185, 84, 0.4);
@@ -460,6 +467,10 @@
         border-radius: var(--radius);
         flex-shrink: 0;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 300px;
+        min-height: 120px;
       }
       .qs-head {
         display: flex;
@@ -468,6 +479,7 @@
         padding: 0.8rem 1rem;
         border-bottom: 1px solid var(--border);
         background: rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
       }
       .qs-head h3 {
         font-size: 0.8rem;
@@ -477,8 +489,9 @@
         font-weight: 600;
       }
       #queue-list {
-        max-height: 260px;
+        flex: 1;
         overflow-y: auto;
+        min-height: 0;
       }
       .q-row {
         display: flex;
@@ -558,6 +571,7 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         padding: 1rem;
+        flex-shrink: 0;
       }
       .add-song-section h3 {
         font-size: 0.8rem;
@@ -612,9 +626,10 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
-        max-height: 280px;
+        max-height: 240px;
         overflow-y: auto;
         padding-right: 0.2rem;
+        min-height: 0;
       }
       .sr-row {
         display: flex;
@@ -625,6 +640,7 @@
         border-radius: 12px;
         transition: var(--transition);
         flex-wrap: nowrap;
+        flex-shrink: 0;
       }
       .sr-row:hover {
         background: rgba(29, 185, 84, 0.08);
@@ -686,6 +702,7 @@
         position: sticky;
         top: 60px;
         overflow: hidden;
+        min-height: 0;
       }
       .side-head {
         padding: 0.8rem 1rem;
@@ -704,12 +721,14 @@
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
+        min-height: 0;
       }
       .chat-msg {
         background: var(--card);
         border-radius: 12px;
         padding: 0.5rem 0.8rem;
         animation: fadeIn 0.2s ease;
+        flex-shrink: 0;
       }
       @keyframes fadeIn {
         from {
@@ -939,12 +958,14 @@
           border-top: 1px solid var(--border);
           height: 280px;
           position: static;
+          max-height: 300px;
         }
         .room-main {
           height: auto;
           overflow-y: visible;
           padding: 0.8rem;
           gap: 1rem;
+          max-height: none;
         }
         .room-top {
           gap: 0.4rem;
@@ -1013,6 +1034,10 @@
         }
         #queue-list {
           max-height: 180px;
+        }
+        .queue-section {
+          max-height: 220px;
+          min-height: 100px;
         }
         .q-row {
           padding: 0.5rem 0.8rem;
@@ -1101,7 +1126,7 @@
           padding: 0.5rem;
         }
         .sr-list {
-          max-height: 180px;
+          max-height: 160px;
         }
         .sr-row {
           flex-wrap: wrap;
@@ -1125,7 +1150,8 @@
           margin-right: 0;
         }
         .room-side {
-          height: 240px;
+          height: 220px;
+          max-height: 250px;
         }
         .chat-msgs {
           padding: 0.4rem 0.6rem;
@@ -1151,7 +1177,11 @@
           padding: 0.4rem 0.6rem;
         }
         #queue-list {
-          max-height: 150px;
+          max-height: 140px;
+        }
+        .queue-section {
+          max-height: 180px;
+          min-height: 80px;
         }
         .q-row {
           padding: 0.4rem 0.6rem;
