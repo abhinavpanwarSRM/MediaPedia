@@ -3755,13 +3755,15 @@ except Exception as e:
 
 IMPOSTOR_QUESTIONS = [
     "What's the most iconic scene in this movie?",
-    "Who is the best character and why?",
-    "What genre best describes this movie?",
-    "Would you recommend this movie to a friend?",
     "What's the mood of this movie?",
     "Name one word that describes this movie.",
-    "Is this movie more action or drama?",
-    "What year do you think this movie was released?",
+    "What's one thing this movie is trying to say?",
+    "What emotion should people feel when the credits roll?",
+    "What scene do you think people remember most after watching it?",
+    "If you could change ONE thing about this movie, what would it be?",
+    "Give this movie a new tagline.",
+    "What snack perfectly matches this movie?",
+    "What emoji best represents this movie?"
 ]
 
 def _get_movie_pair():
