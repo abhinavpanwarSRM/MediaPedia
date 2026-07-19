@@ -1144,6 +1144,7 @@
       try { _mutuals = await fetch('/api/mutual_followers').then(r => r.json()); } catch { _mutuals = []; }
       return _mutuals;
     }
+    function invalidateMutuals() { _mutuals = null; }
     function renderMutualChips(containerId, existingMembers) {
       fetchMutuals().then(mutuals => {
         const container = document.getElementById(containerId);
@@ -1194,30 +1195,17 @@
       const chipped = Array.from(document.querySelectorAll('#am-mutual-chips .chip-option.selected')).map(el => el.dataset.user);
       const typed = document.getElementById('am-username').value.trim();
       if (!typed && !chipped.length) { toast('Select or type a username', 'error'); return; }
-      if (chipped.length) {
-        Promise.all(chipped.map(u =>
-          fetch('/api/sw/groups/' + activeGroupId + '/members', {
-            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username: u})
-          }).then(r => r.json())
-        )).then(() => {
-          closeModal('modal-member');
-          toast(chipped.join(', ') + ' added!', 'success');
-          selectGroup(activeGroupId); loadGroups();
-        });
-        if (!typed) return;
-      }
-      if (!typed) return;
-      const username = typed;
-      if (!username) { toast('Username required', 'error'); return; }
-      fetch('/api/sw/groups/' + activeGroupId + '/members', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({username})
-      }).then(r => r.json()).then(d => {
-        if (d.error) { toast(d.error, 'error'); return; }
+
+      const toAdd = [...new Set([...chipped, ...(typed ? [typed] : [])])];
+      Promise.all(toAdd.map(u =>
+        fetch('/api/sw/groups/' + activeGroupId + '/members', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username: u})
+        }).then(r => r.json())
+      )).then(results => {
+        const err = results.find(d => d.error);
+        if (err) { toast(err.error, 'error'); return; }
         closeModal('modal-member');
-        document.getElementById('am-username').value = '';
-        toast(username + ' added!', 'success');
+        toast(toAdd.join(', ') + ' added!', 'success');
         selectGroup(activeGroupId);
         loadGroups();
       });

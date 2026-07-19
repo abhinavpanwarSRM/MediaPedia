@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template, session
 from datetime import datetime, timezone
 import uuid
+import math
 
 splitwise_bp = Blueprint('splitwise', __name__)
 
@@ -10,7 +11,17 @@ sw_settlements_col = None
 users_col = None
 follows_col = None
 
-CATEGORIES = {'food', 'travel', 'rent', 'utilities', 'entertainment', 'shopping', 'other'}
+CATEGORIES = {
+    'food', 'groceries', 'restaurant', 'cafe', 'fast_food', 'delivery', 'alcohol',
+    'travel', 'flight', 'train', 'bus', 'taxi', 'uber', 'fuel', 'parking',
+    'rent', 'utilities', 'electricity', 'water', 'gas', 'internet', 'phone',
+    'entertainment', 'movies', 'concerts', 'sports', 'games', 'streaming',
+    'shopping', 'clothing', 'electronics', 'accessories', 'cosmetics', 'gifts',
+    'health', 'medical', 'gym', 'pharmacy',
+    'education', 'tuition', 'books', 'courses',
+    'subscriptions', 'bills', 'insurance', 'personal_care',
+    'pets', 'children', 'charity', 'business', 'other'
+}
 
 
 def init_splitwise(db):
@@ -51,6 +62,8 @@ def _parse_splits(data, amount, members):
         for m in split_among:
             try:
                 v = round(float(splits_input.get(m, 0)), 2)
+                if math.isnan(v) or math.isinf(v) or v < 0:
+                    v = 0
             except (ValueError, TypeError):
                 v = 0
             result[m] = v
@@ -65,6 +78,8 @@ def _parse_splits(data, amount, members):
         for m in split_among:
             try:
                 pct = round(float(splits_input.get(m, 0)), 4)
+                if math.isnan(pct) or math.isinf(pct) or pct < 0:
+                    pct = 0
             except (ValueError, TypeError):
                 pct = 0
             result[m] = pct
@@ -329,6 +344,8 @@ def add_expense(group_id):
     desc = data.get('description', '').strip()[:200]
     try:
         amount = round(float(data.get('amount', 0)), 2)
+        if math.isnan(amount) or math.isinf(amount):
+            raise ValueError
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid amount'}), 400
     if amount <= 0:
@@ -388,6 +405,8 @@ def edit_expense(group_id, expense_id):
     desc = data.get('description', exp['description']).strip()[:200]
     try:
         amount = round(float(data.get('amount', exp['amount'])), 2)
+        if math.isnan(amount) or math.isinf(amount):
+            raise ValueError
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid amount'}), 400
     if amount <= 0:
@@ -470,6 +489,8 @@ def settle(group_id):
     to_user = data.get('to_user', '').strip()
     try:
         amount = round(float(data.get('amount', 0)), 2)
+        if math.isnan(amount) or math.isinf(amount):
+            raise ValueError
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid amount'}), 400
     if amount <= 0:
