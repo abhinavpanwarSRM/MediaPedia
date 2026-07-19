@@ -179,35 +179,6 @@ self.addEventListener("fetch", function (e) {
   }
 });
 
-// ===== PUSH NOTIFICATIONS =====
-self.addEventListener("push", function (e) {
-  var data = {};
-  try {
-    data = e.data.json();
-  } catch (err) {
-    data = { title: "MediaPedia", body: e.data ? e.data.text() : "" };
-  }
-
-  var title = data.title || "MediaPedia Party";
-  var options = {
-    body: data.body || "",
-    icon: "/static/favicon.png",
-    badge: "/static/favicon.png",
-    tag: data.tag || "mediapedia-notify",
-    renotify: true,
-    data: { url: data.url || "/party", party_id: data.party_id || null },
-    actions: data.actions || [],
-  };
-
-  e.waitUntil(
-    // Update app badge count when push arrives
-    Promise.all([
-      self.registration.showNotification(title, options),
-      "setAppBadge" in self ? self.setAppBadge(1) : Promise.resolve(),
-    ]),
-  );
-});
-
 // ===== NOTIFICATION CLICK =====
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();

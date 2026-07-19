@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, session
 from datetime import datetime, timezone
 import uuid
 import math
+from push_utils import send_push
 
 splitwise_bp = Blueprint('splitwise', __name__)
 
@@ -249,6 +250,12 @@ def add_member(group_id):
     if not g:
         return jsonify({'error': 'Group not found'}), 404
     sw_groups_col.update_one({'group_id': group_id}, {'$addToSet': {'members': new_member}})
+    send_push(new_member, {
+        'title': '👥 Added to a Split group',
+        'body': f'{username} added you to "{g["name"]}"',
+        'url': '/splitwise',
+        'tag': f'sw-member-{group_id}'
+    })
     return jsonify({'success': True})
 
 
@@ -386,6 +393,15 @@ def add_expense(group_id):
     }
     sw_expenses_col.insert_one(doc)
     doc.pop('_id', None)
+    # Notify other group members
+    for m in g['members']:
+        if m != username:
+            send_push(m, {
+                'title': f'💸 {username} added an expense',
+                'body': f'{desc or "Expense"} — ₹{amount:.2f} in {g["name"]}',
+                'url': '/splitwise',
+                'tag': f'sw-expense-{group_id}'
+            })
     return jsonify(doc), 201
 
 
@@ -509,6 +525,12 @@ def settle(group_id):
         'settled_at': _now()
     }
     sw_settlements_col.insert_one(doc)
+    send_push(to_user, {
+        'title': f'✅ {username} paid you',
+        'body': f'₹{amount:.2f} settled in {g["name"]}' + (f' — {note}' if note else ''),
+        'url': '/splitwise',
+        'tag': f'sw-settle-{group_id}'
+    })
     return jsonify({'success': True, 'settlement_id': doc['settlement_id']}), 201
 
 

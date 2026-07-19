@@ -3,7 +3,7 @@ import math
 import atexit
 import logging
 import requests as http_requests
-from pywebpush import webpush, WebPushException
+from push_utils import init_push, send_push
 from markupsafe import escape as _esc, Markup
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
@@ -1953,27 +1953,8 @@ VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS_EMAIL = os.getenv('VAPID_CLAIMS_EMAIL', 'mailto:admin@mediapedia.app')
 
-def send_push(username, payload):
-    """Send a push notification — never raises, logs errors only."""
-    if push_subs_collection is None or not VAPID_PRIVATE_KEY:
-        return
-    try:
-        doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
-        if not doc:
-            return
-        sub = doc['subscription']
-        webpush(
-            subscription_info=sub,
-            data=json.dumps(payload),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={'sub': VAPID_CLAIMS_EMAIL}
-        )
-    except WebPushException as ex:
-        log.error('WebPush failed for %s: %s', username, ex)
-        if ex.response and ex.response.status_code in (404, 410):
-            push_subs_collection.delete_one({'username': username})
-    except Exception as ex:
-        log.error('send_push unexpected error for %s: %s', username, ex)
+if push_subs_collection is not None:
+    init_push(push_subs_collection, VAPID_PRIVATE_KEY, VAPID_CLAIMS_EMAIL)
 
 @app.route('/api/liked_songs', methods=['GET'])
 def get_liked_songs():
@@ -2792,26 +2773,15 @@ def push_test():
     doc = push_subs_collection.find_one({'username': username}, {'_id': 0, 'subscription': 1})
     if not doc:
         return jsonify({'error': 'No subscription found'}), 404
-    sub = doc['subscription']
     if not VAPID_PRIVATE_KEY:
         return jsonify({'error': 'VAPID_PRIVATE_KEY not set'}), 500
-    try:
-        webpush(
-            subscription_info=sub,
-            data=json.dumps({
-                'title': '🎉 Test Notification',
-                'body': 'MediaPedia push is working!',
-                'url': '/party',
-                'tag': 'test'
-            }),
-            vapid_private_key=VAPID_PRIVATE_KEY,
-            vapid_claims={'sub': VAPID_CLAIMS_EMAIL}
-        )
-        return jsonify({'sent': True, 'to': username})
-    except WebPushException as ex:
-        return jsonify({'error': str(ex), 'response': str(ex.response.text if ex.response else '')}), 500
-    except Exception as ex:
-        return jsonify({'error': type(ex).__name__ + ': ' + str(ex)}), 500
+    send_push(username, {
+        'title': '🎉 Test Notification',
+        'body': 'MediaPedia push is working!',
+        'url': '/party',
+        'tag': 'test'
+    })
+    return jsonify({'sent': True, 'to': username})
 
 @app.route('/api/push/vapid_public_key')
 def vapid_public_key():
