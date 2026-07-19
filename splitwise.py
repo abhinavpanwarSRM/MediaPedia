@@ -385,6 +385,7 @@ def add_expense(group_id):
         'created_at': _now()
     }
     sw_expenses_col.insert_one(doc)
+    doc.pop('_id', None)
     return jsonify(doc), 201
 
 
@@ -564,6 +565,7 @@ def settle_all(group_id):
             'settled_at': _now()
         }
         sw_settlements_col.insert_one(doc)
+        doc.pop('_id', None)
         created.append(doc)
     
     return jsonify({'success': True, 'count': len(created)})
