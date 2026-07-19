@@ -1553,37 +1553,51 @@
     async function loadBgdPosters() {
       try {
         const items = await fetch('/api/authors_choice').then(r => r.json());
-        const posters = [];
-        await Promise.all(items.map(async item => {
-          const kind = item.type === 'series' ? 'tv' : 'movie';
-          try {
-            const d = await fetch(`/api/poster?title=${encodeURIComponent(item.title)}&kind=${kind}`).then(r => r.json());
-            if (d.poster) posters.push(d.poster);
-          } catch {}
-        }));
-        if (!posters.length) return;
-        // shuffle
-        for (let i = posters.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [posters[i], posters[j]] = [posters[j], posters[i]];
-        }
+        if (!items.length) return;
+
         const container = document.getElementById('bgd-posters');
         const cols = Math.ceil(window.innerWidth / 124) + 1;
         const perCol = Math.ceil(window.innerHeight / 184) + 4;
+        const totalSlots = cols * perCol * 2;
+
+        // Build column elements and placeholder img slots
+        const imgSlots = [];
         for (let c = 0; c < cols; c++) {
           const col = document.createElement('div');
           col.className = 'bgd-col';
-          // double for seamless loop
-          const colPosters = [];
-          for (let i = 0; i < perCol * 2; i++) colPosters.push(posters[(c * perCol + i) % posters.length]);
-          colPosters.forEach(src => {
+          for (let r = 0; r < perCol * 2; r++) {
             const img = document.createElement('img');
             img.className = 'bgd-poster';
-            img.src = src;
-            img.onload = () => img.classList.add('loaded');
             col.appendChild(img);
-          });
+            imgSlots.push(img);
+          }
           container.appendChild(col);
+        }
+
+        // Fetch poster URLs one at a time, fill slots as they arrive
+        let slotIdx = 0;
+        for (const item of items) {
+          if (slotIdx >= totalSlots) break;
+          const kind = item.type === 'series' ? 'tv' : 'movie';
+          try {
+            const d = await fetch(`/api/poster?title=${encodeURIComponent(item.title)}&kind=${kind}`).then(r => r.json());
+            if (!d.poster) continue;
+            // Fill current slot and its duplicate (for seamless scroll loop)
+            const fillSlot = (idx) => {
+              const img = imgSlots[idx];
+              if (!img) return;
+              img.onload = () => img.classList.add('loaded');
+              img.src = d.poster;
+            };
+            fillSlot(slotIdx);
+            // Mirror into the second half of the same column for the loop
+            const col = Math.floor(slotIdx / (perCol * 2));
+            const row = slotIdx % (perCol * 2);
+            if (row < perCol) fillSlot(col * perCol * 2 + row + perCol);
+            slotIdx++;
+            if (slotIdx % perCol === 0) slotIdx = Math.ceil(slotIdx / (perCol * 2)) * perCol * 2;
+          } catch {}
+          await new Promise(r => setTimeout(r, 120));
         }
       } catch {}
     }

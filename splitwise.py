@@ -8,12 +8,13 @@ sw_groups_col = None
 sw_expenses_col = None
 sw_settlements_col = None
 users_col = None
+follows_col = None
 
 CATEGORIES = {'food', 'travel', 'rent', 'utilities', 'entertainment', 'shopping', 'other'}
 
 
 def init_splitwise(db):
-    global sw_groups_col, sw_expenses_col, sw_settlements_col, users_col
+    global sw_groups_col, sw_expenses_col, sw_settlements_col, users_col, follows_col
     sw_groups_col = db.sw_groups
     sw_groups_col.create_index('members')
     sw_expenses_col = db.sw_expenses
@@ -21,6 +22,7 @@ def init_splitwise(db):
     sw_settlements_col = db.sw_settlements
     sw_settlements_col.create_index('group_id')
     users_col = db.users
+    follows_col = db.follows
 
 
 def _current_user():
@@ -595,14 +597,9 @@ def get_mutual_followers():
     username = _current_user()
     if not username:
         return jsonify({'error': 'Not logged in'}), 401
-    
-    user = users_col.find_one({'username': username})
-    if not user:
+    if follows_col is None:
         return jsonify([])
-    
-    following = set(user.get('following', []))
-    followers = set(user.get('followers', []))
-    mutuals = list(following & followers)
-    
-    result = [{'username': m} for m in mutuals]
-    return jsonify(result)
+    following = {f['following'] for f in follows_col.find({'follower': username})}
+    followers = {f['follower'] for f in follows_col.find({'following': username})}
+    mutuals = following & followers
+    return jsonify([{'username': m} for m in mutuals])
