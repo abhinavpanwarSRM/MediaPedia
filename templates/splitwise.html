@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Split Bills – MediaPedia</title>
+  <title>Split Bills</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
@@ -212,6 +212,11 @@
       transform:translateY(-1px);
       box-shadow:0 4px 12px rgba(46,213,115,.3);
     }
+    .btn-primary:disabled {
+      opacity:0.5;
+      cursor:not-allowed;
+      transform:none;
+    }
     .btn-danger {
       color:#ff4757;
       border-color:rgba(255,71,87,.3);
@@ -261,6 +266,10 @@
       border-color:var(--green);
       box-shadow:0 0 0 3px rgba(46,213,115,.15);
     }
+    input.error, select.error {
+      border-color:#ff4757;
+      box-shadow:0 0 0 3px rgba(255,71,87,.15);
+    }
     select option { background:#1c1c1c; color:#fff; }
     input::placeholder { color:#666; }
 
@@ -278,6 +287,15 @@
       letter-spacing:.5px;
       color:var(--muted);
       margin-bottom:.2rem;
+      display:block;
+    }
+    .form-error {
+      color:#ff4757;
+      font-size:.75rem;
+      margin-top:.3rem;
+      display:none;
+    }
+    .form-error.show {
       display:block;
     }
 
@@ -563,7 +581,7 @@
       background:rgba(255,71,87,.15);
     }
 
-    /* Simple Chip Selector for Split */
+    /* Chip Selector for Split */
     .chip-selector {
       display:flex;
       flex-wrap:wrap;
@@ -587,6 +605,20 @@
       border-color:var(--green);
       background:rgba(46,213,115,.15);
       color:#fff;
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      display:inline-block;
+      width:16px;
+      height:16px;
+      border:2px solid rgba(255,255,255,.3);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin .6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform:rotate(360deg); }
     }
 
     /* Responsive */
@@ -621,14 +653,13 @@
     <div class="nav-actions">
       <a href="/u/{{ username }}" class="user-badge">{{ username }}</a>
       <a href="/messages">Messages</a>
-      <button class="btn btn-ghost btn-sm" onclick="openActivity()">📋 Activity</button>
       <a href="/logout">Logout</a>
     </div>
   </nav>
 
   <div class="wrap">
     <div class="page-head">
-      <h1>💰 Split Bills</h1>
+      <h1>Split Bills</h1>
       <p>Track shared expenses with friends — no more awkward IOUs.</p>
     </div>
 
@@ -684,8 +715,16 @@
           <div class="card">
             <div class="sec-title">Add Expense</div>
             <div class="form-row">
-              <input id="exp-desc" placeholder="Description (e.g. Dinner)" />
-              <input id="exp-amount" type="number" min="0.01" step="0.01" placeholder="₹ Amount" style="max-width:130px;" oninput="updateSplitInputs()" />
+              <div>
+                <span class="form-label">Description</span>
+                <input id="exp-desc" placeholder="e.g. Dinner" />
+                <div class="form-error" id="desc-error">Description is required</div>
+              </div>
+              <div>
+                <span class="form-label">Amount</span>
+                <input id="exp-amount" type="number" min="0.01" step="0.01" placeholder="₹" oninput="updateSplitInputs()" />
+                <div class="form-error" id="amount-error">Enter a valid amount</div>
+              </div>
             </div>
             <div class="form-row">
               <div>
@@ -696,11 +735,55 @@
                 <span class="form-label">Category</span>
                 <select id="exp-category">
                   <option value="food">🍽 Food</option>
+                  <option value="groceries">🛒 Groceries</option>
+                  <option value="restaurant">🍴 Restaurant</option>
+                  <option value="cafe">☕ Cafe</option>
+                  <option value="fast_food">🍔 Fast Food</option>
+                  <option value="delivery">📦 Delivery</option>
+                  <option value="alcohol">🍷 Alcohol</option>
                   <option value="travel">✈️ Travel</option>
+                  <option value="flight">🛫 Flight</option>
+                  <option value="train">🚂 Train</option>
+                  <option value="bus">🚌 Bus</option>
+                  <option value="taxi">🚕 Taxi</option>
+                  <option value="uber">🚗 Uber</option>
+                  <option value="fuel">⛽ Fuel</option>
+                  <option value="parking">🅿️ Parking</option>
                   <option value="rent">🏠 Rent</option>
                   <option value="utilities">💡 Utilities</option>
-                  <option value="entertainment">🎥 Entertainment</option>
+                  <option value="electricity">⚡ Electricity</option>
+                  <option value="water">💧 Water</option>
+                  <option value="gas">🔥 Gas</option>
+                  <option value="internet">🌐 Internet</option>
+                  <option value="phone">📱 Phone</option>
+                  <option value="entertainment">🎭 Entertainment</option>
+                  <option value="movies">🎬 Movies</option>
+                  <option value="concerts">🎵 Concerts</option>
+                  <option value="sports">⚽ Sports</option>
+                  <option value="games">🎮 Games</option>
+                  <option value="streaming">📺 Streaming</option>
                   <option value="shopping">🛍 Shopping</option>
+                  <option value="clothing">👕 Clothing</option>
+                  <option value="electronics">💻 Electronics</option>
+                  <option value="accessories">⌚ Accessories</option>
+                  <option value="cosmetics">💄 Cosmetics</option>
+                  <option value="gifts">🎁 Gifts</option>
+                  <option value="health">🏥 Health</option>
+                  <option value="medical">💊 Medical</option>
+                  <option value="gym">🏋️ Gym</option>
+                  <option value="pharmacy">💉 Pharmacy</option>
+                  <option value="education">📚 Education</option>
+                  <option value="tuition">📖 Tuition</option>
+                  <option value="books">📕 Books</option>
+                  <option value="courses">🎓 Courses</option>
+                  <option value="subscriptions">📋 Subscriptions</option>
+                  <option value="bills">🧾 Bills</option>
+                  <option value="insurance">🛡️ Insurance</option>
+                  <option value="personal_care">🧴 Personal Care</option>
+                  <option value="pets">🐾 Pets</option>
+                  <option value="children">👶 Children</option>
+                  <option value="charity">🤝 Charity</option>
+                  <option value="business">💼 Business</option>
                   <option value="other" selected>📌 Other</option>
                 </select>
               </div>
@@ -712,6 +795,7 @@
             <div>
               <span class="form-label">Split with</span>
               <div class="chip-selector" id="exp-split-chips"></div>
+              <div class="form-error" id="split-error">Select at least 2 people to split with</div>
             </div>
             <div style="margin-top:.4rem;">
               <span class="form-label">Split type</span>
@@ -722,7 +806,10 @@
               </select>
             </div>
             <div class="split-inputs" id="split-inputs"></div>
-            <button class="btn btn-primary" onclick="addExpense()" style="margin-top:.6rem;">Add Expense</button>
+            <button class="btn btn-primary" id="add-expense-btn" onclick="addExpense()" style="margin-top:.6rem;">
+              <span id="add-btn-text">Add Expense</span>
+              <span id="add-btn-spinner" style="display:none;"><span class="spinner"></span></span>
+            </button>
           </div>
 
           <div class="card">
@@ -829,16 +916,6 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-activity" onclick="if(event.target===this)closeModal('modal-activity')">
-    <div class="modal-box" style="max-width:500px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
-        <h3>Recent Activity</h3>
-        <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-activity')">Close</button>
-      </div>
-      <div id="activity-list"><p class="empty">Loading...</p></div>
-    </div>
-  </div>
-
   <div class="toast" id="toast"></div>
 
   <script>
@@ -868,6 +945,74 @@
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'balances') loadBalances();
       if (name === 'settle') { loadSettlements(); populateSettleTo(); }
+    }
+
+    // ── Form Validation ──────────────────────────────────────────────────────
+    function validateExpenseForm() {
+      let isValid = true;
+      
+      // Description validation
+      const desc = document.getElementById('exp-desc').value.trim();
+      const descError = document.getElementById('desc-error');
+      if (!desc) {
+        descError.classList.add('show');
+        document.getElementById('exp-desc').classList.add('error');
+        isValid = false;
+      } else {
+        descError.classList.remove('show');
+        document.getElementById('exp-desc').classList.remove('error');
+      }
+      
+      // Amount validation
+      const amount = parseFloat(document.getElementById('exp-amount').value);
+      const amountError = document.getElementById('amount-error');
+      if (!amount || amount <= 0) {
+        amountError.classList.add('show');
+        document.getElementById('exp-amount').classList.add('error');
+        isValid = false;
+      } else {
+        amountError.classList.remove('show');
+        document.getElementById('exp-amount').classList.remove('error');
+      }
+      
+      // Split validation
+      const selected = getSelectedChips();
+      const splitError = document.getElementById('split-error');
+      if (selected.length < 2) {
+        splitError.classList.add('show');
+        isValid = false;
+      } else {
+        splitError.classList.remove('show');
+      }
+      
+      return isValid;
+    }
+
+    function resetExpenseForm() {
+      document.getElementById('exp-desc').value = '';
+      document.getElementById('exp-amount').value = '';
+      document.getElementById('exp-split-type').value = 'equal';
+      document.getElementById('split-inputs').className = 'split-inputs';
+      
+      // Reset split chips - select all members
+      const chips = document.querySelectorAll('#exp-split-chips .chip-option');
+      chips.forEach(chip => chip.classList.add('selected'));
+      
+      // Clear errors
+      document.querySelectorAll('.form-error').forEach(el => el.classList.remove('show'));
+      document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+      
+      // Set date to today
+      document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+      
+      // Reset paid by to current user
+      const paidBy = document.getElementById('exp-paid-by');
+      for (let opt of paidBy.options) {
+        if (opt.value === ME) {
+          opt.selected = true;
+          break;
+        }
+      }
     }
 
     // ── Groups ────────────────────────────────────────────────────────────────
@@ -909,6 +1054,7 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         document.querySelector('.tab').classList.add('active');
         document.getElementById('tab-expenses').classList.add('active');
+        resetExpenseForm();
         loadExpenses();
       });
     }
@@ -928,15 +1074,19 @@
 
     function populateSplitChips(members) {
       const container = document.getElementById('exp-split-chips');
-      const selected = new Set(members);
       container.innerHTML = members.map(m =>
-        `<span class="chip-option${selected.has(m) ? ' selected' : ''}" data-member="${esc(m)}" onclick="toggleSplitChip(this, '${esc(m)}')">${esc(m)}</span>`
+        `<span class="chip-option selected" data-member="${esc(m)}" onclick="toggleSplitChip(this, '${esc(m)}')">${esc(m)}</span>`
       ).join('');
     }
 
     function toggleSplitChip(el, member) {
       el.classList.toggle('selected');
       updateSplitInputs();
+      // Clear split error if enough selected
+      const selected = getSelectedChips();
+      if (selected.length >= 2) {
+        document.getElementById('split-error').classList.remove('show');
+      }
     }
 
     function getSelectedChips() {
@@ -1055,7 +1205,7 @@
           : '';
         if (!exps.length) { el.innerHTML = '<p class="empty">No expenses yet.</p>'; return; }
         el.innerHTML = exps.map(e => {
-          const icons = {food:'🍽',travel:'✈️',rent:'🏠',utilities:'💡',entertainment:'🎥',shopping:'🛍',other:'📌'};
+          const icons = {food:'🍽',groceries:'🛒',restaurant:'🍴',cafe:'☕',fast_food:'🍔',delivery:'📦',alcohol:'🍷',travel:'✈️',flight:'🛫',train:'🚂',bus:'🚌',taxi:'🚕',uber:'🚗',fuel:'⛽',parking:'🅿️',rent:'🏠',utilities:'💡',electricity:'⚡',water:'💧',gas:'🔥',internet:'🌐',phone:'📱',entertainment:'🎭',movies:'🎬',concerts:'🎵',sports:'⚽',games:'🎮',streaming:'📺',shopping:'🛍',clothing:'👕',electronics:'💻',accessories:'⌚',cosmetics:'💄',gifts:'🎁',health:'🏥',medical:'💊',gym:'🏋️',pharmacy:'💉',education:'📚',tuition:'📖',books:'📕',courses:'🎓',subscriptions:'📋',bills:'🧾',insurance:'🛡️',personal_care:'🧴',pets:'🐾',children:'👶',charity:'🤝',business:'💼',other:'📌'};
           return `<div class="exp-item">
             <div class="exp-info">
               <div class="exp-desc">${esc(e.description)}<span class="cat-badge">${icons[e.category]||'📌'} ${esc(e.category||'other')}</span></div>
@@ -1076,16 +1226,27 @@
     }
 
     function addExpense() {
-      const desc = document.getElementById('exp-desc').value.trim() || 'Expense';
+      // Validate form
+      if (!validateExpenseForm()) {
+        toast('Please fix the errors above', 'error');
+        return;
+      }
+      
+      // Show loading state
+      const btn = document.getElementById('add-expense-btn');
+      const text = document.getElementById('add-btn-text');
+      const spinner = document.getElementById('add-btn-spinner');
+      btn.disabled = true;
+      text.textContent = 'Adding...';
+      spinner.style.display = 'inline-block';
+      
+      const desc = document.getElementById('exp-desc').value.trim();
       const amount = parseFloat(document.getElementById('exp-amount').value);
       const paid_by = document.getElementById('exp-paid-by').value;
       const category = document.getElementById('exp-category').value;
       const date = document.getElementById('exp-date').value;
       const split_type = document.getElementById('exp-split-type').value;
       const split_among = getSelectedChips();
-      
-      if (!amount || amount <= 0) { toast('Enter a valid amount', 'error'); return; }
-      if (split_among.length < 2) { toast('Select at least 2 people to split with', 'error'); return; }
       
       const body = {description: desc, amount, paid_by, split_among, category, date, split_type};
       if (split_type !== 'equal') body.splits = getSplitsFromInputs(split_among, split_type);
@@ -1095,15 +1256,25 @@
         headers: {'Content-Type': 'application/json'}, 
         body: JSON.stringify(body)
       }).then(r => r.json()).then(d => {
-        if (d.error) { toast(d.error, 'error'); return; }
-        document.getElementById('exp-desc').value = '';
-        document.getElementById('exp-amount').value = '';
-        document.getElementById('exp-split-type').value = 'equal';
-        document.getElementById('split-inputs').className = 'split-inputs';
+        // Reset button state
+        btn.disabled = false;
+        text.textContent = 'Add Expense';
+        spinner.style.display = 'none';
+        
+        if (d.error) { 
+          toast(d.error, 'error'); 
+          return; 
+        }
         toast('✅ Expense added!', 'success');
+        resetExpenseForm();
         loadExpenses(); 
         loadSummary();
         loadGroups();
+      }).catch(err => {
+        btn.disabled = false;
+        text.textContent = 'Add Expense';
+        spinner.style.display = 'none';
+        toast('Failed to add expense', 'error');
       });
     }
 
@@ -1296,31 +1467,6 @@
       const sel = document.getElementById('settle-to');
       for (let o of sel.options) { if (o.value === toUser) { o.selected = true; break; } }
       document.getElementById('settle-amount').value = parseFloat(amount).toFixed(2);
-    }
-
-    // ── Activity ──────────────────────────────────────────────────────────────
-    function openActivity() {
-      openModal('modal-activity');
-      const el = document.getElementById('activity-list');
-      el.innerHTML = '<p class="empty">Loading...</p>';
-      fetch('/api/sw/activity')
-        .then(r => r.json())
-        .then(data => {
-          if (!data.length) {
-            el.innerHTML = '<p class="empty">No recent activity</p>';
-            return;
-          }
-          el.innerHTML = data.map(a => 
-            `<div style="padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
-              <div style="font-weight:600;font-size:.85rem;">${esc(a.username)}</div>
-              <div style="color:var(--muted);font-size:.8rem;">${esc(a.action)}</div>
-              <div style="color:var(--muted);font-size:.65rem;margin-top:.05rem;">${(a.timestamp||'').slice(0,16).replace('T',' ')}</div>
-            </div>`
-          ).join('');
-        })
-        .catch(() => {
-          el.innerHTML = '<p class="empty" style="color:#ff4757;">Failed to load activity</p>';
-        });
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
