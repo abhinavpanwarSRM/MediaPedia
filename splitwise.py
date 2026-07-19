@@ -31,7 +31,7 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _parse_splits(data, members, amount):
+def _parse_splits(data, amount, members):
     """
     Returns a dict {member: share_amount} based on split_type.
     split_type: 'equal' | 'exact' | 'percent'
@@ -71,9 +71,59 @@ def _parse_splits(data, members, amount):
             return None, f'Percentages sum to {total_pct:.2f}%, must equal 100%'
         return {m: round(amount * pct / 100, 2) for m, pct in result.items()}, None
 
-    # equal (default)
-    share = round(amount / len(split_among), 2)
-    return {m: share for m in split_among}, None
+    # equal (default) — distribute rounding remainder to first member
+    n = len(split_among)
+    share = round(amount / n, 2)
+    result = {m: share for m in split_among}
+    remainder = round(amount - share * n, 2)
+    if remainder:
+        result[split_among[0]] = round(result[split_among[0]] + remainder, 2)
+    return result, None
+
+
+def _compute_balances(group_id):
+    expenses = list(sw_expenses_col.find({'group_id': group_id}, {'_id': 0}))
+    settlements = list(sw_settlements_col.find({'group_id': group_id}, {'_id': 0}))
+
+    net = {}
+
+    for exp in expenses:
+        paid_by = exp['paid_by']
+        member_shares = exp.get('member_shares')
+        if not member_shares:
+            share = exp.get('share', 0)
+            member_shares = {m: share for m in exp.get('split_among', [])}
+
+        for member, share in member_shares.items():
+            if member == paid_by:
+                continue
+            net[paid_by] = net.get(paid_by, 0) + share
+            net[member] = net.get(member, 0) - share
+
+    for s in settlements:
+        net[s['from_user']] = net.get(s['from_user'], 0) + s['amount']
+        net[s['to_user']] = net.get(s['to_user'], 0) - s['amount']
+
+    creditors = sorted([(u, v) for u, v in net.items() if v > 0.005], key=lambda x: -x[1])
+    debtors = sorted([(u, -v) for u, v in net.items() if v < -0.005], key=lambda x: -x[1])
+
+    transactions = []
+    i, j = 0, 0
+    creditors = list(creditors)
+    debtors = list(debtors)
+    while i < len(creditors) and j < len(debtors):
+        cred_user, cred_amt = creditors[i]
+        debt_user, debt_amt = debtors[j]
+        settle = round(min(cred_amt, debt_amt), 2)
+        transactions.append({'from': debt_user, 'to': cred_user, 'amount': settle})
+        creditors[i] = (cred_user, round(cred_amt - settle, 2))
+        debtors[j] = (debt_user, round(debt_amt - settle, 2))
+        if creditors[i][1] < 0.005:
+            i += 1
+        if debtors[j][1] < 0.005:
+            j += 1
+
+    return {u: round(v, 2) for u, v in net.items()}, transactions
 
 
 # ── Page ──────────────────────────────────────────────────────────────────────
@@ -122,6 +172,23 @@ def create_group():
     }
     sw_groups_col.insert_one(doc)
     return jsonify({'group_id': group_id, 'name': name, 'members': members}), 201
+
+
+@splitwise_bp.route('/api/sw/groups/<group_id>', methods=['PATCH'])
+def rename_group(group_id):
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    g = sw_groups_col.find_one({'group_id': group_id, 'members': username})
+    if not g:
+        return jsonify({'error': 'Not found'}), 404
+    if g.get('created_by') != username:
+        return jsonify({'error': 'Only the group creator can rename it'}), 403
+    name = (request.json or {}).get('name', '').strip()[:60]
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    sw_groups_col.update_one({'group_id': group_id}, {'$set': {'name': name}})
+    return jsonify({'success': True, 'name': name})
 
 
 @splitwise_bp.route('/api/sw/groups/<group_id>', methods=['GET'])
@@ -184,6 +251,22 @@ def remove_member(group_id, member):
     return jsonify({'success': True})
 
 
+# ── Groups with balance hints ────────────────────────────────────────────────
+
+@splitwise_bp.route('/api/sw/groups_with_balances', methods=['GET'])
+def get_groups_with_balances():
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    groups = list(sw_groups_col.find({'members': username}, {'_id': 0}))
+    result = []
+    for g in groups:
+        net, _ = _compute_balances(g['group_id'])
+        g['my_net'] = round(net.get(username, 0), 2)
+        result.append(g)
+    return jsonify(result)
+
+
 # ── Summary (cross-group) ─────────────────────────────────────────────────────
 
 @splitwise_bp.route('/api/sw/summary', methods=['GET'])
@@ -218,8 +301,18 @@ def get_expenses(group_id):
     g = sw_groups_col.find_one({'group_id': group_id, 'members': username})
     if not g:
         return jsonify({'error': 'Not found'}), 404
-    expenses = list(sw_expenses_col.find({'group_id': group_id}, {'_id': 0}).sort('date', -1))
-    return jsonify(expenses)
+    query = {'group_id': group_id}
+    cat = request.args.get('category')
+    paid = request.args.get('paid_by')
+    if cat:
+        query['category'] = cat
+    if paid:
+        query['paid_by'] = paid
+    skip = int(request.args.get('skip', 0))
+    limit = int(request.args.get('limit', 50))
+    total = sw_expenses_col.count_documents(query)
+    expenses = list(sw_expenses_col.find(query, {'_id': 0}).sort('date', -1).skip(skip).limit(limit))
+    return jsonify({'expenses': expenses, 'total': total, 'skip': skip, 'limit': limit})
 
 
 @splitwise_bp.route('/api/sw/groups/<group_id>/expenses', methods=['POST'])
@@ -246,7 +339,14 @@ def add_expense(group_id):
         category = 'other'
     date = data.get('date', _now()[:10])
 
-    member_shares, err = _parse_splits(data, g['members'], amount)
+    split_among_req = [m.strip() for m in data.get('split_among', g['members']) if m.strip()]
+    if not split_among_req:
+        return jsonify({'error': 'split_among cannot be empty'}), 400
+    for m in split_among_req:
+        if m not in g['members']:
+            return jsonify({'error': f'split_among member "{m}" is not in the group'}), 400
+
+    member_shares, err = _parse_splits(data, amount, g['members'])
     if err:
         return jsonify({'error': err}), 400
 
@@ -298,7 +398,14 @@ def edit_expense(group_id, expense_id):
         category = 'other'
     date = data.get('date', exp.get('date', _now()[:10]))
 
-    member_shares, err = _parse_splits(data, g['members'], amount)
+    split_among_req = [m.strip() for m in data.get('split_among', exp.get('split_among', g['members'])) if m.strip()]
+    if not split_among_req:
+        return jsonify({'error': 'split_among cannot be empty'}), 400
+    for m in split_among_req:
+        if m not in g['members']:
+            return jsonify({'error': f'split_among member "{m}" is not in the group'}), 400
+
+    member_shares, err = _parse_splits(data, amount, g['members'])
     if err:
         return jsonify({'error': err}), 400
 
@@ -335,52 +442,6 @@ def delete_expense(group_id, expense_id):
 
 # ── Balances ──────────────────────────────────────────────────────────────────
 
-def _compute_balances(group_id):
-    expenses = list(sw_expenses_col.find({'group_id': group_id}, {'_id': 0}))
-    settlements = list(sw_settlements_col.find({'group_id': group_id}, {'_id': 0}))
-
-    net = {}
-
-    for exp in expenses:
-        paid_by = exp['paid_by']
-        member_shares = exp.get('member_shares')
-        # fallback for old docs that only have 'share'
-        if not member_shares:
-            share = exp.get('share', 0)
-            member_shares = {m: share for m in exp.get('split_among', [])}
-
-        for member, share in member_shares.items():
-            if member == paid_by:
-                continue
-            net[paid_by] = net.get(paid_by, 0) + share
-            net[member] = net.get(member, 0) - share
-
-    for s in settlements:
-        net[s['from_user']] = net.get(s['from_user'], 0) + s['amount']
-        net[s['to_user']] = net.get(s['to_user'], 0) - s['amount']
-
-    creditors = sorted([(u, v) for u, v in net.items() if v > 0.005], key=lambda x: -x[1])
-    debtors = sorted([(u, -v) for u, v in net.items() if v < -0.005], key=lambda x: -x[1])
-
-    transactions = []
-    i, j = 0, 0
-    creditors = list(creditors)
-    debtors = list(debtors)
-    while i < len(creditors) and j < len(debtors):
-        cred_user, cred_amt = creditors[i]
-        debt_user, debt_amt = debtors[j]
-        settle = round(min(cred_amt, debt_amt), 2)
-        transactions.append({'from': debt_user, 'to': cred_user, 'amount': settle})
-        creditors[i] = (cred_user, round(cred_amt - settle, 2))
-        debtors[j] = (debt_user, round(debt_amt - settle, 2))
-        if creditors[i][1] < 0.005:
-            i += 1
-        if debtors[j][1] < 0.005:
-            j += 1
-
-    return {u: round(v, 2) for u, v in net.items()}, transactions
-
-
 @splitwise_bp.route('/api/sw/groups/<group_id>/balances', methods=['GET'])
 def get_balances(group_id):
     username = _current_user()
@@ -413,12 +474,14 @@ def settle(group_id):
         return jsonify({'error': 'Amount must be positive'}), 400
     if to_user not in g['members']:
         return jsonify({'error': 'to_user must be a group member'}), 400
+    note = (data.get('note') or '').strip()[:200]
     doc = {
         'settlement_id': str(uuid.uuid4())[:10],
         'group_id': group_id,
         'from_user': username,
         'to_user': to_user,
         'amount': amount,
+        'note': note,
         'settled_at': _now()
     }
     sw_settlements_col.insert_one(doc)
@@ -452,3 +515,94 @@ def delete_settlement(group_id, settlement_id):
         return jsonify({'error': 'Not authorized'}), 403
     sw_settlements_col.delete_one({'settlement_id': settlement_id})
     return jsonify({'success': True})
+
+
+@splitwise_bp.route('/api/sw/groups/<group_id>/settle_all', methods=['POST'])
+def settle_all(group_id):
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    g = sw_groups_col.find_one({'group_id': group_id, 'members': username})
+    if not g:
+        return jsonify({'error': 'Not found'}), 404
+    
+    net, transactions = _compute_balances(group_id)
+    
+    created = []
+    for t in transactions:
+        doc = {
+            'settlement_id': str(uuid.uuid4())[:10],
+            'group_id': group_id,
+            'from_user': t['from'],
+            'to_user': t['to'],
+            'amount': t['amount'],
+            'note': 'Settled all balances',
+            'settled_at': _now()
+        }
+        sw_settlements_col.insert_one(doc)
+        created.append(doc)
+    
+    return jsonify({'success': True, 'count': len(created)})
+
+
+# ── Activity Feed ────────────────────────────────────────────────────────────
+
+@splitwise_bp.route('/api/sw/activity', methods=['GET'])
+def get_activity():
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    groups = list(sw_groups_col.find({'members': username}, {'_id': 0}))
+    group_ids = [g['group_id'] for g in groups]
+    
+    if not group_ids:
+        return jsonify([])
+    
+    expenses = list(sw_expenses_col.find(
+        {'group_id': {'$in': group_ids}},
+        {'_id': 0}
+    ).sort('created_at', -1).limit(30))
+    
+    settlements = list(sw_settlements_col.find(
+        {'group_id': {'$in': group_ids}},
+        {'_id': 0}
+    ).sort('settled_at', -1).limit(30))
+    
+    activities = []
+    for e in expenses:
+        activities.append({
+            'username': e.get('created_by', e.get('paid_by', '')),
+            'action': f"added expense '{e.get('description', '')}' of ₹{e.get('amount', 0)}",
+            'timestamp': e.get('created_at', e.get('date', ''))
+        })
+    for s in settlements:
+        activities.append({
+            'username': s['from_user'],
+            'action': f"settled ₹{s['amount']} with {s['to_user']}",
+            'timestamp': s['settled_at']
+        })
+    
+    activities.sort(key=lambda x: x['timestamp'], reverse=True)
+    return jsonify(activities[:50])
+
+
+# ── Mutual Followers ─────────────────────────────────────────────────────────
+
+@splitwise_bp.route('/api/mutual_followers', methods=['GET'])
+def get_mutual_followers():
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = users_col.find_one({'username': username})
+    if not user:
+        return jsonify([])
+    
+    following = set(user.get('following', []))
+    followers = set(user.get('followers', []))
+    mutuals = list(following & followers)
+    
+    result = [{'username': m} for m in mutuals]
+    return jsonify(result)
