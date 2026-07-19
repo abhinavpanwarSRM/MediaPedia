@@ -924,8 +924,9 @@
     <div class="modal-box">
       <h3>Create Group</h3>
       <input id="cg-name" placeholder="Group name" style="margin-bottom:.6rem;" />
-      <span class="form-label">Add friends (comma-separated)</span>
-      <input id="cg-members" placeholder="alice, bob, charlie" style="margin-top:.2rem;" />
+      <span class="form-label">Add friends</span>
+      <div class="chip-selector" id="cg-mutual-chips" style="margin:.3rem 0 .4rem;"></div>
+      <input id="cg-members" placeholder="or type usernames, comma-separated" style="margin-top:.2rem;" />
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal('modal-create')">Cancel</button>
         <button class="btn btn-primary" onclick="createGroup()">Create</button>
@@ -936,7 +937,9 @@
   <div class="modal-overlay" id="modal-member" onclick="if(event.target===this)closeModal('modal-member')">
     <div class="modal-box">
       <h3>Add Member</h3>
-      <span class="form-label">Username</span>
+      <span class="form-label">Mutuals</span>
+      <div class="chip-selector" id="am-mutual-chips" style="margin:.3rem 0 .4rem;"></div>
+      <span class="form-label">Or type username</span>
       <input id="am-username" placeholder="Username" style="margin-top:.2rem;" />
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal('modal-member')">Cancel</button>
@@ -1135,16 +1138,36 @@
     }
 
     // ── Create / Add Member ──────────────────────────────────────────────────
+    let _mutuals = null;
+    async function fetchMutuals() {
+      if (_mutuals) return _mutuals;
+      try { _mutuals = await fetch('/api/mutual_followers').then(r => r.json()); } catch { _mutuals = []; }
+      return _mutuals;
+    }
+    function renderMutualChips(containerId, existingMembers) {
+      fetchMutuals().then(mutuals => {
+        const container = document.getElementById(containerId);
+        const available = mutuals.filter(m => !existingMembers || !existingMembers.includes(m.username));
+        if (!available.length) { container.innerHTML = '<span style="color:var(--muted);font-size:.75rem;">No mutuals to suggest</span>'; return; }
+        container.innerHTML = available.map(m =>
+          `<span class="chip-option" data-user="${esc(m.username)}" onclick="this.classList.toggle('selected')">${esc(m.username)}</span>`
+        ).join('');
+      });
+    }
+
     function openCreateGroup() {
       openModal('modal-create');
       document.getElementById('cg-name').value = '';
       document.getElementById('cg-members').value = '';
+      renderMutualChips('cg-mutual-chips', null);
     }
 
     function createGroup() {
       const name = document.getElementById('cg-name').value.trim();
       const raw = document.getElementById('cg-members').value;
-      const members = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const typed = raw.split(',').map(s => s.trim()).filter(Boolean);
+      const chipped = Array.from(document.querySelectorAll('#cg-mutual-chips .chip-option.selected')).map(el => el.dataset.user);
+      const members = [...new Set([...typed, ...chipped])];
       if (!name) { toast('Group name required', 'error'); return; }
       fetch('/api/sw/groups', {
         method: 'POST',
@@ -1164,10 +1187,27 @@
     function openAddMember() {
       openModal('modal-member');
       document.getElementById('am-username').value = '';
+      renderMutualChips('am-mutual-chips', activeGroup ? activeGroup.members : []);
     }
 
     function addMember() {
-      const username = document.getElementById('am-username').value.trim();
+      const chipped = Array.from(document.querySelectorAll('#am-mutual-chips .chip-option.selected')).map(el => el.dataset.user);
+      const typed = document.getElementById('am-username').value.trim();
+      if (!typed && !chipped.length) { toast('Select or type a username', 'error'); return; }
+      if (chipped.length) {
+        Promise.all(chipped.map(u =>
+          fetch('/api/sw/groups/' + activeGroupId + '/members', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username: u})
+          }).then(r => r.json())
+        )).then(() => {
+          closeModal('modal-member');
+          toast(chipped.join(', ') + ' added!', 'success');
+          selectGroup(activeGroupId); loadGroups();
+        });
+        if (!typed) return;
+      }
+      if (!typed) return;
+      const username = typed;
       if (!username) { toast('Username required', 'error'); return; }
       fetch('/api/sw/groups/' + activeGroupId + '/members', {
         method: 'POST',
