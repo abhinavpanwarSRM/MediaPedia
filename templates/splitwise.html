@@ -125,6 +125,19 @@
     .split-inputs.show { display:block; }
     .split-row { display:flex; align-items:center; gap:.5rem; margin-bottom:.4rem; font-size:.85rem; }
     .split-row input { max-width:100px; }
+
+    /* Mutual suggestions */
+    .mutual-chips { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.5rem; min-height:1rem; }
+    .mutual-chip {
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(46,213,115,.12); border:1px solid rgba(46,213,115,.3);
+      border-radius:20px; padding:.2rem .65rem; font-size:.78rem; cursor:pointer;
+      color:var(--green); transition:background .15s;
+    }
+    .mutual-chip:hover { background:rgba(46,213,115,.25); }
+    .mutual-chip.selected { background:rgba(46,213,115,.3); border-color:var(--green); }
+    .mutual-chip .chip-x { color:var(--muted); font-size:.7rem; margin-left:.1rem; }
+    .mutual-label { font-size:.72rem; color:var(--muted); margin-bottom:.3rem; }
     @media(max-width:650px) {
       .main-grid { grid-template-columns:1fr !important; }
       .form-row { flex-direction:column; }
@@ -333,11 +346,13 @@
 
   <!-- Create Group Modal -->
   <div id="modal-create" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeModal('modal-create')">
-    <div style="background:#1c1c1c;border:1px solid var(--border);border-radius:14px;width:100%;max-width:400px;padding:1.4rem;">
+    <div style="background:#1c1c1c;border:1px solid var(--border);border-radius:14px;width:100%;max-width:420px;padding:1.4rem;">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Create Group</h3>
-      <input id="cg-name" placeholder="Group name (e.g. Goa Trip)" style="margin-bottom:.7rem;" />
-      <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem;">Add friends (usernames, comma-separated)</div>
-      <input id="cg-members" placeholder="alice, bob, charlie" style="margin-bottom:1rem;" />
+      <input id="cg-name" placeholder="Group name (e.g. Goa Trip)" style="margin-bottom:.8rem;" />
+      <div class="mutual-label">Add from mutuals</div>
+      <div class="mutual-chips" id="cg-mutual-chips"></div>
+      <div class="mutual-label" style="margin-top:.4rem;">Or type usernames (comma-separated)</div>
+      <input id="cg-members" placeholder="alice, bob" style="margin-bottom:1rem;" />
       <div style="display:flex;gap:.6rem;justify-content:flex-end;">
         <button class="btn btn-ghost" onclick="closeModal('modal-create')">Cancel</button>
         <button class="btn btn-green" onclick="createGroup()">Create</button>
@@ -349,6 +364,9 @@
   <div id="modal-member" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center;padding:1rem;" onclick="if(event.target===this)closeModal('modal-member')">
     <div style="background:#1c1c1c;border:1px solid var(--border);border-radius:14px;width:100%;max-width:360px;padding:1.4rem;">
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Add Member</h3>
+      <div class="mutual-label">Pick from mutuals</div>
+      <div class="mutual-chips" id="am-mutual-chips"></div>
+      <div class="mutual-label" style="margin-top:.4rem;">Or type a username</div>
       <input id="am-username" placeholder="Username" style="margin-bottom:1rem;" />
       <div style="display:flex;gap:.6rem;justify-content:flex-end;">
         <button class="btn btn-ghost" onclick="closeModal('modal-member')">Cancel</button>
@@ -470,7 +488,32 @@
       ).join('');
     }
 
-    function openCreateGroup() { openModal('modal-create'); }
+    // ── Mutual followers ──────────────────────────────────────────────────────
+    let mutuals = [];
+    fetch('/api/mutual_followers').then(r => r.json()).then(data => {
+      mutuals = data.map(u => u.username);
+    }).catch(() => {});
+
+    function renderChips(containerId, selectedSet, onToggle) {
+      const el = document.getElementById(containerId);
+      if (!mutuals.length) { el.innerHTML = '<span style="color:var(--muted);font-size:.75rem;">No mutuals yet</span>'; return; }
+      el.innerHTML = mutuals.map(m =>
+        `<span class="mutual-chip${selectedSet.has(m) ? ' selected' : ''}" onclick="(${onToggle.toString()})(this,'${esc(m)}')">${esc(m)}</span>`
+      ).join('');
+    }
+
+    function openCreateGroup() {
+      openModal('modal-create');
+      const sel = new Set();
+      renderChips('cg-mutual-chips', sel, function(el, name) {
+        el.classList.toggle('selected');
+        const inp = document.getElementById('cg-members');
+        const cur = inp.value.split(',').map(s=>s.trim()).filter(Boolean);
+        if (el.classList.contains('selected')) { if (!cur.includes(name)) cur.push(name); }
+        else { const i = cur.indexOf(name); if (i > -1) cur.splice(i,1); }
+        inp.value = cur.join(', ');
+      });
+    }
     function createGroup() {
       const name = document.getElementById('cg-name').value.trim();
       const raw = document.getElementById('cg-members').value;
@@ -491,7 +534,19 @@
       });
     }
 
-    function openAddMember() { openModal('modal-member'); }
+    function openAddMember() {
+      openModal('modal-member');
+      document.getElementById('am-username').value = '';
+      const existing = activeGroup ? new Set(activeGroup.members) : new Set();
+      const available = mutuals.filter(m => !existing.has(m));
+      const el = document.getElementById('am-mutual-chips');
+      if (!available.length) { el.innerHTML = '<span style="color:var(--muted);font-size:.75rem;">No new mutuals to add</span>'; }
+      else {
+        el.innerHTML = available.map(m =>
+          `<span class="mutual-chip" onclick="document.getElementById('am-username').value='${esc(m)}';document.querySelectorAll('#am-mutual-chips .mutual-chip').forEach(c=>c.classList.remove('selected'));this.classList.add('selected');">${esc(m)}</span>`
+        ).join('');
+      }
+    }
     function addMember() {
       const username = document.getElementById('am-username').value.trim();
       if (!username) { toast('Username required'); return; }
