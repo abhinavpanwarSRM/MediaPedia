@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Split Bills – MediaPedia</title>
+  <title>Split Bills</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <style>
-    :root { --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08);
-            --primary:#e50914; --green:#2ed573; --blue:#5799ef; --text:#fff; --muted:#888; }
+    :root { --bg:#141414; --card:rgba(15,15,15,0.72); --border:rgba(255,255,255,0.10);
+            --primary:#e50914; --green:#2ed573; --blue:#5799ef; --text:#fff; --muted:#aaa; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif;
            min-height:100vh; padding-bottom:3rem; animation:fadeIn .4s ease-out; }
@@ -15,8 +15,8 @@
     /* Nav */
     .topnav { display:flex; justify-content:space-between; align-items:center;
               padding:.9rem 1.5rem; border-bottom:1px solid var(--border);
-              position:sticky; top:0; background:rgba(20,20,20,.95);
-              backdrop-filter:blur(8px); z-index:100; }
+              position:sticky; top:0; background:rgba(10,10,10,.80);
+              backdrop-filter:blur(14px); z-index:100; }
     .topnav a { color:var(--muted); text-decoration:none; font-size:.85rem; }
     .topnav a:hover { color:#fff; }
     .brand { color:var(--primary) !important; font-weight:700; font-size:1rem; }
@@ -29,7 +29,8 @@
     .page-head p { color:var(--muted); font-size:.88rem; margin-top:.3rem; }
 
     /* Cards */
-    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.2rem; margin-bottom:1rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:1.2rem; margin-bottom:1rem;
+            backdrop-filter:blur(12px); }
 
     /* Buttons */
     .btn { padding:.5rem 1rem; border-radius:8px; font-size:.85rem; font-weight:600;
@@ -128,9 +129,49 @@
       .main-grid { grid-template-columns:1fr !important; }
       .form-row { flex-direction:column; }
     }
+
+    /* ── Movie poster background ── */
+    #bg-reel {
+      position:fixed; inset:0; z-index:-1;
+      display:flex; overflow:hidden;
+    }
+    .bg-poster {
+      flex:1; min-width:0;
+      position:relative; overflow:hidden;
+    }
+    .bg-poster img {
+      width:100%; height:100%;
+      object-fit:cover; object-position:center top;
+      display:block;
+      opacity:0;
+      transition:opacity 1.2s ease;
+      animation:kenburns 20s ease-in-out infinite alternate;
+    }
+    @keyframes kenburns {
+      from { transform:scale(1)    translateY(0); }
+      to   { transform:scale(1.08) translateY(-3%); }
+    }
+    .bg-poster:nth-child(2) img { animation-delay:-4s; }
+    .bg-poster:nth-child(3) img { animation-delay:-8s; }
+    .bg-poster:nth-child(4) img { animation-delay:-12s; }
+    .bg-poster:nth-child(5) img { animation-delay:-16s; }
+    /* cinematic overlay — dark enough to read, light enough to see posters */
+    #bg-reel::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,.60) 0%, rgba(0,0,0,.50) 50%, rgba(0,0,0,.75) 100%);
+      pointer-events:none;
+    }
   </style>
 </head>
 <body>
+  <div id="bg-reel">
+    <div class="bg-poster"><img id="bp0" alt="" /></div>
+    <div class="bg-poster"><img id="bp1" alt="" /></div>
+    <div class="bg-poster"><img id="bp2" alt="" /></div>
+    <div class="bg-poster"><img id="bp3" alt="" /></div>
+    <div class="bg-poster"><img id="bp4" alt="" /></div>
+  </div>
+
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
     <div style="display:flex;gap:1rem;align-items:center;">
@@ -142,7 +183,7 @@
 
   <div class="wrap">
     <div class="page-head">
-      <h1>💸 Split Bills</h1>
+      <h1>Split Bills</h1>
       <p>Track shared expenses with friends — no more awkward IOUs.</p>
     </div>
 
@@ -186,6 +227,7 @@
             </div>
           </div>
           <div id="gd-members" style="font-size:.8rem;color:var(--muted);"></div>
+          <div id="gd-total" style="font-size:.8rem;color:var(--muted);margin-top:.4rem;"></div>
         </div>
 
         <div class="tabs">
@@ -321,7 +363,7 @@
       <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Edit Expense</h3>
       <input id="ee-desc" placeholder="Description" style="margin-bottom:.6rem;" />
       <div style="display:flex;gap:.6rem;margin-bottom:.6rem;">
-        <input id="ee-amount" type="number" min="0.01" step="0.01" placeholder="Amount (₹)" />
+        <input id="ee-amount" type="number" min="0.01" step="0.01" placeholder="Amount (₹)" oninput="updateEditSplitInputs()" />
         <input id="ee-date" type="date" />
       </div>
       <div style="display:flex;gap:.6rem;margin-bottom:.6rem;">
@@ -332,8 +374,15 @@
           <option value="entertainment">🎥 Entertainment</option><option value="shopping">🛍 Shopping</option>
           <option value="other">📌 Other</option>
         </select>
+        <select id="ee-split-type" onchange="updateEditSplitInputs()">
+          <option value="equal">Equal</option>
+          <option value="exact">Exact amounts</option>
+          <option value="percent">Percentages</option>
+        </select>
       </div>
+      <div class="split-inputs" id="ee-split-inputs"></div>
       <input type="hidden" id="ee-expense-id" />
+      <input type="hidden" id="ee-split-among" />
       <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.8rem;">
         <button class="btn btn-ghost" onclick="closeModal('modal-edit-exp')">Cancel</button>
         <button class="btn btn-green" onclick="saveEditExpense()">Save</button>
@@ -344,7 +393,9 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // Auth guard
     const ME = '{{ username }}';
+    if (!ME) { window.location.href = '/login'; }
     let activeGroupId = null;
     let activeGroup = null;
 
@@ -461,6 +512,11 @@
     function loadExpenses() {
       fetch('/api/sw/groups/' + activeGroupId + '/expenses').then(r => r.json()).then(exps => {
         const el = document.getElementById('expenses-list');
+        // update total
+        const total = exps.reduce((s, e) => s + e.amount, 0);
+        document.getElementById('gd-total').textContent = exps.length
+          ? 'Total spent: \u20b9' + total.toFixed(2) + ' across ' + exps.length + ' expense' + (exps.length !== 1 ? 's' : '')
+          : '';
         if (!exps.length) { el.innerHTML = '<p class="empty">No expenses yet.</p>'; return; }
         el.innerHTML = exps.map(e => {
           const catIcons = {food:'🍽',travel:'✈️',rent:'🏠',utilities:'💡',entertainment:'🎥',shopping:'🛍',other:'📌'};
@@ -662,32 +718,72 @@
         const e = exps.find(x => x.expense_id === eid);
         if (!e) return;
         document.getElementById('ee-expense-id').value = eid;
+        document.getElementById('ee-split-among').value = JSON.stringify(e.split_among);
         document.getElementById('ee-desc').value = e.description;
         document.getElementById('ee-amount').value = e.amount;
         document.getElementById('ee-date').value = (e.date || e.created_at || '').slice(0,10);
         document.getElementById('ee-category').value = e.category || 'other';
+        document.getElementById('ee-split-type').value = e.split_type || 'equal';
         const paidBy = document.getElementById('ee-paid-by');
         paidBy.innerHTML = activeGroup.members.map(m => `<option value="${esc(m)}" ${m===e.paid_by?'selected':''}>${esc(m)}</option>`).join('');
+        // render split inputs with existing values
+        updateEditSplitInputs(e.member_shares);
         openModal('modal-edit-exp');
       });
     }
 
+    function updateEditSplitInputs(existingShares) {
+      const type = document.getElementById('ee-split-type').value;
+      const amount = parseFloat(document.getElementById('ee-amount').value) || 0;
+      const rawMembers = document.getElementById('ee-split-among').value;
+      const members = rawMembers ? JSON.parse(rawMembers) : (activeGroup ? activeGroup.members : []);
+      const container = document.getElementById('ee-split-inputs');
+      if (type === 'equal' || !members.length) { container.className = 'split-inputs'; return; }
+      container.className = 'split-inputs show';
+      const unit = type === 'percent' ? '%' : '\u20b9';
+      container.innerHTML = members.map(m => {
+        let defaultVal;
+        if (existingShares && existingShares[m] != null) {
+          defaultVal = type === 'percent'
+            ? ((existingShares[m] / amount) * 100).toFixed(1)
+            : existingShares[m].toFixed(2);
+        } else {
+          defaultVal = type === 'percent' ? (100 / members.length).toFixed(1) : (amount / members.length).toFixed(2);
+        }
+        return `<div class="split-row"><span style="min-width:80px;">${esc(m)}</span>
+          <input type="number" id="esi-${esc(m)}" value="${defaultVal}" min="0" step="0.01" style="max-width:100px;" />
+          <span style="color:var(--muted);">${unit}</span></div>`;
+      }).join('');
+    }
+
     function saveEditExpense() {
       const eid = document.getElementById('ee-expense-id').value;
+      const split_type = document.getElementById('ee-split-type').value;
+      const rawMembers = document.getElementById('ee-split-among').value;
+      const split_among = rawMembers ? JSON.parse(rawMembers) : [];
       const body = {
         description: document.getElementById('ee-desc').value.trim(),
         amount: parseFloat(document.getElementById('ee-amount').value),
         paid_by: document.getElementById('ee-paid-by').value,
         category: document.getElementById('ee-category').value,
         date: document.getElementById('ee-date').value,
-        split_type: 'equal'
+        split_type,
+        split_among
       };
       if (!body.amount || body.amount <= 0) { toast('Invalid amount'); return; }
+      if (split_type !== 'equal') {
+        const splits = {};
+        split_among.forEach(m => {
+          const el = document.getElementById('esi-' + m);
+          splits[m] = el ? parseFloat(el.value) || 0 : 0;
+        });
+        body.splits = splits;
+      }
       fetch('/api/sw/groups/' + activeGroupId + '/expenses/' + eid, {
         method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
       }).then(r => r.json()).then(d => {
         if (d.error) { toast(d.error); return; }
-        closeModal('modal-edit-exp'); toast('Expense updated'); loadExpenses();
+        closeModal('modal-edit-exp'); toast('Expense updated'); loadExpenses(); loadSummary();
       });
     }
 
@@ -714,8 +810,60 @@
         });
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
-    // Set today as default date
+    // ── Movie poster background ────────────────────────────────────────────
+    (function() {
+      const posters = [
+        '/1E5baAaEse26fej7uHcjOgEE2t2.jpg',
+        '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
+        '/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
+        '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+        '/8UlWHLMpgZm9bx6QYh0NFoq67TZ.jpg',
+        '/velWPhVMQeQKcxggNEU8YmIo52R.jpg',
+        '/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg',
+        '/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg',
+        '/iuFNMS8vlbzS2qlOP0L7X8LtBrm.jpg',
+        '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
+        '/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
+        '/hek3koDUyRQk7FIhPXsa6mT2Zc3.jpg',
+        '/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg',
+        '/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
+        '/nkayOAUBUu4mMvyNf9iHSUiPjF1.jpg',
+        '/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg',
+        '/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
+        '/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
+        '/fiVW06jE7z9YnO4trhaMEdclSiC.jpg',
+        '/A4j8S6moJS2zNtRR8oWF08gRnL5.jpg',
+      ];
+      const base = '/api/tmdb/img?path=';
+      const imgs = [0,1,2,3,4].map(i => document.getElementById('bp' + i));
+
+      function shuffle(a) {
+        for (let i = a.length-1; i > 0; i--) {
+          const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];
+        }
+        return a;
+      }
+
+      let pool = shuffle([...posters]), idx = 0;
+
+      function loadSlot(img, path) {
+        img.style.opacity = '0';
+        const t = new Image();
+        t.onload = () => { img.src = t.src; img.style.opacity = '1'; };
+        t.src = base + path;
+      }
+
+      function nextBatch() {
+        if (idx + 5 > pool.length) { pool = shuffle([...posters]); idx = 0; }
+        imgs.forEach((img, i) => loadSlot(img, pool[idx + i]));
+        idx += 5;
+      }
+
+      nextBatch();
+      setInterval(nextBatch, 12000);
+    })();
+
+    // ── Init ─────────────────────────────────────────────────────────────────
     document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
     loadGroups();
     loadSummary();

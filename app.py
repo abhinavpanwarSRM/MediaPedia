@@ -263,6 +263,29 @@ def get_person_photo():
         log.error('TMDB person photo error: %s', e)
         return jsonify({'photo': ''})
 
+# ===== TMDB Image Proxy =====
+@app.route('/api/tmdb/img')
+def tmdb_img_proxy():
+    path = request.args.get('path', '').strip()
+    if not path or not path.startswith('/'):
+        return '', 400
+    try:
+        resp = http_requests.get(
+            f'https://image.tmdb.org/t/p/w500{path}',
+            timeout=8, stream=True
+        )
+        if resp.status_code != 200:
+            return '', resp.status_code
+        from flask import Response
+        return Response(
+            resp.content,
+            content_type=resp.headers.get('Content-Type', 'image/jpeg'),
+            headers={'Cache-Control': 'public, max-age=86400'}
+        )
+    except Exception as e:
+        log.error('TMDB img proxy error: %s', e)
+        return '', 502
+
 # ===== TMDB Proxy (keeps token server-side) =====
 @app.route("/api/tmdb/popular")
 def tmdb_popular():
