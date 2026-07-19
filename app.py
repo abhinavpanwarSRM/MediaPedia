@@ -69,6 +69,12 @@ def _close_mongo():
 
 atexit.register(_close_mongo)
 
+# ===== Splitwise =====
+from splitwise import splitwise_bp, init_splitwise
+if db is not None:
+    init_splitwise(db)
+app.register_blueprint(splitwise_bp)
+
 # ===== TMDB Poster Cache =====
 poster_cache_collection = None
 try:
