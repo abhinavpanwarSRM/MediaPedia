@@ -1689,48 +1689,57 @@ def update_avatar():
 # ===== Posts (mutual-only wall) =====
 @app.route('/api/posts/<target_username>', methods=['GET'])
 def get_posts(target_username):
-    viewer = current_user()
-    if posts_collection is None:
-        return jsonify([]), 500
-    # owner can always see their own posts
-    if viewer != target_username:
-        if not viewer:
-            return jsonify({'error': 'Login required'}), 401
-        if not are_mutual_followers(viewer, target_username):
-            return jsonify({'error': 'mutuals_only'}), 403
-    posts = list(posts_collection.find(
-        {'username': target_username}, {'_id': 0}
-    ).sort('created_at', -1).limit(50))
-    for p in posts:
-        if isinstance(p.get('created_at'), datetime):
-            p['created_at'] = p['created_at'].isoformat()
-    return jsonify(posts)
+    try:
+        viewer = current_user()
+        if posts_collection is None:
+            return jsonify([]), 500
+        # owner can always see their own posts
+        if viewer != target_username:
+            if not viewer:
+                return jsonify({'error': 'Login required'}), 401
+            if not are_mutual_followers(viewer, target_username):
+                return jsonify({'error': 'mutuals_only'}), 403
+        posts = list(posts_collection.find(
+            {'username': target_username}, {'_id': 0}
+        ).sort('created_at', -1).limit(50))
+        for p in posts:
+            if isinstance(p.get('created_at'), datetime):
+                p['created_at'] = p['created_at'].isoformat()
+        return jsonify(posts)
+    except Exception as e:
+        log.error('get_posts error: %s', e)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/posts', methods=['POST'])
 def create_post():
-    username = current_user()
-    if not username:
-        return jsonify({'error': 'Login required'}), 401
-    if posts_collection is None:
-        return jsonify({'error': 'DB unavailable'}), 500
-    data = request.json or {}
-    text = data.get('text', '').strip()[:500]
-    media_url = data.get('media_url', '').strip()[:500]
-    if not text and not media_url:
-        return jsonify({'error': 'Post needs text or media'}), 400
-    if media_url and not media_url.startswith(('http://', 'https://')):
-        return jsonify({'error': 'Invalid URL'}), 400
-    post = {
-        'post_id': str(uuid.uuid4())[:10],
-        'username': username,
-        'text': text,
-        'media_url': media_url,
-        'created_at': datetime.now(timezone.utc),
-        'likes': []
-    }
-    posts_collection.insert_one(post)
-    post['created_at'] = post['created_at'].isoformat()
-    return jsonify(post), 201
+    try:
+        username = current_user()
+        if not username:
+            return jsonify({'error': 'Login required'}), 401
+        if posts_collection is None:
+            return jsonify({'error': 'DB unavailable'}), 500
+        data = request.json or {}
+        text = data.get('text', '').strip()[:500]
+        media_url = data.get('media_url', '').strip()[:500]
+        if not text and not media_url:
+            return jsonify({'error': 'Post needs text or media'}), 400
+        if media_url and not media_url.startswith(('http://', 'https://')):
+            return jsonify({'error': 'Invalid URL'}), 400
+        post = {
+            'post_id': str(uuid.uuid4())[:10],
+            'username': username,
+            'text': text,
+            'media_url': media_url,
+            'created_at': datetime.now(timezone.utc),
+            'likes': []
+        }
+        posts_collection.insert_one(post)
+        post.pop('_id', None)
+        post['created_at'] = post['created_at'].isoformat()
+        return jsonify(post), 201
+    except Exception as e:
+        log.error('create_post error: %s', e)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/posts/<post_id>/like', methods=['POST'])
 def like_post(post_id):
