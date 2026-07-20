@@ -61,14 +61,7 @@ except Exception as e:
     follows_collection = None
     playlists_collection = None
     messages_collection = None
-
-posts_collection = None
-try:
-    if db is not None:
-        posts_collection = db.posts
-        posts_collection.create_index([("username", 1), ("created_at", -1)])
-except Exception as e:
-    log.error("Failed to init posts collection: %s", e)
+    posts_collection = None
 
 def _close_mongo():
     if client is not None:
@@ -1762,6 +1755,15 @@ def delete_post(post_id):
     if not username or posts_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
     posts_collection.delete_one({'post_id': post_id, 'username': username})
+    return jsonify({'success': True})
+
+@app.route('/api/posts/<post_id>', methods=['PATCH'])
+def edit_post(post_id):
+    username = current_user()
+    if not username or posts_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    text = (request.json or {}).get('text', '').strip()[:500]
+    posts_collection.update_one({'post_id': post_id, 'username': username}, {'$set': {'text': text}})
     return jsonify({'success': True})
 
 # ===== Playlist Routes =====
