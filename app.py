@@ -49,6 +49,8 @@ try:
     messages_collection = db.messages
     messages_collection.create_index([("participants", 1)])
     messages_collection.create_index([("created_at", -1)])
+    posts_collection = db.posts
+    posts_collection.create_index([("username", 1), ("created_at", -1)])
     print("MongoDB connected successfully")
 except Exception as e:
     log.error("MongoDB connection failed: %s", e)
@@ -59,6 +61,14 @@ except Exception as e:
     follows_collection = None
     playlists_collection = None
     messages_collection = None
+
+posts_collection = None
+try:
+    if db is not None:
+        posts_collection = db.posts
+        posts_collection.create_index([("username", 1), ("created_at", -1)])
+except Exception as e:
+    log.error("Failed to init posts collection: %s", e)
 
 def _close_mongo():
     if client is not None:
@@ -1682,6 +1692,77 @@ def update_avatar():
         return jsonify({'error': 'Invalid URL'}), 400
     users_collection.update_one({'username': username}, {'$set': {'avatar_url': url}})
     return jsonify({'success': True, 'avatar_url': url})
+
+# ===== Posts (mutual-only wall) =====
+@app.route('/api/posts/<target_username>', methods=['GET'])
+def get_posts(target_username):
+    viewer = current_user()
+    if posts_collection is None:
+        return jsonify([]), 500
+    # owner can always see their own posts
+    if viewer != target_username:
+        if not viewer:
+            return jsonify({'error': 'Login required'}), 401
+        if not are_mutual_followers(viewer, target_username):
+            return jsonify({'error': 'mutuals_only'}), 403
+    posts = list(posts_collection.find(
+        {'username': target_username}, {'_id': 0}
+    ).sort('created_at', -1).limit(50))
+    for p in posts:
+        if isinstance(p.get('created_at'), datetime):
+            p['created_at'] = p['created_at'].isoformat()
+    return jsonify(posts)
+
+@app.route('/api/posts', methods=['POST'])
+def create_post():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if posts_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    text = data.get('text', '').strip()[:500]
+    media_url = data.get('media_url', '').strip()[:500]
+    if not text and not media_url:
+        return jsonify({'error': 'Post needs text or media'}), 400
+    if media_url and not media_url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    post = {
+        'post_id': str(uuid.uuid4())[:10],
+        'username': username,
+        'text': text,
+        'media_url': media_url,
+        'created_at': datetime.now(timezone.utc),
+        'likes': []
+    }
+    posts_collection.insert_one(post)
+    post['created_at'] = post['created_at'].isoformat()
+    return jsonify(post), 201
+
+@app.route('/api/posts/<post_id>/like', methods=['POST'])
+def like_post(post_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if posts_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    post = posts_collection.find_one({'post_id': post_id}, {'_id': 0, 'likes': 1})
+    if not post:
+        return jsonify({'error': 'Not found'}), 404
+    likes = post.get('likes', [])
+    if username in likes:
+        posts_collection.update_one({'post_id': post_id}, {'$pull': {'likes': username}})
+        return jsonify({'liked': False, 'count': len(likes) - 1})
+    posts_collection.update_one({'post_id': post_id}, {'$addToSet': {'likes': username}})
+    return jsonify({'liked': True, 'count': len(likes) + 1})
+
+@app.route('/api/posts/<post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    username = current_user()
+    if not username or posts_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    posts_collection.delete_one({'post_id': post_id, 'username': username})
+    return jsonify({'success': True})
 
 # ===== Playlist Routes =====
 

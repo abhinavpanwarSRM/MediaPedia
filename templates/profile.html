@@ -242,6 +242,21 @@
 
     .empty { color: var(--muted); font-style: italic; padding: 1rem 0; font-size: 0.88rem; }
 
+    /* Post card */
+    .post-card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 12px;
+                 padding: 1rem 1.2rem; margin-bottom: 0.9rem; transition: all 0.2s; }
+    .post-card:hover { border-color: rgba(255,255,255,0.14); }
+    .post-card img { width: 100%; border-radius: 8px; margin: 0.7rem 0 0.4rem; max-height: 400px; object-fit: cover; }
+    .post-card iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 8px; margin: 0.7rem 0 0.4rem; }
+    .post-meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .post-text { font-size: 0.9rem; color: #ddd; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .post-actions { display: flex; gap: 1rem; margin-top: 0.7rem; align-items: center; }
+    .post-like-btn { background: none; border: none; color: var(--muted); font-size: 0.82rem; cursor: pointer; padding: 0; transition: color 0.2s; }
+    .post-like-btn.liked { color: #e50914; }
+    .post-like-btn:hover { color: #e50914; }
+    .post-del-btn { background: none; border: none; color: var(--muted); font-size: 0.78rem; cursor: pointer; padding: 0; margin-left: auto; }
+    .post-del-btn:hover { color: #ff4757; }
+
     /* Toast */
     .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
              background: #222; color: #fff; border: 1px solid var(--border);
@@ -410,6 +425,7 @@
       <button class="tab active" onclick="switchTab('lists',this)">Lists</button>
       <button class="tab" onclick="switchTab('playlists',this)">&#127925; Playlists</button>
       <button class="tab" onclick="switchTab('reviews',this)">Reviews</button>
+      <button class="tab" onclick="switchTab('posts',this)">&#128247; Posts</button>
       <button class="tab" onclick="switchTab('connect',this)">&#128101; People</button>
     </div>
 
@@ -482,6 +498,20 @@
       {% else %}
       <p class="empty">No reviews yet.</p>
       {% endfor %}
+    </div>
+
+    <!-- Posts -->
+    <div class="tab-panel" id="tab-posts">
+      {% if viewer == username %}
+      <div style="margin-bottom:1.2rem;">
+        <textarea id="post-text" placeholder="Write something..." maxlength="500"
+          style="width:100%;padding:0.65rem 0.9rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:0.88rem;resize:none;height:80px;font-family:inherit;margin-bottom:0.5rem;"></textarea>
+        <input type="url" id="post-media" placeholder="Image or YouTube URL (optional)"
+          style="width:100%;padding:0.55rem 0.85rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.85rem;margin-bottom:0.5rem;" />
+        <button class="btn btn-red" onclick="createPost()">Post</button>
+      </div>
+      {% endif %}
+      <div id="posts-container"><p class="empty">Loading...</p></div>
     </div>
 
     <!-- People / Connect -->
@@ -577,14 +607,16 @@
         drawer.classList.remove('open');
       }
     });
-    // Tabs
+    // Connect tab
     let connectLoaded = false;
+    let postsLoaded = false;
     function switchTab(name, btn) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('tab-' + name).classList.add('active');
       if (name === 'connect' && !connectLoaded) { connectLoaded = true; loadConnectTab(); }
+      if (name === 'posts' && !postsLoaded) { postsLoaded = true; loadPosts(); }
     }
 
     // Main follow button
@@ -777,6 +809,89 @@
     }
     function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function escAttr(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+    // Posts
+    function loadPosts() {
+      fetch('/api/posts/{{ username }}')
+        .then(r => {
+          if (r.status === 403) return r.json().then(d => { throw d; });
+          return r.json();
+        })
+        .then(posts => {
+          const c = document.getElementById('posts-container');
+          if (!posts.length) { c.innerHTML = '<p class="empty">No posts yet.</p>'; return; }
+          c.innerHTML = posts.map(p => postHtml(p)).join('');
+        })
+        .catch(err => {
+          const c = document.getElementById('posts-container');
+          if (err && err.error === 'mutuals_only') {
+            c.innerHTML = '<p class="empty" style="color:#888;">🔒 Only mutuals can see posts.</p>';
+          } else {
+            c.innerHTML = '<p class="empty">Could not load posts.</p>';
+          }
+        });
+    }
+
+    function postHtml(p) {
+      const isOwner = VIEWER === PROFILE_USER && VIEWER !== '';
+      const liked = false; // we don't track per-viewer liked state on load for simplicity
+      let media = '';
+      if (p.media_url) {
+        const ytMatch = p.media_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+        if (ytMatch) {
+          media = `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" allowfullscreen loading="lazy"></iframe>`;
+        } else {
+          media = `<img src="${escAttr(p.media_url)}" loading="lazy" onerror="this.style.display='none'">`;
+        }
+      }
+      const delBtn = isOwner ? `<button class="post-del-btn" onclick="deletePost('${p.post_id}',this)" title="Delete">🗑</button>` : '';
+      return `<div class="post-card" id="post-${p.post_id}">
+        <div class="post-meta"><span>${(p.created_at||'').slice(0,10)}</span>${delBtn}</div>
+        ${p.text ? `<div class="post-text">${escHtml(p.text)}</div>` : ''}
+        ${media}
+        <div class="post-actions">
+          <button class="post-like-btn" id="like-${p.post_id}" onclick="likePost('${p.post_id}',this)">
+            ❤️ <span>${(p.likes||[]).length}</span>
+          </button>
+        </div>
+      </div>`;
+    }
+
+    function createPost() {
+      const text = document.getElementById('post-text').value.trim();
+      const media_url = document.getElementById('post-media').value.trim();
+      if (!text && !media_url) { showToast('Add some text or a URL'); return; }
+      fetch('/api/posts', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({text, media_url}) })
+        .then(r => r.json())
+        .then(p => {
+          if (p.error) { showToast(p.error); return; }
+          document.getElementById('post-text').value = '';
+          document.getElementById('post-media').value = '';
+          const c = document.getElementById('posts-container');
+          const empty = c.querySelector('.empty'); if (empty) empty.remove();
+          c.insertAdjacentHTML('afterbegin', postHtml(p));
+          showToast('Posted!');
+        });
+    }
+
+    function likePost(postId, btn) {
+      if (!VIEWER) { window.location.href = '/login'; return; }
+      fetch(`/api/posts/${postId}/like`, { method: 'POST' })
+        .then(r => r.json())
+        .then(d => {
+          btn.classList.toggle('liked', d.liked);
+          btn.querySelector('span').textContent = d.count;
+        });
+    }
+
+    function deletePost(postId, btn) {
+      if (!confirm('Delete this post?')) return;
+      fetch(`/api/posts/${postId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) { document.getElementById('post-' + postId)?.remove(); showToast('Deleted'); }
+        });
+    }
 
     // Birthdate modal
     function openBirthdateModal() { document.getElementById('bday-modal-overlay').classList.add('open'); }
