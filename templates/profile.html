@@ -66,6 +66,16 @@
       font-size: 2.2rem; font-weight: 800; border: 4px solid var(--bg);
       box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; cursor: pointer; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .avatar-zoom-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 500; align-items: center; justify-content: center; cursor: zoom-out; }
+    .avatar-zoom-overlay.show { display: flex; }
+    .avatar-zoom-overlay img { max-width: min(90vw, 420px); max-height: 90vh; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.15); box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+      object-fit: cover; }
+    .avatar-zoom-overlay .zoom-letter { width: min(90vw, 420px); height: min(90vw, 420px);
+      border-radius: 50%; background: linear-gradient(135deg, var(--primary), #ff6b6b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 8rem; font-weight: 800; border: 4px solid rgba(255,255,255,0.15); }
     .avatar-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
       z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
     .avatar-modal-overlay.open { display: flex; }
@@ -285,9 +295,19 @@
     {% endif %}
   </div>
 
+  <!-- Avatar zoom overlay -->
+  <div class="avatar-zoom-overlay" id="avatar-zoom-overlay" onclick="this.classList.remove('show')">
+    {% if avatar_url %}
+      <img src="{{ avatar_url }}" alt="{{ username }}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+      <div class="zoom-letter" style="display:none">{{ username[0]|upper }}</div>
+    {% else %}
+      <div class="zoom-letter">{{ username[0]|upper }}</div>
+    {% endif %}
+  </div>
+
   <div class="profile-banner">
     <div class="avatar-wrap">
-      <div class="avatar" id="avatar-circle" {% if viewer == username %}onclick="openAvatarModal()" title="Change profile picture"{% endif %}>
+      <div class="avatar" id="avatar-circle" {% if viewer == username %}onclick="openAvatarModal()" title="Change profile picture"{% endif %} onmouseenter="document.getElementById('avatar-zoom-overlay').classList.add('show')" onmouseleave="document.getElementById('avatar-zoom-overlay').classList.remove('show')">
         {% if avatar_url %}
           <img src="{{ avatar_url }}" alt="{{ username }}" id="avatar-img" onerror="this.style.display='none';document.getElementById('avatar-letter').style.display='flex'">
           <span id="avatar-letter" style="display:none;">{{ username[0]|upper }}</span>
@@ -812,6 +832,13 @@
             if (letter) letter.style.display = 'flex';
           }
           closeAvatarModal();
+          // update zoom overlay
+          const zo = document.getElementById('avatar-zoom-overlay');
+          if (zo) {
+            const zImg = zo.querySelector('img'), zLetter = zo.querySelector('.zoom-letter');
+            if (url) { if(zImg){zImg.src=url;zImg.style.display='';} if(zLetter)zLetter.style.display='none'; }
+            else { if(zImg)zImg.style.display='none'; if(zLetter)zLetter.style.display='flex'; }
+          }
           showToast('Profile picture updated');
         });
     }
