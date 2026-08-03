@@ -397,8 +397,9 @@
     .photo-upload-row {
       display:flex;
       align-items:center;
-      gap:.6rem;
+      gap:.5rem;
       margin-top:.4rem;
+      flex-wrap:wrap;
     }
     .photo-preview {
       width:64px;
@@ -407,6 +408,7 @@
       border-radius:6px;
       border:1px solid var(--border);
       display:none;
+      cursor:zoom-in;
     }
     .photo-preview.show { display:block; }
     .photo-label {
@@ -421,6 +423,7 @@
       color:var(--muted);
       cursor:pointer;
       transition:all .2s;
+      white-space:nowrap;
     }
     .photo-label:hover { border-color:rgba(255,255,255,.25); color:#fff; }
     .photo-remove {
@@ -926,9 +929,11 @@
             </div>
             <div class="split-inputs" id="split-inputs"></div>
             <div class="photo-upload-row">
-              <label class="photo-label" for="exp-photo-input">📷 Add photo</label>
+              <label class="photo-label" for="exp-photo-input">🖼 Gallery</label>
               <input type="file" id="exp-photo-input" accept="image/*" style="display:none" onchange="handleExpensePhoto(this)" />
-              <img id="exp-photo-preview" class="photo-preview" alt="preview" />
+              <label class="photo-label" for="exp-camera-input">📷 Camera</label>
+              <input type="file" id="exp-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleExpensePhoto(this)" />
+              <img id="exp-photo-preview" class="photo-preview" alt="preview" onclick="openLightbox(this.src)" />
               <button type="button" class="photo-remove" id="exp-photo-remove" onclick="removeExpensePhoto()">✕ Remove</button>
             </div>
             <button class="btn btn-primary" id="add-expense-btn" onclick="addExpense()" style="margin-top:.6rem;">
@@ -1084,6 +1089,7 @@
       preview.classList.remove('show');
       document.getElementById('exp-photo-remove').classList.remove('show');
       document.getElementById('exp-photo-input').value = '';
+      document.getElementById('exp-camera-input').value = '';
     }
 
     function openLightbox(src) {
