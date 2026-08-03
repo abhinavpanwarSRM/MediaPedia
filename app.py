@@ -1108,7 +1108,7 @@ def user_profile(username):
     
     for c in user_comments:
         if 'created_at' in c:
-            c['created_at'] = c['created_at'].isoformat()
+            c['created_at'] = _to_ist_str(c['created_at'])
         ctype = c.get('content_type', 'movie')
         cid = c.get('id')
         if ctype == 'movie':
@@ -1260,6 +1260,25 @@ def global_search():
                     for u in user_hits]
     return jsonify(results[:15])
 
+# ===== IST timezone helper =====
+from datetime import timezone, timedelta
+_IST = timedelta(hours=5, minutes=30)
+
+def _to_ist_str(ts):
+    """Convert a UTC ISO string or datetime to IST ISO string (YYYY-MM-DDTHH:MM:SS)."""
+    if not ts:
+        return ''
+    try:
+        if isinstance(ts, datetime):
+            dt = ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)
+        else:
+            dt = datetime.fromisoformat(str(ts).replace('Z', ''))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        return (dt + _IST).strftime('%Y-%m-%dT%H:%M:%S')
+    except Exception:
+        return str(ts)
+
 # ===== Auth helper =====
 def current_user():
     return session.get('username')
@@ -1339,7 +1358,7 @@ def feed():
         comments = list(comments_collection.find({}, {'_id': 0}).sort('created_at', DESCENDING).limit(50))
     for c in comments:
         if 'created_at' in c:
-            c['created_at'] = c['created_at'].isoformat()
+            c['created_at'] = _to_ist_str(c['created_at'])
         # Attach movie/series title
         ctype = c.get('content_type', 'movie')
         cid = c.get('id')
@@ -1785,8 +1804,8 @@ def get_posts(target_username):
             {'username': target_username}, {'_id': 0}
         ).sort('created_at', -1).limit(50))
         for p in posts:
-            if isinstance(p.get('created_at'), datetime):
-                p['created_at'] = p['created_at'].isoformat()
+            if 'created_at' in p:
+                p['created_at'] = _to_ist_str(p['created_at'])
         return jsonify(posts)
     except Exception as e:
         log.error('get_posts error: %s', e)
@@ -1817,7 +1836,7 @@ def create_post():
         }
         posts_collection.insert_one(post)
         post.pop('_id', None)
-        post['created_at'] = post['created_at'].isoformat()
+        post['created_at'] = _to_ist_str(post['created_at'])
         return jsonify(post), 201
     except Exception as e:
         log.error('create_post error: %s', e)
@@ -1883,8 +1902,8 @@ def mutual_feed():
         {'username': {'$in': feed_users}}, {'_id': 0}
     ).sort('created_at', -1).limit(40))
     for p in posts:
-        if isinstance(p.get('created_at'), datetime):
-            p['created_at'] = p['created_at'].isoformat()
+        if 'created_at' in p:
+            p['created_at'] = _to_ist_str(p['created_at'])
     return jsonify(posts)
 
 @app.route('/api/posts/<post_id>', methods=['DELETE'])
@@ -2283,6 +2302,19 @@ def conversation(other_user):
         )
         conv = messages_collection.find_one({'participants': key}, {'_id': 0})
         msgs = conv.get('messages', []) if conv else []
+        # Convert UTC timestamps to IST for display
+        from datetime import timezone, timedelta
+        IST = timedelta(hours=5, minutes=30)
+        for m in msgs:
+            ts = m.get('created_at', '')
+            if ts and 'T' in str(ts):
+                try:
+                    dt = datetime.fromisoformat(str(ts).replace('Z',''))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    m['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
+                except Exception:
+                    pass
     else:
         msgs = []
 

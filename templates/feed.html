@@ -191,12 +191,16 @@
 
   // ===== Mutuals Feed =====
   function timeAgo(iso) {
-    const d = new Date(iso), now = new Date();
-    const s = Math.floor((now - d) / 1000);
+    // parse as UTC then offset to IST (+5:30)
+    const d = new Date(iso);
+    const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+    const now = new Date(Date.now() + (5.5 * 60 * 60 * 1000));
+    const s = Math.floor((now - ist) / 1000);
     if (s < 60) return 'just now';
     if (s < 3600) return Math.floor(s/60) + 'm ago';
     if (s < 86400) return Math.floor(s/3600) + 'h ago';
-    return Math.floor(s/86400) + 'd ago';
+    if (s < 604800) return Math.floor(s/86400) + 'd ago';
+    return ist.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
   }
 
   function renderPost(p) {

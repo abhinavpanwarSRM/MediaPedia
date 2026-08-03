@@ -148,9 +148,14 @@
   </div>
 
   <script>
-    const ME = '{{ username }}';
-    const OTHER = '{{ other_user }}';
-    let polling = null;
+    function fmtTime(iso) {
+      const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
+      return d.toISOString().slice(11,16);
+    }
+    function fmtDate(iso) {
+      const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
+      return d.toISOString().slice(0,10);
+    }
     let lastMsgId = null;
     let typingTimer = null;
 
@@ -211,7 +216,7 @@
         <div class="msg-av">${msg.sender[0].toUpperCase()}</div>
         <div class="bubble">
           ${escHtml(msg.text)}
-          <div class="bubble-time">${msg.created_at.slice(11,16)}</div>
+          <div class="bubble-time">${fmtTime(msg.created_at)}</div>
         </div>`;
       // insert before typing-row
       const typingRow = wrap.querySelector('.typing-row');
