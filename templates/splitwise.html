@@ -1867,7 +1867,7 @@
         img.src = url;
       });
 
-      const catIcons = {food:'🍽',groceries:'🛒',restaurant:'🍴',cafe:'☕',fast_food:'🍔',delivery:'📦',alcohol:'🍷',travel:'✈',flight:'✈',train:'🚂',bus:'🚌',taxi:'🚕',uber:'🚗',fuel:'⛽',parking:'P',rent:'🏠',utilities:'💡',electricity:'⚡',water:'💧',gas:'🔥',internet:'🌐',phone:'📱',entertainment:'🎭',movies:'🎬',concerts:'🎵',sports:'⚽',games:'🎮',streaming:'📺',shopping:'🛍',clothing:'👕',electronics:'💻',accessories:'⌚',cosmetics:'💄',gifts:'🎁',health:'🏥',medical:'💊',gym:'🏋',pharmacy:'💉',education:'📚',tuition:'📖',books:'📕',courses:'🎓',subscriptions:'📋',bills:'🧾',insurance:'🛡',personal_care:'🧴',pets:'🐾',children:'👶',charity:'🤝',business:'💼',other:'📌'};
+      const catLabels = {food:'Food',groceries:'Groceries',restaurant:'Restaurant',cafe:'Cafe',fast_food:'Fast Food',delivery:'Delivery',alcohol:'Alcohol',travel:'Travel',flight:'Flight',train:'Train',bus:'Bus',taxi:'Taxi',uber:'Uber',fuel:'Fuel',parking:'Parking',rent:'Rent',utilities:'Utilities',electricity:'Electricity',water:'Water',gas:'Gas',internet:'Internet',phone:'Phone',entertainment:'Entertainment',movies:'Movies',concerts:'Concerts',sports:'Sports',games:'Games',streaming:'Streaming',shopping:'Shopping',clothing:'Clothing',electronics:'Electronics',accessories:'Accessories',cosmetics:'Cosmetics',gifts:'Gifts',health:'Health',medical:'Medical',gym:'Gym',pharmacy:'Pharmacy',education:'Education',tuition:'Tuition',books:'Books',courses:'Courses',subscriptions:'Subscriptions',bills:'Bills',insurance:'Insurance',personal_care:'Personal Care',pets:'Pets',children:'Children',charity:'Charity',business:'Business',other:'Other'};
 
       // ════════════════════════════════════════════════
       // PAGE 1 — COVER
@@ -1878,11 +1878,14 @@
       if (activeGroup.cover_photo) {
         const coverData = await toBase64(activeGroup.cover_photo);
         if (coverData) {
-          // fill page, then dark overlay
           const aspect = coverData.h / coverData.w;
           const imgH = Math.max(PH, PW * aspect);
           doc.addImage(coverData.b64, 'JPEG', 0, 0, PW, imgH, '', 'FAST');
-          fillRect(0, 0, PW, PH, [0, 0, 0, 0.55]); // semi-transparent dark overlay
+          // dark overlay using transparency via GState
+          doc.saveGraphicsState();
+          doc.setGState(new doc.GState({opacity: 0.55}));
+          fillRect(0, 0, PW, PH, [0, 0, 0]);
+          doc.restoreGraphicsState();
         }
       }
 
@@ -1907,7 +1910,7 @@
       const stats = [
         ['Members', activeGroup.members.join(', ')],
         ['Expenses', String(exps.length)],
-        ['Total Spent', '\u20b9' + total.toFixed(2)],
+        ['Total Spent', 'Rs. ' + total.toFixed(2)],
         ['Period', dateRange],
         ['Generated', new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})]
       ];
@@ -1971,11 +1974,11 @@
         // ── amount pill ──
         fillRect(M, cy, 40, 9, [30, 50, 35]);
         setFont(11, 'bold', [46, 213, 115]);
-        doc.text('\u20b9' + e.amount.toFixed(2), M + 20, cy + 6.2, { align: 'center' });
+        doc.text('Rs.' + e.amount.toFixed(2), M + 20, cy + 6.2, { align: 'center' });
 
         // category + date on same row
         setFont(8, 'normal', [136, 136, 136]);
-        const catLabel = (catIcons[e.category] || '') + ' ' + (e.category || 'other');
+        const catLabel = catLabels[e.category] || (e.category || 'Other');
         doc.text(catLabel, M + 44, cy + 6.2);
         doc.text(e.date || '', PW - M, cy + 6.2, { align: 'right' });
         cy += 14;
@@ -2006,7 +2009,7 @@
           setFont(8, isOwe ? 'normal' : 'bold', isOwe ? [200, 200, 200] : [46, 213, 115]);
           doc.text(m + (m === e.paid_by ? ' (paid)' : ''), M + 3, cy + 4.5);
           setFont(8, 'bold', isOwe ? [255, 71, 87] : [46, 213, 115]);
-          doc.text((isOwe ? 'owes \u20b9' : '+\u20b9') + share.toFixed(2), PW - M - 3, cy + 4.5, { align: 'right' });
+          doc.text((isOwe ? 'owes Rs.' : '+Rs.') + share.toFixed(2), PW - M - 3, cy + 4.5, { align: 'right' });
           cy += 9;
         });
 
@@ -2048,7 +2051,7 @@
         doc.text(m, M + 3, fy + 4.5);
         const color = v > 0 ? [46, 213, 115] : v < 0 ? [255, 71, 87] : [136, 136, 136];
         setFont(8, 'bold', color);
-        const label = v > 0 ? '+\u20b9' + v.toFixed(2) + ' (owed)' : v < 0 ? '-\u20b9' + (-v).toFixed(2) + ' (owes)' : 'settled';
+        const label = v > 0 ? '+Rs.' + v.toFixed(2) + ' (owed)' : v < 0 ? '-Rs.' + (-v).toFixed(2) + ' (owes)' : 'settled';
         doc.text(label, PW - M - 3, fy + 4.5, { align: 'right' });
         fy += 9;
       });
@@ -2060,7 +2063,7 @@
       doc.text('SUGGESTED PAYMENTS', M, fy); fy += 7;
       if (!txns.length) {
         setFont(9, 'normal', [46, 213, 115]);
-        doc.text('All settled up! 🎉', M, fy);
+        doc.text('All settled up!', M, fy);
       } else {
         txns.forEach((t, idx) => {
           const rowBg = idx % 2 === 0 ? [22, 22, 22] : [26, 26, 26];
@@ -2068,11 +2071,11 @@
           setFont(8, 'bold', [255, 255, 255]);
           doc.text(t.from, M + 3, fy + 5);
           setFont(8, 'normal', [136, 136, 136]);
-          doc.text('\u2192', M + 3 + doc.getTextWidth(t.from) + 3, fy + 5);
+          doc.text('->', M + 3 + doc.getTextWidth(t.from) + 3, fy + 5);
           setFont(8, 'bold', [255, 255, 255]);
           doc.text(t.to, M + 3 + doc.getTextWidth(t.from) + 10, fy + 5);
           setFont(9, 'bold', [46, 213, 115]);
-          doc.text('\u20b9' + t.amount.toFixed(2), PW - M - 3, fy + 5, { align: 'right' });
+          doc.text('Rs.' + t.amount.toFixed(2), PW - M - 3, fy + 5, { align: 'right' });
           fy += 10;
         });
       }
@@ -2082,14 +2085,14 @@
       setFont(10, 'bold', [136, 136, 136]);
       doc.text('TOTAL TRIP SPEND', M, fy);
       setFont(14, 'bold', [46, 213, 115]);
-      doc.text('\u20b9' + exps.reduce((s, e) => s + e.amount, 0).toFixed(2), PW - M, fy, { align: 'right' });
+      doc.text('Rs.' + exps.reduce((s, e) => s + e.amount, 0).toFixed(2), PW - M, fy, { align: 'right' });
 
       fillRect(0, PH - 3, PW, 3, [46, 213, 115]);
       setFont(7, 'normal', [60, 60, 60]);
       doc.text('MediaPedia • Split Bills', PW / 2, PH - 6, { align: 'center' });
 
       doc.save((activeGroup.name || 'trip').replace(/\s+/g, '_') + '_split.pdf');
-      toast('\u2705 PDF downloaded!', 'success');
+      toast('PDF downloaded!', 'success');
     }
 
     // ── Group Cover Photo ─────────────────────────────────────────────────────
