@@ -1874,18 +1874,16 @@
       // ════════════════════════════════════════════════
       fillRect(0, 0, PW, PH, [14, 14, 14]);
 
-      // cover photo full-bleed (if group has one)
+      // cover photo centered with natural ratio
       if (activeGroup.cover_photo) {
         const coverData = await toBase64(activeGroup.cover_photo);
         if (coverData) {
+          const maxW = CW, maxH = 80;
           const aspect = coverData.h / coverData.w;
-          const imgH = Math.max(PH, PW * aspect);
-          doc.addImage(coverData.b64, 'JPEG', 0, 0, PW, imgH, '', 'FAST');
-          // dark overlay using transparency via GState
-          doc.saveGraphicsState();
-          doc.setGState(new doc.GState({opacity: 0.55}));
-          fillRect(0, 0, PW, PH, [0, 0, 0]);
-          doc.restoreGraphicsState();
+          let imgW = maxW, imgH = maxW * aspect;
+          if (imgH > maxH) { imgH = maxH; imgW = maxH / aspect; }
+          const imgX = (PW - imgW) / 2;
+          doc.addImage(coverData.b64, 'JPEG', imgX, 18, imgW, imgH, '', 'FAST');
         }
       }
 
@@ -1895,10 +1893,10 @@
       // big group name
       setFont(32, 'bold', [255, 255, 255]);
       const titleLines = doc.splitTextToSize(activeGroup.name, CW);
-      doc.text(titleLines, PW / 2, 80, { align: 'center' });
+      doc.text(titleLines, PW / 2, 112, { align: 'center' });
 
       setFont(11, 'normal', [200, 200, 200]);
-      doc.text('Trip Expense Report', PW / 2, 80 + titleLines.length * 12 + 4, { align: 'center' });
+      doc.text('Trip Expense Report', PW / 2, 112 + titleLines.length * 12 + 4, { align: 'center' });
 
       // stats block
       const total = exps.reduce((s, e) => s + e.amount, 0);
