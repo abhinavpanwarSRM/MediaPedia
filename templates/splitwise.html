@@ -1141,6 +1141,7 @@
     let activeGroup = null;
     let expSkip = 0;
     const EXP_LIMIT = 30;
+    let _balanceData = { net: {}, transactions: [] };
 
     // ── Photo Upload ──────────────────────────────────────────────────────────
     let _pendingPhotoUrl = '';
@@ -1620,11 +1621,12 @@
           txnEl.innerHTML = '<p class="empty">All settled up! 🎉</p>';
           return;
         }
+        _balanceData = { net, transactions: d.transactions || [] };
         netEl.innerHTML = members.map(m => {
           const v = net[m] || 0;
           const cls = v > 0 ? 'owed' : v < 0 ? 'owe' : '';
           const label = v > 0 ? `+₹${v.toFixed(2)}` : v < 0 ? `-₹${(-v).toFixed(2)}` : '₹0';
-          return `<div class="person-bal-row" onclick="openPersonBalance('${esc(m)}', ${JSON.stringify(net)}, ${JSON.stringify(d.transactions||[])})"><span>${esc(m)}</span><span class="${cls}">${label} ›</span></div>`;
+          return `<div class="person-bal-row" onclick="openPersonBalance('${esc(m)}')"><span>${esc(m)}</span><span class="${cls}">${label} ›</span></div>`;
         }).join('');
         
         const txns = d.transactions || [];
@@ -2159,8 +2161,10 @@
     }
 
     // ── Per-person Balance Drill-down ─────────────────────────────────────────
-    function openPersonBalance(member, net, txns) {
+    function openPersonBalance(member) {
       document.getElementById('person-bal-title').textContent = member + "'s Balance";
+      const net = _balanceData.net;
+      const txns = _balanceData.transactions;
       const v = net[member] || 0;
       const myTxns = txns.filter(t => t.from === member || t.to === member);
 
