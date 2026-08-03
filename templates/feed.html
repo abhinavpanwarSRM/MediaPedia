@@ -16,16 +16,46 @@
     .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; }
     h1 { font-size: 1.6rem; }
     .auth-links a { color: var(--primary); text-decoration: none; font-size: 0.88rem; margin-left: 1rem; }
-    .feed-item { background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-left: 3px solid var(--primary); border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid var(--primary); transition: transform 0.2s, box-shadow 0.2s; }
+    /* Tabs */
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.4rem; }
+    .tab { padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.2s; }
+    .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    /* Feed items */
+    .feed-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; transition: transform 0.2s, box-shadow 0.2s; }
     .feed-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
     .feed-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.4rem; }
     .feed-user { font-weight: 600; color: #fff; text-decoration: none; }
     .feed-user:hover { color: var(--primary); }
     .feed-time { color: #666; font-size: 0.78rem; }
+    .feed-text { color: #ddd; font-size: 0.9rem; line-height: 1.5; margin: 0.4rem 0; white-space: pre-wrap; word-break: break-word; }
+    .feed-media { margin: 0.6rem 0; border-radius: 8px; overflow: hidden; max-height: 320px; }
+    .feed-media img { width: 100%; max-height: 320px; object-fit: cover; display: block; border-radius: 8px; }
+    /* Actions */
+    .feed-actions { display: flex; align-items: center; gap: 1rem; margin-top: 0.7rem; }
+    .like-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
+    .like-btn:hover, .like-btn.liked { color: #e50914; }
+    .like-btn .heart { font-size: 1rem; }
+    .likers-tip { position: relative; display: inline-block; }
+    .likers-tip .tip { display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: #222; border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.7rem; font-size: 0.75rem; color: #ddd; white-space: nowrap; z-index: 10; pointer-events: none; }
+    .likers-tip:hover .tip { display: block; }
+    .comment-toggle { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
+    .comment-toggle:hover { color: var(--blue); }
+    /* Comments */
+    .comments-section { margin-top: 0.8rem; border-top: 1px solid var(--border); padding-top: 0.7rem; display: none; }
+    .comments-section.open { display: block; }
+    .comment-item { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .comment-av { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg,#e50914,#ff6b6b); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+    .comment-body { flex: 1; }
+    .comment-author { font-size: 0.78rem; font-weight: 600; color: #ccc; }
+    .comment-text { font-size: 0.82rem; color: #bbb; margin-top: 0.1rem; word-break: break-word; }
+    .comment-form { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+    .comment-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 20px; padding: 0.4rem 0.9rem; color: #fff; font-size: 0.82rem; outline: none; }
+    .comment-input:focus { border-color: rgba(255,255,255,0.2); }
+    .comment-submit { background: var(--primary); border: none; border-radius: 20px; padding: 0.4rem 0.9rem; color: #fff; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+    /* Review feed */
     .feed-movie a { color: #5799ef; text-decoration: none; font-size: 0.85rem; }
     .feed-movie a:hover { text-decoration: underline; }
     .feed-rating { color: #ffc107; font-size: 0.82rem; margin: 0.3rem 0; }
-    .feed-text { color: #ddd; font-size: 0.9rem; line-height: 1.5; margin-top: 0.4rem; }
     .feed-likes { color: #888; font-size: 0.78rem; margin-top: 0.5rem; }
     .empty { color: #666; text-align: center; padding: 3rem; font-style: italic; }
     .hint { background: rgba(87,153,239,0.1); border: 1px solid rgba(87,153,239,0.3); color: #5799ef; padding: 0.8rem 1rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1.5rem; }
@@ -35,26 +65,21 @@
     .sidebar-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 0.9rem; }
     .suggest-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
     .suggest-row:last-child { border-bottom: none; }
-    .sug-av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #e50914, #ff6b6b);
-              display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
-              text-decoration: none; color: #fff; flex-shrink: 0; }
+    .sug-av { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #e50914, #ff6b6b); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; text-decoration: none; color: #fff; flex-shrink: 0; }
     .sug-info { flex: 1; min-width: 0; }
     .sug-info a { font-size: 0.85rem; font-weight: 600; color: #fff; text-decoration: none; }
     .sug-info a:hover { color: var(--primary); }
     .sug-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sug-btn { padding: 0.22rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
-               cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff;
-               transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+    .sug-btn { padding: 0.22rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
     .sug-btn:hover { background: rgba(229,9,20,0.3); }
     @media (max-width: 480px) {
       body { padding: 1.2rem 0.75rem; }
       .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
       .auth-links { display: flex; flex-wrap: wrap; gap: 0.4rem; }
       .auth-links a { margin-left: 0; }
-      .feed-meta { flex-direction: column; align-items: flex-start; }
     }
   </style>
-    <link rel="manifest" href="/static/manifest.json" />
+  <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
   <div class="page">
@@ -79,41 +104,58 @@
 
     {% if not username %}
     <div class="hint">
-      <a href="/login">Sign in</a> or <a href="/register">register</a> to follow users and see their activity first in your feed.
+      <a href="/login">Sign in</a> or <a href="/register">register</a> to follow users and see their activity in your feed.
     </div>
     {% endif %}
 
-    {% if comments %}
-      {% for c in comments %}
-      <div class="feed-item" style="display:flex;gap:.9rem;align-items:flex-start;">
-        <img id="fp_{{ loop.index }}" src="" alt="" loading="lazy"
-          style="display:none;width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0;margin-top:.1rem;"
-          onerror="this.style.display='none'" />
-        <div style="flex:1;min-width:0;">
-        <div class="feed-meta">
-          <a href="/u/{{ c.username }}" class="feed-user">{{ c.username }}</a>
-          <span class="feed-time">{{ c.created_at[:10] if c.created_at else '' }}</span>
-        </div>
-        <div class="feed-movie">reviewed <a href="{{ c.content_url }}">{{ c.content_title }}</a></div>
-        <div class="feed-rating">{{ '★' * c.get('rating', 0) }}{{ '☆' * (5 - c.get('rating', 0)) }}</div>
-        <div class="feed-text">{{ c.get('text', '') }}</div>
-        <div class="feed-likes">👍 {{ c.get('likes', 0) }} likes</div>
-        </div>
-      </div>
-      <script>
-        (function(){
-          var kind = '{{ c.get("content_type","movie") }}' === 'series' ? 'tv' : 'movie';
-          fetch('/api/poster?title=' + encodeURIComponent('{{ c.content_title|replace("'","") }}') + '&kind=' + kind)
-            .then(r=>r.json()).then(d=>{
-              var el = document.getElementById('fp_{{ loop.index }}');
-              if(el && d.poster){el.src=d.poster;el.style.display='block';}
-            }).catch(function(){});
-        })();
-      </script>
-      {% endfor %}
-    {% else %}
-      <p class="empty">No activity yet. Be the first to review something!</p>
+    {% if username %}
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('mutuals', this)">👥 Mutuals</button>
+      <button class="tab" onclick="switchTab('reviews', this)">⭐ Reviews</button>
+    </div>
     {% endif %}
+
+    <!-- Mutuals posts feed -->
+    <div id="tab-mutuals">
+      <div id="mutuals-feed">
+        <p class="empty" style="padding:2rem 0;">Loading...</p>
+      </div>
+    </div>
+
+    <!-- Reviews feed (original) -->
+    <div id="tab-reviews" style="display:none;">
+      {% if comments %}
+        {% for c in comments %}
+        <div class="feed-item" style="display:flex;gap:.9rem;align-items:flex-start;">
+          <img id="fp_{{ loop.index }}" src="" alt="" loading="lazy"
+            style="display:none;width:44px;height:64px;object-fit:cover;border-radius:5px;flex-shrink:0;margin-top:.1rem;"
+            onerror="this.style.display='none'" />
+          <div style="flex:1;min-width:0;">
+          <div class="feed-meta">
+            <a href="/u/{{ c.username }}" class="feed-user">{{ c.username }}</a>
+            <span class="feed-time">{{ c.created_at[:10] if c.created_at else '' }}</span>
+          </div>
+          <div class="feed-movie">reviewed <a href="{{ c.content_url }}">{{ c.content_title }}</a></div>
+          <div class="feed-rating">{{ '★' * c.get('rating', 0) }}{{ '☆' * (5 - c.get('rating', 0)) }}</div>
+          <div class="feed-text">{{ c.get('text', '') }}</div>
+          <div class="feed-likes">👍 {{ c.get('likes', 0) }} likes</div>
+          </div>
+        </div>
+        <script>
+          (function(){
+            var kind = '{{ c.get("content_type","movie") }}' === 'series' ? 'tv' : 'movie';
+            fetch('/api/poster?title=' + encodeURIComponent('{{ c.content_title|replace("'","") }}') + '&kind=' + kind)
+              .then(r=>r.json()).then(d=>{
+                var el = document.getElementById('fp_{{ loop.index }}');
+                if(el && d.poster){el.src=d.poster;el.style.display='block';}
+              }).catch(function(){});
+          })();
+        </script>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No activity yet. Be the first to review something!</p>
+      {% endif %}
+    </div>
   </div>
 
   <!-- Sidebar -->
@@ -134,8 +176,151 @@
   </aside>
 
   </div>
+
 <script>
   const FEED_VIEWER = '{{ username or "" }}';
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-mutuals').style.display = tab === 'mutuals' ? '' : 'none';
+    document.getElementById('tab-reviews').style.display = tab === 'reviews' ? '' : 'none';
+  }
+
+  // ===== Mutuals Feed =====
+  function timeAgo(iso) {
+    const d = new Date(iso), now = new Date();
+    const s = Math.floor((now - d) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s/60) + 'm ago';
+    if (s < 86400) return Math.floor(s/3600) + 'h ago';
+    return Math.floor(s/86400) + 'd ago';
+  }
+
+  function renderPost(p) {
+    const likes = p.likes || [];
+    const liked = likes.includes(FEED_VIEWER);
+    const likersTip = likes.length ? `<span class="tip">${likes.slice(0,5).map(esc).join(', ')}${likes.length > 5 ? ' +' + (likes.length-5) + ' more' : ''}</span>` : '';
+    const media = p.media_url ? `<div class="feed-media"><img src="${esc(p.media_url)}" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>` : '';
+    const commentCount = (p.post_comments || []).length;
+    return `
+      <div class="feed-item" id="post-${esc(p.post_id)}">
+        <div class="feed-meta">
+          <a href="/u/${esc(p.username)}" class="feed-user">${esc(p.username)}</a>
+          <span class="feed-time">${timeAgo(p.created_at)}</span>
+        </div>
+        ${p.text ? `<div class="feed-text">${esc(p.text)}</div>` : ''}
+        ${media}
+        <div class="feed-actions">
+          <div class="likers-tip">
+            <button class="like-btn${liked ? ' liked' : ''}" onclick="toggleLike('${esc(p.post_id)}', this)">
+              <span class="heart">${liked ? '❤️' : '🤍'}</span>
+              <span class="like-count">${likes.length}</span>
+            </button>
+            ${likersTip}
+          </div>
+          <button class="comment-toggle" onclick="toggleComments('${esc(p.post_id)}', this)">
+            💬 <span>${commentCount}</span>
+          </button>
+        </div>
+        <div class="comments-section" id="comments-${esc(p.post_id)}">
+          <div class="comments-list" id="clist-${esc(p.post_id)}">
+            ${(p.post_comments || []).map(renderComment).join('')}
+          </div>
+          ${FEED_VIEWER ? `
+          <div class="comment-form">
+            <input class="comment-input" placeholder="Add a comment…" id="cinput-${esc(p.post_id)}"
+              onkeydown="if(event.key==='Enter')submitComment('${esc(p.post_id)}')" />
+            <button class="comment-submit" onclick="submitComment('${esc(p.post_id)}')">Post</button>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderComment(c) {
+    return `<div class="comment-item">
+      <div class="comment-av">${esc(c.username[0].toUpperCase())}</div>
+      <div class="comment-body">
+        <span class="comment-author">${esc(c.username)}</span>
+        <div class="comment-text">${esc(c.text)}</div>
+      </div>
+    </div>`;
+  }
+
+  function toggleLike(postId, btn) {
+    if (!FEED_VIEWER) { window.location.href = '/login'; return; }
+    fetch(`/api/posts/${postId}/like`, { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) return;
+        const heart = btn.querySelector('.heart');
+        const count = btn.querySelector('.like-count');
+        heart.textContent = d.liked ? '❤️' : '🤍';
+        count.textContent = d.count;
+        btn.classList.toggle('liked', d.liked);
+        // update tooltip
+        const tip = btn.closest('.likers-tip').querySelector('.tip');
+        if (tip) {
+          const likers = d.likers || [];
+          tip.textContent = likers.length ? likers.slice(0,5).join(', ') + (likers.length > 5 ? ' +' + (likers.length-5) + ' more' : '') : '';
+        } else if (d.likers && d.likers.length) {
+          const tipEl = document.createElement('span');
+          tipEl.className = 'tip';
+          tipEl.textContent = d.likers.slice(0,5).join(', ') + (d.likers.length > 5 ? ' +' + (d.likers.length-5) + ' more' : '');
+          btn.closest('.likers-tip').appendChild(tipEl);
+        }
+      }).catch(() => {});
+  }
+
+  function toggleComments(postId, btn) {
+    const sec = document.getElementById('comments-' + postId);
+    sec.classList.toggle('open');
+  }
+
+  function submitComment(postId) {
+    const input = document.getElementById('cinput-' + postId);
+    const text = input.value.trim();
+    if (!text) return;
+    fetch(`/api/posts/${postId}/comments`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text})
+    }).then(r => r.json()).then(c => {
+      if (c.error) return;
+      const list = document.getElementById('clist-' + postId);
+      list.insertAdjacentHTML('beforeend', renderComment(c));
+      input.value = '';
+      // update comment count
+      const toggle = document.querySelector(`#post-${postId} .comment-toggle span`);
+      if (toggle) toggle.textContent = parseInt(toggle.textContent || 0) + 1;
+    }).catch(() => {});
+  }
+
+  function loadMutualsFeed() {
+    if (!FEED_VIEWER) {
+      document.getElementById('mutuals-feed').innerHTML = '<p class="empty">Sign in to see posts from your mutuals.</p>';
+      return;
+    }
+    fetch('/api/feed/mutuals')
+      .then(r => r.json())
+      .then(posts => {
+        const el = document.getElementById('mutuals-feed');
+        if (!Array.isArray(posts) || !posts.length) {
+          el.innerHTML = '<p class="empty">No posts yet. Follow people and ask them to follow back to see their posts here.</p>';
+          return;
+        }
+        el.innerHTML = posts.map(renderPost).join('');
+      })
+      .catch(() => {
+        document.getElementById('mutuals-feed').innerHTML = '<p class="empty">Could not load feed.</p>';
+      });
+  }
+
+  loadMutualsFeed();
+
+  // ===== Discover sidebar =====
   fetch('/api/users/discover')
     .then(r => r.json())
     .then(users => {
@@ -162,6 +347,7 @@
         else { btn.textContent = 'Follow'; btn.disabled = false; btn.style.opacity = '1'; }
       });
   }
+
   {% if username %}
   (function checkUnread() {
     fetch('/api/messages/unread_count').then(r=>r.json()).then(d=>{
@@ -171,8 +357,7 @@
     setTimeout(checkUnread, 15000);
   })();
   {% endif %}
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
-    <script src="/static/pwa.js"></script>
+<script src="/static/pwa.js"></script>
 </body>
 </html>

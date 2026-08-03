@@ -1672,17 +1672,54 @@ def update_bio():
     users_collection.update_one({'username': username}, {'$set': {'bio': bio}})
     return jsonify({'success': True})
 
-# ===== File Upload =====
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# ===== Image Storage (MongoDB) =====
+images_collection = None
+try:
+    if db is not None:
+        images_collection = db.images
+        images_collection.create_index('image_id', unique=True)
+except Exception as e:
+    log.error('Failed to init images collection: %s', e)
+
 ALLOWED_EXT = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+EXT_MIME = {'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif', 'webp': 'image/webp'}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+MAX_IMG_DIMENSION = 1080  # max width or height in pixels
+
+def _compress_image(data, ext):
+    """Resize to max 1080px on longest side and convert to JPEG (or keep PNG if transparent)."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(data))
+        # Convert palette/RGBA to RGB for JPEG, keep PNG for transparency
+        has_alpha = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
+        # Resize if needed
+        w, h = img.size
+        if max(w, h) > MAX_IMG_DIMENSION:
+            ratio = MAX_IMG_DIMENSION / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        buf = io.BytesIO()
+        if has_alpha or ext == 'png':
+            img = img.convert('RGBA')
+            img.save(buf, format='PNG', optimize=True)
+            return buf.getvalue(), 'image/png'
+        else:
+            img = img.convert('RGB')
+            img.save(buf, format='JPEG', quality=82, optimize=True)
+            return buf.getvalue(), 'image/jpeg'
+    except Exception as e:
+        log.error('Image compression failed: %s', e)
+        return data, EXT_MIME.get(ext, 'image/jpeg')
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     username = current_user()
     if not username:
         return jsonify({'error': 'Login required'}), 401
+    if images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
     f = request.files.get('file')
     if not f or not f.filename:
         return jsonify({'error': 'No file'}), 400
@@ -1692,11 +1729,30 @@ def upload_file():
     data = f.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         return jsonify({'error': 'File too large (max 5 MB)'}), 400
-    filename = f'{uuid.uuid4().hex[:12]}.{ext}'
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    with open(path, 'wb') as out:
-        out.write(data)
-    return jsonify({'url': f'/static/uploads/{filename}'}), 201
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id,
+        'data': data,
+        'mime': mime,
+        'uploaded_by': username,
+        'created_at': datetime.now(timezone.utc)
+    })
+    return jsonify({'url': f'/api/img/{image_id}'}), 201
+
+@app.route('/api/img/<image_id>')
+def serve_image(image_id):
+    if images_collection is None:
+        return '', 503
+    doc = images_collection.find_one({'image_id': image_id}, {'data': 1, 'mime': 1, '_id': 0})
+    if not doc:
+        return '', 404
+    from flask import Response
+    return Response(
+        doc['data'],
+        content_type=doc.get('mime', 'image/jpeg'),
+        headers={'Cache-Control': 'public, max-age=31536000'}
+    )
 
 # ===== Avatar Update =====
 @app.route('/api/profile/avatar', methods=['POST'])
@@ -1780,9 +1836,56 @@ def like_post(post_id):
     likes = post.get('likes', [])
     if username in likes:
         posts_collection.update_one({'post_id': post_id}, {'$pull': {'likes': username}})
-        return jsonify({'liked': False, 'count': len(likes) - 1})
+        new_likes = [l for l in likes if l != username]
+        return jsonify({'liked': False, 'count': len(new_likes), 'likers': new_likes})
     posts_collection.update_one({'post_id': post_id}, {'$addToSet': {'likes': username}})
-    return jsonify({'liked': True, 'count': len(likes) + 1})
+    new_likes = likes + [username]
+    return jsonify({'liked': True, 'count': len(new_likes), 'likers': new_likes})
+
+@app.route('/api/posts/<post_id>/comments', methods=['GET'])
+def get_post_comments(post_id):
+    if posts_collection is None:
+        return jsonify([]), 500
+    post = posts_collection.find_one({'post_id': post_id}, {'_id': 0, 'post_comments': 1})
+    if not post:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify(post.get('post_comments', []))
+
+@app.route('/api/posts/<post_id>/comments', methods=['POST'])
+def add_post_comment(post_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if posts_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:300]
+    if not text:
+        return jsonify({'error': 'Text required'}), 400
+    comment = {
+        'comment_id': str(uuid.uuid4())[:10],
+        'username': username,
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    posts_collection.update_one({'post_id': post_id}, {'$push': {'post_comments': comment}})
+    return jsonify(comment), 201
+
+@app.route('/api/feed/mutuals')
+def mutual_feed():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if posts_collection is None or follows_collection is None:
+        return jsonify([])
+    mutuals = get_mutual_followers(username)
+    feed_users = mutuals + [username]
+    posts = list(posts_collection.find(
+        {'username': {'$in': feed_users}}, {'_id': 0}
+    ).sort('created_at', -1).limit(40))
+    for p in posts:
+        if isinstance(p.get('created_at'), datetime):
+            p['created_at'] = p['created_at'].isoformat()
+    return jsonify(posts)
 
 @app.route('/api/posts/<post_id>', methods=['DELETE'])
 def delete_post(post_id):
