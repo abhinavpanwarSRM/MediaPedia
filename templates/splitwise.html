@@ -4,6 +4,7 @@
   <title>Split Bills</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root {
       --bg: #141414;
@@ -958,6 +959,7 @@
                 </select>
                 <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
                 <button class="btn btn-blue btn-sm" onclick="exportCSV()">⬇ CSV</button>
+                <button class="btn btn-ghost btn-sm" onclick="exportTripPDF()">📄 Trip PDF</button>
               </div>
             </div>
             <div id="expenses-list"><p class="empty">No expenses yet.</p></div>
@@ -1728,6 +1730,272 @@
           await new Promise(r => setTimeout(r, 120));
         }
       } catch {}
+    }
+
+    // ── Export Trip PDF ─────────────────────────────────────────────────────
+    async function exportTripPDF() {
+      if (!activeGroupId || !activeGroup) { toast('No group selected', 'error'); return; }
+      toast('Building PDF…', '');
+
+      // Fetch all expenses + balances in parallel
+      const [expData, balData] = await Promise.all([
+        fetch('/api/sw/groups/' + activeGroupId + '/expenses?limit=1000').then(r => r.json()),
+        fetch('/api/sw/groups/' + activeGroupId + '/balances').then(r => r.json())
+      ]);
+      const exps = expData.expenses || [];
+      const net  = balData.net || {};
+      const txns = balData.transactions || [];
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const PW = 210, PH = 297;   // A4 mm
+      const M  = 14;              // margin
+      const CW = PW - M * 2;     // content width
+
+      // ── helpers ──
+      const setFont = (size, style = 'normal', color = [255,255,255]) => {
+        doc.setFontSize(size);
+        doc.setFont('helvetica', style);
+        doc.setTextColor(...color);
+      };
+      const fillRect = (x, y, w, h, color) => {
+        doc.setFillColor(...color);
+        doc.rect(x, y, w, h, 'F');
+      };
+      const line = (y, color = [60,60,60]) => {
+        doc.setDrawColor(...color);
+        doc.setLineWidth(0.3);
+        doc.line(M, y, PW - M, y);
+      };
+
+      // helper: load an /api/img/ URL as base64 via canvas
+      const toBase64 = (url) => new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          // cap at 1200px wide to keep PDF size sane
+          const scale = Math.min(1, 1200 / img.naturalWidth);
+          c.width  = img.naturalWidth  * scale;
+          c.height = img.naturalHeight * scale;
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve({ b64: c.toDataURL('image/jpeg', 0.82), w: c.width, h: c.height });
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+
+      const catIcons = {food:'🍽',groceries:'🛒',restaurant:'🍴',cafe:'☕',fast_food:'🍔',delivery:'📦',alcohol:'🍷',travel:'✈',flight:'✈',train:'🚂',bus:'🚌',taxi:'🚕',uber:'🚗',fuel:'⛽',parking:'P',rent:'🏠',utilities:'💡',electricity:'⚡',water:'💧',gas:'🔥',internet:'🌐',phone:'📱',entertainment:'🎭',movies:'🎬',concerts:'🎵',sports:'⚽',games:'🎮',streaming:'📺',shopping:'🛍',clothing:'👕',electronics:'💻',accessories:'⌚',cosmetics:'💄',gifts:'🎁',health:'🏥',medical:'💊',gym:'🏋',pharmacy:'💉',education:'📚',tuition:'📖',books:'📕',courses:'🎓',subscriptions:'📋',bills:'🧾',insurance:'🛡',personal_care:'🧴',pets:'🐾',children:'👶',charity:'🤝',business:'💼',other:'📌'};
+
+      // ════════════════════════════════════════════════
+      // PAGE 1 — COVER
+      // ════════════════════════════════════════════════
+      fillRect(0, 0, PW, PH, [14, 14, 14]);
+
+      // accent bar top
+      fillRect(0, 0, PW, 3, [46, 213, 115]);
+
+      // big group name
+      setFont(32, 'bold', [255, 255, 255]);
+      const titleLines = doc.splitTextToSize(activeGroup.name, CW);
+      doc.text(titleLines, PW / 2, 80, { align: 'center' });
+
+      setFont(11, 'normal', [136, 136, 136]);
+      doc.text('Trip Expense Report', PW / 2, 80 + titleLines.length * 12 + 4, { align: 'center' });
+
+      // stats block
+      const total = exps.reduce((s, e) => s + e.amount, 0);
+      const dates = exps.map(e => e.date).filter(Boolean).sort();
+      const dateRange = dates.length
+        ? (dates[0] === dates[dates.length-1] ? dates[0] : dates[0] + '  →  ' + dates[dates.length-1])
+        : 'No dates';
+
+      const stats = [
+        ['Members', activeGroup.members.join(', ')],
+        ['Expenses', String(exps.length)],
+        ['Total Spent', '\u20b9' + total.toFixed(2)],
+        ['Period', dateRange],
+        ['Generated', new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})]
+      ];
+
+      let sy = 140;
+      stats.forEach(([label, val]) => {
+        fillRect(M, sy - 4, CW, 10, [28, 28, 28]);
+        setFont(8, 'normal', [136, 136, 136]);
+        doc.text(label.toUpperCase(), M + 4, sy + 2);
+        setFont(9, 'bold', [255, 255, 255]);
+        const valLines = doc.splitTextToSize(val, CW - 50);
+        doc.text(valLines, PW - M - 4, sy + 2, { align: 'right' });
+        sy += 13;
+      });
+
+      // accent bar bottom
+      fillRect(0, PH - 3, PW, 3, [46, 213, 115]);
+      setFont(7, 'normal', [60, 60, 60]);
+      doc.text('MediaPedia • Split Bills', PW / 2, PH - 6, { align: 'center' });
+
+      // ════════════════════════════════════════════════
+      // PAGES 2+ — ONE EXPENSE PER PAGE
+      // ════════════════════════════════════════════════
+      for (let i = 0; i < exps.length; i++) {
+        const e = exps[i];
+        doc.addPage();
+        fillRect(0, 0, PW, PH, [14, 14, 14]);
+        fillRect(0, 0, PW, 3, [46, 213, 115]);
+
+        let cy = 12; // current Y cursor
+
+        // ── image (if any) ──
+        if (e.image_url) {
+          const imgData = await toBase64(e.image_url);
+          if (imgData) {
+            const maxImgH = 90; // mm
+            const aspect  = imgData.h / imgData.w;
+            const imgW    = CW;
+            const imgH    = Math.min(maxImgH, imgW * aspect);
+            // rounded-rect clip trick: draw white rect behind, then image on top
+            doc.addImage(imgData.b64, 'JPEG', M, cy, imgW, imgH, '', 'FAST');
+            // subtle border
+            doc.setDrawColor(60, 60, 60);
+            doc.setLineWidth(0.4);
+            doc.rect(M, cy, imgW, imgH);
+            cy += imgH + 6;
+          }
+        }
+
+        // ── expense number badge ──
+        fillRect(M, cy, 18, 7, [46, 213, 115]);
+        setFont(7, 'bold', [14, 14, 14]);
+        doc.text('#' + String(i + 1).padStart(2, '0'), M + 9, cy + 4.8, { align: 'center' });
+
+        // ── description ──
+        setFont(16, 'bold', [255, 255, 255]);
+        const descLines = doc.splitTextToSize(e.description || 'Expense', CW - 24);
+        doc.text(descLines, M + 22, cy + 5.5);
+        cy += Math.max(10, descLines.length * 7) + 4;
+
+        // ── amount pill ──
+        fillRect(M, cy, 40, 9, [30, 50, 35]);
+        setFont(11, 'bold', [46, 213, 115]);
+        doc.text('\u20b9' + e.amount.toFixed(2), M + 20, cy + 6.2, { align: 'center' });
+
+        // category + date on same row
+        setFont(8, 'normal', [136, 136, 136]);
+        const catLabel = (catIcons[e.category] || '') + ' ' + (e.category || 'other');
+        doc.text(catLabel, M + 44, cy + 6.2);
+        doc.text(e.date || '', PW - M, cy + 6.2, { align: 'right' });
+        cy += 14;
+
+        // ── paid by ──
+        line(cy, [40, 40, 40]);
+        cy += 5;
+        setFont(7, 'normal', [136, 136, 136]);
+        doc.text('PAID BY', M, cy);
+        setFont(9, 'bold', [255, 255, 255]);
+        doc.text(e.paid_by, M + 22, cy);
+        cy += 8;
+
+        // ── split breakdown ──
+        line(cy, [40, 40, 40]);
+        cy += 5;
+        setFont(7, 'normal', [136, 136, 136]);
+        doc.text('SPLIT BREAKDOWN', M, cy);
+        cy += 6;
+
+        const shares = e.member_shares || {};
+        const splitMembers = e.split_among || Object.keys(shares);
+        splitMembers.forEach((m, idx) => {
+          const share = shares[m] !== undefined ? shares[m] : (e.amount / splitMembers.length);
+          const isOwe = m !== e.paid_by;
+          const rowBg = idx % 2 === 0 ? [22, 22, 22] : [26, 26, 26];
+          fillRect(M, cy - 1, CW, 8, rowBg);
+          setFont(8, isOwe ? 'normal' : 'bold', isOwe ? [200, 200, 200] : [46, 213, 115]);
+          doc.text(m + (m === e.paid_by ? ' (paid)' : ''), M + 3, cy + 4.5);
+          setFont(8, 'bold', isOwe ? [255, 71, 87] : [46, 213, 115]);
+          doc.text((isOwe ? 'owes \u20b9' : '+\u20b9') + share.toFixed(2), PW - M - 3, cy + 4.5, { align: 'right' });
+          cy += 9;
+        });
+
+        // ── split type tag ──
+        cy += 2;
+        setFont(7, 'normal', [80, 80, 80]);
+        doc.text('Split: ' + (e.split_type || 'equal'), M, cy);
+
+        // footer
+        fillRect(0, PH - 3, PW, 3, [46, 213, 115]);
+        setFont(7, 'normal', [60, 60, 60]);
+        doc.text(activeGroup.name + '  •  ' + (i + 1) + ' / ' + exps.length, PW / 2, PH - 6, { align: 'center' });
+      }
+
+      // ════════════════════════════════════════════════
+      // LAST PAGE — SETTLEMENTS SUMMARY
+      // ════════════════════════════════════════════════
+      doc.addPage();
+      fillRect(0, 0, PW, PH, [14, 14, 14]);
+      fillRect(0, 0, PW, 3, [46, 213, 115]);
+
+      let fy = 18;
+      setFont(18, 'bold', [255, 255, 255]);
+      doc.text('Final Settlements', M, fy);
+      fy += 10;
+      setFont(8, 'normal', [136, 136, 136]);
+      doc.text('Who owes whom to settle all balances', M, fy);
+      fy += 10;
+      line(fy); fy += 8;
+
+      // net balances
+      setFont(8, 'bold', [136, 136, 136]);
+      doc.text('NET BALANCES', M, fy); fy += 7;
+      activeGroup.members.forEach((m, idx) => {
+        const v = net[m] || 0;
+        const rowBg = idx % 2 === 0 ? [22, 22, 22] : [26, 26, 26];
+        fillRect(M, fy - 1, CW, 8, rowBg);
+        setFont(8, 'normal', [200, 200, 200]);
+        doc.text(m, M + 3, fy + 4.5);
+        const color = v > 0 ? [46, 213, 115] : v < 0 ? [255, 71, 87] : [136, 136, 136];
+        setFont(8, 'bold', color);
+        const label = v > 0 ? '+\u20b9' + v.toFixed(2) + ' (owed)' : v < 0 ? '-\u20b9' + (-v).toFixed(2) + ' (owes)' : 'settled';
+        doc.text(label, PW - M - 3, fy + 4.5, { align: 'right' });
+        fy += 9;
+      });
+
+      fy += 6; line(fy); fy += 8;
+
+      // suggested payments
+      setFont(8, 'bold', [136, 136, 136]);
+      doc.text('SUGGESTED PAYMENTS', M, fy); fy += 7;
+      if (!txns.length) {
+        setFont(9, 'normal', [46, 213, 115]);
+        doc.text('All settled up! 🎉', M, fy);
+      } else {
+        txns.forEach((t, idx) => {
+          const rowBg = idx % 2 === 0 ? [22, 22, 22] : [26, 26, 26];
+          fillRect(M, fy - 1, CW, 9, rowBg);
+          setFont(8, 'bold', [255, 255, 255]);
+          doc.text(t.from, M + 3, fy + 5);
+          setFont(8, 'normal', [136, 136, 136]);
+          doc.text('\u2192', M + 3 + doc.getTextWidth(t.from) + 3, fy + 5);
+          setFont(8, 'bold', [255, 255, 255]);
+          doc.text(t.to, M + 3 + doc.getTextWidth(t.from) + 10, fy + 5);
+          setFont(9, 'bold', [46, 213, 115]);
+          doc.text('\u20b9' + t.amount.toFixed(2), PW - M - 3, fy + 5, { align: 'right' });
+          fy += 10;
+        });
+      }
+
+      // total
+      fy += 6; line(fy, [46, 213, 115]); fy += 8;
+      setFont(10, 'bold', [136, 136, 136]);
+      doc.text('TOTAL TRIP SPEND', M, fy);
+      setFont(14, 'bold', [46, 213, 115]);
+      doc.text('\u20b9' + exps.reduce((s, e) => s + e.amount, 0).toFixed(2), PW - M, fy, { align: 'right' });
+
+      fillRect(0, PH - 3, PW, 3, [46, 213, 115]);
+      setFont(7, 'normal', [60, 60, 60]);
+      doc.text('MediaPedia • Split Bills', PW / 2, PH - 6, { align: 'center' });
+
+      doc.save((activeGroup.name || 'trip').replace(/\s+/g, '_') + '_split.pdf');
+      toast('\u2705 PDF downloaded!', 'success');
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
