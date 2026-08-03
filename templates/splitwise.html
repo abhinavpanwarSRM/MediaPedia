@@ -330,14 +330,28 @@
 
     /* Expense Item */
     .exp-item {
+      border-bottom:1px solid rgba(255,255,255,.04);
+      border-radius:10px;
+      overflow:hidden;
+      margin-bottom:.5rem;
+      background:rgba(255,255,255,.02);
+    }
+    .exp-item:last-child { margin-bottom:0; border-bottom:none; }
+    .exp-img-banner {
+      width:100%;
+      max-height:160px;
+      object-fit:cover;
+      display:block;
+      border-radius:10px 10px 0 0;
+      cursor:pointer;
+    }
+    .exp-body {
       display:flex;
       justify-content:space-between;
       align-items:center;
-      padding:.6rem 0;
-      border-bottom:1px solid rgba(255,255,255,.04);
+      padding:.55rem .6rem;
       gap:.5rem;
     }
-    .exp-item:last-child { border-bottom:none; }
     .exp-info {
       flex:1;
       min-width:0;
@@ -377,6 +391,70 @@
     .exp-del:hover {
       color:var(--primary);
       background:rgba(229,9,20,.1);
+    }
+
+    /* Photo upload in form */
+    .photo-upload-row {
+      display:flex;
+      align-items:center;
+      gap:.6rem;
+      margin-top:.4rem;
+    }
+    .photo-preview {
+      width:64px;
+      height:48px;
+      object-fit:cover;
+      border-radius:6px;
+      border:1px solid var(--border);
+      display:none;
+    }
+    .photo-preview.show { display:block; }
+    .photo-label {
+      display:inline-flex;
+      align-items:center;
+      gap:.3rem;
+      padding:.3rem .7rem;
+      background:rgba(255,255,255,.06);
+      border:1px solid var(--border);
+      border-radius:8px;
+      font-size:.78rem;
+      color:var(--muted);
+      cursor:pointer;
+      transition:all .2s;
+    }
+    .photo-label:hover { border-color:rgba(255,255,255,.25); color:#fff; }
+    .photo-remove {
+      background:none;
+      border:none;
+      color:var(--muted);
+      cursor:pointer;
+      font-size:.8rem;
+      padding:.1rem .3rem;
+      border-radius:4px;
+      display:none;
+      transition:color .2s;
+    }
+    .photo-remove.show { display:inline-block; }
+    .photo-remove:hover { color:#ff4757; }
+
+    /* Lightbox */
+    .lightbox {
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.92);
+      z-index:500;
+      align-items:center;
+      justify-content:center;
+      cursor:zoom-out;
+    }
+    .lightbox.active { display:flex; }
+    .lightbox img {
+      max-width:94vw;
+      max-height:90vh;
+      border-radius:10px;
+      object-fit:contain;
+      box-shadow:0 8px 40px rgba(0,0,0,.6);
     }
 
     /* Balance Rows */
@@ -847,6 +925,12 @@
               </select>
             </div>
             <div class="split-inputs" id="split-inputs"></div>
+            <div class="photo-upload-row">
+              <label class="photo-label" for="exp-photo-input">📷 Add photo</label>
+              <input type="file" id="exp-photo-input" accept="image/*" style="display:none" onchange="handleExpensePhoto(this)" />
+              <img id="exp-photo-preview" class="photo-preview" alt="preview" />
+              <button type="button" class="photo-remove" id="exp-photo-remove" onclick="removeExpensePhoto()">✕ Remove</button>
+            </div>
             <button class="btn btn-primary" id="add-expense-btn" onclick="addExpense()" style="margin-top:.6rem;">
               <span id="add-btn-text">Add Expense</span>
               <span id="add-btn-spinner" style="display:none;"><span class="spinner"></span></span>
@@ -959,6 +1043,10 @@
     </div>
   </div>
 
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="" />
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -968,6 +1056,43 @@
     let activeGroup = null;
     let expSkip = 0;
     const EXP_LIMIT = 30;
+
+    // ── Photo Upload ──────────────────────────────────────────────────────────
+    let _pendingPhotoUrl = '';
+
+    async function handleExpensePhoto(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/upload', {method:'POST', body: formData});
+        const d = await res.json();
+        if (d.error) { toast(d.error, 'error'); return; }
+        _pendingPhotoUrl = d.url;
+        const preview = document.getElementById('exp-photo-preview');
+        preview.src = d.url;
+        preview.classList.add('show');
+        document.getElementById('exp-photo-remove').classList.add('show');
+      } catch { toast('Photo upload failed', 'error'); }
+    }
+
+    function removeExpensePhoto() {
+      _pendingPhotoUrl = '';
+      const preview = document.getElementById('exp-photo-preview');
+      preview.src = '';
+      preview.classList.remove('show');
+      document.getElementById('exp-photo-remove').classList.remove('show');
+      document.getElementById('exp-photo-input').value = '';
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('active');
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     function toast(msg, type) {
@@ -1056,6 +1181,9 @@
           break;
         }
       }
+
+      // Reset photo
+      removeExpensePhoto();
     }
 
     // ── Groups ────────────────────────────────────────────────────────────────
@@ -1274,14 +1402,20 @@
         if (!exps.length) { el.innerHTML = '<p class="empty">No expenses yet.</p>'; return; }
         el.innerHTML = exps.map(e => {
           const icons = {food:'🍽',groceries:'🛒',restaurant:'🍴',cafe:'☕',fast_food:'🍔',delivery:'📦',alcohol:'🍷',travel:'✈️',flight:'🛫',train:'🚂',bus:'🚌',taxi:'🚕',uber:'🚗',fuel:'⛽',parking:'🅿️',rent:'🏠',utilities:'💡',electricity:'⚡',water:'💧',gas:'🔥',internet:'🌐',phone:'📱',entertainment:'🎭',movies:'🎬',concerts:'🎵',sports:'⚽',games:'🎮',streaming:'📺',shopping:'🛍',clothing:'👕',electronics:'💻',accessories:'⌚',cosmetics:'💄',gifts:'🎁',health:'🏥',medical:'💊',gym:'🏋️',pharmacy:'💉',education:'📚',tuition:'📖',books:'📕',courses:'🎓',subscriptions:'📋',bills:'🧾',insurance:'🛡️',personal_care:'🧴',pets:'🐾',children:'👶',charity:'🤝',business:'💼',other:'📌'};
+          const imgBanner = e.image_url
+            ? `<img class="exp-img-banner" src="${esc(e.image_url)}" alt="" loading="lazy" onclick="openLightbox('${esc(e.image_url)}')" />`
+            : '';
           return `<div class="exp-item">
-            <div class="exp-info">
-              <div class="exp-desc">${esc(e.description)}<span class="cat-badge">${icons[e.category]||'📌'} ${esc(e.category||'other')}</span></div>
-              <div class="exp-meta">${esc(e.paid_by)} paid · ${e.split_among.length} people · ${(e.date||'').slice(0,10)}</div>
-            </div>
-            <div class="exp-actions">
-              <span class="exp-amount">₹${e.amount.toFixed(2)}</span>
-              <button class="exp-del" onclick="deleteExpense('${e.expense_id}')" title="Delete">🗑</button>
+            ${imgBanner}
+            <div class="exp-body">
+              <div class="exp-info">
+                <div class="exp-desc">${esc(e.description)}<span class="cat-badge">${icons[e.category]||'📌'} ${esc(e.category||'other')}</span></div>
+                <div class="exp-meta">${esc(e.paid_by)} paid · ${e.split_among.length} people · ${(e.date||'').slice(0,10)}</div>
+              </div>
+              <div class="exp-actions">
+                <span class="exp-amount">₹${e.amount.toFixed(2)}</span>
+                <button class="exp-del" onclick="deleteExpense('${e.expense_id}')" title="Delete">🗑</button>
+              </div>
             </div>
           </div>`;
         }).join('');
@@ -1316,7 +1450,7 @@
       const split_type = document.getElementById('exp-split-type').value;
       const split_among = getSelectedChips();
       
-      const body = {description: desc, amount, paid_by, split_among, category, date, split_type};
+      const body = {description: desc, amount, paid_by, split_among, category, date, split_type, image_url: _pendingPhotoUrl};
       if (split_type !== 'equal') body.splits = getSplitsFromInputs(split_among, split_type);
       
       fetch('/api/sw/groups/' + activeGroupId + '/expenses', {

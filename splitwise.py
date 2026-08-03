@@ -376,6 +376,10 @@ def add_expense(group_id):
     if err:
         return jsonify({'error': err}), 400
 
+    image_url = data.get('image_url', '').strip()[:500]
+    if image_url and not image_url.startswith(('http://', 'https://', '/api/img/')):
+        image_url = ''
+
     expense_id = str(uuid.uuid4())[:10]
     doc = {
         'expense_id': expense_id,
@@ -388,6 +392,7 @@ def add_expense(group_id):
         'split_type': data.get('split_type', 'equal'),
         'category': category,
         'date': date,
+        'image_url': image_url,
         'created_by': username,
         'created_at': _now()
     }
@@ -447,6 +452,10 @@ def edit_expense(group_id, expense_id):
     if err:
         return jsonify({'error': err}), 400
 
+    image_url = data.get('image_url', exp.get('image_url', '')).strip()[:500]
+    if image_url and not image_url.startswith(('http://', 'https://', '/api/img/')):
+        image_url = ''
+
     update = {
         'description': desc or 'Expense',
         'amount': amount,
@@ -456,6 +465,7 @@ def edit_expense(group_id, expense_id):
         'split_type': data.get('split_type', exp.get('split_type', 'equal')),
         'category': category,
         'date': date,
+        'image_url': image_url,
     }
     sw_expenses_col.update_one({'expense_id': expense_id}, {'$set': update})
     return jsonify({'success': True, **update})
