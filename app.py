@@ -1672,6 +1672,32 @@ def update_bio():
     users_collection.update_one({'username': username}, {'$set': {'bio': bio}})
     return jsonify({'success': True})
 
+# ===== File Upload =====
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXT = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No file'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    filename = f'{uuid.uuid4().hex[:12]}.{ext}'
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    with open(path, 'wb') as out:
+        out.write(data)
+    return jsonify({'url': f'/static/uploads/{filename}'}), 201
+
 # ===== Avatar Update =====
 @app.route('/api/profile/avatar', methods=['POST'])
 def update_avatar():

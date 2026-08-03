@@ -507,7 +507,12 @@
         <textarea id="post-text" placeholder="Write something..." maxlength="500"
           style="width:100%;padding:0.65rem 0.9rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:0.88rem;resize:none;height:80px;font-family:inherit;margin-bottom:0.5rem;"></textarea>
         <input type="url" id="post-media" placeholder="Image or YouTube URL (optional)"
-          style="width:100%;padding:0.55rem 0.85rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.85rem;margin-bottom:0.5rem;" />
+          style="width:100%;padding:0.55rem 0.85rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.85rem;margin-bottom:0.4rem;" />
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+          <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Or upload:</label>
+          <input type="file" id="post-file-input" accept="image/*" onchange="uploadAndSetPostMedia(this)" style="font-size:0.78rem;color:#ccc;flex:1;background:none;border:none;padding:0;" />
+          <span id="post-upload-status" style="font-size:0.72rem;color:var(--muted);"></span>
+        </div>
         <button class="btn btn-red" onclick="createPost()">Post</button>
       </div>
       {% endif %}
@@ -574,6 +579,11 @@
         {% endif %}
       </div>
       <input type="url" id="avatar-url-input" placeholder="Paste image URL (https://...)" value="{{ avatar_url or '' }}" oninput="previewAvatar(this.value)" />
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Or upload:</label>
+        <input type="file" id="avatar-file-input" accept="image/*" onchange="uploadAndPreviewAvatar(this)" style="font-size:0.78rem;color:#ccc;flex:1;background:none;border:none;padding:0;" />
+        <span id="avatar-upload-status" style="font-size:0.72rem;color:var(--muted);"></span>
+      </div>
       <div class="avatar-modal-actions">
         <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="closeAvatarModal()">Cancel</button>
         <button class="btn btn-red" onclick="saveAvatar()">Save</button>
@@ -928,6 +938,38 @@
       }
       {% endif %}
     })();
+
+    // File upload helper
+    function uploadFile(file, statusEl) {
+      return new Promise((resolve, reject) => {
+        if (!file) return reject(new Error('No file'));
+        if (file.size > 5 * 1024 * 1024) { statusEl.textContent = 'Too large (max 5MB)'; return reject(new Error('Too large')); }
+        statusEl.textContent = 'Uploading...';
+        const fd = new FormData();
+        fd.append('file', file);
+        fetch('/api/upload', { method: 'POST', body: fd })
+          .then(r => r.json())
+          .then(d => {
+            if (d.error) { statusEl.textContent = d.error; reject(new Error(d.error)); }
+            else { statusEl.textContent = 'Done'; resolve(d.url); }
+          })
+          .catch(e => { statusEl.textContent = 'Upload failed'; reject(e); });
+      });
+    }
+    function uploadAndPreviewAvatar(input) {
+      const status = document.getElementById('avatar-upload-status');
+      uploadFile(input.files[0], status).then(url => {
+        document.getElementById('avatar-url-input').value = url;
+        previewAvatar(url);
+      }).catch(() => {});
+    }
+    function uploadAndSetPostMedia(input) {
+      const status = document.getElementById('post-upload-status');
+      uploadFile(input.files[0], status).then(url => {
+        document.getElementById('post-media').value = url;
+        previewPostMedia(url);
+      }).catch(() => {});
+    }
 
     // Avatar modal
     function openAvatarModal() { document.getElementById('avatar-modal-overlay').classList.add('open'); }
