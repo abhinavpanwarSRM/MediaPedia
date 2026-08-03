@@ -209,6 +209,21 @@ def rename_group(group_id):
     return jsonify({'success': True, 'name': name})
 
 
+@splitwise_bp.route('/api/sw/groups/<group_id>/photo', methods=['POST'])
+def update_group_photo(group_id):
+    username = _current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    g = sw_groups_col.find_one({'group_id': group_id, 'members': username})
+    if not g:
+        return jsonify({'error': 'Not found'}), 404
+    url = (request.json or {}).get('url', '').strip()[:500]
+    if url and not url.startswith(('http://', 'https://', '/api/img/')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    sw_groups_col.update_one({'group_id': group_id}, {'$set': {'cover_photo': url}})
+    return jsonify({'success': True, 'cover_photo': url})
+
+
 @splitwise_bp.route('/api/sw/groups/<group_id>', methods=['GET'])
 def get_group(group_id):
     username = _current_user()

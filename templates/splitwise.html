@@ -441,6 +441,32 @@
     .photo-remove.show { display:inline-block; }
     .photo-remove:hover { color:#ff4757; }
 
+    /* Group Cover */
+    .group-cover {
+      width:100%; height:110px; object-fit:cover;
+      border-radius:10px 10px 0 0; display:block; cursor:zoom-in;
+    }
+    .group-cover-wrap {
+      margin:-1rem -1rem .7rem -1rem;
+      border-radius:10px 10px 0 0; overflow:hidden; position:relative;
+    }
+    .cover-change {
+      position:absolute; bottom:6px; right:8px;
+      background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.2);
+      border-radius:6px; color:#fff; font-size:.7rem;
+      padding:.2rem .5rem; cursor:pointer; backdrop-filter:blur(4px);
+      transition:background .2s;
+    }
+    .cover-change:hover { background:rgba(0,0,0,.85); }
+    /* Per-person drill-down */
+    .person-bal-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:.45rem .6rem; border-radius:8px; margin-bottom:.3rem;
+      background:rgba(255,255,255,.03); cursor:pointer;
+      transition:background .2s; font-size:.85rem;
+    }
+    .person-bal-row:hover { background:rgba(255,255,255,.07); }
+
     /* Lightbox */
     .lightbox {
       display:none;
@@ -814,8 +840,18 @@
 
       <!-- RIGHT: Group Detail -->
       <div id="group-detail" style="display:none;">
-        <div class="card" style="margin-bottom:.8rem;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
+        <div class="card" style="margin-bottom:.8rem;padding-top:0;">
+          <div id="gd-cover-wrap" style="display:none;" class="group-cover-wrap">
+            <img id="gd-cover-img" class="group-cover" src="" alt="" onclick="openLightbox(this.src)" />
+            <button class="cover-change" onclick="triggerCoverUpload()">📸 Change</button>
+          </div>
+          <div id="gd-no-cover" style="padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
+            <span style="font-size:.75rem;color:var(--muted);">No cover photo</span>
+            <button class="btn btn-ghost btn-sm" onclick="triggerCoverUpload()">📸 Add cover</button>
+          </div>
+          <input type="file" id="cover-file-input" accept="image/*" style="display:none" onchange="handleCoverUpload(this)" />
+          <input type="file" id="cover-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleCoverUpload(this)" />
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;margin-top:.6rem;">
             <h2 id="gd-name" style="font-size:1.1rem;font-weight:800;"></h2>
             <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
               <button class="btn btn-blue btn-sm" onclick="openAddMember()">+ Member</button>
@@ -969,7 +1005,7 @@
         <!-- Balances Tab -->
         <div class="tab-panel" id="tab-balances">
           <div class="card">
-            <div class="sec-title">Net Balances</div>
+            <div class="sec-title">Net Balances — tap a person for details</div>
             <div id="net-balances"><p class="empty">Loading...</p></div>
           </div>
           <div class="card">
@@ -1006,6 +1042,48 @@
       <!-- Placeholder -->
       <div id="group-placeholder">
         <p>Select or create a group to get started</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Expense Modal -->
+  <div class="modal-overlay" id="modal-edit-exp" onclick="if(event.target===this)closeModal('modal-edit-exp')">
+    <div class="modal-box">
+      <h3>Edit Expense</h3>
+      <input type="hidden" id="edit-exp-id" />
+      <div class="form-row">
+        <div><span class="form-label">Description</span><input id="edit-exp-desc" placeholder="e.g. Dinner" /></div>
+        <div><span class="form-label">Amount (₹)</span><input id="edit-exp-amount" type="number" min="0.01" step="0.01" /></div>
+      </div>
+      <div class="form-row">
+        <div><span class="form-label">Paid by</span><select id="edit-exp-paid-by"></select></div>
+        <div><span class="form-label">Date</span><input id="edit-exp-date" type="date" /></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-edit-exp')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditExpense()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-person Balance Modal -->
+  <div class="modal-overlay" id="modal-person-bal" onclick="if(event.target===this)closeModal('modal-person-bal')">
+    <div class="modal-box">
+      <h3 id="person-bal-title">Balance details</h3>
+      <div id="person-bal-body"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-person-bal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cover Photo Source Picker -->
+  <div class="modal-overlay" id="modal-cover-src" onclick="if(event.target===this)closeModal('modal-cover-src')">
+    <div class="modal-box" style="max-width:280px;">
+      <h3>Add Cover Photo</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem;">
+        <button class="btn btn-ghost" onclick="closeModal('modal-cover-src');document.getElementById('cover-file-input').click()">🖼 Gallery</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-cover-src');document.getElementById('cover-camera-input').click()">📷 Camera</button>
       </div>
     </div>
   </div>
@@ -1225,6 +1303,7 @@
       fetch('/api/sw/groups/' + gid).then(r => r.json()).then(g => {
         activeGroup = g;
         document.getElementById('gd-name').textContent = g.name;
+        renderGroupCover(g.cover_photo || '');
         populateMemberSelects(g.members);
         populateSplitChips(g.members);
         document.getElementById('group-detail').style.display = 'block';
@@ -1422,6 +1501,7 @@
               </div>
               <div class="exp-actions">
                 <span class="exp-amount">₹${e.amount.toFixed(2)}</span>
+                <button class="exp-del" onclick="openEditExpense(${JSON.stringify(e).replace(/"/g,'&quot;')})" title="Edit">✏️</button>
                 <button class="exp-del" onclick="deleteExpense('${e.expense_id}')" title="Delete">🗑</button>
               </div>
             </div>
@@ -1544,7 +1624,7 @@
           const v = net[m] || 0;
           const cls = v > 0 ? 'owed' : v < 0 ? 'owe' : '';
           const label = v > 0 ? `+₹${v.toFixed(2)}` : v < 0 ? `-₹${(-v).toFixed(2)}` : '₹0';
-          return `<div class="bal-row"><span>${esc(m)}</span><span class="${cls}">${label}</span></div>`;
+          return `<div class="person-bal-row" onclick="openPersonBalance('${esc(m)}', ${JSON.stringify(net)}, ${JSON.stringify(d.transactions||[])})"><span>${esc(m)}</span><span class="${cls}">${label} ›</span></div>`;
         }).join('');
         
         const txns = d.transactions || [];
@@ -1792,6 +1872,18 @@
       // ════════════════════════════════════════════════
       fillRect(0, 0, PW, PH, [14, 14, 14]);
 
+      // cover photo full-bleed (if group has one)
+      if (activeGroup.cover_photo) {
+        const coverData = await toBase64(activeGroup.cover_photo);
+        if (coverData) {
+          // fill page, then dark overlay
+          const aspect = coverData.h / coverData.w;
+          const imgH = Math.max(PH, PW * aspect);
+          doc.addImage(coverData.b64, 'JPEG', 0, 0, PW, imgH, '', 'FAST');
+          fillRect(0, 0, PW, PH, [0, 0, 0, 0.55]); // semi-transparent dark overlay
+        }
+      }
+
       // accent bar top
       fillRect(0, 0, PW, 3, [46, 213, 115]);
 
@@ -1800,7 +1892,7 @@
       const titleLines = doc.splitTextToSize(activeGroup.name, CW);
       doc.text(titleLines, PW / 2, 80, { align: 'center' });
 
-      setFont(11, 'normal', [136, 136, 136]);
+      setFont(11, 'normal', [200, 200, 200]);
       doc.text('Trip Expense Report', PW / 2, 80 + titleLines.length * 12 + 4, { align: 'center' });
 
       // stats block
@@ -1996,6 +2088,105 @@
 
       doc.save((activeGroup.name || 'trip').replace(/\s+/g, '_') + '_split.pdf');
       toast('\u2705 PDF downloaded!', 'success');
+    }
+
+    // ── Group Cover Photo ─────────────────────────────────────────────────────
+    function triggerCoverUpload() { openModal('modal-cover-src'); }
+
+    async function handleCoverUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      toast('Uploading cover…', '');
+      try {
+        const up = await fetch('/api/upload', {method:'POST', body:fd}).then(r=>r.json());
+        if (up.error) { toast(up.error, 'error'); return; }
+        const save = await fetch('/api/sw/groups/' + activeGroupId + '/photo', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({url: up.url})
+        }).then(r=>r.json());
+        if (save.error) { toast(save.error, 'error'); return; }
+        activeGroup.cover_photo = up.url;
+        renderGroupCover(up.url);
+        toast('Cover updated!', 'success');
+      } catch { toast('Upload failed', 'error'); }
+      input.value = '';
+    }
+
+    function renderGroupCover(url) {
+      const wrap = document.getElementById('gd-cover-wrap');
+      const img  = document.getElementById('gd-cover-img');
+      const none = document.getElementById('gd-no-cover');
+      if (url) {
+        img.src = url;
+        wrap.style.display = 'block';
+        none.style.display = 'none';
+      } else {
+        wrap.style.display = 'none';
+        none.style.display = 'flex';
+      }
+    }
+
+    // ── Edit Expense ──────────────────────────────────────────────────────────
+    function openEditExpense(e) {
+      document.getElementById('edit-exp-id').value = e.expense_id;
+      document.getElementById('edit-exp-desc').value = e.description || '';
+      document.getElementById('edit-exp-amount').value = e.amount || '';
+      document.getElementById('edit-exp-date').value = (e.date || '').slice(0,10);
+      const pb = document.getElementById('edit-exp-paid-by');
+      pb.innerHTML = (activeGroup ? activeGroup.members : [e.paid_by])
+        .map(m => `<option value="${esc(m)}" ${m===e.paid_by?'selected':''}>${esc(m)}</option>`).join('');
+      openModal('modal-edit-exp');
+    }
+
+    function submitEditExpense() {
+      const eid    = document.getElementById('edit-exp-id').value;
+      const desc   = document.getElementById('edit-exp-desc').value.trim();
+      const amount = parseFloat(document.getElementById('edit-exp-amount').value);
+      const paid_by= document.getElementById('edit-exp-paid-by').value;
+      const date   = document.getElementById('edit-exp-date').value;
+      if (!desc || !amount || amount <= 0) { toast('Fill in description and amount', 'error'); return; }
+      fetch('/api/sw/groups/' + activeGroupId + '/expenses/' + eid, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({description:desc, amount, paid_by, date})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { toast(d.error, 'error'); return; }
+        closeModal('modal-edit-exp');
+        toast('Expense updated!', 'success');
+        loadExpenses(); loadSummary(); loadGroups();
+      });
+    }
+
+    // ── Per-person Balance Drill-down ─────────────────────────────────────────
+    function openPersonBalance(member, net, txns) {
+      document.getElementById('person-bal-title').textContent = member + "'s Balance";
+      const v = net[member] || 0;
+      const myTxns = txns.filter(t => t.from === member || t.to === member);
+
+      let html = '<div style="margin-bottom:.8rem;">';
+      const cls = v > 0 ? 'owed' : v < 0 ? 'owe' : '';
+      const summary = v > 0 ? `Is owed ₹${v.toFixed(2)} overall`
+                    : v < 0 ? `Owes ₹${(-v).toFixed(2)} overall`
+                    : 'All settled up ✓';
+      html += `<div style="font-size:1rem;font-weight:700;" class="${cls}">${summary}</div></div>`;
+
+      if (myTxns.length) {
+        html += '<div class="sec-title" style="margin-bottom:.4rem;">Needs to settle</div>';
+        myTxns.forEach(t => {
+          const paying = t.from === member;
+          html += `<div class="txn-row" onclick="prefillSettle('${esc(paying?t.to:t.from)}','${t.amount}');closeModal('modal-person-bal')">
+            <span style="font-weight:600;">${esc(t.from)}</span>
+            <span class="txn-arrow">→</span>
+            <span style="font-weight:600;">${esc(t.to)}</span>
+            <span style="color:var(--green);font-weight:700;">₹${t.amount.toFixed(2)}</span>
+          </div>`;
+        });
+      } else {
+        html += '<p class="empty">No pending transactions 🎉</p>';
+      }
+      document.getElementById('person-bal-body').innerHTML = html;
+      openModal('modal-person-bal');
     }
 
     // ── Init ─────────────────────────────────────────────────────────────────
