@@ -60,17 +60,26 @@
       background: radial-gradient(ellipse at 30% 50%, rgba(229,9,20,0.12) 0%, transparent 60%);
       pointer-events:none; }
     .avatar-wrap { position: absolute; bottom: -44px; left: 1.5rem; }
-    .avatar-edit-btn { display: none; margin-top: 0.4rem; font-size: 0.72rem; color: var(--primary);
-      background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; font-weight: 600; }
-    @media (hover: none) {
-      .avatar-edit-btn { display: block; }
-    }
     .avatar { width: 88px; height: 88px; border-radius: 50%;
       background: linear-gradient(135deg, var(--primary), #ff6b6b);
       display: flex; align-items: center; justify-content: center;
       font-size: 2.2rem; font-weight: 800; border: 4px solid var(--bg);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; cursor: pointer; }
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; cursor: pointer; position: relative; }
     .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    /* Camera overlay — shown on hover for owner on desktop, always visible on mobile */
+    .avatar-cam-overlay { position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(0,0,0,0.52); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+      opacity: 0; transition: opacity 0.18s; pointer-events: none; }
+    .avatar-cam-overlay span { font-size: 1.3rem; line-height: 1; }
+    .avatar-cam-overlay small { font-size: 0.55rem; color: #eee; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.4px; }
+    @media (hover: hover) {
+      .avatar:hover .avatar-cam-overlay { opacity: 1; }
+    }
+    @media (hover: none) {
+      .avatar-cam-overlay { opacity: 1; }
+    }
     .avatar-zoom-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
       z-index: 500; align-items: center; justify-content: center; pointer-events: none; }
     .avatar-zoom-overlay.show { display: flex; pointer-events: all; cursor: zoom-out; }
@@ -332,7 +341,20 @@
 
   <div class="profile-banner">
     <div class="avatar-wrap">
-      <div class="avatar" id="avatar-circle" {% if viewer == username %}onclick="handleAvatarClick()" title="Change profile picture"{% else %}onclick="openZoom()"{% endif %} onmouseenter="if(!isMobile())openZoom()" onmouseleave="if(!isMobile())closeZoom()">
+      {% if viewer == username %}
+      <!-- Hidden file input — triggered directly on click for owner -->
+      <input type="file" id="avatar-file-direct" accept="image/*" style="display:none" onchange="directAvatarUpload(this)">
+      <div class="avatar" id="avatar-circle" onclick="document.getElementById('avatar-file-direct').click()" title="Change profile picture">
+        {% if avatar_url %}
+          <img src="{{ avatar_url }}" alt="{{ username }}" id="avatar-img" onerror="this.style.display='none';document.getElementById('avatar-letter').style.display='flex'">
+          <span id="avatar-letter" style="display:none;">{{ username[0]|upper }}</span>
+        {% else %}
+          <span id="avatar-letter">{{ username[0]|upper }}</span>
+        {% endif %}
+        <div class="avatar-cam-overlay"><span>📷</span><small>Change</small></div>
+      </div>
+      {% else %}
+      <div class="avatar" id="avatar-circle" onclick="openZoom()">
         {% if avatar_url %}
           <img src="{{ avatar_url }}" alt="{{ username }}" id="avatar-img" onerror="this.style.display='none';document.getElementById('avatar-letter').style.display='flex'">
           <span id="avatar-letter" style="display:none;">{{ username[0]|upper }}</span>
@@ -340,8 +362,6 @@
           <span id="avatar-letter">{{ username[0]|upper }}</span>
         {% endif %}
       </div>
-      {% if viewer == username %}
-      <button class="avatar-edit-btn" onclick="openAvatarModal()">✏️ Change Photo</button>
       {% endif %}
     </div>
   </div>
@@ -598,13 +618,8 @@
     const PROFILE_USER = '{{ username }}';
     const VIEWER       = '{{ viewer or "" }}';
 
-    function isMobile() { return window.matchMedia('(hover: none)').matches; }
     function openZoom() { document.getElementById('avatar-zoom-overlay').classList.add('show'); }
     function closeZoom() { document.getElementById('avatar-zoom-overlay').classList.remove('show'); }
-    function handleAvatarClick() {
-      if (isMobile()) { openZoom(); }
-      else { openAvatarModal(); }
-    }
 
     function toggleDrawer() {
       document.getElementById('nav-drawer').classList.toggle('open');
@@ -962,6 +977,48 @@
         document.getElementById('avatar-url-input').value = url;
         previewAvatar(url);
       }).catch(() => {});
+    }
+
+    // Direct avatar upload (desktop + mobile) — upload then immediately save
+    function directAvatarUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('File too large (max 5MB)'); return; }
+      showToast('Uploading...');
+      const fd = new FormData();
+      fd.append('file', file);
+      fetch('/api/upload', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { showToast(d.error); return; }
+          return fetch('/api/profile/avatar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({url: d.url}) })
+            .then(r => r.json())
+            .then(res => {
+              if (res.error) { showToast(res.error); return; }
+              const url = d.url;
+              const circle = document.getElementById('avatar-circle');
+              const letter = document.getElementById('avatar-letter');
+              let img = document.getElementById('avatar-img');
+              if (!img) {
+                img = document.createElement('img');
+                img.id = 'avatar-img';
+                img.onerror = function() { this.style.display='none'; if(letter) letter.style.display='flex'; };
+                circle.insertBefore(img, circle.firstChild);
+              }
+              img.src = url; img.style.display = '';
+              if (letter) letter.style.display = 'none';
+              // update zoom overlay
+              const zo = document.getElementById('avatar-zoom-overlay');
+              if (zo) {
+                const zImg = zo.querySelector('img'), zLetter = zo.querySelector('.zoom-letter');
+                if (zImg) { zImg.src = url; zImg.style.display = ''; }
+                if (zLetter) zLetter.style.display = 'none';
+              }
+              showToast('Profile picture updated ✅');
+            });
+        })
+        .catch(() => showToast('Upload failed'));
+      input.value = ''; // reset so same file can be re-selected
     }
     function uploadAndSetPostMedia(input) {
       const status = document.getElementById('post-upload-status');
