@@ -1763,7 +1763,7 @@ def update_avatar():
     if users_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     url = (request.json or {}).get('url', '').strip()[:500]
-    if url and not url.startswith(('http://', 'https://')):
+    if url and not url.startswith(('http://', 'https://', '/api/img/')):
         return jsonify({'error': 'Invalid URL'}), 400
     users_collection.update_one({'username': username}, {'$set': {'avatar_url': url}})
     return jsonify({'success': True, 'avatar_url': url})
@@ -1805,7 +1805,7 @@ def create_post():
         media_url = data.get('media_url', '').strip()[:500]
         if not text and not media_url:
             return jsonify({'error': 'Post needs text or media'}), 400
-        if media_url and not media_url.startswith(('http://', 'https://')):
+        if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
             return jsonify({'error': 'Invalid URL'}), 400
         post = {
             'post_id': str(uuid.uuid4())[:10],
