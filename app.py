@@ -2353,8 +2353,10 @@ def send_message():
     if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
         return jsonify({'error': 'Invalid media URL'}), 400
 
-    # Love Letter fields
+    # Love Letter fields — restricted to abhinav only
     love_letter = data.get('love_letter')
+    if love_letter and username != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
     if love_letter:
         photo_url = love_letter.get('photo_url', '').strip()[:500]
         if photo_url and not photo_url.startswith(('http://', 'https://', '/api/img/')):

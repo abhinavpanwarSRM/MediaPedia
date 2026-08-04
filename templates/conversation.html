@@ -114,7 +114,7 @@
     /* Love Letter bubble */
     .ll-bubble { background:linear-gradient(135deg,#1a0010,#2d0020); border:1px solid rgba(229,9,20,0.35);
                  border-radius:16px; padding:0.7rem 0.9rem; cursor:pointer; max-width:260px;
-                 transition:transform 0.18s; }
+                 transition:transform 0.18s; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .ll-bubble:hover { transform:scale(1.03); }
     .ll-bubble .ll-thumb { width:100%; max-height:140px; object-fit:cover; border-radius:10px;
                            display:block; margin-bottom:0.5rem; }
@@ -242,7 +242,7 @@
         <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}">
           <div class="msg-av">{{ msg.sender[0]|upper }}</div>
           {% if msg.love_letter %}
-          <div class="ll-bubble" onclick="openLLViewer({{ msg.love_letter | tojson }})">
+          <div class="ll-bubble" data-ll="{{ msg.love_letter | tojson | forceescape }}" onclick="openLLViewer(JSON.parse(this.dataset.ll))">
             {% if msg.love_letter.photo_url %}<img class="ll-thumb" src="{{ msg.love_letter.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
             <div class="ll-label">&#128140; Love Letter</div>
             {% if msg.love_letter.note %}<div class="ll-note-preview">{{ msg.love_letter.note }}</div>{% endif %}
@@ -328,7 +328,7 @@
   <div class="input-bar" id="input-bar">
     <button class="attach-btn" onclick="document.getElementById('img-file').click()" title="Send photo">&#128247;</button>
     <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImagePick(this)">
-    <button class="attach-btn" onclick="openLLModal()" title="Love Letter" style="color:#ff6b9d;">&#128140;</button>
+    {% if username == 'abhinav' %}<button class="attach-btn" onclick="openLLModal()" title="Love Letter" style="color:#ff6b9d;">&#128140;</button>{% endif %}
     <textarea class="msg-input" id="msg-input" rows="1"
               placeholder="Message {{ other_user }}..."
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
