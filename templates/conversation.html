@@ -304,6 +304,7 @@
 
     // ── Append a message bubble ───────────────────────────────────────────────
     function appendMessage(msg) {
+      if (document.querySelector(`.msg-row[data-msg-id="${msg.msg_id}"]`)) return;
       const isMe = msg.sender === ME;
       // Date separator
       const msgDate = fmtDate(msg.created_at);
