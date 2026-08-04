@@ -844,6 +844,7 @@
           <div id="gd-cover-wrap" style="display:none;" class="group-cover-wrap">
             <img id="gd-cover-img" class="group-cover" src="" alt="" onclick="openLightbox(this.src)" />
             <button class="cover-change" onclick="triggerCoverUpload()">📸 Change</button>
+            <button class="cover-change" style="right:80px;" onclick="removeCoverPhoto()">✕ Remove</button>
           </div>
           <div id="gd-no-cover" style="padding-top:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem;">
             <span style="font-size:.75rem;color:var(--muted);">No cover photo</span>
@@ -995,7 +996,7 @@
                 </select>
                 <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
                 <button class="btn btn-blue btn-sm" onclick="exportCSV()">⬇ CSV</button>
-                <button class="btn btn-ghost btn-sm" onclick="exportTripPDF()">📄 Trip PDF</button>
+                <button class="btn btn-ghost btn-sm" id="pdf-btn" onclick="exportTripPDF()">📄 Trip PDF</button>
               </div>
             </div>
             <div id="expenses-list"><p class="empty">No expenses yet.</p></div>
@@ -1422,6 +1423,7 @@
         if (err) { toast(err.error, 'error'); return; }
         closeModal('modal-member');
         toast(toAdd.join(', ') + ' added!', 'success');
+        invalidateMutuals();
         selectGroup(activeGroupId);
         loadGroups();
       });
@@ -1433,6 +1435,7 @@
         .then(r => r.json()).then(d => {
           if (d.error) { toast(d.error, 'error'); return; }
           toast(member + ' removed', 'success');
+          invalidateMutuals();
           selectGroup(activeGroupId);
           loadGroups();
         });
@@ -1475,20 +1478,20 @@
     }
 
     // ── Expenses ──────────────────────────────────────────────────────────────
-    function loadExpenses() {
+    function loadExpenses(append = false) {
       const category = document.getElementById('filter-cat').value;
-      let url = '/api/sw/groups/' + activeGroupId + '/expenses?limit=' + EXP_LIMIT;
+      let url = '/api/sw/groups/' + activeGroupId + '/expenses?limit=' + EXP_LIMIT + '&skip=' + expSkip;
       if (category) url += '&category=' + encodeURIComponent(category);
-      
+
       fetch(url).then(r => r.json()).then(data => {
         const exps = data.expenses || [];
         const el = document.getElementById('expenses-list');
         const total = exps.reduce((s, e) => s + e.amount, 0);
-        document.getElementById('gd-total').textContent = exps.length
+        document.getElementById('gd-total').textContent = exps.length || append
           ? `Total: ₹${total.toFixed(2)} · ${data.total} expense${data.total !== 1 ? 's' : ''}`
           : '';
-        if (!exps.length) { el.innerHTML = '<p class="empty">No expenses yet.</p>'; return; }
-        el.innerHTML = exps.map(e => {
+        if (!append && !exps.length) { el.innerHTML = '<p class="empty">No expenses yet.</p>'; return; }
+        const cards = exps.map(e => {
           const icons = {food:'🍽',groceries:'🛒',restaurant:'🍴',cafe:'☕',fast_food:'🍔',delivery:'📦',alcohol:'🍷',travel:'✈️',flight:'🛫',train:'🚂',bus:'🚌',taxi:'🚕',uber:'🚗',fuel:'⛽',parking:'🅿️',rent:'🏠',utilities:'💡',electricity:'⚡',water:'💧',gas:'🔥',internet:'🌐',phone:'📱',entertainment:'🎭',movies:'🎬',concerts:'🎵',sports:'⚽',games:'🎮',streaming:'📺',shopping:'🛍',clothing:'👕',electronics:'💻',accessories:'⌚',cosmetics:'💄',gifts:'🎁',health:'🏥',medical:'💊',gym:'🏋️',pharmacy:'💉',education:'📚',tuition:'📖',books:'📕',courses:'🎓',subscriptions:'📋',bills:'🧾',insurance:'🛡️',personal_care:'🧴',pets:'🐾',children:'👶',charity:'🤝',business:'💼',other:'📌'};
           const imgBanner = e.image_url
             ? `<img class="exp-img-banner" src="${esc(e.image_url)}" alt="" loading="lazy" onclick="openLightbox('${esc(e.image_url)}')" />`
@@ -1508,11 +1511,24 @@
             </div>
           </div>`;
         }).join('');
+        if (append) {
+          document.getElementById('exp-load-more')?.remove();
+          el.insertAdjacentHTML('beforeend', cards);
+        } else {
+          el.innerHTML = cards;
+        }
+        // show/hide load more
+        const existing = document.getElementById('exp-load-more');
+        if (existing) existing.remove();
+        if (data.total > expSkip + EXP_LIMIT) {
+          el.insertAdjacentHTML('beforeend', `<button class="btn btn-ghost btn-block" id="exp-load-more" onclick="expSkip+=${EXP_LIMIT};loadExpenses(true)" style="margin-top:.5rem;">Load more</button>`);
+        }
       }).catch(() => toast('Failed to load expenses', 'error'));
     }
 
     function clearFilters() {
       document.getElementById('filter-cat').value = '';
+      expSkip = 0;
       loadExpenses();
     }
 
@@ -1735,9 +1751,10 @@
       fetch('/api/sw/groups/' + activeGroupId + '/expenses?limit=1000')
         .then(r => r.json()).then(data => {
           const exps = data.expenses || [];
+          const q = v => `"${String(v).replace(/"/g, '""')}"`;
           let csv = 'Date,Description,Amount,Paid By,Category\n';
           exps.forEach(e => {
-            csv += `${e.date || ''},${e.description},${e.amount},${e.paid_by},${e.category || ''}\n`;
+            csv += `${q(e.date||'')},${q(e.description)},${e.amount},${q(e.paid_by)},${q(e.category||'')}\n`;
           });
           const blob = new Blob([csv], {type: 'text/csv'});
           const link = document.createElement('a');
@@ -1817,6 +1834,8 @@
     // ── Export Trip PDF ─────────────────────────────────────────────────────
     async function exportTripPDF() {
       if (!activeGroupId || !activeGroup) { toast('No group selected', 'error'); return; }
+      const pdfBtn = document.getElementById('pdf-btn');
+      pdfBtn.disabled = true; pdfBtn.textContent = 'Building…';
       toast('Building PDF…', '');
 
       // Fetch all expenses + balances in parallel
@@ -2090,6 +2109,7 @@
       doc.text('MediaPedia • Split Bills', PW / 2, PH - 6, { align: 'center' });
 
       doc.save((activeGroup.name || 'trip').replace(/\s+/g, '_') + '_split.pdf');
+      pdfBtn.disabled = false; pdfBtn.textContent = '📄 Trip PDF';
       toast('PDF downloaded!', 'success');
     }
 
@@ -2129,6 +2149,18 @@
         wrap.style.display = 'none';
         none.style.display = 'flex';
       }
+    }
+
+    async function removeCoverPhoto() {
+      if (!confirm('Remove cover photo?')) return;
+      const d = await fetch('/api/sw/groups/' + activeGroupId + '/photo', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({url: ''})
+      }).then(r=>r.json());
+      if (d.error) { toast(d.error, 'error'); return; }
+      activeGroup.cover_photo = '';
+      renderGroupCover('');
+      toast('Cover removed', 'success');
     }
 
     // ── Edit Expense ──────────────────────────────────────────────────────────
