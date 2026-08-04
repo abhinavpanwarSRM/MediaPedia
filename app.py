@@ -2340,7 +2340,7 @@ def send_message():
     text = data.get('text', '').strip()[:1000]
     media_url = data.get('media_url', '').strip()[:500]
 
-    if not to or (not text and not media_url):
+    if not to or (not text and not media_url and not data.get('love_letter')):
         return jsonify({'error': 'Recipient and message or image required'}), 400
     if to == username:
         return jsonify({'error': 'Cannot message yourself'}), 400
