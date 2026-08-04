@@ -148,6 +148,9 @@
   </div>
 
   <script>
+    const ME    = {{ username | tojson }};
+    const OTHER = {{ other_user | tojson }};
+
     function fmtTime(iso) {
       const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
       return d.toISOString().slice(11,16);
