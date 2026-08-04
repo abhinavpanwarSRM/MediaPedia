@@ -277,25 +277,25 @@
     <div class="ll-compose">
       <h3>&#128140; Love Letter</h3>
       <div>
-        <label>Photo (optional)</label>
+        <label for="ll-photo-file">Photo (optional)</label>
         <button class="attach-btn" style="width:auto;padding:0 0.9rem;border-radius:8px;font-size:0.82rem;color:#ff6b9d;" onclick="document.getElementById('ll-photo-file').click()">&#128247; Choose photo</button>
         <input type="file" id="ll-photo-file" accept="image/*" style="display:none" onchange="llPickPhoto(this)">
         <img id="ll-photo-preview" class="ll-photo-preview" alt="">
       </div>
       <div>
-        <label>Song</label>
+        <label for="ll-song-q">Song</label>
         <input type="text" id="ll-song-q" placeholder="Search a song..." oninput="llSongSearch(this.value)">
         <div id="ll-song-results" style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem;"></div>
       </div>
       <div id="ll-start-wrap" style="display:none;">
-        <label>Start from (seconds)</label>
+        <label for="ll-song-start">Start from (seconds)</label>
         <div class="ll-start-row">
           <input type="number" id="ll-song-start" min="0" value="0" placeholder="0">
           <span style="font-size:0.78rem;color:var(--muted);">e.g. 62 = 1:02</span>
         </div>
       </div>
       <div>
-        <label>Your note &#10084;</label>
+        <label for="ll-note">Your note &#10084;</label>
         <textarea id="ll-note" placeholder="Write something from the heart..."></textarea>
       </div>
       <div class="ll-compose-btns">
@@ -398,8 +398,8 @@
         .then(r => r.json())
         .then(d => {
           if (d.error) { alert(d.error); clearImgPreview(); return; }
-          pendingImageUrl = d.url;
           showImgPreview(d.url, false);
+          pendingImageUrl = d.url;
         })
         .catch(() => { alert('Upload failed'); clearImgPreview(); });
       input.value = '';
