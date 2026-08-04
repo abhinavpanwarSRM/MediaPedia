@@ -2319,7 +2319,12 @@ def conversation(other_user):
         msgs = []
 
     return render_template('conversation.html', username=username,
-                           other_user=other_user, messages=msgs)
+                           other_user=other_user, messages=msgs,
+                           api_key_1=os.getenv('YOUTUBE_API_KEY_1',''),
+                           api_key_2=os.getenv('YOUTUBE_API_KEY_2',''),
+                           api_key_3=os.getenv('YOUTUBE_API_KEY_3',''),
+                           api_key_4=os.getenv('YOUTUBE_API_KEY_4',''),
+                           api_key_5=os.getenv('YOUTUBE_API_KEY_5',''))
 
 
 @app.route('/api/messages/send', methods=['POST'])
@@ -2348,11 +2353,28 @@ def send_message():
     if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
         return jsonify({'error': 'Invalid media URL'}), 400
 
+    # Love Letter fields
+    love_letter = data.get('love_letter')
+    if love_letter:
+        photo_url = love_letter.get('photo_url', '').strip()[:500]
+        if photo_url and not photo_url.startswith(('http://', 'https://', '/api/img/')):
+            return jsonify({'error': 'Invalid photo URL'}), 400
+        love_letter = {
+            'photo_url': photo_url,
+            'song_query': love_letter.get('song_query', '').strip()[:200],
+            'song_video_id': love_letter.get('song_video_id', '').strip()[:20],
+            'song_title': love_letter.get('song_title', '').strip()[:200],
+            'song_thumbnail': love_letter.get('song_thumbnail', '').strip()[:300],
+            'song_start': max(0, int(love_letter.get('song_start', 0) or 0)),
+            'note': love_letter.get('note', '').strip()[:500],
+        }
+
     msg = {
         'msg_id': str(uuid.uuid4())[:12],
         'sender': username,
         'text': text,
         'media_url': media_url,
+        'love_letter': love_letter,
         'created_at': datetime.now(timezone.utc).isoformat(),
         'read': False
     }
@@ -2369,7 +2391,7 @@ def send_message():
     )
     send_push(to, {
         'title': f'💬 {username}',
-        'body': text[:80] if text else '📷 Photo',
+        'body': text[:80] if text else ('💌 Love Letter' if love_letter else '📷 Photo'),
         'url': f'/messages/{username}',
         'tag': f'dm-{username}'
     })

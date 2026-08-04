@@ -111,6 +111,90 @@
     #lightbox.show { display:flex; }
     #lightbox img { max-width:92vw; max-height:92vh; border-radius:10px; }
 
+    /* Love Letter bubble */
+    .ll-bubble { background:linear-gradient(135deg,#1a0010,#2d0020); border:1px solid rgba(229,9,20,0.35);
+                 border-radius:16px; padding:0.7rem 0.9rem; cursor:pointer; max-width:260px;
+                 transition:transform 0.18s; }
+    .ll-bubble:hover { transform:scale(1.03); }
+    .ll-bubble .ll-thumb { width:100%; max-height:140px; object-fit:cover; border-radius:10px;
+                           display:block; margin-bottom:0.5rem; }
+    .ll-bubble .ll-label { font-size:0.78rem; color:#ff6b9d; display:flex; align-items:center;
+                           gap:0.35rem; font-weight:600; }
+    .ll-bubble .ll-note-preview { font-size:0.75rem; color:rgba(255,255,255,0.6); margin-top:0.3rem;
+                                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Love Letter compose modal */
+    #ll-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
+                z-index:400; align-items:center; justify-content:center; padding:1rem; }
+    #ll-modal.show { display:flex; }
+    .ll-compose { background:#1a0a12; border:1px solid rgba(229,9,20,0.3); border-radius:20px;
+                  padding:1.4rem; width:100%; max-width:420px; display:flex; flex-direction:column;
+                  gap:1rem; max-height:90vh; overflow-y:auto; }
+    .ll-compose h3 { font-size:1rem; color:#ff6b9d; margin:0; text-align:center; }
+    .ll-compose label { font-size:0.78rem; color:var(--muted); margin-bottom:0.25rem; display:block; }
+    .ll-compose input, .ll-compose textarea {
+      width:100%; background:rgba(255,255,255,0.06); border:1px solid var(--border);
+      border-radius:10px; color:#fff; font-size:0.85rem; font-family:inherit;
+      padding:0.55rem 0.8rem; box-sizing:border-box; }
+    .ll-compose input:focus, .ll-compose textarea:focus { outline:none; border-color:#ff6b9d; }
+    .ll-compose textarea { resize:none; height:80px; }
+    .ll-photo-preview { width:100%; max-height:160px; object-fit:cover; border-radius:10px;
+                        display:none; margin-top:0.4rem; }
+    .ll-song-result { display:flex; align-items:center; gap:0.6rem; padding:0.5rem;
+                      background:rgba(255,255,255,0.05); border-radius:8px; cursor:pointer;
+                      border:1px solid transparent; transition:border-color 0.15s; }
+    .ll-song-result:hover, .ll-song-result.selected { border-color:#ff6b9d; }
+    .ll-song-result img { width:44px; height:44px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+    .ll-song-result .ll-sr-info { flex:1; min-width:0; }
+    .ll-song-result .ll-sr-title { font-size:0.8rem; font-weight:600; white-space:nowrap;
+                                   overflow:hidden; text-overflow:ellipsis; }
+    .ll-song-result .ll-sr-ch { font-size:0.7rem; color:var(--muted); }
+    .ll-start-row { display:flex; align-items:center; gap:0.6rem; }
+    .ll-start-row input[type=number] { width:80px; flex-shrink:0; }
+    .ll-compose-btns { display:flex; gap:0.6rem; }
+    .ll-compose-btns button { flex:1; padding:0.65rem; border-radius:10px; border:none;
+                              font-size:0.88rem; font-weight:600; cursor:pointer; }
+    .ll-send-btn { background:linear-gradient(135deg,#e50914,#ff6b9d); color:#fff; }
+    .ll-cancel-btn { background:rgba(255,255,255,0.08); color:#fff; }
+
+    /* Love Letter viewer overlay */
+    #ll-viewer { display:none; position:fixed; inset:0; z-index:600;
+                 align-items:center; justify-content:center; overflow:hidden; }
+    #ll-viewer.show { display:flex; }
+    #ll-viewer-bg { position:absolute; inset:0; background:linear-gradient(135deg,#0d0005,#1a0010,#0d0005);
+                    filter:blur(0); }
+    #ll-viewer-bg-img { position:absolute; inset:0; background-size:cover; background-position:center;
+                        opacity:0.18; filter:blur(8px); }
+    .ll-emojis { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+    .ll-emoji { position:absolute; bottom:-40px; font-size:1.4rem; animation:floatUp linear infinite;
+                opacity:0; }
+    @keyframes floatUp {
+      0%   { transform:translateY(0) rotate(0deg); opacity:0; }
+      10%  { opacity:0.9; }
+      90%  { opacity:0.7; }
+      100% { transform:translateY(-110vh) rotate(25deg); opacity:0; }
+    }
+    .ll-card { position:relative; z-index:2; background:rgba(20,0,12,0.82);
+               border:1px solid rgba(255,107,157,0.35); border-radius:24px;
+               padding:1.6rem; max-width:380px; width:calc(100% - 2rem);
+               display:flex; flex-direction:column; align-items:center; gap:1rem;
+               box-shadow:0 0 60px rgba(229,9,20,0.25); backdrop-filter:blur(12px); }
+    .ll-card-photo { width:100%; max-height:220px; object-fit:cover; border-radius:16px;
+                     display:none; box-shadow:0 4px 24px rgba(0,0,0,0.5); }
+    .ll-card-note { font-size:1rem; color:#fff; text-align:center; line-height:1.6;
+                    font-style:italic; white-space:pre-wrap; }
+    .ll-card-song { width:100%; background:rgba(255,255,255,0.06); border-radius:12px;
+                    padding:0.7rem 1rem; display:none; align-items:center; gap:0.7rem; }
+    .ll-card-song img { width:48px; height:48px; border-radius:8px; object-fit:cover; flex-shrink:0; }
+    .ll-card-song-info { flex:1; min-width:0; }
+    .ll-card-song-title { font-size:0.85rem; font-weight:600; white-space:nowrap;
+                          overflow:hidden; text-overflow:ellipsis; }
+    .ll-card-song-start { font-size:0.7rem; color:var(--muted); }
+    .ll-card-close { position:absolute; top:0.8rem; right:0.9rem; background:none; border:none;
+                     color:rgba(255,255,255,0.4); font-size:1.2rem; cursor:pointer; }
+    .ll-card-close:hover { color:#fff; }
+    #ll-yt-player { display:none; }
+
     .empty-conv { flex:1; display:flex; align-items:center; justify-content:center;
                   flex-direction:column; gap:0.5rem; color:var(--muted); }
     .empty-conv .big-av { width:72px; height:72px; border-radius:50%;
@@ -157,11 +241,20 @@
         {% endif %}
         <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}">
           <div class="msg-av">{{ msg.sender[0]|upper }}</div>
+          {% if msg.love_letter %}
+          <div class="ll-bubble" onclick="openLLViewer({{ msg.love_letter | tojson }})">
+            {% if msg.love_letter.photo_url %}<img class="ll-thumb" src="{{ msg.love_letter.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
+            <div class="ll-label">&#128140; Love Letter</div>
+            {% if msg.love_letter.note %}<div class="ll-note-preview">{{ msg.love_letter.note }}</div>{% endif %}
+            <div class="bubble-time" style="margin-top:0.4rem;">{{ msg.created_at[11:16] }}{% if msg.sender == username %}<span class="tick {{ 'read' if msg.read else '' }}" id="tick-{{ msg.msg_id }}">&#10003;&#10003;</span>{% endif %}</div>
+          </div>
+          {% else %}
           <div class="bubble">
             {% if msg.media_url %}<img src="{{ msg.media_url }}" alt="" onclick="openLightbox('{{ msg.media_url }}')" onerror="this.style.display='none'">{% endif %}
             {% if msg.text %}{{ msg.text }}{% endif %}
             <div class="bubble-time">{{ msg.created_at[11:16] }}{% if msg.sender == username %}<span class="tick {{ 'read' if msg.read else '' }}" id="tick-{{ msg.msg_id }}">&#10003;&#10003;</span>{% endif %}</div>
           </div>
+          {% endif %}
           {% if msg.sender == username %}<button class="del-btn" onclick="deleteMsg('{{ msg.msg_id }}',this.closest('.msg-row'))" title="Delete">&#128465;</button>{% endif %}
         </div>
       {% endfor %}
@@ -179,9 +272,63 @@
   <!-- Scroll-to-bottom button -->
   <button id="scroll-btn" onclick="scrollBottom(true)">&#8595;</button>
 
+  <!-- Love Letter compose modal -->
+  <div id="ll-modal">
+    <div class="ll-compose">
+      <h3>&#128140; Love Letter</h3>
+      <div>
+        <label>Photo (optional)</label>
+        <button class="attach-btn" style="width:auto;padding:0 0.9rem;border-radius:8px;font-size:0.82rem;color:#ff6b9d;" onclick="document.getElementById('ll-photo-file').click()">&#128247; Choose photo</button>
+        <input type="file" id="ll-photo-file" accept="image/*" style="display:none" onchange="llPickPhoto(this)">
+        <img id="ll-photo-preview" class="ll-photo-preview" alt="">
+      </div>
+      <div>
+        <label>Song</label>
+        <input type="text" id="ll-song-q" placeholder="Search a song..." oninput="llSongSearch(this.value)">
+        <div id="ll-song-results" style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem;"></div>
+      </div>
+      <div id="ll-start-wrap" style="display:none;">
+        <label>Start from (seconds)</label>
+        <div class="ll-start-row">
+          <input type="number" id="ll-song-start" min="0" value="0" placeholder="0">
+          <span style="font-size:0.78rem;color:var(--muted);">e.g. 62 = 1:02</span>
+        </div>
+      </div>
+      <div>
+        <label>Your note &#10084;</label>
+        <textarea id="ll-note" placeholder="Write something from the heart..."></textarea>
+      </div>
+      <div class="ll-compose-btns">
+        <button class="ll-cancel-btn" onclick="closeLLModal()">Cancel</button>
+        <button class="ll-send-btn" onclick="sendLoveLetter()">Send &#128140;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Love Letter viewer -->
+  <div id="ll-viewer">
+    <div id="ll-viewer-bg"></div>
+    <div id="ll-viewer-bg-img"></div>
+    <div class="ll-emojis" id="ll-emojis"></div>
+    <div class="ll-card">
+      <button class="ll-card-close" onclick="closeLLViewer()">&#10005;</button>
+      <img id="ll-card-photo" class="ll-card-photo" alt="">
+      <div id="ll-card-note" class="ll-card-note"></div>
+      <div id="ll-card-song" class="ll-card-song">
+        <img id="ll-card-song-thumb" src="" alt="">
+        <div class="ll-card-song-info">
+          <div id="ll-card-song-title" class="ll-card-song-title"></div>
+          <div id="ll-card-song-start" class="ll-card-song-start"></div>
+        </div>
+      </div>
+    </div>
+    <div id="ll-yt-player"></div>
+  </div>
+
   <div class="input-bar" id="input-bar">
     <button class="attach-btn" onclick="document.getElementById('img-file').click()" title="Send photo">&#128247;</button>
     <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImagePick(this)">
+    <button class="attach-btn" onclick="openLLModal()" title="Love Letter" style="color:#ff6b9d;">&#128140;</button>
     <textarea class="msg-input" id="msg-input" rows="1"
               placeholder="Message {{ other_user }}..."
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -325,9 +472,19 @@
       const textHtml = msg.text ? escHtml(msg.text) : '';
       const tick = isMe ? `<span class="tick ${msg.read ? 'read' : ''}" id="tick-${msg.msg_id}">&#10003;&#10003;</span>` : '';
       const delBtn = isMe ? `<button class="del-btn" onclick="deleteMsg('${msg.msg_id}',this.closest('.msg-row'))" title="Delete">&#128465;</button>` : '';
+      let bubbleHtml;
+      if (msg.love_letter) {
+        const ll = msg.love_letter;
+        const llData = escAttr(JSON.stringify(ll));
+        const thumbHtml = ll.photo_url ? `<img class="ll-thumb" src="${escAttr(ll.photo_url)}" alt="" onerror="this.style.display='none'">` : '';
+        const notePreview = ll.note ? `<div class="ll-note-preview">${escHtml(ll.note)}</div>` : '';
+        bubbleHtml = `<div class="ll-bubble" onclick="openLLViewer(JSON.parse(this.dataset.ll))" data-ll="${llData}">${thumbHtml}<div class="ll-label">&#128140; Love Letter</div>${notePreview}<div class="bubble-time" style="margin-top:0.4rem;">${fmtTime(msg.created_at)}${tick}</div></div>`;
+      } else {
+        bubbleHtml = `<div class="bubble">${imgHtml}${textHtml}<div class="bubble-time">${fmtTime(msg.created_at)}${tick}</div></div>`;
+      }
       row.innerHTML = `
         <div class="msg-av">${msg.sender[0].toUpperCase()}</div>
-        <div class="bubble">${imgHtml}${textHtml}<div class="bubble-time">${fmtTime(msg.created_at)}${tick}</div></div>
+        ${bubbleHtml}
         ${delBtn}`;
       wrap.insertBefore(row, wrap.querySelector('.typing-row'));
       // Auto-scroll only if near bottom
@@ -381,6 +538,201 @@
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+    // ── Love Letter compose ───────────────────────────────────────────────────
+    const YT_KEYS = [
+      '{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}',
+      '{{ api_key_4 }}','{{ api_key_5 }}'
+    ].filter(Boolean);
+    let llPhotoUrl = null, llSong = null, llSongTimer = null;
+
+    function openLLModal() {
+      llPhotoUrl = null; llSong = null;
+      document.getElementById('ll-photo-preview').style.display = 'none';
+      document.getElementById('ll-photo-preview').src = '';
+      document.getElementById('ll-song-q').value = '';
+      document.getElementById('ll-song-results').innerHTML = '';
+      document.getElementById('ll-start-wrap').style.display = 'none';
+      document.getElementById('ll-song-start').value = '0';
+      document.getElementById('ll-note').value = '';
+      document.getElementById('ll-modal').classList.add('show');
+    }
+    function closeLLModal() { document.getElementById('ll-modal').classList.remove('show'); }
+
+    function llPickPhoto(input) {
+      const file = input.files[0]; if (!file) return;
+      if (file.size > 5*1024*1024) { alert('Max 5 MB'); input.value=''; return; }
+      const fd = new FormData(); fd.append('file', file);
+      const prev = document.getElementById('ll-photo-preview');
+      const reader = new FileReader();
+      reader.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; };
+      reader.readAsDataURL(file);
+      fetch('/api/upload', { method:'POST', body:fd })
+        .then(r=>r.json()).then(d => {
+          if (d.error) { alert(d.error); prev.style.display='none'; return; }
+          llPhotoUrl = d.url; prev.src = d.url;
+        }).catch(() => alert('Upload failed'));
+      input.value = '';
+    }
+
+    function llSongSearch(q) {
+      clearTimeout(llSongTimer);
+      if (q.trim().length < 2) { document.getElementById('ll-song-results').innerHTML=''; return; }
+      llSongTimer = setTimeout(() => _llDoSearch(q.trim()), 500);
+    }
+
+    function _llDoSearch(q) {
+      const key = YT_KEYS[Math.floor(Math.random()*YT_KEYS.length)];
+      if (!key) return;
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=4&q=${encodeURIComponent(q)}&key=${key}`)
+        .then(r=>r.json()).then(data => {
+          const box = document.getElementById('ll-song-results');
+          box.innerHTML = '';
+          (data.items||[]).forEach(item => {
+            const vid = item.id.videoId;
+            const title = item.snippet.title;
+            const ch = item.snippet.channelTitle;
+            const thumb = item.snippet.thumbnails.default.url;
+            const el = document.createElement('div');
+            el.className = 'll-song-result';
+            el.innerHTML = `<img src="${escAttr(thumb)}" alt=""><div class="ll-sr-info"><div class="ll-sr-title">${escHtml(title)}</div><div class="ll-sr-ch">${escHtml(ch)}</div></div>`;
+            el.onclick = () => {
+              box.querySelectorAll('.ll-song-result').forEach(e=>e.classList.remove('selected'));
+              el.classList.add('selected');
+              llSong = { video_id: vid, title, thumbnail: thumb };
+              document.getElementById('ll-start-wrap').style.display = 'block';
+            };
+            box.appendChild(el);
+          });
+        }).catch(()=>{});
+    }
+
+    function sendLoveLetter() {
+      const note = document.getElementById('ll-note').value.trim();
+      if (!llPhotoUrl && !llSong && !note) { alert('Add a photo, song, or note!'); return; }
+      const start = parseInt(document.getElementById('ll-song-start').value)||0;
+      const payload = {
+        to: OTHER, text: '',
+        love_letter: {
+          photo_url: llPhotoUrl || '',
+          song_query: llSong ? llSong.title : '',
+          song_video_id: llSong ? llSong.video_id : '',
+          song_title: llSong ? llSong.title : '',
+          song_thumbnail: llSong ? llSong.thumbnail : '',
+          song_start: start,
+          note
+        }
+      };
+      fetch('/api/messages/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      }).then(r=>r.json()).then(msg => {
+        if (msg.error) { alert(msg.error); return; }
+        closeLLModal();
+        appendMessage(msg);
+        lastMsgId = msg.msg_id;
+        document.getElementById('empty-conv')?.remove();
+      }).catch(()=>alert('Failed to send'));
+    }
+
+    // ── Love Letter viewer ────────────────────────────────────────────────────
+    let _llEmojiInterval = null, _ytPlayer = null, _ytReady = false;
+    const LL_EMOJIS = ['❤️','💕','💖','💗','💓','💞','🌹','✨','💫','🥰','😍','💝'];
+
+    function openLLViewer(ll) {
+      const viewer = document.getElementById('ll-viewer');
+      // Photo
+      const photo = document.getElementById('ll-card-photo');
+      if (ll.photo_url) {
+        photo.src = ll.photo_url; photo.style.display = 'block';
+        document.getElementById('ll-viewer-bg-img').style.backgroundImage = `url('${escAttr(ll.photo_url)}')`;
+      } else {
+        photo.style.display = 'none';
+        document.getElementById('ll-viewer-bg-img').style.backgroundImage = '';
+      }
+      // Note
+      document.getElementById('ll-card-note').textContent = ll.note || '';
+      // Song
+      const songEl = document.getElementById('ll-card-song');
+      if (ll.song_video_id) {
+        document.getElementById('ll-card-song-title').textContent = ll.song_title || '';
+        document.getElementById('ll-card-song-start').textContent = ll.song_start > 0 ? `Starts at ${_fmtSec(ll.song_start)}` : '';
+        const thumb = ll.song_thumbnail || `https://img.youtube.com/vi/${ll.song_video_id}/default.jpg`;
+        document.getElementById('ll-card-song-thumb').src = thumb;
+        songEl.style.display = 'flex';
+        _startYT(ll.song_video_id, ll.song_start || 0);
+      } else {
+        songEl.style.display = 'none';
+      }
+      // Floating emojis
+      _startEmojis();
+      viewer.classList.add('show');
+    }
+
+    function closeLLViewer() {
+      document.getElementById('ll-viewer').classList.remove('show');
+      clearInterval(_llEmojiInterval);
+      document.getElementById('ll-emojis').innerHTML = '';
+      if (_ytPlayer && _ytPlayer.stopVideo) _ytPlayer.stopVideo();
+    }
+
+    function _fmtSec(s) {
+      const m = Math.floor(s/60), sec = s%60;
+      return `${m}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function _startEmojis() {
+      const box = document.getElementById('ll-emojis');
+      box.innerHTML = '';
+      clearInterval(_llEmojiInterval);
+      function spawnEmoji() {
+        const el = document.createElement('span');
+        el.className = 'll-emoji';
+        el.textContent = LL_EMOJIS[Math.floor(Math.random()*LL_EMOJIS.length)];
+        el.style.left = Math.random()*96 + '%';
+        const dur = 4 + Math.random()*5;
+        el.style.animationDuration = dur + 's';
+        el.style.animationDelay = Math.random()*2 + 's';
+        el.style.fontSize = (1.1 + Math.random()*1.2) + 'rem';
+        box.appendChild(el);
+        setTimeout(() => el.remove(), (dur+2)*1000);
+      }
+      for (let i=0;i<12;i++) spawnEmoji();
+      _llEmojiInterval = setInterval(spawnEmoji, 600);
+    }
+
+    function _startYT(videoId, startSec) {
+      if (!videoId) return;
+      if (typeof YT !== 'undefined' && YT.Player) {
+        _createYTPlayer(videoId, startSec);
+      } else {
+        window._llPendingYT = { videoId, startSec };
+        if (!document.getElementById('yt-api-script')) {
+          const s = document.createElement('script');
+          s.id = 'yt-api-script';
+          s.src = 'https://www.youtube.com/iframe_api';
+          document.head.appendChild(s);
+        }
+      }
+    }
+    window.onYouTubeIframeAPIReady = function() {
+      _ytReady = true;
+      if (window._llPendingYT) {
+        _createYTPlayer(window._llPendingYT.videoId, window._llPendingYT.startSec);
+        window._llPendingYT = null;
+      }
+    };
+    function _createYTPlayer(videoId, startSec) {
+      const container = document.getElementById('ll-yt-player');
+      container.innerHTML = '<div id="ll-yt-iframe"></div>';
+      if (_ytPlayer && _ytPlayer.destroy) _ytPlayer.destroy();
+      _ytPlayer = new YT.Player('ll-yt-iframe', {
+        height:'1', width:'1',
+        videoId,
+        playerVars: { autoplay:1, start: startSec, controls:0 },
+        events: { onReady: e => e.target.playVideo() }
+      });
+    }
 
     input.focus();
   </script>
