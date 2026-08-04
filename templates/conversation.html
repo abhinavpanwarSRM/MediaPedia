@@ -6,7 +6,7 @@
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root { --primary:#e50914; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --muted:#888; }
+    :root { --primary:#e50914; --bg:#141414; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.08); --muted:#888; --green:#1db954; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); color:#fff; font-family:'Poppins','Segoe UI',sans-serif;
            height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
@@ -68,8 +68,8 @@
 
     /* Input bar */
     .input-bar { display:flex; align-items:flex-end; gap:0.6rem; padding:0.8rem 1rem;
-                 border-top:1px solid var(--border); background:rgba(20,20,20,0.97); flex-shrink:0; }
-    .msg-input { flex:1; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.07);
+                 border-top:1px solid var(--border); background:rgba(20,20,20,0.97); flex-shrink:0; flex-wrap:wrap; }
+    .msg-input { flex:1; min-width:0; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.07);
                  border:1px solid var(--border); border-radius:20px; color:#fff; font-size:0.9rem;
                  font-family:inherit; resize:none; max-height:120px; overflow-y:auto;
                  scrollbar-width:none; line-height:1.45; }
@@ -79,6 +79,37 @@
                 display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
     .send-btn:hover { background:#c0000e; }
     .send-btn:disabled { background:#444; cursor:not-allowed; }
+    .attach-btn { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.07);
+                  border:1px solid var(--border); color:var(--muted); font-size:1.1rem; cursor:pointer;
+                  flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+    .attach-btn:hover { background:rgba(255,255,255,0.13); color:#fff; }
+    /* Image preview in input bar */
+    .img-preview-wrap { width:100%; display:flex; align-items:center; gap:0.5rem;
+                        padding:0.4rem 0; border-top:1px solid var(--border); }
+    .img-preview-wrap img { height:56px; border-radius:8px; object-fit:cover; }
+    .img-preview-wrap button { background:none; border:none; color:var(--muted); font-size:1rem;
+                               cursor:pointer; padding:0.2rem 0.4rem; }
+    .img-preview-wrap button:hover { color:#ff4757; }
+    /* Image bubble */
+    .bubble img { max-width:220px; max-height:200px; border-radius:10px; display:block;
+                  margin-bottom:0.25rem; cursor:zoom-in; }
+    /* Scroll-to-bottom button */
+    #scroll-btn { position:absolute; bottom:5.5rem; right:1rem; width:36px; height:36px;
+                  border-radius:50%; background:var(--primary); border:none; color:#fff;
+                  font-size:1rem; cursor:pointer; display:none; align-items:center;
+                  justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.4); z-index:10; }
+    /* Delete button on own messages */
+    .msg-row.mine:hover .del-btn { opacity:1; }
+    .del-btn { opacity:0; background:none; border:none; color:#ff4757; font-size:0.75rem;
+               cursor:pointer; padding:0 0.3rem; transition:opacity 0.2s; align-self:center; }
+    /* Read receipt tick */
+    .tick { font-size:0.65rem; color:rgba(255,255,255,0.45); margin-left:0.3rem; }
+    .tick.read { color:var(--green); }
+    /* Image lightbox */
+    #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9);
+                z-index:500; align-items:center; justify-content:center; cursor:zoom-out; }
+    #lightbox.show { display:flex; }
+    #lightbox img { max-width:92vw; max-height:92vh; border-radius:10px; }
 
     .empty-conv { flex:1; display:flex; align-items:center; justify-content:center;
                   flex-direction:column; gap:0.5rem; color:var(--muted); }
@@ -92,6 +123,7 @@
       .profile-link { display:none; }
       .bubble { max-width:85%; font-size:0.85rem; }
       .input-bar { padding:0.6rem 0.75rem; }
+      .bubble img { max-width:160px; }
     }
   </style>
     <link rel="manifest" href="/static/manifest.json" />
@@ -123,12 +155,14 @@
         <div class="date-sep">{{ msg_date }}</div>
         {% set ns.last_date = msg_date %}
         {% endif %}
-        <div class="msg-row {{ 'mine' if msg.sender == username else '' }}">
+        <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}">
           <div class="msg-av">{{ msg.sender[0]|upper }}</div>
           <div class="bubble">
-            {{ msg.text }}
-            <div class="bubble-time">{{ msg.created_at[11:16] }}</div>
+            {% if msg.media_url %}<img src="{{ msg.media_url }}" alt="" onclick="openLightbox('{{ msg.media_url }}')" onerror="this.style.display='none'">{% endif %}
+            {% if msg.text %}{{ msg.text }}{% endif %}
+            <div class="bubble-time">{{ msg.created_at[11:16] }}{% if msg.sender == username %}<span class="tick {{ 'read' if msg.read else '' }}" id="tick-{{ msg.msg_id }}">&#10003;&#10003;</span>{% endif %}</div>
           </div>
+          {% if msg.sender == username %}<button class="del-btn" onclick="deleteMsg('{{ msg.msg_id }}',this.closest('.msg-row'))" title="Delete">&#128465;</button>{% endif %}
         </div>
       {% endfor %}
     {% endif %}
@@ -140,7 +174,14 @@
     </div>
   </div>
 
-  <div class="input-bar">
+  <!-- Image lightbox -->
+  <div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" src="" alt=""></div>
+  <!-- Scroll-to-bottom button -->
+  <button id="scroll-btn" onclick="scrollBottom(true)">&#8595;</button>
+
+  <div class="input-bar" id="input-bar">
+    <button class="attach-btn" onclick="document.getElementById('img-file').click()" title="Send photo">&#128247;</button>
+    <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImagePick(this)">
     <textarea class="msg-input" id="msg-input" rows="1"
               placeholder="Message {{ other_user }}..."
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -159,21 +200,26 @@
       const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
       return d.toISOString().slice(0,10);
     }
+
     let lastMsgId = null;
-    let typingTimer = null;
+    let pendingImageUrl = null;   // uploaded image URL waiting to be sent
 
     const wrap = document.getElementById('messages-wrap');
     const input = document.getElementById('msg-input');
 
+    // Record last rendered msg id
+    const rendered = document.querySelectorAll('.msg-row[data-msg-id]');
+    if (rendered.length) lastMsgId = rendered[rendered.length - 1].dataset.msgId;
+
     // Scroll to bottom on load
     scrollBottom();
 
-    // Record last message id from rendered messages
-    const rendered = document.querySelectorAll('.msg-row');
-    if (rendered.length) {
-      const last = rendered[rendered.length - 1];
-      lastMsgId = last.dataset.msgId || null;
-    }
+    // Show/hide scroll-to-bottom button
+    wrap.addEventListener('scroll', () => {
+      const btn = document.getElementById('scroll-btn');
+      const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 80;
+      btn.style.display = atBottom ? 'none' : 'flex';
+    });
 
     function scrollBottom(smooth) {
       wrap.scrollTo({ top: wrap.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
@@ -188,20 +234,66 @@
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     }
 
+    // ── Image picking & uploading ──────────────────────────────────────────────
+    function handleImagePick(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { alert('Max 5 MB'); input.value = ''; return; }
+      const bar = document.getElementById('input-bar');
+      // Show local preview immediately
+      const reader = new FileReader();
+      reader.onload = e => showImgPreview(e.target.result, true);
+      reader.readAsDataURL(file);
+      // Upload
+      const fd = new FormData();
+      fd.append('file', file);
+      fetch('/api/upload', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) { alert(d.error); clearImgPreview(); return; }
+          pendingImageUrl = d.url;
+          showImgPreview(d.url, false);
+        })
+        .catch(() => { alert('Upload failed'); clearImgPreview(); });
+      input.value = '';
+    }
+
+    function showImgPreview(src, uploading) {
+      clearImgPreview();
+      const bar = document.getElementById('input-bar');
+      const wrap = document.createElement('div');
+      wrap.className = 'img-preview-wrap';
+      wrap.id = 'img-preview';
+      wrap.innerHTML = `<img src="${src}" alt="preview"><span style="font-size:0.75rem;color:#888;">${uploading ? 'Uploading…' : 'Ready'}</span><button onclick="clearImgPreview()" title="Remove">&#10005;</button>`;
+      bar.insertBefore(wrap, bar.firstChild);
+    }
+
+    function clearImgPreview() {
+      pendingImageUrl = null;
+      document.getElementById('img-preview')?.remove();
+    }
+
+    // ── Send message ──────────────────────────────────────────────────────────
     function sendMessage() {
       const text = input.value.trim();
-      if (!text) return;
+      if (!text && !pendingImageUrl) return;
+      if (pendingImageUrl && pendingImageUrl.startsWith('data:')) {
+        alert('Still uploading, please wait…'); return;
+      }
       const btn = document.getElementById('send-btn');
       btn.disabled = true;
+      const payload = { to: OTHER, text: text || '' };
+      if (pendingImageUrl) payload.media_url = pendingImageUrl;
       fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: OTHER, text })
+        body: JSON.stringify(payload)
       })
       .then(r => r.json())
       .then(msg => {
         if (msg.error) { alert(msg.error); return; }
         input.value = ''; input.style.height = 'auto';
+        clearImgPreview();
         appendMessage(msg);
         lastMsgId = msg.msg_id;
         document.getElementById('empty-conv')?.remove();
@@ -210,42 +302,84 @@
       .finally(() => { btn.disabled = false; input.focus(); });
     }
 
+    // ── Append a message bubble ───────────────────────────────────────────────
     function appendMessage(msg) {
       const isMe = msg.sender === ME;
+      // Date separator
+      const msgDate = fmtDate(msg.created_at);
+      const lastSep = wrap.querySelector('.date-sep:last-of-type');
+      const lastDate = lastSep ? lastSep.dataset.date : null;
+      if (msgDate !== lastDate) {
+        const sep = document.createElement('div');
+        sep.className = 'date-sep'; sep.dataset.date = msgDate;
+        sep.textContent = msgDate;
+        wrap.querySelector('.typing-row') ? wrap.insertBefore(sep, wrap.querySelector('.typing-row')) : wrap.appendChild(sep);
+      }
       const row = document.createElement('div');
       row.className = 'msg-row' + (isMe ? ' mine' : '');
       row.dataset.msgId = msg.msg_id;
+      const imgHtml = msg.media_url
+        ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">`
+        : '';
+      const textHtml = msg.text ? escHtml(msg.text) : '';
+      const tick = isMe ? `<span class="tick ${msg.read ? 'read' : ''}" id="tick-${msg.msg_id}">&#10003;&#10003;</span>` : '';
+      const delBtn = isMe ? `<button class="del-btn" onclick="deleteMsg('${msg.msg_id}',this.closest('.msg-row'))" title="Delete">&#128465;</button>` : '';
       row.innerHTML = `
         <div class="msg-av">${msg.sender[0].toUpperCase()}</div>
-        <div class="bubble">
-          ${escHtml(msg.text)}
-          <div class="bubble-time">${fmtTime(msg.created_at)}</div>
-        </div>`;
-      // insert before typing-row
-      const typingRow = wrap.querySelector('.typing-row');
-      wrap.insertBefore(row, typingRow);
-      scrollBottom(true);
+        <div class="bubble">${imgHtml}${textHtml}<div class="bubble-time">${fmtTime(msg.created_at)}${tick}</div></div>
+        ${delBtn}`;
+      wrap.insertBefore(row, wrap.querySelector('.typing-row'));
+      // Auto-scroll only if near bottom
+      const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
+      if (atBottom) scrollBottom(true);
+      else { const btn = document.getElementById('scroll-btn'); if(btn) btn.style.display='flex'; }
     }
 
-    // Poll for new messages every 3s
+    // ── Delete own message ────────────────────────────────────────────────────
+    function deleteMsg(msgId, row) {
+      if (!confirm('Delete this message?')) return;
+      fetch(`/api/messages/${msgId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => { if (d.success) row.remove(); })
+        .catch(() => {});
+    }
+
+    // ── Lightbox ──────────────────────────────────────────────────────────────
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('show');
+    }
+    function closeLightbox() { document.getElementById('lightbox').classList.remove('show'); }
+
+    // ── Poll for new messages every 3s ────────────────────────────────────────
     function pollMessages() {
       fetch(`/api/messages/poll?with=${encodeURIComponent(OTHER)}&after=${encodeURIComponent(lastMsgId || '')}`)
         .then(r => r.json())
         .then(data => {
-          if (data.messages && data.messages.length) {
-            data.messages.forEach(msg => {
-              if (msg.sender !== ME) appendMessage(msg);
-              lastMsgId = msg.msg_id;
-            });
-          }
+          if (!data.messages || !data.messages.length) return;
+          data.messages.forEach(msg => {
+            if (msg.sender !== ME) {
+              appendMessage(msg);
+              document.getElementById('empty-conv')?.remove();
+            }
+            lastMsgId = msg.msg_id;
+          });
+          // Mark my sent messages as read if other person has seen them
+          data.messages.forEach(msg => {
+            if (msg.sender === ME && msg.read) {
+              const tick = document.getElementById('tick-' + msg.msg_id);
+              if (tick) tick.className = 'tick read';
+            }
+          });
         })
         .catch(() => {});
     }
-    polling = setInterval(pollMessages, 3000);
+    const _polling = setInterval(pollMessages, 3000);
 
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+    function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
     input.focus();
   </script>

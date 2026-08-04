@@ -2333,9 +2333,10 @@ def send_message():
     data = request.json or {}
     to = data.get('to', '').strip()
     text = data.get('text', '').strip()[:1000]
+    media_url = data.get('media_url', '').strip()[:500]
 
-    if not to or not text:
-        return jsonify({'error': 'Recipient and message required'}), 400
+    if not to or (not text and not media_url):
+        return jsonify({'error': 'Recipient and message or image required'}), 400
     if to == username:
         return jsonify({'error': 'Cannot message yourself'}), 400
 
@@ -2344,10 +2345,14 @@ def send_message():
         if not users_collection.find_one({'username': to}):
             return jsonify({'error': 'User not found'}), 404
 
+    if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
+        return jsonify({'error': 'Invalid media URL'}), 400
+
     msg = {
         'msg_id': str(uuid.uuid4())[:12],
         'sender': username,
         'text': text,
+        'media_url': media_url,
         'created_at': datetime.now(timezone.utc).isoformat(),
         'read': False
     }
@@ -2364,11 +2369,23 @@ def send_message():
     )
     send_push(to, {
         'title': f'💬 {username}',
-        'body': text[:80],
+        'body': text[:80] if text else '📷 Photo',
         'url': f'/messages/{username}',
         'tag': f'dm-{username}'
     })
     return jsonify(msg), 201
+
+
+@app.route('/api/messages/<msg_id>', methods=['DELETE'])
+def delete_message(msg_id):
+    username = current_user()
+    if not username or messages_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    messages_collection.update_one(
+        {'messages.msg_id': msg_id, 'messages.sender': username},
+        {'$pull': {'messages': {'msg_id': msg_id, 'sender': username}}}
+    )
+    return jsonify({'success': True})
 
 
 @app.route('/api/messages/poll')
