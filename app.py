@@ -2361,8 +2361,13 @@ def send_message():
         photo_url = love_letter.get('photo_url', '').strip()[:500]
         if photo_url and not photo_url.startswith(('http://', 'https://', '/api/img/')):
             return jsonify({'error': 'Invalid photo URL'}), 400
+        photos = love_letter.get('photos', [])
+        if not isinstance(photos, list):
+            photos = []
+        photos = [p.strip()[:500] for p in photos[:5] if isinstance(p, str) and p.strip().startswith(('http://', 'https://', '/api/img/'))]
         love_letter = {
-            'photo_url': photo_url,
+            'photos': photos,
+            'photo_url': photos[0] if photos else photo_url,  # legacy compat
             'song_query': love_letter.get('song_query', '').strip()[:200],
             'song_video_id': love_letter.get('song_video_id', '').strip()[:20],
             'song_title': love_letter.get('song_title', '').strip()[:200],

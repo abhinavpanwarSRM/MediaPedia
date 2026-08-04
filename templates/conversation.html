@@ -118,6 +118,23 @@
     .ll-bubble:hover { transform:scale(1.03); }
     .ll-bubble .ll-thumb { width:100%; max-height:140px; object-fit:cover; border-radius:10px;
                            display:block; margin-bottom:0.5rem; }
+    /* Slideshow in viewer */
+    .ll-slideshow { width:100%; border-radius:16px; overflow:hidden; position:relative;
+                    aspect-ratio:4/3; display:none; box-shadow:0 4px 24px rgba(0,0,0,0.5); }
+    .ll-slide { position:absolute; inset:0; opacity:0; transition:opacity 0.9s ease;
+                background-size:cover; background-position:center; }
+    .ll-slide.active { opacity:1; }
+    .ll-slide-dots { display:flex; gap:5px; justify-content:center; margin-top:0.4rem; }
+    .ll-slide-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.3); transition:background 0.3s; }
+    .ll-slide-dot.active { background:#ff6b9d; }
+    /* Photo strip in compose */
+    .ll-photos-strip { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem; }
+    .ll-photo-thumb { position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden; flex-shrink:0; }
+    .ll-photo-thumb img { width:100%; height:100%; object-fit:cover; }
+    .ll-photo-thumb .ll-rm { position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.7);
+                             border:none; color:#fff; border-radius:50%; width:18px; height:18px;
+                             font-size:0.6rem; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .ll-uploading { opacity:0.5; }
     .ll-bubble .ll-label { font-size:0.78rem; color:#ff6b9d; display:flex; align-items:center;
                            gap:0.35rem; font-weight:600; }
     .ll-bubble .ll-note-preview { font-size:0.75rem; color:rgba(255,255,255,0.6); margin-top:0.3rem;
@@ -179,8 +196,6 @@
                padding:1.6rem; max-width:380px; width:calc(100% - 2rem);
                display:flex; flex-direction:column; align-items:center; gap:1rem;
                box-shadow:0 0 60px rgba(229,9,20,0.25); backdrop-filter:blur(12px); }
-    .ll-card-photo { width:100%; max-height:220px; object-fit:cover; border-radius:16px;
-                     display:none; box-shadow:0 4px 24px rgba(0,0,0,0.5); }
     .ll-card-note { font-size:1rem; color:#fff; text-align:center; line-height:1.6;
                     font-style:italic; white-space:pre-wrap; }
     .ll-card-song { width:100%; background:rgba(255,255,255,0.06); border-radius:12px;
@@ -243,8 +258,9 @@
           <div class="msg-av">{{ msg.sender[0]|upper }}</div>
           {% if msg.love_letter %}
           <div class="ll-bubble" data-ll="{{ msg.love_letter | tojson | forceescape }}" onclick="openLLViewer(JSON.parse(this.dataset.ll))">
-            {% if msg.love_letter.photo_url %}<img class="ll-thumb" src="{{ msg.love_letter.photo_url }}" alt="" onerror="this.style.display='none'">{% endif %}
-            <div class="ll-label">&#128140; Love Letter</div>
+            {% set thumb = (msg.love_letter.photos or [msg.love_letter.photo_url])|select|first %}
+            {% if thumb %}<img class="ll-thumb" src="{{ thumb }}" alt="" onerror="this.style.display='none'">{% endif %}
+            <div class="ll-label">&#128140; Love Letter{% if msg.love_letter.photos and msg.love_letter.photos|length > 1 %} &nbsp;&#128248; {{ msg.love_letter.photos|length }}{% endif %}</div>
             {% if msg.love_letter.note %}<div class="ll-note-preview">{{ msg.love_letter.note }}</div>{% endif %}
             <div class="bubble-time" style="margin-top:0.4rem;">{{ msg.created_at[11:16] }}{% if msg.sender == username %}<span class="tick {{ 'read' if msg.read else '' }}" id="tick-{{ msg.msg_id }}">&#10003;&#10003;</span>{% endif %}</div>
           </div>
@@ -277,10 +293,10 @@
     <div class="ll-compose">
       <h3>&#128140; Love Letter</h3>
       <div>
-        <label for="ll-photo-file">Photo (optional)</label>
-        <button class="attach-btn" style="width:auto;padding:0 0.9rem;border-radius:8px;font-size:0.82rem;color:#ff6b9d;" onclick="document.getElementById('ll-photo-file').click()">&#128247; Choose photo</button>
-        <input type="file" id="ll-photo-file" accept="image/*" style="display:none" onchange="llPickPhoto(this)">
-        <img id="ll-photo-preview" class="ll-photo-preview" alt="">
+        <label for="ll-photo-file">Photos (up to 5)</label>
+        <button class="attach-btn" style="width:auto;padding:0 0.9rem;border-radius:8px;font-size:0.82rem;color:#ff6b9d;" onclick="document.getElementById('ll-photo-file').click()">&#128247; Add photo</button>
+        <input type="file" id="ll-photo-file" accept="image/*" multiple style="display:none" onchange="llPickPhotos(this)">
+        <div id="ll-photos-strip" class="ll-photos-strip"></div>
       </div>
       <div>
         <label for="ll-song-q">Song</label>
@@ -312,7 +328,8 @@
     <div class="ll-emojis" id="ll-emojis"></div>
     <div class="ll-card">
       <button class="ll-card-close" onclick="closeLLViewer()">&#10005;</button>
-      <img id="ll-card-photo" class="ll-card-photo" alt="">
+      <div id="ll-slideshow" class="ll-slideshow"></div>
+      <div id="ll-slide-dots" class="ll-slide-dots"></div>
       <div id="ll-card-note" class="ll-card-note"></div>
       <div id="ll-card-song" class="ll-card-song">
         <img id="ll-card-song-thumb" src="" alt="">
@@ -476,9 +493,11 @@
       if (msg.love_letter) {
         const ll = msg.love_letter;
         const llData = escAttr(JSON.stringify(ll));
-        const thumbHtml = ll.photo_url ? `<img class="ll-thumb" src="${escAttr(ll.photo_url)}" alt="" onerror="this.style.display='none'">` : '';
+        const photos = (ll.photos && ll.photos.length) ? ll.photos : (ll.photo_url ? [ll.photo_url] : []);
+        const thumbHtml = photos[0] ? `<img class="ll-thumb" src="${escAttr(photos[0])}" alt="" onerror="this.style.display='none'">` : '';
+        const countBadge = photos.length > 1 ? ` &nbsp;&#128248; ${photos.length}` : '';
         const notePreview = ll.note ? `<div class="ll-note-preview">${escHtml(ll.note)}</div>` : '';
-        bubbleHtml = `<div class="ll-bubble" onclick="openLLViewer(JSON.parse(this.dataset.ll))" data-ll="${llData}">${thumbHtml}<div class="ll-label">&#128140; Love Letter</div>${notePreview}<div class="bubble-time" style="margin-top:0.4rem;">${fmtTime(msg.created_at)}${tick}</div></div>`;
+        bubbleHtml = `<div class="ll-bubble" onclick="openLLViewer(JSON.parse(this.dataset.ll))" data-ll="${llData}">${thumbHtml}<div class="ll-label">&#128140; Love Letter${countBadge}</div>${notePreview}<div class="bubble-time" style="margin-top:0.4rem;">${fmtTime(msg.created_at)}${tick}</div></div>`;
       } else {
         bubbleHtml = `<div class="bubble">${imgHtml}${textHtml}<div class="bubble-time">${fmtTime(msg.created_at)}${tick}</div></div>`;
       }
@@ -544,12 +563,11 @@
       '{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}',
       '{{ api_key_4 }}','{{ api_key_5 }}'
     ].filter(Boolean);
-    let llPhotoUrl = null, llSong = null, llSongTimer = null;
+    let llPhotos = [], llSong = null, llSongTimer = null; // llPhotos: [{url, uploading}]
 
     function openLLModal() {
-      llPhotoUrl = null; llSong = null;
-      document.getElementById('ll-photo-preview').style.display = 'none';
-      document.getElementById('ll-photo-preview').src = '';
+      llPhotos = []; llSong = null;
+      document.getElementById('ll-photos-strip').innerHTML = '';
       document.getElementById('ll-song-q').value = '';
       document.getElementById('ll-song-results').innerHTML = '';
       document.getElementById('ll-start-wrap').style.display = 'none';
@@ -559,21 +577,46 @@
     }
     function closeLLModal() { document.getElementById('ll-modal').classList.remove('show'); }
 
-    function llPickPhoto(input) {
-      const file = input.files[0]; if (!file) return;
-      if (file.size > 5*1024*1024) { alert('Max 5 MB'); input.value=''; return; }
-      const fd = new FormData(); fd.append('file', file);
-      const prev = document.getElementById('ll-photo-preview');
-      const reader = new FileReader();
-      reader.onload = e => { prev.src = e.target.result; prev.style.display = 'block'; };
-      reader.readAsDataURL(file);
-      fetch('/api/upload', { method:'POST', body:fd })
-        .then(r=>r.json()).then(d => {
-          if (d.error) { alert(d.error); prev.style.display='none'; return; }
-          llPhotoUrl = d.url; prev.src = d.url;
-        }).catch(() => alert('Upload failed'));
+    function llPickPhotos(input) {
+      const files = Array.from(input.files).slice(0, 5 - llPhotos.length);
+      if (!files.length) return;
+      files.forEach(file => {
+        if (file.size > 5*1024*1024) { alert('Max 5 MB per photo'); return; }
+        const idx = llPhotos.length;
+        llPhotos.push({ url: null, uploading: true });
+        _renderPhotoStrip();
+        const reader = new FileReader();
+        reader.onload = e => {
+          llPhotos[idx].preview = e.target.result;
+          _renderPhotoStrip();
+        };
+        reader.readAsDataURL(file);
+        const fd = new FormData(); fd.append('file', file);
+        fetch('/api/upload', { method:'POST', body:fd })
+          .then(r=>r.json()).then(d => {
+            if (d.error) { llPhotos.splice(idx,1); _renderPhotoStrip(); alert(d.error); return; }
+            llPhotos[idx].url = d.url;
+            llPhotos[idx].uploading = false;
+            _renderPhotoStrip();
+          }).catch(() => { llPhotos.splice(idx,1); _renderPhotoStrip(); });
+      });
       input.value = '';
     }
+
+    function _renderPhotoStrip() {
+      const strip = document.getElementById('ll-photos-strip');
+      strip.innerHTML = '';
+      llPhotos.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'll-photo-thumb' + (p.uploading ? ' ll-uploading' : '');
+        div.innerHTML = `<img src="${p.preview || p.url || ''}" alt=""><button class="ll-rm" onclick="llRemovePhoto(${i})">&#10005;</button>`;
+        strip.appendChild(div);
+      });
+      // Show/hide add button based on count
+      document.getElementById('ll-photo-file').disabled = llPhotos.length >= 5;
+    }
+
+    function llRemovePhoto(i) { llPhotos.splice(i,1); _renderPhotoStrip(); }
 
     function llSongSearch(q) {
       clearTimeout(llSongTimer);
@@ -609,12 +652,15 @@
 
     function sendLoveLetter() {
       const note = document.getElementById('ll-note').value.trim();
-      if (!llPhotoUrl && !llSong && !note) { alert('Add a photo, song, or note!'); return; }
+      const readyPhotos = llPhotos.filter(p => p.url && !p.uploading);
+      if (llPhotos.some(p => p.uploading)) { alert('Still uploading, please wait…'); return; }
+      if (!readyPhotos.length && !llSong && !note) { alert('Add a photo, song, or note!'); return; }
       const start = parseInt(document.getElementById('ll-song-start').value)||0;
       const payload = {
         to: OTHER, text: '',
         love_letter: {
-          photo_url: llPhotoUrl || '',
+          photos: readyPhotos.map(p => p.url),
+          photo_url: readyPhotos[0]?.url || '',   // legacy compat
           song_query: llSong ? llSong.title : '',
           song_video_id: llSong ? llSong.video_id : '',
           song_title: llSong ? llSong.title : '',
@@ -636,22 +682,46 @@
     }
 
     // ── Love Letter viewer ────────────────────────────────────────────────────
-    let _llEmojiInterval = null, _ytPlayer = null, _ytReady = false;
+    let _llEmojiInterval = null, _llSlideInterval = null, _ytPlayer = null;
     const LL_EMOJIS = ['❤️','💕','💖','💗','💓','💞','🌹','✨','💫','🥰','😍','💝'];
+    let _llSlideIdx = 0, _llSlidePhotos = [];
 
     function openLLViewer(ll) {
-      const viewer = document.getElementById('ll-viewer');
-      // Photo
-      const photo = document.getElementById('ll-card-photo');
-      if (ll.photo_url) {
-        photo.src = ll.photo_url; photo.style.display = 'block';
-        document.getElementById('ll-viewer-bg-img').style.backgroundImage = `url('${escAttr(ll.photo_url)}')`;
+      // Normalise photos array (support legacy single photo_url)
+      _llSlidePhotos = (ll.photos && ll.photos.length) ? ll.photos
+                       : (ll.photo_url ? [ll.photo_url] : []);
+      _llSlideIdx = 0;
+
+      // Build slideshow
+      const ss = document.getElementById('ll-slideshow');
+      const dots = document.getElementById('ll-slide-dots');
+      ss.innerHTML = ''; dots.innerHTML = '';
+      if (_llSlidePhotos.length) {
+        ss.style.display = 'block';
+        _llSlidePhotos.forEach((url, i) => {
+          const slide = document.createElement('div');
+          slide.className = 'll-slide' + (i === 0 ? ' active' : '');
+          slide.style.backgroundImage = `url('${escAttr(url)}')`;
+          ss.appendChild(slide);
+          const dot = document.createElement('div');
+          dot.className = 'll-slide-dot' + (i === 0 ? ' active' : '');
+          dots.appendChild(dot);
+        });
+        // Set blurred bg to first photo
+        document.getElementById('ll-viewer-bg-img').style.backgroundImage = `url('${escAttr(_llSlidePhotos[0])}')`;
+        // Auto-rotate if multiple
+        clearInterval(_llSlideInterval);
+        if (_llSlidePhotos.length > 1) {
+          _llSlideInterval = setInterval(_llNextSlide, 3500);
+        }
       } else {
-        photo.style.display = 'none';
+        ss.style.display = 'none';
         document.getElementById('ll-viewer-bg-img').style.backgroundImage = '';
       }
+
       // Note
       document.getElementById('ll-card-note').textContent = ll.note || '';
+
       // Song
       const songEl = document.getElementById('ll-card-song');
       if (ll.song_video_id) {
@@ -664,14 +734,28 @@
       } else {
         songEl.style.display = 'none';
       }
-      // Floating emojis
+
       _startEmojis();
-      viewer.classList.add('show');
+      document.getElementById('ll-viewer').classList.add('show');
+    }
+
+    function _llNextSlide() {
+      const slides = document.querySelectorAll('#ll-slideshow .ll-slide');
+      const dotEls = document.querySelectorAll('#ll-slide-dots .ll-slide-dot');
+      if (!slides.length) return;
+      slides[_llSlideIdx].classList.remove('active');
+      dotEls[_llSlideIdx]?.classList.remove('active');
+      _llSlideIdx = (_llSlideIdx + 1) % slides.length;
+      slides[_llSlideIdx].classList.add('active');
+      dotEls[_llSlideIdx]?.classList.add('active');
+      // Update blurred bg
+      document.getElementById('ll-viewer-bg-img').style.backgroundImage = `url('${escAttr(_llSlidePhotos[_llSlideIdx])}')`;
     }
 
     function closeLLViewer() {
       document.getElementById('ll-viewer').classList.remove('show');
       clearInterval(_llEmojiInterval);
+      clearInterval(_llSlideInterval);
       document.getElementById('ll-emojis').innerHTML = '';
       if (_ytPlayer && _ytPlayer.stopVideo) _ytPlayer.stopVideo();
     }
