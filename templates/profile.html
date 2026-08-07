@@ -384,6 +384,7 @@
         {% if viewer == username %}
           <button class="btn btn-red" onclick="toggleBioEdit()" id="bio-btn">Edit Bio</button>
           <button class="btn btn-red" onclick="openBirthdateModal()" id="bday-btn" style="font-size:0.82rem;">🎂 Birthday</button>
+          <button class="btn" style="border-color:var(--border);color:var(--muted);font-size:0.82rem;" onclick="openPasswordModal()">🔒 Password</button>
         {% endif %}
       </div>
     </div>
@@ -573,6 +574,20 @@
   </div>
 
   {% if viewer == username %}
+  <!-- Password Modal -->
+  <div class="avatar-modal-overlay" id="pw-modal-overlay" onclick="if(event.target===this)closePwModal()">
+    <div class="avatar-modal">
+      <h3>🔒 Change Password</h3>
+      <input type="password" id="pw-current" placeholder="Current password" style="margin-bottom:0.6rem;" />
+      <input type="password" id="pw-new" placeholder="New password (min 6 chars)" style="margin-bottom:0.6rem;" />
+      <input type="password" id="pw-confirm" placeholder="Confirm new password" style="margin-bottom:1rem;" />
+      <div class="avatar-modal-actions">
+        <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="closePwModal()">Cancel</button>
+        <button class="btn btn-red" onclick="savePassword()">Update</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Birthdate Modal -->
   <div class="avatar-modal-overlay" id="bday-modal-overlay" onclick="if(event.target===this)closeBirthdateModal()">
     <div class="avatar-modal">
@@ -916,6 +931,30 @@
         .then(d => {
           if (d.success) { document.getElementById('post-' + postId)?.remove(); showToast('Deleted'); }
         });
+    }
+
+    // Password modal
+    function openPasswordModal() {
+      document.getElementById('pw-current').value = '';
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+      document.getElementById('pw-modal-overlay').classList.add('open');
+    }
+    function closePwModal() { document.getElementById('pw-modal-overlay').classList.remove('open'); }
+    function savePassword() {
+      const current = document.getElementById('pw-current').value;
+      const nw = document.getElementById('pw-new').value;
+      const confirm = document.getElementById('pw-confirm').value;
+      if (!current || !nw || !confirm) { showToast('All fields required'); return; }
+      if (nw !== confirm) { showToast('Passwords do not match'); return; }
+      fetch('/api/profile/password', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({current_password: current, new_password: nw})
+      }).then(r => r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        closePwModal();
+        showToast('Password updated ✅');
+      });
     }
 
     // Birthdate modal

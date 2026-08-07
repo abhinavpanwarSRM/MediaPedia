@@ -1679,6 +1679,27 @@ def birthday_trigger():
     users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
     return jsonify({'ok': True, 'sent': sent})
 
+# ===== Password Update =====
+@app.route('/api/profile/password', methods=['POST'])
+def update_password():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Not logged in'}), 401
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    current_pw = data.get('current_password', '')
+    new_pw = data.get('new_password', '')
+    if not current_pw or not new_pw:
+        return jsonify({'error': 'Both fields required'}), 400
+    if len(new_pw) < 6:
+        return jsonify({'error': 'New password must be at least 6 characters'}), 400
+    user = users_collection.find_one({'username': username})
+    if not user or not bcrypt.check_password_hash(user['password'], current_pw):
+        return jsonify({'error': 'Current password is incorrect'}), 400
+    users_collection.update_one({'username': username}, {'$set': {'password': bcrypt.generate_password_hash(new_pw).decode('utf-8')}})
+    return jsonify({'success': True})
+
 # ===== Bio Update =====
 @app.route('/api/profile/bio', methods=['POST'])
 def update_bio():
