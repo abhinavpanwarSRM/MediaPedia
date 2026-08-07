@@ -1679,6 +1679,55 @@ def birthday_trigger():
     users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
     return jsonify({'ok': True, 'sent': sent})
 
+# ===== Forgot Password (Birthdate OTP) =====
+import random as _otp_random
+_otp_store = {}  # {username: {otp, expires_at}}
+
+@app.route('/api/forgot/verify_bday', methods=['POST'])
+def forgot_verify_bday():
+    if users_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    birthdate = data.get('birthdate', '').strip()
+    import re
+    if not username or not birthdate:
+        return jsonify({'error': 'Both fields required'}), 400
+    if not re.match(r'^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$', birthdate):
+        return jsonify({'error': 'Use MM-DD format e.g. 03-15'}), 400
+    user = users_collection.find_one({'username': username})
+    if not user:
+        return jsonify({'error': 'Username not found'}), 404
+    saved_bday = user.get('birthdate', '')
+    if saved_bday:
+        if saved_bday != birthdate:
+            return jsonify({'error': 'Birthday does not match our records'}), 400
+    else:
+        users_collection.update_one({'username': username}, {'$set': {'birthdate': birthdate}})
+    otp = str(_otp_random.randint(1000, 9999))
+    _otp_store[username] = {'otp': otp, 'expires_at': datetime.now(timezone.utc).timestamp() + 300}
+    return jsonify({'otp': otp})
+
+@app.route('/api/forgot/verify_otp', methods=['POST'])
+def forgot_verify_otp():
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    otp = data.get('otp', '').strip()
+    if not username or not otp:
+        return jsonify({'error': 'Missing fields'}), 400
+    entry = _otp_store.get(username)
+    if not entry:
+        return jsonify({'error': 'No OTP requested'}), 400
+    if datetime.now(timezone.utc).timestamp() > entry['expires_at']:
+        _otp_store.pop(username, None)
+        return jsonify({'error': 'OTP expired, please try again'}), 400
+    if entry['otp'] != otp:
+        return jsonify({'error': 'Incorrect OTP'}), 400
+    _otp_store.pop(username, None)
+    session['username'] = username
+    session.permanent = True
+    return jsonify({'redirect': '/'})
+
 # ===== Password Update =====
 @app.route('/api/profile/password', methods=['POST'])
 def update_password():

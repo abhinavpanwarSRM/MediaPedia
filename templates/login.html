@@ -140,10 +140,108 @@
     </form>
 
     <div class="divider">or</div>
+    <button type="button" class="btn" onclick="openForgot()" style="background:transparent;border:1px solid var(--border);color:var(--muted);margin-bottom:0.6rem;">🎂 Forgot Password?</button>
     <div class="footer">Don't have an account? <a href="/register">Register for free</a></div>
   </div>
 
+  <!-- Forgot Password overlay -->
+  <div id="forgot-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:200;align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:#1c1c1c;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:2rem 1.8rem;width:100%;max-width:380px;">
+      <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:0.3rem;">🎂 Forgot Password</h2>
+      <p style="font-size:0.8rem;color:#888;margin-bottom:1.4rem;">Verify your identity using your birthday (MM-DD). If you haven't set one, it will be saved now.</p>
+
+      <!-- Step 1: username + birthdate -->
+      <div id="fp-step1">
+        <label style="display:block;color:#aaa;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:0.35rem;">Username</label>
+        <input id="fp-username" type="text" placeholder="Your username" style="width:100%;padding:0.7rem 0.95rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-size:0.92rem;font-family:inherit;margin-bottom:1rem;" />
+        <label style="display:block;color:#aaa;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:0.35rem;">Birthday (MM-DD)</label>
+        <input id="fp-bday" type="text" placeholder="e.g. 03-15" maxlength="5" style="width:100%;padding:0.7rem 0.95rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-size:0.92rem;font-family:inherit;margin-bottom:1rem;" />
+        <div id="fp-err1" style="display:none;background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.4);color:#ff6b6b;padding:0.6rem 0.9rem;border-radius:6px;font-size:0.82rem;margin-bottom:0.9rem;"></div>
+        <button class="btn" onclick="fpVerifyBday()" style="margin-bottom:0.6rem;">Verify Birthday</button>
+        <button type="button" onclick="closeForgot()" style="width:100%;padding:0.6rem;background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#888;font-size:0.88rem;cursor:pointer;">Cancel</button>
+      </div>
+
+      <!-- Step 2: OTP -->
+      <div id="fp-step2" style="display:none;">
+        <div id="fp-otp-display" style="text-align:center;background:rgba(229,9,20,0.1);border:1px solid rgba(229,9,20,0.35);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;">
+          <div style="font-size:0.78rem;color:#888;margin-bottom:0.4rem;">Your one-time code</div>
+          <div id="fp-otp-code" style="font-size:2.4rem;font-weight:800;letter-spacing:0.5rem;color:#fff;"></div>
+          <div id="fp-otp-timer" style="font-size:0.72rem;color:#888;margin-top:0.4rem;">Expires in 5:00</div>
+        </div>
+        <label style="display:block;color:#aaa;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:0.35rem;">Enter OTP</label>
+        <input id="fp-otp-input" type="text" maxlength="4" placeholder="4-digit code" style="width:100%;padding:0.7rem 0.95rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#fff;font-size:1.4rem;font-family:inherit;margin-bottom:1rem;letter-spacing:0.4rem;text-align:center;" oninput="if(this.value.length===4)fpVerifyOtp()" />
+        <div id="fp-err2" style="display:none;background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.4);color:#ff6b6b;padding:0.6rem 0.9rem;border-radius:6px;font-size:0.82rem;margin-bottom:0.9rem;"></div>
+        <button class="btn" onclick="fpVerifyOtp()" style="margin-bottom:0.6rem;">Login with OTP</button>
+        <button type="button" onclick="closeForgot()" style="width:100%;padding:0.6rem;background:transparent;border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#888;font-size:0.88rem;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    let _fpTimerInterval = null;
+    let _fpUsername = '';
+
+    function openForgot() {
+      document.getElementById('forgot-overlay').style.display = 'flex';
+      document.getElementById('fp-step1').style.display = 'block';
+      document.getElementById('fp-step2').style.display = 'none';
+      document.getElementById('fp-username').value = '';
+      document.getElementById('fp-bday').value = '';
+      document.getElementById('fp-err1').style.display = 'none';
+      document.getElementById('fp-otp-input').value = '';
+    }
+    function closeForgot() {
+      document.getElementById('forgot-overlay').style.display = 'none';
+      clearInterval(_fpTimerInterval);
+    }
+
+    function fpVerifyBday() {
+      const username = document.getElementById('fp-username').value.trim();
+      const bday = document.getElementById('fp-bday').value.trim();
+      const errEl = document.getElementById('fp-err1');
+      if (!username || !bday) { errEl.textContent = 'Both fields required'; errEl.style.display = 'block'; return; }
+      if (!/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(bday)) {
+        errEl.textContent = 'Use MM-DD format e.g. 03-15'; errEl.style.display = 'block'; return;
+      }
+      errEl.style.display = 'none';
+      fetch('/api/forgot/verify_bday', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username, birthdate: bday})
+      }).then(r => r.json()).then(d => {
+        if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
+        _fpUsername = username;
+        document.getElementById('fp-otp-code').textContent = d.otp;
+        document.getElementById('fp-otp-input').value = '';
+        document.getElementById('fp-err2').style.display = 'none';
+        document.getElementById('fp-step1').style.display = 'none';
+        document.getElementById('fp-step2').style.display = 'block';
+        // countdown timer
+        clearInterval(_fpTimerInterval);
+        let secs = 300;
+        const timerEl = document.getElementById('fp-otp-timer');
+        _fpTimerInterval = setInterval(() => {
+          secs--;
+          const m = Math.floor(secs/60), s = secs%60;
+          timerEl.textContent = `Expires in ${m}:${String(s).padStart(2,'0')}`;
+          if (secs <= 0) { clearInterval(_fpTimerInterval); timerEl.textContent = 'Expired'; }
+        }, 1000);
+      });
+    }
+
+    function fpVerifyOtp() {
+      const otp = document.getElementById('fp-otp-input').value.trim();
+      const errEl = document.getElementById('fp-err2');
+      if (otp.length !== 4) { errEl.textContent = 'Enter the 4-digit code'; errEl.style.display = 'block'; return; }
+      fetch('/api/forgot/verify_otp', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: _fpUsername, otp})
+      }).then(r => r.json()).then(d => {
+        if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
+        clearInterval(_fpTimerInterval);
+        window.location.href = d.redirect || '/';
+      });
+    }
+
     const posters = [
       "{{ url_for('static', filename='poster/poster1.jpg') }}",
       "{{ url_for('static', filename='poster/poster2.jpg') }}",
