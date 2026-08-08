@@ -678,6 +678,61 @@
       font-size: 0.9rem;
     }
 
+    /* ── REPLY BAR ── */
+    #reply-bar { display:none; align-items:center; gap:0.5rem; padding:0.4rem 0.8rem;
+      background:var(--whatsapp-darker); border-top:1px solid var(--whatsapp-border);
+      flex-shrink:0; }
+    #reply-bar.show { display:flex; }
+    #reply-bar .reply-info { flex:1; font-size:0.78rem; color:var(--whatsapp-gray);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #reply-bar .reply-info strong { color:var(--whatsapp-green); }
+    #reply-bar button { background:none; border:none; color:var(--whatsapp-gray); cursor:pointer; font-size:1rem; }
+    .reply-preview { background:rgba(255,255,255,0.06); border-left:3px solid var(--whatsapp-green);
+      border-radius:4px; padding:3px 7px; margin-bottom:4px; font-size:0.75rem;
+      color:var(--whatsapp-gray); cursor:pointer; }
+    .reply-preview strong { color:var(--whatsapp-green); display:block; font-size:0.7rem; }
+
+    /* ── REACTIONS ── */
+    .bubble-reactions { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; }
+    .reaction-chip { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
+      border-radius:12px; padding:1px 7px; font-size:0.75rem; cursor:pointer;
+      transition:background 0.15s; user-select:none; }
+    .reaction-chip.mine { background:rgba(0,168,132,0.25); border-color:var(--whatsapp-green); }
+    .reaction-picker { position:fixed; background:var(--whatsapp-header);
+      border:1px solid var(--whatsapp-border); border-radius:24px; padding:4px 8px;
+      display:flex; gap:6px; z-index:400; box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+    .reaction-picker span { font-size:1.2rem; cursor:pointer; transition:transform 0.1s; }
+    .reaction-picker span:hover { transform:scale(1.3); }
+
+    /* ── TYPING INDICATOR ── */
+    .typing-row { display:flex; align-items:center; gap:0.5rem; padding:0.2rem 0; min-height:28px; }
+    .typing-dots { display:none; gap:3px; align-items:center; }
+    .typing-dots.show { display:flex; }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--whatsapp-gray); animation:blink 1.2s ease-in-out infinite; }
+    .dot:nth-child(2) { animation-delay:0.2s; }
+    .dot:nth-child(3) { animation-delay:0.4s; }
+    @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+    /* ── SCROLL TO BOTTOM ── */
+    #scroll-btn {
+      position: fixed;
+      bottom: 5.5rem;
+      right: 1rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--whatsapp-green);
+      border: none;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+
     /* ── LIGHTBOX ── */
     #lightbox {
       display: none;
@@ -809,6 +864,7 @@
           <div class="bubble-wrap">
             <div class="bubble-sender">{{ msg.sender }}</div>
             <div class="bubble">
+              {% if msg.reply_to %}<div class="reply-preview" onclick="scrollToMsg('{{ msg.reply_to.msg_id }}')"><strong>{{ msg.reply_to.sender }}</strong>{{ msg.reply_to.text[:60] }}</div>{% endif %}
               {% if msg.media_url %}<img src="{{ msg.media_url }}" alt="" onclick="openLightbox('{{ msg.media_url }}')" onerror="this.style.display='none'">{% endif %}
               {% if msg.text %}{{ msg.text }}{% endif %}
               <div class="bubble-time">
@@ -818,8 +874,11 @@
                 {% endif %}
               </div>
             </div>
+            <div class="bubble-reactions" id="reactions-{{ msg.msg_id }}"></div>
           </div>
           <div class="msg-actions">
+            <button class="msg-action-btn" onclick="showReactionPicker(event,'{{ msg.msg_id }}')" title="React"><i class="fas fa-smile"></i></button>
+            <button class="msg-action-btn" onclick="setReply('{{ msg.msg_id }}','{{ msg.sender }}','{{ msg.text[:60]|replace("'","") }}')" title="Reply"><i class="fas fa-reply"></i></button>
             {% if msg.sender == username %}
             <button class="msg-action-btn" onclick="deleteMsg('{{ msg.msg_id }}', this)" title="Delete">
               <i class="fas fa-trash"></i>
@@ -829,12 +888,21 @@
         </div>
       {% endfor %}
     {% endif %}
+    <div class="typing-row" id="typing-row">
+      <div class="msg-avatar" style="background:rgba(134,150,160,0.3);visibility:hidden;">?</div>
+      <div class="typing-dots" id="typing-dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
   </div>
 
   <!-- LIGHTBOX -->
   <div id="lightbox" onclick="closeLightbox()">
     <img id="lightbox-img" src="" alt="">
   </div>
+
+  <!-- SCROLL TO BOTTOM -->
+  <button id="scroll-btn" onclick="scrollBottom(true)"><i class="fas fa-chevron-down"></i></button>
 
   <!-- ADD MEMBER MODAL -->
   <div class="modal-overlay" id="add-modal">
@@ -862,6 +930,12 @@
     </div>
   </div>
 
+  <!-- REPLY BAR -->
+  <div id="reply-bar">
+    <div class="reply-info"><strong id="reply-sender"></strong> <span id="reply-text"></span></div>
+    <button onclick="clearReply()"><i class="fas fa-times"></i></button>
+  </div>
+
   <!-- INPUT BAR -->
   <div class="input-bar" id="input-bar">
     <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
@@ -876,7 +950,7 @@
         rows="1"
         placeholder="Type a message..." 
         onkeydown="handleKey(event)" 
-        oninput="autoResize(this)"
+        oninput="autoResize(this); notifyTyping()"
       ></textarea>
     </div>
 
@@ -928,6 +1002,11 @@
 
     scrollBottom();
     applyMemberColors();
+
+    wrap.addEventListener('scroll', () => {
+      const btn = document.getElementById('scroll-btn');
+      btn.style.display = (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight > 120) ? 'flex' : 'none';
+    });
 
     function scrollBottom(smooth = false) {
       wrap.scrollTo({ 
@@ -987,7 +1066,10 @@
       }
 
       const reader = new FileReader();
-      reader.onload = e => showImgPreview(e.target.result, true);
+      reader.onload = e => {
+        pendingImageUrl = e.target.result;
+        showImgPreview(e.target.result, true);
+      };
       reader.readAsDataURL(file);
 
       const fd = new FormData();
@@ -1045,6 +1127,7 @@
 
       const payload = { text: text || '' };
       if (pendingImageUrl) payload.media_url = pendingImageUrl;
+      if (replyTo) payload.reply_to = replyTo;
 
       fetch(`/api/groups/${GROUP_ID}/send`, {
         method: 'POST',
@@ -1060,6 +1143,7 @@
           input.value = '';
           input.style.height = 'auto';
           clearImgPreview();
+          clearReply();
           appendMessage(msg);
           lastMsgId = msg.msg_id;
         })
@@ -1082,7 +1166,7 @@
         const sep = document.createElement('div');
         sep.className = 'date-sep';
         sep.innerHTML = `<span>${msgDate}</span>`;
-        wrap.appendChild(sep);
+        wrap.insertBefore(sep, document.getElementById('typing-row'));
       }
 
       const row = document.createElement('div');
@@ -1092,28 +1176,33 @@
       const imgHtml = msg.media_url 
         ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">` 
         : '';
-
       const textHtml = msg.text ? escHtml(msg.text) : '';
+      const replyHtml = msg.reply_to
+        ? `<div class="reply-preview" onclick="scrollToMsg('${escAttr(msg.reply_to.msg_id)}')"><strong>${escHtml(msg.reply_to.sender)}</strong>${escHtml((msg.reply_to.text||'').slice(0,60))}</div>`
+        : '';
+      const delBtn = isMe ? `<button class="msg-action-btn" onclick="deleteMsg('${escAttr(msg.msg_id)}', this)"><i class="fas fa-trash"></i></button>` : '';
 
       row.innerHTML = `
         <div class="msg-avatar">${msg.sender[0].toUpperCase()}</div>
         <div class="bubble-wrap">
           ${isMe ? '' : `<div class="bubble-sender">${escHtml(msg.sender)}</div>`}
           <div class="bubble">
-            ${imgHtml}
-            ${textHtml}
+            ${replyHtml}${imgHtml}${textHtml}
             <div class="bubble-time">
               ${fmtTime(msg.created_at)}
               ${isMe ? '<span class="checkmark"><i class="fas fa-check-double"></i></span>' : ''}
             </div>
           </div>
+          <div class="bubble-reactions" id="reactions-${msg.msg_id}"></div>
         </div>
         <div class="msg-actions">
-          ${isMe ? `<button class="msg-action-btn" onclick="deleteMsg('${escAttr(msg.msg_id)}', this)"><i class="fas fa-trash"></i></button>` : ''}
+          <button class="msg-action-btn" onclick="showReactionPicker(event,'${escAttr(msg.msg_id)}')" title="React"><i class="fas fa-smile"></i></button>
+          <button class="msg-action-btn" onclick="setReply('${escAttr(msg.msg_id)}','${escAttr(msg.sender)}','${escAttr((msg.text||'').slice(0,60))}')" title="Reply"><i class="fas fa-reply"></i></button>
+          ${delBtn}
         </div>
       `;
 
-      wrap.appendChild(row);
+      wrap.insertBefore(row, document.getElementById('typing-row'));
       applyMemberColors();
 
       // Remove empty state if exists
@@ -1122,7 +1211,97 @@
 
       const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
       if (atBottom) scrollBottom(true);
+      else document.getElementById('scroll-btn').style.display = 'flex';
     }
+
+    // ── Reactions ──
+    const REACTION_EMOJIS = ['👍','❤️','😂','😮','😢','🔥'];
+    function showReactionPicker(e, msgId) {
+      e.stopPropagation();
+      document.querySelector('.reaction-picker')?.remove();
+      const picker = document.createElement('div');
+      picker.className = 'reaction-picker';
+      REACTION_EMOJIS.forEach(em => {
+        const s = document.createElement('span');
+        s.textContent = em;
+        s.onclick = () => { sendReaction(msgId, em); picker.remove(); };
+        picker.appendChild(s);
+      });
+      const rect = e.currentTarget.getBoundingClientRect();
+      picker.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      picker.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+      document.body.appendChild(picker);
+    }
+    document.addEventListener('click', () => document.querySelector('.reaction-picker')?.remove());
+
+    function sendReaction(msgId, emoji) {
+      fetch(`/api/groups/${GROUP_ID}/messages/${msgId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji })
+      }).then(r => r.json()).then(d => {
+        if (!d.error) renderReactions(msgId, d.reactions);
+      }).catch(() => {});
+    }
+
+    function renderReactions(msgId, reactions) {
+      const container = document.getElementById(`reactions-${msgId}`);
+      if (!container) return;
+      const counts = {};
+      const mine = new Set();
+      (reactions || []).forEach(r => {
+        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+        if (r.user === ME) mine.add(r.emoji);
+      });
+      container.innerHTML = Object.entries(counts).map(([em, n]) =>
+        `<span class="reaction-chip${mine.has(em) ? ' mine' : ''}" onclick="sendReaction('${msgId}','${em}')">${em} ${n}</span>`
+      ).join('');
+    }
+
+    function loadReactions() {
+      fetch(`/api/groups/${GROUP_ID}/reactions`)
+        .then(r => r.json())
+        .then(data => Object.entries(data).forEach(([msgId, rxns]) => renderReactions(msgId, rxns)))
+        .catch(() => {});
+    }
+    loadReactions();
+
+    // ── Reply ──
+    let replyTo = null;
+    function setReply(msgId, sender, text) {
+      replyTo = { msg_id: msgId, sender, text };
+      document.getElementById('reply-sender').textContent = sender + ': ';
+      document.getElementById('reply-text').textContent = text;
+      document.getElementById('reply-bar').classList.add('show');
+      input.focus();
+    }
+    function clearReply() {
+      replyTo = null;
+      document.getElementById('reply-bar').classList.remove('show');
+    }
+    function scrollToMsg(msgId) {
+      const el = document.querySelector(`.msg-row[data-msg-id="${msgId}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ── Typing indicator ──
+    let _typingTimer = null;
+    function notifyTyping() {
+      clearTimeout(_typingTimer);
+      fetch(`/api/groups/${GROUP_ID}/typing`, { method: 'POST' }).catch(() => {});
+      _typingTimer = setTimeout(() => {}, 2000);
+    }
+    function pollTyping() {
+      fetch(`/api/groups/${GROUP_ID}/typing`)
+        .then(r => r.json())
+        .then(d => {
+          const others = (d.typers || []).filter(u => u !== ME);
+          const dots = document.getElementById('typing-dots');
+          if (others.length) dots.classList.add('show');
+          else dots.classList.remove('show');
+        }).catch(() => {});
+    }
+    setInterval(pollTyping, 2500);
 
     // ── Polling ──
     function pollMessages() {

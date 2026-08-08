@@ -2591,6 +2591,7 @@ def send_group_message(group_id):
         'sender': username,
         'text': text,
         'media_url': media_url,
+        'reply_to': data.get('reply_to'),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     groups_collection.update_one(
@@ -2711,6 +2712,52 @@ def remove_group_member(group_id, target):
         return jsonify({'error': 'Only creator can remove members'}), 403
     groups_collection.update_one({'group_id': group_id}, {'$pull': {'members': target}})
     return jsonify({'success': True})
+
+# ── Group typing indicator (in-memory, per group) ──
+_group_typing = {}  # {group_id: {username: expires_at}}
+
+@app.route('/api/groups/<group_id>/typing', methods=['POST'])
+def group_typing_post(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    import time
+    _group_typing.setdefault(group_id, {})[username] = time.time() + 4
+    return jsonify({'ok': True})
+
+@app.route('/api/groups/<group_id>/typing', methods=['GET'])
+def group_typing_get(group_id):
+    import time
+    now = time.time()
+    typers = _group_typing.get(group_id, {})
+    active = [u for u, exp in list(typers.items()) if exp > now]
+    # clean up expired
+    _group_typing[group_id] = {u: exp for u, exp in typers.items() if exp > now}
+    return jsonify({'typers': active})
+
+# ── Group message reactions ──
+_group_reactions = {}  # {group_id: {msg_id: [{user, emoji}]}}
+
+@app.route('/api/groups/<group_id>/messages/<msg_id>/react', methods=['POST'])
+def group_react(group_id, msg_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    emoji = (request.json or {}).get('emoji', '').strip()
+    if not emoji:
+        return jsonify({'error': 'emoji required'}), 400
+    rxns = _group_reactions.setdefault(group_id, {}).setdefault(msg_id, [])
+    # toggle: remove if same user+emoji already exists, else add
+    existing = next((r for r in rxns if r['user'] == username and r['emoji'] == emoji), None)
+    if existing:
+        rxns.remove(existing)
+    else:
+        rxns.append({'user': username, 'emoji': emoji})
+    return jsonify({'reactions': rxns})
+
+@app.route('/api/groups/<group_id>/reactions', methods=['GET'])
+def group_reactions_get(group_id):
+    return jsonify(_group_reactions.get(group_id, {}))
 
 # ===== Messaging =====
 @app.route('/messages')
