@@ -824,6 +824,49 @@
       border-radius:50%; transition:all 0.2s; }
     #stats-close:hover { background:rgba(255,255,255,0.1); color:#fff; }
 
+    /* ── TRIP TRACKER MODAL ── */
+    #trip-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
+      z-index:350; flex-direction:column; backdrop-filter:blur(6px); }
+    #trip-modal.open { display:flex; }
+    #trip-header { display:flex; align-items:center; gap:0.6rem; padding:0.7rem 1rem;
+      background:var(--whatsapp-header); border-bottom:1px solid var(--whatsapp-border); flex-shrink:0; }
+    #trip-header h3 { font-size:0.95rem; font-weight:600; color:#fff; flex:1; }
+    #trip-close { background:none; border:none; color:var(--whatsapp-gray); font-size:1.2rem;
+      cursor:pointer; padding:6px; border-radius:50%; transition:all 0.2s; }
+    #trip-close:hover { background:rgba(255,255,255,0.1); color:#fff; }
+    #trip-canvas-wrap { position:relative; flex-shrink:0; background:#0d1b2a; }
+    #trip-canvas { display:block; width:100%; }
+    #trip-dest-bar { display:flex; gap:0.5rem; padding:0.5rem 0.75rem;
+      background:var(--whatsapp-input); flex-shrink:0; border-bottom:1px solid var(--whatsapp-border); }
+    #trip-dest-input { flex:1; background:var(--whatsapp-darker); border:1px solid var(--whatsapp-border);
+      border-radius:8px; color:#fff; font-size:0.82rem; padding:0.35rem 0.6rem;
+      font-family:inherit; outline:none; transition:border-color 0.2s; }
+    #trip-dest-input:focus { border-color:var(--whatsapp-green); }
+    #trip-dest-btn { background:var(--whatsapp-green); border:none; color:#fff;
+      border-radius:8px; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;
+      font-family:inherit; transition:background 0.2s; white-space:nowrap; }
+    #trip-dest-btn:hover { background:#00b894; }
+    #trip-live-btn { border:none; border-radius:8px; padding:0.35rem 0.75rem;
+      font-size:0.8rem; cursor:pointer; font-family:inherit; transition:all 0.2s;
+      background:rgba(255,255,255,0.1); color:var(--whatsapp-gray); white-space:nowrap; }
+    #trip-live-btn.active { background:rgba(229,9,20,0.25); color:#ff6b6b; }
+    #trip-stats { flex:1; overflow-y:auto; padding:0.5rem 0.75rem;
+      display:flex; flex-direction:column; gap:0.3rem; }
+    .trip-member-row { display:flex; align-items:center; gap:0.6rem;
+      padding:0.45rem 0.6rem; background:rgba(255,255,255,0.04);
+      border-radius:8px; font-size:0.8rem; transition:background 0.2s; }
+    .trip-member-row:hover { background:rgba(255,255,255,0.08); }
+    .trip-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .trip-name { flex:1; color:#fff; font-weight:500; }
+    .trip-dist { color:var(--whatsapp-gray); font-size:0.75rem; }
+    .trip-eta { color:var(--whatsapp-green); font-size:0.72rem; font-weight:600; }
+    .trip-arrived { color:#1db954; font-size:0.72rem; font-weight:700; }
+    .trip-no-loc { color:var(--whatsapp-gray); font-size:0.72rem; font-style:italic; }
+    #trip-legend { padding:0.4rem 0.75rem; font-size:0.7rem; color:var(--whatsapp-gray);
+      border-top:1px solid var(--whatsapp-border); flex-shrink:0; display:flex;
+      gap:1rem; flex-wrap:wrap; }
+    #trip-legend span { display:flex; align-items:center; gap:4px; }
+
     /* ── SCROLL TO BOTTOM ── */
     #scroll-btn {
       position: fixed;
@@ -956,6 +999,9 @@
     </div>
 
     <div class="header-actions">
+      <button class="header-btn" onclick="openTrip()" title="Trip tracker">
+        <i class="fas fa-route"></i>
+      </button>
       <button class="header-btn" onclick="openStats()" title="Location stats">
         <i class="fas fa-chart-bar"></i>
       </button>
@@ -1035,6 +1081,30 @@
 
   <!-- SCROLL TO BOTTOM -->
   <button id="scroll-btn" onclick="scrollBottom(true)"><i class="fas fa-chevron-down"></i></button>
+
+  <!-- TRIP TRACKER MODAL -->
+  <div id="trip-modal">
+    <div id="trip-header">
+      <i class="fas fa-route" style="color:var(--whatsapp-green)"></i>
+      <h3>Trip Tracker</h3>
+      <button id="trip-close" onclick="closeTrip()"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="trip-dest-bar">
+      <input id="trip-dest-input" placeholder="Set destination (lat,lng or address)" autocomplete="off">
+      <button id="trip-dest-btn" onclick="setDestination()">📍 Set</button>
+      <button id="trip-live-btn" onclick="toggleLiveLoc()">🔴 Go Live</button>
+    </div>
+    <div id="trip-canvas-wrap">
+      <canvas id="trip-canvas" height="260"></canvas>
+    </div>
+    <div id="trip-stats"></div>
+    <div id="trip-legend">
+      <span>🟢 You</span>
+      <span>🔵 Others</span>
+      <span>⭐ Destination</span>
+      <span style="color:var(--whatsapp-gray);font-size:0.68rem">Updates every 10s</span>
+    </div>
+  </div>
 
   <!-- STATS MODAL -->
   <div id="stats-modal">
@@ -1716,6 +1786,299 @@
     window.addEventListener('resize', setVh);
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', setVh);
+    }
+
+    // ── Trip Tracker ──
+    let _tripLiveInterval = null;
+    let _tripPollInterval = null;
+    let _tripLiveActive = false;
+    let _tripDestination = null;   // {lat, lng, label}
+    let _tripMembers = {};         // {username: {lat, lng, ts}}
+    let _tripAnimFrame = null;
+    let _tripPulse = 0;
+
+    // member color map (reuse memberColor)
+    function tripColor(name) {
+      return name === ME ? '#1db954' : memberColor(name);
+    }
+
+    function openTrip() {
+      document.getElementById('trip-modal').classList.add('open');
+      _resizeTripCanvas();
+      _loadTripDest();
+      _pollTripLocs();
+      _tripPollInterval = setInterval(_pollTripLocs, 10000);
+      _startTripDraw();
+    }
+
+    function closeTrip() {
+      document.getElementById('trip-modal').classList.remove('open');
+      clearInterval(_tripPollInterval);
+      if (_tripAnimFrame) cancelAnimationFrame(_tripAnimFrame);
+      // keep live loc running in background if active
+    }
+
+    function _resizeTripCanvas() {
+      const canvas = document.getElementById('trip-canvas');
+      canvas.width = canvas.offsetWidth * devicePixelRatio;
+      canvas.height = 260 * devicePixelRatio;
+      canvas.style.height = '260px';
+    }
+
+    // ── Destination ──
+    function _loadTripDest() {
+      fetch(`/api/groups/${GROUP_ID}/destination`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.lat && d.lng) {
+            _tripDestination = d;
+            document.getElementById('trip-dest-input').value = d.label || `${d.lat.toFixed(4)},${d.lng.toFixed(4)}`;
+          }
+        }).catch(() => {});
+    }
+
+    function setDestination() {
+      const val = document.getElementById('trip-dest-input').value.trim();
+      if (!val) return;
+      // Try lat,lng format first
+      const parts = val.split(',').map(s => parseFloat(s.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        _saveDestination(parts[0], parts[1], val);
+      } else {
+        // Use browser geolocation as fallback if user types "here"
+        if (val.toLowerCase() === 'here') {
+          navigator.geolocation.getCurrentPosition(pos => {
+            _saveDestination(pos.coords.latitude, pos.coords.longitude, 'Here');
+          }, () => alert('Location denied'));
+        } else {
+          alert('Enter coordinates as: lat,lng  (e.g. 28.6139,77.2090)\nOr type "here" to use your current location');
+        }
+      }
+    }
+
+    function _saveDestination(lat, lng, label) {
+      fetch(`/api/groups/${GROUP_ID}/destination`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng, label })
+      }).then(r => r.json()).then(d => {
+        _tripDestination = { lat, lng, label };
+        document.getElementById('trip-dest-input').value = label || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+      }).catch(() => alert('Failed to set destination'));
+    }
+
+    // ── Live location ──
+    function toggleLiveLoc() {
+      const btn = document.getElementById('trip-live-btn');
+      if (_tripLiveActive) {
+        _tripLiveActive = false;
+        clearInterval(_tripLiveInterval);
+        btn.textContent = '🔴 Go Live';
+        btn.classList.remove('active');
+      } else {
+        _tripLiveActive = true;
+        btn.textContent = '⏹ Stop';
+        btn.classList.add('active');
+        _pushLiveLoc();
+        _tripLiveInterval = setInterval(_pushLiveLoc, 10000);
+      }
+    }
+
+    function _pushLiveLoc() {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        fetch(`/api/groups/${GROUP_ID}/live_loc`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat, lng })
+        }).then(r => r.json()).then(d => {
+          _tripMembers[ME] = { lat, lng, ts: Date.now() };
+        }).catch(() => {});
+      }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
+    }
+
+    function _pollTripLocs() {
+      fetch(`/api/groups/${GROUP_ID}/live_loc`)
+        .then(r => r.json())
+        .then(d => {
+          _tripMembers = {};
+          (d.members || []).forEach(m => { _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts }; });
+          _renderTripStats();
+        }).catch(() => {});
+    }
+
+    // ── Haversine (JS) ──
+    function _haversine(a, b) {
+      const R = 6371;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const h = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+      return R * 2 * Math.asin(Math.sqrt(h));
+    }
+
+    // ── Stats panel ──
+    function _renderTripStats() {
+      const el = document.getElementById('trip-stats');
+      const members = Object.entries(_tripMembers);
+      if (!members.length) {
+        el.innerHTML = '<div style="color:var(--whatsapp-gray);font-size:0.8rem;padding:0.5rem">No live locations yet. Tap 🔴 Go Live to share yours.</div>';
+        return;
+      }
+      // Sort by distance to destination
+      const rows = members.map(([name, loc]) => {
+        let dist = null, eta = null, arrived = false;
+        if (_tripDestination) {
+          dist = _haversine(loc, _tripDestination);
+          arrived = dist < 0.1;
+          // ETA: walking ~5km/h, driving ~40km/h — show walking if <2km
+          const speed = dist < 2 ? 5 : 40;
+          const hrs = dist / speed;
+          const mins = Math.round(hrs * 60);
+          eta = arrived ? null : (mins < 1 ? '<1 min' : `~${mins} min`);
+        }
+        return { name, loc, dist, eta, arrived };
+      }).sort((a, b) => (a.dist ?? 999) - (b.dist ?? 999));
+
+      el.innerHTML = rows.map(r => `
+        <div class="trip-member-row">
+          <div class="trip-dot" style="background:${tripColor(r.name)}"></div>
+          <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' (you)' : ''}</span>
+          ${r.arrived
+            ? '<span class="trip-arrived">✅ Arrived!</span>'
+            : r.dist !== null
+              ? `<span class="trip-dist">${r.dist < 1 ? (r.dist*1000).toFixed(0)+'m' : r.dist.toFixed(1)+'km'}</span>
+                 <span class="trip-eta">${r.eta}</span>`
+              : '<span class="trip-no-loc">no destination set</span>'
+          }
+        </div>
+      `).join('');
+    }
+
+    // ── Canvas map drawing ──
+    function _startTripDraw() {
+      const canvas = document.getElementById('trip-canvas');
+      const ctx = canvas.getContext('2d');
+      function draw() {
+        _tripAnimFrame = requestAnimationFrame(draw);
+        if (!document.getElementById('trip-modal').classList.contains('open')) return;
+        _tripPulse = (_tripPulse + 0.04) % (Math.PI * 2);
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        // Background grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+        for (let y = 0; y < H; y += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+        const members = Object.entries(_tripMembers);
+        if (!members.length && !_tripDestination) {
+          ctx.fillStyle = 'rgba(134,150,160,0.5)';
+          ctx.font = `${13 * devicePixelRatio}px Inter,sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText('Share your location to see the map', W/2, H/2);
+          return;
+        }
+
+        // Collect all points to compute bounding box
+        const allPts = [...members.map(([,l]) => l)];
+        if (_tripDestination) allPts.push(_tripDestination);
+        if (allPts.length === 0) return;
+
+        const minLat = Math.min(...allPts.map(p => p.lat));
+        const maxLat = Math.max(...allPts.map(p => p.lat));
+        const minLng = Math.min(...allPts.map(p => p.lng));
+        const maxLng = Math.max(...allPts.map(p => p.lng));
+        const pad = 0.12 * devicePixelRatio;
+        const rangeX = (maxLng - minLng) || 0.01;
+        const rangeY = (maxLat - minLat) || 0.01;
+
+        function project(lat, lng) {
+          const x = ((lng - minLng) / rangeX) * (W * (1 - 2*pad)) + W * pad;
+          const y = H - (((lat - minLat) / rangeY) * (H * (1 - 2*pad)) + H * pad);
+          return [x, y];
+        }
+
+        // Draw lines from each member to destination
+        if (_tripDestination) {
+          const [dx, dy] = project(_tripDestination.lat, _tripDestination.lng);
+          members.forEach(([name, loc]) => {
+            const [mx, my] = project(loc.lat, loc.lng);
+            const color = tripColor(name);
+            ctx.setLineDash([6 * devicePixelRatio, 4 * devicePixelRatio]);
+            ctx.strokeStyle = color + '55';
+            ctx.lineWidth = 1.5 * devicePixelRatio;
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(dx, dy); ctx.stroke();
+            ctx.setLineDash([]);
+          });
+        }
+
+        // Draw destination star with pulsing ring
+        if (_tripDestination) {
+          const [dx, dy] = project(_tripDestination.lat, _tripDestination.lng);
+          const pulse = 0.5 + 0.5 * Math.sin(_tripPulse);
+          // outer ring
+          ctx.beginPath();
+          ctx.arc(dx, dy, (18 + pulse * 8) * devicePixelRatio, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255,215,0,${0.15 + pulse * 0.2})`;
+          ctx.lineWidth = 2 * devicePixelRatio;
+          ctx.stroke();
+          // inner ring
+          ctx.beginPath();
+          ctx.arc(dx, dy, (10 + pulse * 4) * devicePixelRatio, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255,215,0,${0.3 + pulse * 0.3})`;
+          ctx.lineWidth = 1.5 * devicePixelRatio;
+          ctx.stroke();
+          // star dot
+          ctx.beginPath();
+          ctx.arc(dx, dy, 7 * devicePixelRatio, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffd700';
+          ctx.fill();
+          ctx.fillStyle = '#000';
+          ctx.font = `bold ${9 * devicePixelRatio}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('★', dx, dy);
+        }
+
+        // Draw member dots
+        members.forEach(([name, loc]) => {
+          const [x, y] = project(loc.lat, loc.lng);
+          const color = tripColor(name);
+          const isMe = name === ME;
+          const pulse = 0.5 + 0.5 * Math.sin(_tripPulse + (isMe ? 0 : 1.2));
+
+          // pulsing aura
+          const grad = ctx.createRadialGradient(x, y, 0, x, y, (22 + pulse * 10) * devicePixelRatio);
+          grad.addColorStop(0, color + '44');
+          grad.addColorStop(1, color + '00');
+          ctx.beginPath();
+          ctx.arc(x, y, (22 + pulse * 10) * devicePixelRatio, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          // dot
+          ctx.beginPath();
+          ctx.arc(x, y, (isMe ? 9 : 7) * devicePixelRatio, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2 * devicePixelRatio;
+          ctx.stroke();
+
+          // label
+          ctx.fillStyle = '#fff';
+          ctx.font = `${isMe ? 'bold ' : ''}${10 * devicePixelRatio}px Inter,sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          // shadow
+          ctx.shadowColor = 'rgba(0,0,0,0.8)';
+          ctx.shadowBlur = 4 * devicePixelRatio;
+          ctx.fillText(name.length > 8 ? name.slice(0,7)+'…' : name, x, y + 11 * devicePixelRatio);
+          ctx.shadowBlur = 0;
+        });
+      }
+      draw();
     }
 
     // ── Focus input ──

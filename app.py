@@ -2784,6 +2784,59 @@ def group_react(group_id, msg_id):
 def group_reactions_get(group_id):
     return jsonify(_group_reactions.get(group_id, {}))
 
+# ── Group live location (in-memory, 5min TTL) ──
+_group_live_locs = {}   # {group_id: {username: {lat, lng, ts}}}
+_group_destinations = {}  # {group_id: {lat, lng, label}}
+
+@app.route('/api/groups/<group_id>/live_loc', methods=['POST'])
+def group_live_loc_post(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.json or {}
+    lat, lng = data.get('lat'), data.get('lng')
+    if lat is None or lng is None:
+        return jsonify({'error': 'lat and lng required'}), 400
+    import time
+    _group_live_locs.setdefault(group_id, {})[username] = {
+        'lat': float(lat), 'lng': float(lng), 'ts': time.time()
+    }
+    return jsonify({'ok': True})
+
+@app.route('/api/groups/<group_id>/live_loc', methods=['GET'])
+def group_live_loc_get(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'members': []})
+    import time
+    now = time.time()
+    locs = _group_live_locs.get(group_id, {})
+    # 5 minute TTL
+    active = [{'username': u, 'lat': v['lat'], 'lng': v['lng'], 'ts': v['ts']}
+              for u, v in locs.items() if now - v['ts'] < 300]
+    _group_live_locs[group_id] = {u: v for u, v in locs.items() if now - v['ts'] < 300}
+    return jsonify({'members': active})
+
+@app.route('/api/groups/<group_id>/destination', methods=['POST'])
+def group_destination_post(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.json or {}
+    lat, lng = data.get('lat'), data.get('lng')
+    if lat is None or lng is None:
+        return jsonify({'error': 'lat and lng required'}), 400
+    _group_destinations[group_id] = {
+        'lat': float(lat), 'lng': float(lng),
+        'label': data.get('label', ''),
+        'set_by': username
+    }
+    return jsonify(_group_destinations[group_id])
+
+@app.route('/api/groups/<group_id>/destination', methods=['GET'])
+def group_destination_get(group_id):
+    return jsonify(_group_destinations.get(group_id, {}))
+
 @app.route('/api/groups/<group_id>/location_stats', methods=['GET'])
 def group_location_stats(group_id):
     username = current_user()
