@@ -1781,23 +1781,24 @@ def _compress_image(data, ext):
     try:
         from PIL import Image
         import io
-        img = Image.open(io.BytesIO(data))
-        # Convert palette/RGBA to RGB for JPEG, keep PNG for transparency
-        has_alpha = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
-        # Resize if needed
-        w, h = img.size
-        if max(w, h) > MAX_IMG_DIMENSION:
-            ratio = MAX_IMG_DIMENSION / max(w, h)
-            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
-        buf = io.BytesIO()
-        if has_alpha or ext == 'png':
-            img = img.convert('RGBA')
-            img.save(buf, format='PNG', optimize=True)
-            return buf.getvalue(), 'image/png'
-        else:
-            img = img.convert('RGB')
-            img.save(buf, format='JPEG', quality=82, optimize=True)
-            return buf.getvalue(), 'image/jpeg'
+        buf_in = io.BytesIO(data)
+        try:
+            img = Image.open(buf_in)
+            has_alpha = img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info)
+            w, h = img.size
+            if max(w, h) > MAX_IMG_DIMENSION:
+                ratio = MAX_IMG_DIMENSION / max(w, h)
+                img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+            buf_out = io.BytesIO()
+            with buf_out:
+                if has_alpha or ext == 'png':
+                    img.convert('RGBA').save(buf_out, format='PNG', optimize=True)
+                    return buf_out.getvalue(), 'image/png'
+                else:
+                    img.convert('RGB').save(buf_out, format='JPEG', quality=82, optimize=True)
+                    return buf_out.getvalue(), 'image/jpeg'
+        finally:
+            buf_in.close()
     except Exception as e:
         log.error('Image compression failed: %s', e)
         return data, EXT_MIME.get(ext, 'image/jpeg')
@@ -2560,6 +2561,7 @@ def group_chat_page(group_id):
         return render_template('404.html'), 404
     IST = timedelta(hours=5, minutes=30)
     for m in group.get('messages', []):
+        m.setdefault('reactions', {})
         ts = m.get('created_at', '')
         if ts and 'T' in str(ts):
             try:
@@ -2567,7 +2569,7 @@ def group_chat_page(group_id):
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
                 m['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
-            except Exception:
+            except (ValueError, TypeError):
                 pass
     return render_template('group_chat.html', username=username, group=group)
 
@@ -2620,6 +2622,18 @@ def poll_group_messages(group_id):
     if after_id:
         ids = [m['msg_id'] for m in msgs]
         msgs = msgs[ids.index(after_id) + 1:] if after_id in ids else []
+    IST = timedelta(hours=5, minutes=30)
+    for m in msgs:
+        m.setdefault('reactions', {})
+        ts = m.get('created_at', '')
+        if ts and 'T' in str(ts):
+            try:
+                dt = datetime.fromisoformat(str(ts).replace('Z', ''))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                m['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
+            except (ValueError, TypeError):
+                pass
     return jsonify({'messages': msgs})
 
 @app.route('/api/groups/<group_id>/messages/<msg_id>', methods=['DELETE'])
@@ -2898,8 +2912,6 @@ def conversation(other_user):
         )
         conv = messages_collection.find_one({'participants': key}, {'_id': 0})
         msgs = conv.get('messages', []) if conv else []
-        # Convert UTC timestamps to IST for display
-        from datetime import timezone, timedelta
         IST = timedelta(hours=5, minutes=30)
         for m in msgs:
             ts = m.get('created_at', '')
@@ -2909,7 +2921,7 @@ def conversation(other_user):
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     m['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
-                except Exception:
+                except (ValueError, TypeError):
                     pass
     else:
         msgs = []
@@ -3355,7 +3367,7 @@ def on_group_message(data):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         msg['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
-    except Exception:
+    except (ValueError, TypeError):
         pass
     emit('group_message', msg, to=group_id)
     for m in group.get('members', []):

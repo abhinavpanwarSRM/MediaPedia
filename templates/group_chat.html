@@ -1294,7 +1294,7 @@
         {% set ns.last_date = msg_date %}
         {% endif %}
         <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}" data-sender="{{ msg.sender }}">
-          <div class="msg-avatar" style="background: {{ member_color(msg.sender) }}">
+          <div class="msg-avatar">
             {{ msg.sender[0]|upper }}
             <div class="presence-dot" id="presence-{{ msg.sender }}"></div>
           </div>
@@ -1403,7 +1403,7 @@
         <div id="member-list">
           {% for member in group.members %}
           <div class="member-item" data-username="{{ member }}">
-            <div class="member-avatar" style="background: {{ member_color(member) }}">{{ member[0]|upper }}</div>
+            <div class="member-avatar">{{ member[0]|upper }}</div>
             <div class="member-name">
               {{ member }}
               {% if member == group.creator %}
@@ -1493,7 +1493,9 @@
     </button>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"
+    integrity="sha512-zoXjRkeVSxY0mb2SKm+C+LTqkBdAFoSBGTdZPHMHJcfm9uqIBMAmMFnzdPyBkylE6WVs9iSIBqMmKACluwbsw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     const ME = {{ username | tojson }};
     const GROUP_ID = {{ group.group_id | tojson }};
