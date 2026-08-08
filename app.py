@@ -2592,6 +2592,7 @@ def send_group_message(group_id):
         'text': text,
         'media_url': media_url,
         'reply_to': data.get('reply_to'),
+        'location': data.get('location'),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     groups_collection.update_one(
@@ -2758,6 +2759,44 @@ def group_react(group_id, msg_id):
 @app.route('/api/groups/<group_id>/reactions', methods=['GET'])
 def group_reactions_get(group_id):
     return jsonify(_group_reactions.get(group_id, {}))
+
+@app.route('/api/groups/<group_id>/location_stats', methods=['GET'])
+def group_location_stats(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'messages': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    # Get the latest location message per sender
+    latest = {}
+    for m in group.get('messages', []):
+        loc = m.get('location')
+        if loc and isinstance(loc.get('lat'), (int, float)) and isinstance(loc.get('lng'), (int, float)):
+            latest[m['sender']] = {'sender': m['sender'], 'lat': loc['lat'], 'lng': loc['lng']}
+    locations = list(latest.values())
+    if len(locations) < 2:
+        return jsonify({'locations': locations, 'distances': [], 'closest_to_center': locations[0] if locations else None})
+    # Haversine distance
+    def haversine(a, b):
+        R = 6371
+        lat1, lon1 = math.radians(a['lat']), math.radians(a['lng'])
+        lat2, lon2 = math.radians(b['lat']), math.radians(b['lng'])
+        dlat, dlon = lat2 - lat1, lon2 - lon1
+        h = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+        return round(R * 2 * math.asin(math.sqrt(h)), 2)
+    distances = [
+        {'a': locations[i]['sender'], 'b': locations[j]['sender'],
+         'km': haversine(locations[i], locations[j])}
+        for i in range(len(locations)) for j in range(i+1, len(locations))
+    ]
+    # Center of all locations
+    clat = sum(l['lat'] for l in locations) / len(locations)
+    clng = sum(l['lng'] for l in locations) / len(locations)
+    center = {'lat': clat, 'lng': clng}
+    closest = min(locations, key=lambda l: haversine(l, center))
+    closest['dist_km'] = haversine(closest, center)
+    return jsonify({'locations': locations, 'distances': distances, 'closest_to_center': closest})
 
 # ===== Messaging =====
 @app.route('/messages')
