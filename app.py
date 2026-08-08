@@ -2491,6 +2491,173 @@ def view_playlist(playlist_id):
     return render_template('playlist.html', pl=pl, username=current_user(),
                            api_key_1=api_key_1, api_key_2=api_key_2, api_key_3=api_key_3, api_key_4=api_key_4, api_key_5=api_key_5)
 
+# ===== Group Chats =====
+groups_collection = None
+try:
+    if db is not None:
+        groups_collection = db.group_chats
+        groups_collection.create_index('group_id', unique=True)
+        groups_collection.create_index('members')
+except Exception as e:
+    log.error('Failed to init group_chats: %s', e)
+
+@app.route('/api/groups', methods=['POST'])
+def create_group():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if groups_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    name = data.get('name', '').strip()[:60]
+    members = list({username} | {m.strip() for m in data.get('members', []) if m.strip()})
+    if len(members) < 2:
+        return jsonify({'error': 'Add at least one other member'}), 400
+    if users_collection is not None:
+        for m in members:
+            if m != username and not users_collection.find_one({'username': m}):
+                return jsonify({'error': f'User "{m}" not found'}), 404
+    group_id = str(uuid.uuid4())[:10]
+    groups_collection.insert_one({
+        'group_id': group_id,
+        'name': name or f"{username}'s group",
+        'creator': username,
+        'members': members,
+        'messages': [],
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'updated_at': datetime.now(timezone.utc)
+    })
+    for m in members:
+        if m != username:
+            send_push(m, {
+                'title': f'💬 {username} added you to a group',
+                'body': name or f"{username}'s group",
+                'url': f'/group/{group_id}',
+                'tag': f'group-{group_id}'
+            })
+    return jsonify({'group_id': group_id}), 201
+
+@app.route('/api/groups', methods=['GET'])
+def get_groups():
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify([])
+    groups = list(groups_collection.find({'members': username}, {'_id': 0, 'messages': 0}).sort('updated_at', -1))
+    for g in groups:
+        if isinstance(g.get('updated_at'), datetime):
+            g['updated_at'] = g['updated_at'].isoformat()
+    return jsonify(groups)
+
+@app.route('/group/<group_id>')
+def group_chat_page(group_id):
+    username = current_user()
+    if not username:
+        return redirect('/login')
+    if groups_collection is None:
+        return render_template('404.html'), 404
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0})
+    if not group or username not in group.get('members', []):
+        return render_template('404.html'), 404
+    IST = timedelta(hours=5, minutes=30)
+    for m in group.get('messages', []):
+        ts = m.get('created_at', '')
+        if ts and 'T' in str(ts):
+            try:
+                dt = datetime.fromisoformat(str(ts).replace('Z', ''))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                m['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
+            except Exception:
+                pass
+    return render_template('group_chat.html', username=username, group=group)
+
+@app.route('/api/groups/<group_id>/send', methods=['POST'])
+def send_group_message(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'name': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    data = request.json or {}
+    text = data.get('text', '').strip()[:1000]
+    media_url = data.get('media_url', '').strip()[:500]
+    if not text and not media_url:
+        return jsonify({'error': 'Message required'}), 400
+    if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    msg = {
+        'msg_id': str(uuid.uuid4())[:12],
+        'sender': username,
+        'text': text,
+        'media_url': media_url,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    groups_collection.update_one(
+        {'group_id': group_id},
+        {'$push': {'messages': msg}, '$set': {'updated_at': datetime.now(timezone.utc)}}
+    )
+    for m in group.get('members', []):
+        if m != username:
+            send_push(m, {
+                'title': f'💬 {username} in {group["name"]}',
+                'body': text[:80] if text else '📷 Photo',
+                'url': f'/group/{group_id}',
+                'tag': f'group-msg-{group_id}'
+            })
+    return jsonify(msg), 201
+
+@app.route('/api/groups/<group_id>/poll')
+def poll_group_messages(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'messages': []})
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'messages': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'messages': []})
+    after_id = request.args.get('after', '').strip()
+    msgs = group.get('messages', [])
+    if after_id:
+        ids = [m['msg_id'] for m in msgs]
+        msgs = msgs[ids.index(after_id) + 1:] if after_id in ids else []
+    return jsonify({'messages': msgs})
+
+@app.route('/api/groups/<group_id>/members', methods=['POST'])
+def add_group_member(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    target = (request.json or {}).get('username', '').strip()
+    if not target:
+        return jsonify({'error': 'Username required'}), 400
+    if users_collection is not None and not users_collection.find_one({'username': target}):
+        return jsonify({'error': 'User not found'}), 404
+    groups_collection.update_one({'group_id': group_id}, {'$addToSet': {'members': target}})
+    send_push(target, {
+        'title': f'💬 {username} added you to {group["name"]}',
+        'body': 'Tap to join the group chat',
+        'url': f'/group/{group_id}',
+        'tag': f'group-{group_id}'
+    })
+    return jsonify({'success': True})
+
+@app.route('/api/groups/<group_id>/members/<target>', methods=['DELETE'])
+def remove_group_member(group_id, target):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group:
+        return jsonify({'error': 'Not found'}), 404
+    # Only creator can remove others; anyone can remove themselves
+    if target != username and group.get('creator') != username:
+        return jsonify({'error': 'Only creator can remove members'}), 403
+    groups_collection.update_one({'group_id': group_id}, {'$pull': {'members': target}})
+    return jsonify({'success': True})
+
 # ===== Messaging =====
 @app.route('/messages')
 def inbox():

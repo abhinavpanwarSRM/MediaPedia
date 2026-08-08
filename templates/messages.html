@@ -69,6 +69,24 @@
                     border-radius:10px; padding:0.1rem 0.45rem; flex-shrink:0; }
 
     .empty { color:var(--muted); text-align:center; padding:3rem; font-style:italic; font-size:0.9rem; }
+    .section-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.6px; color:var(--muted); margin:1.2rem 0 0.5rem; }
+    .conv-av.group-av { background:linear-gradient(135deg,#5799ef,#1db954); font-size:0.85rem; }
+    /* New group modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:300; align-items:center; justify-content:center; padding:1rem; }
+    .modal-overlay.open { display:flex; }
+    .modal-box { background:#1c1c1c; border:1px solid var(--border); border-radius:12px; padding:1.4rem; width:100%; max-width:400px; display:flex; flex-direction:column; gap:0.8rem; }
+    .modal-box h3 { font-size:1rem; margin:0; }
+    .modal-box input { width:100%; background:rgba(255,255,255,0.07); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:0.88rem; padding:0.55rem 0.8rem; }
+    .modal-box input:focus { outline:none; border-color:var(--primary); }
+    .member-chips { display:flex; flex-wrap:wrap; gap:0.4rem; min-height:28px; }
+    .chip { display:flex; align-items:center; gap:0.3rem; background:rgba(87,153,239,0.15); border:1px solid rgba(87,153,239,0.3); border-radius:20px; padding:0.2rem 0.6rem; font-size:0.78rem; color:#5799ef; }
+    .chip button { background:none; border:none; color:#5799ef; cursor:pointer; font-size:0.9rem; padding:0; line-height:1; }
+    .member-search-results { background:#1e1e1e; border:1px solid var(--border); border-radius:6px; max-height:140px; overflow-y:auto; display:none; }
+    .member-result { padding:0.45rem 0.7rem; font-size:0.82rem; cursor:pointer; color:#ddd; }
+    .member-result:hover { background:rgba(255,255,255,0.06); }
+    .modal-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
+    .modal-cancel { padding:0.4rem 0.9rem; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:0.85rem; cursor:pointer; }
+    .modal-confirm { padding:0.4rem 0.9rem; background:var(--primary); border:none; border-radius:6px; color:#fff; font-size:0.85rem; font-weight:600; cursor:pointer; }
     /* cinematic bg */
     body::before { content:''; position:fixed; inset:0; background-size:cover; background-position:center;
                    background-attachment:fixed; z-index:-1; opacity:0.12; }
@@ -106,10 +124,19 @@
     <h1 class="page-title">✉ Messages</h1>
 
     <div class="new-msg-bar">
-      <input type="text" id="new-conv-user" placeholder="Start a conversation — enter username..." />
+      <input type="text" id="new-conv-user" placeholder="Start a DM — enter username..." />
       <button onclick="startConv()">Open</button>
+      <button onclick="openGroupModal()" style="background:rgba(87,153,239,0.2);border:1px solid rgba(87,153,239,0.4);color:#5799ef;">+ Group</button>
     </div>
 
+    <!-- Groups -->
+    <div id="groups-section" style="display:none;">
+      <div class="section-label">Group Chats</div>
+      <div class="conv-list" id="groups-list"></div>
+    </div>
+
+    <!-- DMs -->
+    {% if conversations %}<div class="section-label">Direct Messages</div>{% endif %}
     <div class="conv-list" id="conv-list">
       {% if conversations %}
         {% for conv in conversations %}
@@ -133,8 +160,23 @@
         </a>
         {% endfor %}
       {% else %}
-        <div class="empty">No conversations yet.<br>Search for a user above to start chatting.</div>
+        <div class="empty" id="empty-msg">No conversations yet.<br>Search for a user above to start chatting.</div>
       {% endif %}
+    </div>
+  </div>
+
+  <!-- New Group Modal -->
+  <div class="modal-overlay" id="group-modal">
+    <div class="modal-box">
+      <h3>👥 New Group Chat</h3>
+      <input type="text" id="group-name" placeholder="Group name (optional)" maxlength="60" />
+      <input type="text" id="member-search-input" placeholder="Search username to add..." autocomplete="off" oninput="searchMembers(this.value)" />
+      <div class="member-search-results" id="member-results"></div>
+      <div class="member-chips" id="member-chips"></div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeGroupModal()">Cancel</button>
+        <button class="modal-confirm" onclick="createGroup()">Create</button>
+      </div>
     </div>
   </div>
 
@@ -157,6 +199,102 @@
     }
     document.getElementById('new-conv-user').addEventListener('keydown', e => {
       if (e.key === 'Enter') startConv();
+    });
+
+    // ===== Groups =====
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    fetch('/api/groups').then(r=>r.json()).then(groups => {
+      if (!groups.length) return;
+      const sec = document.getElementById('groups-section');
+      const list = document.getElementById('groups-list');
+      sec.style.display = '';
+      list.innerHTML = groups.map(g => `
+        <a class="conv-item" href="/group/${esc(g.group_id)}">
+          <div class="conv-av group-av">👥</div>
+          <div class="conv-body">
+            <div class="conv-name">${esc(g.name)}</div>
+            <div class="conv-preview">${g.members.length} members</div>
+          </div>
+        </a>`).join('');
+      const empty = document.getElementById('empty-msg');
+      if (empty) empty.style.display = 'none';
+    }).catch(()=>{});
+
+    // ===== New Group Modal =====
+    let _groupMembers = [];
+    let _memberTimer = null;
+
+    function openGroupModal() {
+      _groupMembers = [];
+      document.getElementById('group-name').value = '';
+      document.getElementById('member-search-input').value = '';
+      document.getElementById('member-results').style.display = 'none';
+      document.getElementById('member-chips').innerHTML = '';
+      document.getElementById('group-modal').classList.add('open');
+    }
+    function closeGroupModal() {
+      document.getElementById('group-modal').classList.remove('open');
+    }
+
+    function searchMembers(q) {
+      clearTimeout(_memberTimer);
+      const box = document.getElementById('member-results');
+      if (!q || q.length < 2) { box.style.display = 'none'; return; }
+      _memberTimer = setTimeout(() => {
+        fetch('/api/global_search?q=' + encodeURIComponent(q))
+          .then(r=>r.json()).then(results => {
+            const users = results.filter(r => r.type === 'user' && !_groupMembers.includes(r.title));
+            if (!users.length) { box.style.display = 'none'; return; }
+            box.innerHTML = users.map(u =>
+              `<div class="member-result" onclick="addMember('${esc(u.title)}')">${esc(u.title)}</div>`
+            ).join('');
+            box.style.display = 'block';
+          }).catch(()=>{ box.style.display='none'; });
+      }, 280);
+    }
+
+    function addMember(username) {
+      if (_groupMembers.includes(username)) return;
+      _groupMembers.push(username);
+      document.getElementById('member-search-input').value = '';
+      document.getElementById('member-results').style.display = 'none';
+      renderChips();
+    }
+
+    function removeMember(username) {
+      _groupMembers = _groupMembers.filter(m => m !== username);
+      renderChips();
+    }
+
+    function renderChips() {
+      document.getElementById('member-chips').innerHTML = _groupMembers.map(m =>
+        `<div class="chip">${esc(m)} <button onclick="removeMember('${esc(m)}')">×</button></div>`
+      ).join('');
+    }
+
+    function createGroup() {
+      if (!_groupMembers.length) { alert('Add at least one member'); return; }
+      const name = document.getElementById('group-name').value.trim();
+      fetch('/api/groups', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, members: _groupMembers })
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { alert(d.error); return; }
+        closeGroupModal();
+        window.location.href = '/group/' + d.group_id;
+      }).catch(()=>{});
+    }
+
+    // Close modal on outside click
+    document.getElementById('group-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('group-modal')) closeGroupModal();
+    });
+    // Close member search on outside click
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.modal-box')) {
+        document.getElementById('member-results').style.display = 'none';
+      }
     });
   </script>
   <script>
