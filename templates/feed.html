@@ -72,6 +72,53 @@
     .sug-sub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sug-btn { padding: 0.22rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid var(--primary); background: rgba(229,9,20,0.15); color: #fff; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
     .sug-btn:hover { background: rgba(229,9,20,0.3); }
+    /* Tagged media chip */
+    .tagged-media { display: flex; align-items: center; gap: 0.6rem; background: rgba(87,153,239,0.08); border: 1px solid rgba(87,153,239,0.25); border-radius: 8px; padding: 0.5rem 0.7rem; margin: 0.5rem 0; text-decoration: none; }
+    .tagged-media img { width: 32px; height: 46px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    .tagged-media-info { flex: 1; min-width: 0; }
+    .tagged-media-title { font-size: 0.82rem; font-weight: 600; color: #5799ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tagged-media-kind { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    /* Post composer */
+    .composer { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1.2rem; }
+    .composer textarea { width: 100%; background: transparent; border: none; color: #fff; font-size: 0.9rem; font-family: inherit; resize: none; outline: none; min-height: 60px; }
+    .composer-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem; flex-wrap: wrap; }
+    .composer-tag { flex: 1; min-width: 120px; position: relative; }
+    .composer-tag input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.7rem; color: #fff; font-size: 0.8rem; font-family: inherit; outline: none; }
+    .composer-tag input:focus { border-color: var(--blue); }
+    .tag-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #1e1e1e; border: 1px solid var(--border); border-radius: 6px; z-index: 20; max-height: 160px; overflow-y: auto; }
+    .tag-option { padding: 0.45rem 0.7rem; font-size: 0.82rem; cursor: pointer; color: #ddd; }
+    .tag-option:hover { background: rgba(255,255,255,0.06); }
+    .tagged-chip { display: flex; align-items: center; gap: 0.4rem; background: rgba(87,153,239,0.12); border: 1px solid rgba(87,153,239,0.3); border-radius: 20px; padding: 0.2rem 0.6rem; font-size: 0.78rem; color: #5799ef; }
+    .tagged-chip button { background: none; border: none; color: #5799ef; cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
+    .composer-submit { padding: 0.38rem 1rem; background: var(--primary); border: none; border-radius: 6px; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    /* Mention highlight */
+    .mention { color: var(--blue); font-weight: 600; }
+    /* Also-watched btn */
+    .watched-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
+    .watched-btn:hover, .watched-btn.active { color: #1db954; }
+    /* Repost btn */
+    .repost-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
+    .repost-btn:hover { color: #ffc107; }
+    /* Ticker */
+    .ticker-item { font-size: 0.78rem; color: #bbb; padding: 0.35rem 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
+    .ticker-item:last-child { border-bottom: none; }
+    .ticker-item a { color: var(--blue); text-decoration: none; }
+    .ticker-item a:hover { text-decoration: underline; }
+    .ticker-user { font-weight: 600; color: #fff; }
+    /* Nudge */
+    .nudge-banner { background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.3); border-radius: 8px; padding: 0.7rem 1rem; margin-bottom: 1rem; font-size: 0.83rem; color: #1db954; display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+    .nudge-follow-btn { padding: 0.22rem 0.7rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: 1px solid #1db954; background: rgba(29,185,84,0.15); color: #fff; transition: all 0.2s; }
+    .nudge-follow-btn:hover { background: rgba(29,185,84,0.3); }
+    /* Repost modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #1c1c1c; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 420px; }
+    .modal-box h3 { font-size: 1rem; margin-bottom: 0.8rem; }
+    .modal-box textarea { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 6px; color: #fff; font-size: 0.88rem; font-family: inherit; padding: 0.6rem 0.8rem; resize: none; outline: none; min-height: 70px; margin-bottom: 0.8rem; }
+    .modal-box textarea:focus { border-color: var(--primary); }
+    .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+    .modal-cancel { padding: 0.4rem 0.9rem; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 0.85rem; cursor: pointer; }
+    .modal-confirm { padding: 0.4rem 0.9rem; background: var(--primary); border: none; border-radius: 6px; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
     @media (max-width: 480px) {
       body { padding: 1.2rem 0.75rem; }
       .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
@@ -109,6 +156,24 @@
     {% endif %}
 
     {% if username %}
+    <!-- Follow-back nudge -->
+    <div id="nudge-area"></div>
+
+    <!-- Post Composer -->
+    <div class="composer">
+      <textarea id="compose-text" placeholder="What's on your mind? Use @username to mention someone…" rows="2"></textarea>
+      <div id="tagged-chip-area"></div>
+      <div class="composer-actions">
+        <div class="composer-tag">
+          <input id="tag-search" placeholder="🎬 Tag a movie/show…" autocomplete="off" oninput="searchTagMedia(this.value)" />
+          <div class="tag-dropdown" id="tag-dropdown" style="display:none;"></div>
+        </div>
+        <button class="composer-submit" onclick="submitPost()">Post</button>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if username %}
     <div class="tabs">
       <button class="tab active" onclick="switchTab('mutuals', this)">👥 Mutuals</button>
       <button class="tab" onclick="switchTab('reviews', this)">⭐ Reviews</button>
@@ -138,7 +203,10 @@
           <div class="feed-movie">reviewed <a href="{{ c.content_url }}">{{ c.content_title }}</a></div>
           <div class="feed-rating">{{ '★' * c.get('rating', 0) }}{{ '☆' * (5 - c.get('rating', 0)) }}</div>
           <div class="feed-text">{{ c.get('text', '') }}</div>
-          <div class="feed-likes">👍 {{ c.get('likes', 0) }} likes</div>
+          <div class="feed-likes">👍 {{ c.get('likes', 0) }} likes
+            <button class="watched-btn" id="aw-{{ c.comment_id }}" onclick="toggleWatched({{ c.id }}, '{{ c.get('content_type','movie') }}', this)" style="display:inline-flex;margin-left:0.8rem;">👁️ <span>…</span></button>
+            <button class="repost-btn" onclick="openRepost('{{ c.comment_id }}', '{{ c.content_title|replace("'","") }}', '{{ c.get('text','')|replace("'","")|truncate(60,true,'') }}')">↩️ Repost</button>
+          </div>
           </div>
         </div>
         <script>
@@ -164,6 +232,10 @@
       <div class="sidebar-title">People to follow</div>
       <div id="discover-list"><div style="color:var(--muted);font-size:0.82rem;">Loading...</div></div>
     </div>
+    <div class="sidebar-card">
+      <div class="sidebar-title">⚡ Activity</div>
+      <div id="ticker-list"><div style="color:var(--muted);font-size:0.78rem;">Loading...</div></div>
+    </div>
     {% if username %}
     <div class="sidebar-card">
       <div class="sidebar-title">Your profile</div>
@@ -177,6 +249,19 @@
 
   </div>
 
+<!-- Repost modal -->
+<div class="modal-overlay" id="repost-modal">
+  <div class="modal-box">
+    <h3>↩️ Repost with your take</h3>
+    <textarea id="repost-take" placeholder="Add your take (optional)…" rows="3"></textarea>
+    <div id="repost-preview" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.8rem;"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeRepost()">Cancel</button>
+      <button class="modal-confirm" onclick="submitRepost()">Repost</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const FEED_VIEWER = '{{ username or "" }}';
 
@@ -187,6 +272,7 @@
     btn.classList.add('active');
     document.getElementById('tab-mutuals').style.display = tab === 'mutuals' ? '' : 'none';
     document.getElementById('tab-reviews').style.display = tab === 'reviews' ? '' : 'none';
+    if (tab === 'reviews') loadAlsoWatched();
   }
 
   // ===== Mutuals Feed =====
@@ -203,19 +289,35 @@
     return ist.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
   }
 
+  function highlightMentions(text) {
+    return esc(text).replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+  }
+
+  function renderTaggedMedia(tm) {
+    if (!tm || !tm.title) return '';
+    return `<a class="tagged-media" href="${esc(tm.url || '#')}">
+      <div class="tagged-media-info">
+        <div class="tagged-media-title">${esc(tm.title)}</div>
+        <div class="tagged-media-kind">${esc(tm.kind || 'movie')}</div>
+      </div>
+    </a>`;
+  }
+
   function renderPost(p) {
     const likes = p.likes || [];
     const liked = likes.includes(FEED_VIEWER);
     const likersTip = likes.length ? `<span class="tip">${likes.slice(0,5).map(esc).join(', ')}${likes.length > 5 ? ' +' + (likes.length-5) + ' more' : ''}</span>` : '';
     const media = p.media_url ? `<div class="feed-media"><img src="${esc(p.media_url)}" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>` : '';
     const commentCount = (p.post_comments || []).length;
+    const taggedHtml = renderTaggedMedia(p.tagged_media);
     return `
       <div class="feed-item" id="post-${esc(p.post_id)}">
         <div class="feed-meta">
           <a href="/u/${esc(p.username)}" class="feed-user">${esc(p.username)}</a>
           <span class="feed-time">${timeAgo(p.created_at)}</span>
         </div>
-        ${p.text ? `<div class="feed-text">${esc(p.text)}</div>` : ''}
+        ${p.text ? `<div class="feed-text">${highlightMentions(p.text)}</div>` : ''}
+        ${taggedHtml}
         ${media}
         <div class="feed-actions">
           <div class="likers-tip">
@@ -235,7 +337,7 @@
           </div>
           ${FEED_VIEWER ? `
           <div class="comment-form">
-            <input class="comment-input" placeholder="Add a comment…" id="cinput-${esc(p.post_id)}"
+            <input class="comment-input" placeholder="Add a comment… @mention someone" id="cinput-${esc(p.post_id)}"
               onkeydown="if(event.key==='Enter')submitComment('${esc(p.post_id)}')" />
             <button class="comment-submit" onclick="submitComment('${esc(p.post_id)}')">Post</button>
           </div>` : ''}
@@ -351,6 +453,157 @@
         else { btn.textContent = 'Follow'; btn.disabled = false; btn.style.opacity = '1'; }
       });
   }
+
+  // ===== Post Composer =====
+  let _taggedMedia = null;
+  let _tagTimer = null;
+
+  function searchTagMedia(q) {
+    clearTimeout(_tagTimer);
+    const dd = document.getElementById('tag-dropdown');
+    if (!q || q.length < 2) { dd.style.display = 'none'; return; }
+    _tagTimer = setTimeout(() => {
+      fetch('/api/media_search?q=' + encodeURIComponent(q))
+        .then(r => r.json()).then(results => {
+          if (!results.length) { dd.style.display = 'none'; return; }
+          dd.innerHTML = results.map(r =>
+            `<div class="tag-option" onclick="selectTag(${JSON.stringify(r)})">${esc(r.title)} <span style="color:var(--muted);font-size:0.72rem;">${r.kind}</span></div>`
+          ).join('');
+          dd.style.display = 'block';
+        }).catch(() => { dd.style.display = 'none'; });
+    }, 280);
+  }
+
+  function selectTag(media) {
+    _taggedMedia = media;
+    document.getElementById('tag-dropdown').style.display = 'none';
+    document.getElementById('tag-search').value = '';
+    document.getElementById('tagged-chip-area').innerHTML =
+      `<div class="tagged-chip">🎬 ${esc(media.title)} <button onclick="clearTag()">×</button></div>`;
+  }
+
+  function clearTag() {
+    _taggedMedia = null;
+    document.getElementById('tagged-chip-area').innerHTML = '';
+  }
+
+  function submitPost() {
+    if (!FEED_VIEWER) { window.location.href = '/login'; return; }
+    const text = document.getElementById('compose-text').value.trim();
+    if (!text && !_taggedMedia) return;
+    fetch('/api/posts', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text, tagged_media: _taggedMedia })
+    }).then(r => r.json()).then(p => {
+      if (p.error) return;
+      document.getElementById('compose-text').value = '';
+      clearTag();
+      const el = document.getElementById('mutuals-feed');
+      el.insertAdjacentHTML('afterbegin', renderPost(p));
+    }).catch(() => {});
+  }
+
+  // Close tag dropdown on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.composer-tag')) {
+      const dd = document.getElementById('tag-dropdown');
+      if (dd) dd.style.display = 'none';
+    }
+  });
+
+  // ===== Also Watched =====
+  function toggleWatched(contentId, contentType, btn) {
+    if (!FEED_VIEWER) { window.location.href = '/login'; return; }
+    fetch(`/api/also_watched/${contentId}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content_type: contentType})
+    }).then(r => r.json()).then(d => {
+      btn.classList.toggle('active', d.watched);
+      btn.querySelector('span').textContent = d.count;
+    }).catch(() => {});
+  }
+
+  // Load also-watched counts for visible reviews
+  function loadAlsoWatched() {
+    document.querySelectorAll('.watched-btn[id^="aw-"]').forEach(btn => {
+      const commentId = btn.id.replace('aw-', '');
+      const contentId = btn.getAttribute('onclick').match(/(\d+)/)?.[1];
+      if (!contentId) return;
+      fetch(`/api/also_watched/${contentId}`)
+        .then(r => r.json()).then(d => {
+          btn.querySelector('span').textContent = d.count;
+          if (d.watched) btn.classList.add('active');
+        }).catch(() => {});
+    });
+  }
+
+  // ===== Repost =====
+  let _repostCommentId = null;
+
+  function openRepost(commentId, title, snippet) {
+    if (!FEED_VIEWER) { window.location.href = '/login'; return; }
+    _repostCommentId = commentId;
+    document.getElementById('repost-take').value = '';
+    document.getElementById('repost-preview').textContent = `↩ "${snippet}" — ${title}`;
+    document.getElementById('repost-modal').classList.add('open');
+  }
+
+  function closeRepost() {
+    document.getElementById('repost-modal').classList.remove('open');
+    _repostCommentId = null;
+  }
+
+  function submitRepost() {
+    if (!_repostCommentId) return;
+    const take = document.getElementById('repost-take').value.trim();
+    fetch('/api/repost', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({comment_id: _repostCommentId, take})
+    }).then(r => r.json()).then(p => {
+      closeRepost();
+      if (p.error) return;
+      const el = document.getElementById('mutuals-feed');
+      if (el) el.insertAdjacentHTML('afterbegin', renderPost(p));
+    }).catch(() => {});
+  }
+
+  // ===== Activity Ticker =====
+  function loadTicker() {
+    fetch('/api/activity/ticker')
+      .then(r => r.json()).then(items => {
+        const el = document.getElementById('ticker-list');
+        if (!el) return;
+        if (!items.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;">No activity yet.</div>'; return; }
+        el.innerHTML = items.map(i =>
+          `<div class="ticker-item"><span class="ticker-user">${esc(i.username)}</span> ${i.action}</div>`
+        ).join('');
+      }).catch(() => {});
+  }
+  loadTicker();
+
+  // ===== Follow-back Nudge =====
+  function loadNudges() {
+    if (!FEED_VIEWER) return;
+    fetch('/api/follow/nudges')
+      .then(r => r.json()).then(users => {
+        const area = document.getElementById('nudge-area');
+        if (!area || !users.length) return;
+        area.innerHTML = users.map(u =>
+          `<div class="nudge-banner">
+            <span>👋 <a href="/u/${esc(u.username)}" style="color:#1db954;font-weight:600;">${esc(u.username)}</a> follows you — follow back?</span>
+            <button class="nudge-follow-btn" onclick="nudgeFollow(this,'${esc(u.username)}')">Follow</button>
+          </div>`
+        ).join('');
+      }).catch(() => {});
+  }
+
+  function nudgeFollow(btn, target) {
+    fetch('/api/follow/' + target, {method: 'POST'})
+      .then(r => r.json()).then(d => {
+        if (d.status === 'followed') btn.closest('.nudge-banner').remove();
+      });
+  }
+  loadNudges();
 
   {% if username %}
   (function checkUnread() {

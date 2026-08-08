@@ -1892,6 +1892,7 @@ def create_post():
         data = request.json or {}
         text = data.get('text', '').strip()[:500]
         media_url = data.get('media_url', '').strip()[:500]
+        tagged_media = data.get('tagged_media')  # {title, url, poster, kind}
         if not text and not media_url:
             return jsonify({'error': 'Post needs text or media'}), 400
         if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
@@ -1901,12 +1902,23 @@ def create_post():
             'username': username,
             'text': text,
             'media_url': media_url,
+            'tagged_media': tagged_media,
             'created_at': datetime.now(timezone.utc),
             'likes': []
         }
         posts_collection.insert_one(post)
         post.pop('_id', None)
         post['created_at'] = _to_ist_str(post['created_at'])
+        # Notify @mentioned users
+        import re as _re
+        for mentioned in set(_re.findall(r'@(\w+)', text)):
+            if mentioned != username and users_collection is not None and users_collection.find_one({'username': mentioned}):
+                send_push(mentioned, {
+                    'title': f'🔔 {username} mentioned you',
+                    'body': text[:80],
+                    'url': '/feed',
+                    'tag': f'mention-{post["post_id"]}'
+                })
         return jsonify(post), 201
     except Exception as e:
         log.error('create_post error: %s', e)
@@ -1957,6 +1969,25 @@ def add_post_comment(post_id):
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     posts_collection.update_one({'post_id': post_id}, {'$push': {'post_comments': comment}})
+    # Notify @mentioned users in comment
+    import re as _re
+    for mentioned in set(_re.findall(r'@(\w+)', text)):
+        if mentioned != username and users_collection is not None and users_collection.find_one({'username': mentioned}):
+            send_push(mentioned, {
+                'title': f'🔔 {username} mentioned you in a comment',
+                'body': text[:80],
+                'url': '/feed',
+                'tag': f'mention-comment-{comment["comment_id"]}'
+            })
+    # Notify post author
+    post = posts_collection.find_one({'post_id': post_id}, {'_id': 0, 'username': 1})
+    if post and post.get('username') and post['username'] != username:
+        send_push(post['username'], {
+            'title': f'💬 {username} commented on your post',
+            'body': text[:80],
+            'url': '/feed',
+            'tag': f'comment-{post_id}'
+        })
     return jsonify(comment), 201
 
 @app.route('/api/feed/mutuals')
@@ -1992,6 +2023,139 @@ def edit_post(post_id):
     text = (request.json or {}).get('text', '').strip()[:500]
     posts_collection.update_one({'post_id': post_id, 'username': username}, {'$set': {'text': text}})
     return jsonify({'success': True})
+
+# ===== Also Watched =====
+also_watched_collection = None
+try:
+    if db is not None:
+        also_watched_collection = db.also_watched
+        also_watched_collection.create_index([('content_id', 1), ('username', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init also_watched: %s', e)
+
+@app.route('/api/also_watched/<int:content_id>', methods=['POST'])
+def toggle_also_watched(content_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if also_watched_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    content_type = (request.json or {}).get('content_type', 'movie')
+    existing = also_watched_collection.find_one({'content_id': content_id, 'username': username})
+    if existing:
+        also_watched_collection.delete_one({'content_id': content_id, 'username': username})
+        count = also_watched_collection.count_documents({'content_id': content_id})
+        return jsonify({'watched': False, 'count': count})
+    also_watched_collection.insert_one({'content_id': content_id, 'username': username, 'content_type': content_type})
+    count = also_watched_collection.count_documents({'content_id': content_id})
+    return jsonify({'watched': True, 'count': count})
+
+@app.route('/api/also_watched/<int:content_id>')
+def get_also_watched(content_id):
+    username = current_user()
+    if also_watched_collection is None:
+        return jsonify({'count': 0, 'watched': False})
+    count = also_watched_collection.count_documents({'content_id': content_id})
+    watched = False
+    if username:
+        watched = also_watched_collection.find_one({'content_id': content_id, 'username': username}) is not None
+    return jsonify({'count': count, 'watched': watched})
+
+# ===== Repost =====
+@app.route('/api/repost', methods=['POST'])
+def repost_review():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if posts_collection is None or comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    comment_id = data.get('comment_id', '').strip()
+    my_take = data.get('take', '').strip()[:300]
+    original = comments_collection.find_one({'comment_id': comment_id}, {'_id': 0})
+    if not original:
+        return jsonify({'error': 'Review not found'}), 404
+    text = f"{my_take}\n\n↩️ Repost from @{original['username']}: {original.get('text','')[:200]}".strip()
+    post = {
+        'post_id': str(uuid.uuid4())[:10],
+        'username': username,
+        'text': text,
+        'media_url': '',
+        'tagged_media': {
+            'title': original.get('content_title', ''),
+            'url': original.get('content_url', ''),
+            'kind': original.get('content_type', 'movie')
+        },
+        'repost_of': comment_id,
+        'created_at': datetime.now(timezone.utc),
+        'likes': []
+    }
+    posts_collection.insert_one(post)
+    post.pop('_id', None)
+    post['created_at'] = _to_ist_str(post['created_at'])
+    return jsonify(post), 201
+
+# ===== Activity Ticker =====
+@app.route('/api/activity/ticker')
+def activity_ticker():
+    """Recent actions across all users for the sidebar ticker."""
+    items = []
+    if comments_collection is not None:
+        recent_reviews = list(comments_collection.find({}, {'_id': 0, 'username': 1, 'content_type': 1, 'id': 1, 'rating': 1, 'created_at': 1}).sort('created_at', -1).limit(8))
+        for c in recent_reviews:
+            ctype = c.get('content_type', 'movie')
+            cid = c.get('id')
+            title = ''
+            url = ''
+            if ctype == 'movie':
+                row = df[df['ID'] == cid]
+                title = row.iloc[0]['Movie Name'] if not row.empty else ''
+                url = f'/movie/{cid}'
+            else:
+                row = series_df[series_df['ID'] == cid]
+                title = row.iloc[0]['Title'] if not row.empty else ''
+                url = f'/series/{cid}'
+            if title:
+                stars = '⭐' * c.get('rating', 0)
+                items.append({'username': c['username'], 'action': f'rated <a href="{url}">{title}</a> {stars}', 'ts': _to_ist_str(c['created_at'])})
+    if posts_collection is not None:
+        recent_posts = list(posts_collection.find({}, {'_id': 0, 'username': 1, 'text': 1, 'created_at': 1}).sort('created_at', -1).limit(5))
+        for p in recent_posts:
+            snippet = (p.get('text') or '')[:40]
+            if snippet:
+                items.append({'username': p['username'], 'action': f'posted: {snippet}…', 'ts': _to_ist_str(p['created_at'])})
+    items.sort(key=lambda x: x['ts'], reverse=True)
+    return jsonify(items[:10])
+
+# ===== Follow-back nudge =====
+@app.route('/api/follow/nudges')
+def follow_nudges():
+    """Return users who follow the viewer but viewer doesn't follow back."""
+    username = current_user()
+    if not username or follows_collection is None:
+        return jsonify([])
+    followers = {f['follower'] for f in follows_collection.find({'following': username})}
+    following = {f['following'] for f in follows_collection.find({'follower': username})}
+    not_following_back = list(followers - following - {username})
+    result = []
+    for name in not_following_back[:5]:
+        result.append({'username': name})
+    return jsonify(result)
+
+# ===== Media Search for post tagging =====
+@app.route('/api/media_search')
+def media_search():
+    q = request.args.get('q', '').strip().lower()
+    if not q or len(q) < 2:
+        return jsonify([])
+    results = [
+        {'title': r['Movie Name'], 'url': f"/movie/{r['ID']}", 'kind': 'movie'}
+        for _, r in df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(4).iterrows()
+    ] + [
+        {'title': r['Title'], 'url': f"/series/{r['ID']}", 'kind': 'series'}
+        for _, r in series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(4).iterrows()
+    ]
+    return jsonify(results[:6])
 
 # ===== Playlist Routes =====
 
