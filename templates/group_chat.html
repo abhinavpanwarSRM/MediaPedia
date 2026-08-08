@@ -93,11 +93,13 @@
       color: #fff;
       overflow: hidden;
       position: relative;
-      transition: filter 0.2s;
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), filter 0.2s, box-shadow 0.2s;
     }
 
     .group-avatar:hover {
-      filter: brightness(0.9);
+      transform: scale(1.08) rotate(4deg);
+      filter: brightness(1.1);
+      box-shadow: 0 0 0 3px rgba(0,168,132,0.35);
     }
 
     .group-avatar img {
@@ -146,6 +148,20 @@
       margin-right: 2px;
       vertical-align: middle;
       flex-shrink: 0;
+      position: relative;
+    }
+    .online-dot::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 2px solid var(--whatsapp-green);
+      animation: pulse-ring 1.8s ease-out infinite;
+      opacity: 0;
+    }
+    @keyframes pulse-ring {
+      0%   { transform: scale(0.6); opacity: 0.8; }
+      100% { transform: scale(2);   opacity: 0; }
     }
 
     .header-actions {
@@ -213,6 +229,12 @@
       color: var(--whatsapp-gray);
       margin: 0.8rem 0;
       position: relative;
+      animation: dateFadeIn 0.3s ease both;
+    }
+
+    @keyframes dateFadeIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
     }
 
     .date-sep span {
@@ -226,18 +248,20 @@
       display: flex;
       align-items: flex-end;
       gap: 0.5rem;
-      animation: slideIn 0.2s ease-out;
+      animation: slideIn 0.22s cubic-bezier(.25,.46,.45,.94) both;
+    }
+
+    .msg-row.mine {
+      animation: slideInRight 0.22s cubic-bezier(.25,.46,.45,.94) both;
     }
 
     @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateX(-12px) translateY(6px); }
+      to   { opacity: 1; transform: translateX(0) translateY(0); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(12px) translateY(6px); }
+      to   { opacity: 1; transform: translateX(0) translateY(0); }
     }
 
     .msg-row.mine {
@@ -298,6 +322,12 @@
       word-break: break-word;
       position: relative;
       box-shadow: var(--shadow);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .msg-row:hover .bubble {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     }
 
     .msg-row.mine .bubble {
@@ -355,15 +385,18 @@
       align-items: center;
       gap: 0.25rem;
       opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .msg-row:hover .msg-actions {
-      opacity: 1;
+      transform: translateX(-6px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
     }
 
     .msg-row.mine .msg-actions {
       flex-direction: row-reverse;
+      transform: translateX(6px);
+    }
+
+    .msg-row:hover .msg-actions {
+      opacity: 1;
+      transform: translateX(0);
     }
 
     .msg-action-btn {
@@ -374,20 +407,13 @@
       padding: 2px 4px;
       border-radius: 4px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
 
     .msg-action-btn:hover {
       background: rgba(255,255,255,0.1);
       color: #e50914;
-    }
-
-    .msg-row .msg-actions {
-      opacity: 0;
-    }
-
-    .msg-row:hover .msg-actions {
-      opacity: 1;
+      transform: scale(1.2);
     }
 
     /* Empty state */
@@ -429,11 +455,12 @@
       border-radius: 8px;
       padding: 0.15rem 0.5rem;
       border: 1px solid transparent;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .input-bar .input-group:focus-within {
       border-color: var(--whatsapp-green);
+      box-shadow: 0 0 0 3px rgba(0,168,132,0.15);
     }
 
     .msg-input {
@@ -482,17 +509,38 @@
       color: #fff;
       width: 40px;
       height: 40px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .input-btn.send-btn::after {
+      content: '';
+      position: absolute;
+      inset: 50%;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      transform: translate(-50%,-50%) scale(0);
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      opacity: 0;
+    }
+
+    .input-btn.send-btn:active::after {
+      transform: translate(-50%,-50%) scale(2.5);
+      opacity: 0;
+      transition: 0s;
     }
 
     .input-btn.send-btn:hover {
       background: #00b894;
-      transform: scale(1.05);
+      transform: scale(1.08);
+      box-shadow: 0 4px 12px rgba(0,168,132,0.4);
     }
 
     .input-btn.send-btn:disabled {
       background: #444;
       cursor: not-allowed;
       transform: none;
+      box-shadow: none;
     }
 
     /* Image preview */
@@ -699,7 +747,11 @@
     #reply-bar { display:none; align-items:center; gap:0.5rem; padding:0.4rem 0.8rem;
       background:var(--whatsapp-darker); border-top:1px solid var(--whatsapp-border);
       flex-shrink:0; }
-    #reply-bar.show { display:flex; }
+    #reply-bar.show { display:flex; animation: slideDown 0.18s ease both; }
+    @keyframes slideDown {
+      from { opacity:0; transform: translateY(-6px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
     #reply-bar .reply-info { flex:1; font-size:0.78rem; color:var(--whatsapp-gray);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #reply-bar .reply-info strong { color:var(--whatsapp-green); }
@@ -713,13 +765,25 @@
     .bubble-reactions { display:flex; flex-wrap:wrap; gap:3px; margin-top:3px; }
     .reaction-chip { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
       border-radius:12px; padding:1px 7px; font-size:0.75rem; cursor:pointer;
-      transition:background 0.15s; user-select:none; }
+      transition: background 0.15s, transform 0.15s cubic-bezier(.34,1.56,.64,1);
+      user-select:none; display:inline-block; }
+    .reaction-chip:active { transform: scale(1.3); }
     .reaction-chip.mine { background:rgba(0,168,132,0.25); border-color:var(--whatsapp-green); }
+    .reaction-chip.pop { animation: chipPop 0.25s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes chipPop {
+      0%   { transform: scale(0.5); opacity:0; }
+      100% { transform: scale(1);   opacity:1; }
+    }
     .reaction-picker { position:fixed; background:var(--whatsapp-header);
       border:1px solid var(--whatsapp-border); border-radius:24px; padding:4px 8px;
-      display:flex; gap:6px; z-index:400; box-shadow:0 4px 16px rgba(0,0,0,0.5); }
-    .reaction-picker span { font-size:1.2rem; cursor:pointer; transition:transform 0.1s; }
-    .reaction-picker span:hover { transform:scale(1.3); }
+      display:flex; gap:6px; z-index:400; box-shadow:0 4px 16px rgba(0,0,0,0.5);
+      animation: pickerPop 0.2s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pickerPop {
+      from { transform: scale(0.7) translateY(6px); opacity:0; }
+      to   { transform: scale(1)   translateY(0);   opacity:1; }
+    }
+    .reaction-picker span { font-size:1.2rem; cursor:pointer; transition:transform 0.12s cubic-bezier(.34,1.56,.64,1); }
+    .reaction-picker span:hover { transform:scale(1.4); }
 
     /* ── TYPING INDICATOR ── */
     .typing-row { display:flex; align-items:center; gap:0.5rem; padding:0.2rem 0; min-height:28px; }
@@ -778,6 +842,18 @@
       justify-content: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       z-index: 10;
+      animation: bounceIn 0.35s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    @keyframes bounceIn {
+      from { transform: scale(0) translateY(10px); opacity: 0; }
+      to   { transform: scale(1) translateY(0);    opacity: 1; }
+    }
+
+    #scroll-btn:hover {
+      transform: scale(1.12) translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,168,132,0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     /* ── LIGHTBOX ── */
@@ -1396,7 +1472,7 @@
         if (r.user === ME) mine.add(r.emoji);
       });
       container.innerHTML = Object.entries(counts).map(([em, n]) =>
-        `<span class="reaction-chip${mine.has(em) ? ' mine' : ''}" onclick="sendReaction('${msgId}','${em}')">${em} ${n}</span>`
+        `<span class="reaction-chip pop${mine.has(em) ? ' mine' : ''}" onclick="sendReaction('${msgId}','${em}')">${em} ${n}</span>`
       ).join('');
     }
 

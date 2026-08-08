@@ -2582,7 +2582,7 @@ def send_group_message(group_id):
     data = request.json or {}
     text = data.get('text', '').strip()[:1000]
     media_url = data.get('media_url', '').strip()[:500]
-    if not text and not media_url:
+    if not text and not media_url and not data.get('location'):
         return jsonify({'error': 'Message required'}), 400
     if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
         return jsonify({'error': 'Invalid URL'}), 400
