@@ -10,8 +10,9 @@
     body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; padding: 2rem 1rem; min-height: 100vh; animation: pageFadeIn 0.4s ease-out; }
     @keyframes pageFadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .page { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; }
-    @media (max-width: 680px) { .page { grid-template-columns: 1fr; } .sidebar { display: none; } }
+    @media (max-width: 680px) { .page { grid-template-columns: 1fr; display: flex; flex-direction: column; } }
     .container { max-width: 680px; }
+    .sidebar { min-width: 0; }
     .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.8rem; flex-wrap: wrap; gap: 0.8rem; }
     .back { color: var(--primary); text-decoration: none; font-size: 0.88rem; }
     h1 { font-size: 1.6rem; }
@@ -124,6 +125,11 @@
       .top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
       .auth-links { display: flex; flex-wrap: wrap; gap: 0.4rem; }
       .auth-links a { margin-left: 0; }
+      .sidebar { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.8rem; }
+      .sidebar .sidebar-card { flex: 1 1 calc(50% - 0.4rem); min-width: 140px; margin-bottom: 0; }
+      .sidebar .sidebar-card:last-child { flex: 1 1 100%; }
+      .suggest-row { padding: 0.35rem 0; }
+      .ticker-item { font-size: 0.74rem; }
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
