@@ -47,6 +47,11 @@
     .bubble img { max-width:200px; max-height:180px; border-radius:10px; display:block; margin-bottom:0.25rem; cursor:zoom-in; }
     .bubble-time { font-size:0.65rem; opacity:0.6; margin-top:0.25rem; text-align:right; }
     .msg-row:not(.mine) .bubble-time { text-align:left; }
+    .del-msg-btn { display:none; background:none; border:none; color:rgba(255,255,255,0.4);
+                   font-size:0.75rem; cursor:pointer; padding:0 0.2rem; align-self:flex-end;
+                   margin-bottom:0.2rem; flex-shrink:0; }
+    .del-msg-btn:hover { color:#e50914; }
+    .msg-row.mine:hover .del-msg-btn { display:block; }
     .input-bar { display:flex; align-items:flex-end; gap:0.6rem; padding:0.8rem 1rem;
                  border-top:1px solid var(--border); background:rgba(20,20,20,0.97); flex-shrink:0; flex-wrap:wrap; }
     .msg-input { flex:1; min-width:0; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.07);
@@ -120,6 +125,7 @@
         {% set ns.last_date = msg_date %}
         {% endif %}
         <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}">
+          {% if msg.sender == username %}<button class="del-msg-btn" onclick="deleteMsg('{{ msg.msg_id }}', this)">🗑️</button>{% endif %}
           <div class="msg-av">{{ msg.sender[0]|upper }}</div>
           <div class="bubble-wrap">
             <div class="bubble-sender">{{ msg.sender }}</div>
@@ -264,6 +270,7 @@
       const imgHtml = msg.media_url ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">` : '';
       const textHtml = msg.text ? escHtml(msg.text) : '';
       row.innerHTML = `
+        ${isMe ? `<button class="del-msg-btn" onclick="deleteMsg('${escAttr(msg.msg_id)}', this)">🗑️</button>` : ''}
         <div class="msg-av">${msg.sender[0].toUpperCase()}</div>
         <div class="bubble-wrap">
           ${isMe ? '' : `<div class="bubble-sender">${escHtml(msg.sender)}</div>`}
@@ -331,6 +338,15 @@
           line.textContent += ', ' + username;
         }
       }).catch(()=>{});
+    }
+
+    function deleteMsg(msgId, btn) {
+      if (!confirm('Delete this message?')) return;
+      fetch(`/api/groups/${GROUP_ID}/messages/${msgId}`, { method: 'DELETE' })
+        .then(r => r.json()).then(d => {
+          if (d.error) { alert(d.error); return; }
+          btn.closest('.msg-row')?.remove();
+        }).catch(() => alert('Failed to delete'));
     }
 
     document.getElementById('add-modal').addEventListener('click', e => {

@@ -2622,6 +2622,20 @@ def poll_group_messages(group_id):
         msgs = msgs[ids.index(after_id) + 1:] if after_id in ids else []
     return jsonify({'messages': msgs})
 
+@app.route('/api/groups/<group_id>/messages/<msg_id>', methods=['DELETE'])
+def delete_group_message(group_id, msg_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    groups_collection.update_one(
+        {'group_id': group_id},
+        {'$pull': {'messages': {'msg_id': msg_id, 'sender': username}}}
+    )
+    return jsonify({'success': True})
+
 @app.route('/api/groups/<group_id>/members', methods=['POST'])
 def add_group_member(group_id):
     username = current_user()
