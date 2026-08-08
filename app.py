@@ -2658,6 +2658,46 @@ def add_group_member(group_id):
     })
     return jsonify({'success': True})
 
+@app.route('/api/groups/<group_id>/photo', methods=['POST'])
+def update_group_photo(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No file'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id, 'data': data, 'mime': mime,
+        'uploaded_by': username, 'created_at': datetime.now(timezone.utc)
+    })
+    photo_url = f'/api/img/{image_id}'
+    groups_collection.update_one({'group_id': group_id}, {'$set': {'photo_url': photo_url}})
+    return jsonify({'photo_url': photo_url}), 200
+
+@app.route('/api/groups/<group_id>', methods=['DELETE'])
+def delete_group(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group:
+        return jsonify({'error': 'Group not found'}), 404
+    if group.get('creator') != username:
+        return jsonify({'error': 'Only the creator can delete this group'}), 403
+    groups_collection.delete_one({'group_id': group_id})
+    return jsonify({'success': True})
+
 @app.route('/api/groups/<group_id>/members/<target>', methods=['DELETE'])
 def remove_group_member(group_id, target):
     username = current_user()
