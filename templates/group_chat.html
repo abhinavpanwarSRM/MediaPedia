@@ -1309,7 +1309,7 @@
         .then(r => r.json())
         .then(data => {
           (data.messages || []).forEach(msg => {
-            if (msg.sender !== ME) appendMessage(msg);
+            appendMessage(msg);
             lastMsgId = msg.msg_id;
           });
         })
