@@ -2714,6 +2714,30 @@ def remove_group_member(group_id, target):
     groups_collection.update_one({'group_id': group_id}, {'$pull': {'members': target}})
     return jsonify({'success': True})
 
+# ── Group online presence (in-memory) ──
+_group_online = {}  # {group_id: {username: expires_at}}
+
+@app.route('/api/groups/<group_id>/online', methods=['POST'])
+def group_online_post(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    import time
+    _group_online.setdefault(group_id, {})[username] = time.time() + 15
+    return jsonify({'ok': True})
+
+@app.route('/api/groups/<group_id>/online', methods=['GET'])
+def group_online_get(group_id):
+    username = current_user()
+    if not username:
+        return jsonify({'online': []})
+    import time
+    now = time.time()
+    typers = _group_online.get(group_id, {})
+    active = [u for u, exp in list(typers.items()) if exp > now]
+    _group_online[group_id] = {u: exp for u, exp in typers.items() if exp > now}
+    return jsonify({'online': active})
+
 # ── Group typing indicator (in-memory, per group) ──
 _group_typing = {}  # {group_id: {username: expires_at}}
 

@@ -137,6 +137,17 @@
       text-overflow: ellipsis;
     }
 
+    .online-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--whatsapp-green);
+      margin-right: 2px;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+
     .header-actions {
       display: flex;
       gap: 0.25rem;
@@ -1590,6 +1601,36 @@
     document.getElementById('add-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('add-modal')) closeAddModal();
     });
+
+    // ── Online presence ──
+    function heartbeat() {
+      fetch(`/api/groups/${GROUP_ID}/online`, { method: 'POST' }).catch(() => {});
+    }
+    function pollOnline() {
+      fetch(`/api/groups/${GROUP_ID}/online`)
+        .then(r => r.json())
+        .then(d => {
+          const online = new Set(d.online || []);
+          const line = document.getElementById('members-line');
+          if (!line) return;
+          const parts = line.textContent.replace(/\s+/g, ' ').trim().split('·');
+          const membersPart = parts[1] ? parts[1].trim() : '';
+          const members = membersPart.split(',').map(m => m.trim()).filter(Boolean);
+          const count = members.length || parseInt(document.getElementById('member-count')?.textContent || '0');
+          const names = members.map(m => {
+            const isOnline = online.has(m);
+            return isOnline
+              ? `<span style="color:#fff"><span class="online-dot"></span>${escHtml(m)}</span>`
+              : `<span>${escHtml(m)}</span>`;
+          }).join(', ');
+          const onlineCount = online.size;
+          line.innerHTML = `<span id="member-count">${count}</span> members · ${onlineCount > 0 ? `<span style="color:var(--whatsapp-green)">${onlineCount} online</span> · ` : ''}${names}`;
+        }).catch(() => {});
+    }
+    heartbeat();
+    setInterval(heartbeat, 8000);
+    setInterval(pollOnline, 8000);
+    pollOnline();
 
     // ── Fix mobile viewport height (prevents header hiding on scroll) ──
     function setVh() {
