@@ -4,298 +4,1009 @@
   <title>{{ group.name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <style>
-    :root { --primary:#e50914; --bg:#141414; --border:rgba(255,255,255,0.08); --muted:#888; --blue:#5799ef; }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:#fff; font-family:'Poppins','Segoe UI',sans-serif;
-           height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+    :root {
+      --whatsapp-green: #00a884;
+      --whatsapp-dark: #111b21;
+      --whatsapp-darker: #0a141a;
+      --whatsapp-light: #e9edef;
+      --whatsapp-gray: #8696a0;
+      --whatsapp-input: #2a3942;
+      --whatsapp-bubble-mine: #005c4b;
+      --whatsapp-bubble-theirs: #1f2c33;
+      --whatsapp-header: #1f2c33;
+      --whatsapp-border: #2a3942;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
 
-    /* ── TOPBAR ── */
-    .topbar { display:flex; align-items:center; gap:0.9rem; padding:0.75rem 1.2rem;
-              border-bottom:1px solid var(--border);
-              background:rgba(14,14,14,0.85);
-              backdrop-filter:blur(18px) saturate(180%);
-              -webkit-backdrop-filter:blur(18px) saturate(180%);
-              flex-shrink:0; position:relative; z-index:10; }
-    .back-btn { color:var(--muted); text-decoration:none; font-size:1.2rem;
-                transition:color .2s, transform .2s; display:flex; align-items:center; }
-    .back-btn:hover { color:#fff; transform:translateX(-2px); }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
 
-    /* animated gradient ring */
-    .grp-av-ring { position:relative; width:44px; height:44px; flex-shrink:0; cursor:pointer; }
-    .grp-av-ring::before {
-      content:''; position:absolute; inset:-2px; border-radius:50%;
-      background:conic-gradient(from 0deg, #e50914, #5799ef, #1db954, #f5a623, #e50914);
-      animation:spin 3s linear infinite; z-index:0; }
-    .grp-av-ring::after {
-      content:''; position:absolute; inset:2px; border-radius:50%;
-      background:var(--bg); z-index:1; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .grp-av { width:40px; height:40px; border-radius:50%;
-              background:linear-gradient(135deg,var(--blue),#1db954);
-              display:flex; align-items:center; justify-content:center;
-              font-size:1.1rem; position:absolute; inset:2px; z-index:2;
-              overflow:hidden; object-fit:cover; }
-    .grp-av img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
-    .grp-av-cam { position:absolute; bottom:0; right:0; z-index:3;
-                  width:16px; height:16px; background:#5799ef; border-radius:50%;
-                  display:flex; align-items:center; justify-content:center;
-                  font-size:0.55rem; cursor:pointer; border:1.5px solid var(--bg);
-                  transition:transform .2s; }
-    .grp-av-cam:hover { transform:scale(1.2); }
-    .del-grp-btn { background:rgba(229,9,20,0.12); border:1px solid rgba(229,9,20,0.3);
-                   color:#e50914; border-radius:8px; padding:0.3rem 0.65rem;
-                   font-size:0.78rem; cursor:pointer; white-space:nowrap;
-                   transition:background .2s, transform .15s; }
-    .del-grp-btn:hover { background:rgba(229,9,20,0.25); transform:scale(1.04); }
+    body { 
+      background: var(--whatsapp-dark); 
+      color: #fff; 
+      font-family: 'Inter', -apple-system, sans-serif;
+      height: 100dvh; 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden;
+    }
 
-    .grp-info { flex:1; min-width:0; }
-    .grp-name-row { display:flex; align-items:center; gap:0.45rem; }
-    .grp-name { font-weight:700; font-size:0.97rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .member-pill { background:rgba(87,153,239,0.18); border:1px solid rgba(87,153,239,0.35);
-                   color:var(--blue); border-radius:20px; padding:0.05rem 0.5rem;
-                   font-size:0.65rem; font-weight:600; white-space:nowrap; flex-shrink:0; }
-    .grp-members { font-size:0.7rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:0.05rem; }
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: var(--whatsapp-header);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+      border-bottom: 1px solid var(--whatsapp-border);
+      min-height: 60px;
+    }
 
-    .add-btn { background:rgba(87,153,239,0.15); border:1px solid rgba(87,153,239,0.3);
-               color:var(--blue); border-radius:8px; padding:0.3rem 0.7rem; font-size:0.78rem;
-               cursor:pointer; white-space:nowrap; transition:background .2s, transform .15s; }
-    .add-btn:hover { background:rgba(87,153,239,0.28); transform:scale(1.04); }
-    .messages-wrap { flex:1; overflow-y:auto; padding:1rem 1rem 0.5rem;
-                     display:flex; flex-direction:column; gap:0.5rem;
-                     scrollbar-width:thin; scrollbar-color:rgba(87,153,239,0.4) transparent; }
-    .date-sep { text-align:center; font-size:0.7rem; color:var(--muted); margin:0.6rem 0; }
-    .msg-row { display:flex; align-items:flex-end; gap:0.5rem; }
-    .msg-row.mine { flex-direction:row-reverse; }
-    .msg-av { width:32px; height:32px; border-radius:50%; flex-shrink:0;
-              display:flex; align-items:center; justify-content:center;
-              font-size:0.78rem; font-weight:700; color:#fff;
-              box-shadow:0 2px 8px rgba(0,0,0,0.4); transition:transform .2s; }
-    .msg-av:hover { transform:scale(1.12); }
-    .msg-row.mine .msg-av { background:linear-gradient(135deg,#3a3a3a,#1e1e1e) !important; }
-    .bubble-wrap { display:flex; flex-direction:column; max-width:70%; }
-    .msg-row.mine .bubble-wrap { align-items:flex-end; }
-    .bubble-sender { font-size:0.7rem; font-weight:600; margin-bottom:0.18rem; padding:0 0.4rem; }
-    .msg-row.mine .bubble-sender { display:none; }
-    .bubble { padding:0.6rem 0.9rem; border-radius:16px; font-size:0.88rem;
-              line-height:1.5; word-break:break-word; }
-    .msg-row.mine .bubble { background:var(--primary); color:#fff; border-bottom-right-radius:4px; }
-    .msg-row:not(.mine) .bubble { background:rgba(255,255,255,0.09); color:#fff; border-bottom-left-radius:4px; }
-    .bubble img { max-width:200px; max-height:180px; border-radius:10px; display:block; margin-bottom:0.25rem; cursor:zoom-in; }
-    .bubble-time { font-size:0.65rem; opacity:0.6; margin-top:0.25rem; text-align:right; }
-    .msg-row:not(.mine) .bubble-time { text-align:left; }
-    .del-msg-btn { display:none; background:none; border:none; color:rgba(255,255,255,0.4);
-                   font-size:0.75rem; cursor:pointer; padding:0 0.2rem; align-self:flex-end;
-                   margin-bottom:0.2rem; flex-shrink:0; }
-    .del-msg-btn:hover { color:#e50914; }
-    .msg-row.mine:hover .del-msg-btn { display:block; }
-    .input-bar { display:flex; align-items:flex-end; gap:0.6rem; padding:0.8rem 1rem;
-                 border-top:1px solid var(--border); background:rgba(20,20,20,0.97); flex-shrink:0; flex-wrap:wrap; }
-    .msg-input { flex:1; min-width:0; padding:0.65rem 0.9rem; background:rgba(255,255,255,0.07);
-                 border:1px solid var(--border); border-radius:20px; color:#fff; font-size:0.9rem;
-                 font-family:inherit; resize:none; max-height:120px; overflow-y:auto; line-height:1.45; }
-    .msg-input:focus { outline:none; border-color:var(--blue); }
-    .send-btn { width:40px; height:40px; border-radius:50%; background:var(--blue); border:none;
-                color:#fff; font-size:1rem; cursor:pointer; flex-shrink:0;
-                display:flex; align-items:center; justify-content:center; }
-    .send-btn:hover { background:#4a88de; }
-    .send-btn:disabled { background:#444; cursor:not-allowed; }
-    .attach-btn { width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.07);
-                  border:1px solid var(--border); color:var(--muted); font-size:1.1rem; cursor:pointer;
-                  flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .attach-btn:hover { background:rgba(255,255,255,0.13); color:#fff; }
-    .img-preview-wrap { width:100%; display:flex; align-items:center; gap:0.5rem;
-                        padding:0.4rem 0; border-top:1px solid var(--border); }
-    .img-preview-wrap img { height:56px; border-radius:8px; object-fit:cover; }
-    .img-preview-wrap button { background:none; border:none; color:var(--muted); font-size:1rem; cursor:pointer; }
-    /* Add member modal */
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:300;
-                     align-items:center; justify-content:center; padding:1rem; }
-    .modal-overlay.open { display:flex; }
-    .modal-box { background:#1c1c1c; border:1px solid var(--border); border-radius:12px;
-                 padding:1.4rem; width:100%; max-width:360px; display:flex; flex-direction:column; gap:0.8rem; }
-    .modal-box h3 { font-size:1rem; margin:0; }
-    .modal-box input { width:100%; background:rgba(255,255,255,0.07); border:1px solid var(--border);
-                       border-radius:8px; color:#fff; font-size:0.88rem; padding:0.55rem 0.8rem; }
-    .modal-box input:focus { outline:none; border-color:var(--blue); }
-    .search-results { background:#1e1e1e; border:1px solid var(--border); border-radius:6px;
-                      max-height:140px; overflow-y:auto; display:none; }
-    .search-result { padding:0.45rem 0.7rem; font-size:0.82rem; cursor:pointer; color:#ddd; }
-    .search-result:hover { background:rgba(255,255,255,0.06); }
-    .modal-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
-    .modal-cancel { padding:0.4rem 0.9rem; background:transparent; border:1px solid var(--border);
-                    border-radius:6px; color:var(--muted); font-size:0.85rem; cursor:pointer; }
-    /* Lightbox */
-    #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9);
-                z-index:500; align-items:center; justify-content:center; cursor:zoom-out; }
-    #lightbox.show { display:flex; }
-    #lightbox img { max-width:92vw; max-height:92vh; border-radius:10px; }
-    @media (max-width:480px) {
-      .topbar { padding:0.5rem 0.75rem; }
-      .bubble { max-width:85%; font-size:0.85rem; }
+    .back-btn {
+      color: var(--whatsapp-gray);
+      text-decoration: none;
+      font-size: 1.4rem;
+      transition: color .2s, transform .2s;
+      display: flex;
+      align-items: center;
+      padding: 4px;
+    }
+    .back-btn:hover { 
+      color: #fff; 
+      transform: scale(1.1);
+    }
+
+    /* Group Avatar */
+    .group-avatar-wrapper {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .group-avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00a884, #128c7e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+      transition: filter 0.2s;
+    }
+
+    .group-avatar:hover {
+      filter: brightness(0.9);
+    }
+
+    .group-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .group-avatar .online-indicator {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      background: var(--whatsapp-green);
+      border: 2px solid var(--whatsapp-header);
+      border-radius: 50%;
+    }
+
+    .group-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .group-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .group-members {
+      font-size: 0.75rem;
+      color: var(--whatsapp-gray);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.25rem;
+      flex-shrink: 0;
+    }
+
+    .header-btn {
+      background: none;
+      border: none;
+      color: var(--whatsapp-gray);
+      font-size: 1.2rem;
+      padding: 8px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .header-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      transform: scale(1.05);
+    }
+
+    .header-btn.danger:hover {
+      background: rgba(229, 9, 20, 0.2);
+      color: #e50914;
+    }
+
+    /* ── MESSAGES ── */
+    .messages-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(134, 150, 160, 0.3) transparent;
+      background: var(--whatsapp-darker);
+    }
+
+    .messages-wrap::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .messages-wrap::-webkit-scrollbar-thumb {
+      background: rgba(134, 150, 160, 0.3);
+      border-radius: 3px;
+    }
+
+    .messages-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .date-sep {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--whatsapp-gray);
+      margin: 0.8rem 0;
+      position: relative;
+    }
+
+    .date-sep span {
+      background: var(--whatsapp-input);
+      padding: 0.2rem 0.8rem;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+
+    .msg-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      animation: slideIn 0.2s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .msg-row.mine {
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .msg-avatar:hover {
+      transform: scale(1.1);
+    }
+
+    .msg-row.mine .msg-avatar {
+      background: linear-gradient(135deg, #3a3a3a, #1e1e1e) !important;
+    }
+
+    .bubble-wrap {
+      display: flex;
+      flex-direction: column;
+      max-width: 70%;
+      gap: 0.15rem;
+    }
+
+    .msg-row.mine .bubble-wrap {
+      align-items: flex-end;
+    }
+
+    .bubble-sender {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0 0.4rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .msg-row.mine .bubble-sender {
+      display: none;
+    }
+
+    .bubble {
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      word-break: break-word;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+
+    .msg-row.mine .bubble {
+      background: var(--whatsapp-bubble-mine);
+      color: #fff;
+      border-top-right-radius: 2px;
+    }
+
+    .msg-row:not(.mine) .bubble {
+      background: var(--whatsapp-bubble-theirs);
+      color: #fff;
+      border-top-left-radius: 2px;
+    }
+
+    .bubble img {
+      max-width: 200px;
+      max-height: 180px;
+      border-radius: 6px;
+      display: block;
+      margin-bottom: 0.25rem;
+      cursor: zoom-in;
+      transition: transform 0.2s;
+    }
+
+    .bubble img:hover {
+      transform: scale(1.02);
+    }
+
+    .bubble-time {
+      font-size: 0.6rem;
+      opacity: 0.7;
+      margin-top: 0.2rem;
+      text-align: right;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.25rem;
+    }
+
+    .msg-row:not(.mine) .bubble-time {
+      text-align: left;
+      justify-content: flex-start;
+    }
+
+    .bubble-time .checkmark {
+      font-size: 0.5rem;
+    }
+
+    .msg-row.mine .bubble-time .checkmark {
+      color: #34b7f1;
+    }
+
+    .msg-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .msg-row:hover .msg-actions {
+      opacity: 1;
+    }
+
+    .msg-row.mine .msg-actions {
+      flex-direction: row-reverse;
+    }
+
+    .msg-action-btn {
+      background: none;
+      border: none;
+      color: var(--whatsapp-gray);
+      font-size: 0.7rem;
+      padding: 2px 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .msg-action-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #e50914;
+    }
+
+    .msg-row .msg-actions {
+      opacity: 0;
+    }
+
+    .msg-row:hover .msg-actions {
+      opacity: 1;
+    }
+
+    /* Empty state */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--whatsapp-gray);
+      gap: 0.5rem;
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      opacity: 0.3;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
+    }
+
+    /* ── INPUT BAR ── */
+    .input-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--whatsapp-input);
+      flex-shrink: 0;
+      border-top: 1px solid var(--whatsapp-border);
+    }
+
+    .input-bar .input-group {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      background: var(--whatsapp-darker);
+      border-radius: 8px;
+      padding: 0.15rem 0.5rem;
+      border: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .input-bar .input-group:focus-within {
+      border-color: var(--whatsapp-green);
+    }
+
+    .msg-input {
+      flex: 1;
+      padding: 0.4rem 0.3rem;
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      resize: none;
+      max-height: 100px;
+      overflow-y: auto;
+      line-height: 1.45;
+      outline: none;
+    }
+
+    .msg-input::placeholder {
+      color: var(--whatsapp-gray);
+    }
+
+    .input-btn {
+      background: none;
+      border: none;
+      color: var(--whatsapp-gray);
+      font-size: 1.2rem;
+      padding: 6px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .input-btn:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .input-btn.send-btn {
+      background: var(--whatsapp-green);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+    }
+
+    .input-btn.send-btn:hover {
+      background: #00b894;
+      transform: scale(1.05);
+    }
+
+    .input-btn.send-btn:disabled {
+      background: #444;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Image preview */
+    .img-preview-wrap {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.5rem;
+      background: var(--whatsapp-darker);
+      border-radius: 8px;
+      margin-top: 0.25rem;
+    }
+
+    .img-preview-wrap img {
+      height: 44px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .img-preview-wrap .preview-info {
+      font-size: 0.75rem;
+      color: var(--whatsapp-gray);
+      flex: 1;
+    }
+
+    .img-preview-wrap .remove-btn {
+      background: none;
+      border: none;
+      color: var(--whatsapp-gray);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .img-preview-wrap .remove-btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #e50914;
+    }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 300;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 1rem;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-box {
+      background: var(--whatsapp-header);
+      border-radius: 12px 12px 0 0;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--whatsapp-border);
+    }
+
+    .modal-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--whatsapp-gray);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 50%;
+      transition: all 0.2s;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .modal-search {
+      width: 100%;
+      padding: 0.55rem 0.8rem;
+      background: var(--whatsapp-darker);
+      border: 1px solid var(--whatsapp-border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.88rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .modal-search:focus {
+      border-color: var(--whatsapp-green);
+    }
+
+    .search-results {
+      background: var(--whatsapp-darker);
+      border: 1px solid var(--whatsapp-border);
+      border-radius: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .search-results::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .search-results::-webkit-scrollbar-thumb {
+      background: rgba(134, 150, 160, 0.3);
+      border-radius: 2px;
+    }
+
+    .search-result {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: #ddd;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+      border-bottom: 1px solid var(--whatsapp-border);
+    }
+
+    .search-result:last-child {
+      border-bottom: none;
+    }
+
+    .search-result:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .search-result .result-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00a884, #128c7e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .search-result .result-name {
+      flex: 1;
+    }
+
+    .search-result .add-icon {
+      color: var(--whatsapp-green);
+      font-size: 0.9rem;
+    }
+
+    /* ── LIGHTBOX ── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+      animation: fadeIn 0.3s;
+    }
+
+    #lightbox.show {
+      display: flex;
+    }
+
+    #lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 8px;
+      object-fit: contain;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 480px) {
+      .header {
+        padding: 0.4rem 0.75rem;
+        min-height: 56px;
+      }
+
+      .group-name {
+        font-size: 0.9rem;
+      }
+
+      .bubble {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.7rem;
+      }
+
+      .bubble-wrap {
+        max-width: 85%;
+      }
+
+      .input-bar {
+        padding: 0.4rem 0.5rem;
+      }
+
+      .modal-box {
+        padding: 1rem;
+        border-radius: 12px 12px 0 0;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .messages-wrap {
+        padding: 1rem 2rem 0.5rem;
+      }
+
+      .bubble-wrap {
+        max-width: 60%;
+      }
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
 </head>
 <body>
-  <div class="topbar">
-    <a class="back-btn" href="/messages">&#8592;</a>
-    <div class="grp-av-ring" onclick="document.getElementById('grp-photo-input').click()">
-      <div class="grp-av" id="grp-av">
+  <!-- HEADER -->
+  <div class="header">
+    <a class="back-btn" href="/messages">
+      <i class="fas fa-arrow-left"></i>
+    </a>
+    
+    <div class="group-avatar-wrapper" onclick="document.getElementById('grp-photo-input').click()">
+      <div class="group-avatar" id="grp-av">
         {% if group.photo_url %}
-          <img id="grp-av-img" src="{{ group.photo_url }}" alt="">
+          <img id="grp-av-img" src="{{ group.photo_url }}" alt="{{ group.name }}">
         {% else %}
-          <span id="grp-av-emoji">👥</span>
+          <span id="grp-av-emoji">{{ group.name[0]|upper }}</span>
         {% endif %}
+        <div class="online-indicator"></div>
       </div>
-      <div class="grp-av-cam">📷</div>
     </div>
     <input type="file" id="grp-photo-input" accept="image/*" style="display:none" onchange="uploadGroupPhoto(this)">
-    <div class="grp-info">
-      <div class="grp-name-row">
-        <div class="grp-name">{{ group.name }}</div>
-        <span class="member-pill" id="member-pill">{{ group.members | length }} members</span>
+
+    <div class="group-info">
+      <div class="group-name">{{ group.name }}</div>
+      <div class="group-members" id="members-line">
+        <span id="member-count">{{ group.members | length }}</span> members
+        · {{ group.members | join(', ') }}
       </div>
-      <div class="grp-members" id="members-line">{{ group.members | join(', ') }}</div>
     </div>
-    <button class="add-btn" onclick="openAddModal()">+ Add</button>
-    {% if group.creator == username %}
-    <button class="del-grp-btn" onclick="deleteGroup()">🗑 Delete</button>
-    {% endif %}
+
+    <div class="header-actions">
+      <button class="header-btn" onclick="openAddModal()" title="Add member">
+        <i class="fas fa-user-plus"></i>
+      </button>
+      {% if group.creator == username %}
+      <button class="header-btn danger" onclick="deleteGroup()" title="Delete group">
+        <i class="fas fa-trash"></i>
+      </button>
+      {% endif %}
+    </div>
   </div>
 
+  <!-- MESSAGES -->
   <div class="messages-wrap" id="messages-wrap">
     {% if not group.messages %}
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.88rem;">
-      Say hi to the group!
+    <div class="empty-state">
+      <i class="fas fa-comment-dots"></i>
+      <p>No messages yet. Say hi to the group!</p>
     </div>
     {% else %}
       {% set ns = namespace(last_date='') %}
       {% for msg in group.messages %}
         {% set msg_date = msg.created_at[:10] %}
         {% if msg_date != ns.last_date %}
-        <div class="date-sep">{{ msg_date }}</div>
+        <div class="date-sep"><span>{{ msg_date }}</span></div>
         {% set ns.last_date = msg_date %}
         {% endif %}
         <div class="msg-row {{ 'mine' if msg.sender == username else '' }}" data-msg-id="{{ msg.msg_id }}">
-          {% if msg.sender == username %}<button class="del-msg-btn" onclick="deleteMsg('{{ msg.msg_id }}', this)">🗑️</button>{% endif %}
-          <div class="msg-av">{{ msg.sender[0]|upper }}</div>
+          <div class="msg-avatar">{{ msg.sender[0]|upper }}</div>
           <div class="bubble-wrap">
             <div class="bubble-sender">{{ msg.sender }}</div>
             <div class="bubble">
               {% if msg.media_url %}<img src="{{ msg.media_url }}" alt="" onclick="openLightbox('{{ msg.media_url }}')" onerror="this.style.display='none'">{% endif %}
               {% if msg.text %}{{ msg.text }}{% endif %}
-              <div class="bubble-time">{{ msg.created_at[11:16] }}</div>
+              <div class="bubble-time">
+                {{ msg.created_at[11:16] }}
+                {% if msg.sender == username %}
+                <span class="checkmark"><i class="fas fa-check-double"></i></span>
+                {% endif %}
+              </div>
             </div>
+          </div>
+          <div class="msg-actions">
+            {% if msg.sender == username %}
+            <button class="msg-action-btn" onclick="deleteMsg('{{ msg.msg_id }}', this)" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+            {% endif %}
           </div>
         </div>
       {% endfor %}
     {% endif %}
   </div>
 
-  <div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" src="" alt=""></div>
+  <!-- LIGHTBOX -->
+  <div id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="">
+  </div>
 
-  <!-- Add member modal -->
+  <!-- ADD MEMBER MODAL -->
   <div class="modal-overlay" id="add-modal">
     <div class="modal-box">
-      <h3>Add Member</h3>
-      <input type="text" id="add-search" placeholder="Search username..." autocomplete="off" oninput="searchAdd(this.value)" />
-      <div class="search-results" id="add-results"></div>
-      <div class="modal-actions">
-        <button class="modal-cancel" onclick="closeAddModal()">Cancel</button>
+      <div class="modal-header">
+        <h3><i class="fas fa-user-plus" style="color: var(--whatsapp-green); margin-right: 0.5rem;"></i>Add Member</h3>
+        <button class="modal-close" onclick="closeAddModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input 
+          type="text" 
+          class="modal-search" 
+          id="add-search" 
+          placeholder="Search username..." 
+          autocomplete="off" 
+          oninput="searchAdd(this.value)"
+        />
+        <div class="search-results" id="add-results"></div>
+        <div style="font-size: 0.75rem; color: var(--whatsapp-gray);">
+          <i class="fas fa-info-circle"></i> Type at least 2 characters to search
+        </div>
       </div>
     </div>
   </div>
 
+  <!-- INPUT BAR -->
   <div class="input-bar" id="input-bar">
-    <button class="attach-btn" onclick="document.getElementById('img-file').click()" title="Send photo">&#128247;</button>
+    <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
+      <i class="fas fa-paperclip"></i>
+    </button>
     <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImagePick(this)">
-    <textarea class="msg-input" id="msg-input" rows="1"
-              placeholder="Message {{ group.name }}..."
-              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-    <button class="send-btn" id="send-btn" onclick="sendMessage()">&#10148;</button>
+    
+    <div class="input-group">
+      <textarea 
+        class="msg-input" 
+        id="msg-input" 
+        rows="1"
+        placeholder="Type a message..." 
+        onkeydown="handleKey(event)" 
+        oninput="autoResize(this)"
+      ></textarea>
+    </div>
+
+    <button class="input-btn send-btn" id="send-btn" onclick="sendMessage()">
+      <i class="fas fa-paper-plane"></i>
+    </button>
   </div>
 
   <script>
     const ME = {{ username | tojson }};
     const GROUP_ID = {{ group.group_id | tojson }};
 
-    // ── Per-member consistent color ──
+    // ── Member colors ──
     const MEMBER_COLORS = [
       '#5799ef','#1db954','#f5a623','#e91e8c','#00bcd4',
       '#9c27b0','#ff5722','#4caf50','#ff9800','#03a9f4'
     ];
+
     function memberColor(name) {
       let hash = 0;
-      for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
       return MEMBER_COLORS[Math.abs(hash) % MEMBER_COLORS.length];
     }
+
     function applyMemberColors() {
       document.querySelectorAll('.msg-row:not(.mine)').forEach(row => {
-        const av = row.querySelector('.msg-av');
+        const av = row.querySelector('.msg-avatar');
         const sender = row.querySelector('.bubble-sender');
         if (!av) return;
-        const name = av.textContent.trim();
-        // derive full name from sender label if available
-        const fullName = sender ? sender.textContent.trim() : name;
-        const color = memberColor(fullName);
-        av.style.background = `linear-gradient(135deg, ${color}cc, ${color}88)`;
-        av.style.boxShadow = `0 2px 10px ${color}55`;
+        const name = sender ? sender.textContent.trim() : av.textContent.trim();
+        const color = memberColor(name);
+        av.style.background = `linear-gradient(135deg, ${color}, ${color}dd)`;
+        av.style.boxShadow = `0 2px 8px ${color}44`;
         if (sender) sender.style.color = color;
       });
     }
 
+    // ── Init ──
     const wrap = document.getElementById('messages-wrap');
     const input = document.getElementById('msg-input');
     let lastMsgId = null;
-    let pendingImageUrl = null;
 
     const rendered = document.querySelectorAll('.msg-row[data-msg-id]');
-    if (rendered.length) lastMsgId = rendered[rendered.length - 1].dataset.msgId;
+    if (rendered.length) {
+      lastMsgId = rendered[rendered.length - 1].dataset.msgId;
+    }
 
     scrollBottom();
     applyMemberColors();
 
-    function scrollBottom(smooth) {
-      wrap.scrollTo({ top: wrap.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+    function scrollBottom(smooth = false) {
+      wrap.scrollTo({ 
+        top: wrap.scrollHeight, 
+        behavior: smooth ? 'smooth' : 'instant' 
+      });
     }
 
     function autoResize(el) {
       el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+      el.style.height = Math.min(el.scrollHeight, 100) + 'px';
     }
 
     function handleKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
     }
 
+    // ── Formatting ──
     function fmtTime(iso) {
-      const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
-      return d.toISOString().slice(11,16);
-    }
-    function fmtDate(iso) {
-      const d = new Date(new Date(iso).getTime() + 5.5*60*60*1000);
-      return d.toISOString().slice(0,10);
+      const d = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
+      return d.toISOString().slice(11, 16);
     }
 
-    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function fmtDate(iso) {
+      const d = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function escAttr(s) {
+      return String(s)
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ── Image handling ──
+    let pendingImageUrl = null;
 
     function handleImagePick(input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 5*1024*1024) { alert('Max 5 MB'); input.value=''; return; }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Max file size is 5 MB');
+        input.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = e => showImgPreview(e.target.result, true);
       reader.readAsDataURL(file);
-      const fd = new FormData(); fd.append('file', file);
-      fetch('/api/upload', { method:'POST', body:fd })
-        .then(r=>r.json()).then(d => {
-          if (d.error) { alert(d.error); clearImgPreview(); return; }
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fetch('/api/upload', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            alert(d.error);
+            clearImgPreview();
+            return;
+          }
           showImgPreview(d.url, false);
           pendingImageUrl = d.url;
-        }).catch(() => { alert('Upload failed'); clearImgPreview(); });
+        })
+        .catch(() => {
+          alert('Upload failed');
+          clearImgPreview();
+        });
       input.value = '';
     }
 
@@ -303,8 +1014,15 @@
       clearImgPreview();
       const bar = document.getElementById('input-bar');
       const div = document.createElement('div');
-      div.className = 'img-preview-wrap'; div.id = 'img-preview';
-      div.innerHTML = `<img src="${escAttr(src)}" alt=""><span style="font-size:0.75rem;color:#888;">${uploading?'Uploading…':'Ready'}</span><button onclick="clearImgPreview()">✕</button>`;
+      div.className = 'img-preview-wrap';
+      div.id = 'img-preview';
+      div.innerHTML = `
+        <img src="${escAttr(src)}" alt="preview">
+        <span class="preview-info">${uploading ? 'Uploading...' : 'Ready to send'}</span>
+        <button class="remove-btn" onclick="clearImgPreview()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
       bar.insertBefore(div, bar.firstChild);
     }
 
@@ -313,76 +1031,131 @@
       document.getElementById('img-preview')?.remove();
     }
 
+    // ── Send message ──
     function sendMessage() {
       const text = input.value.trim();
       if (!text && !pendingImageUrl) return;
-      if (pendingImageUrl && pendingImageUrl.startsWith('data:')) { alert('Still uploading…'); return; }
+      if (pendingImageUrl && pendingImageUrl.startsWith('data:')) {
+        alert('Still uploading...');
+        return;
+      }
+
       const btn = document.getElementById('send-btn');
       btn.disabled = true;
+
       const payload = { text: text || '' };
       if (pendingImageUrl) payload.media_url = pendingImageUrl;
+
       fetch(`/api/groups/${GROUP_ID}/send`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      }).then(r=>r.json()).then(msg => {
-        if (msg.error) { alert(msg.error); return; }
-        input.value = ''; input.style.height = 'auto';
-        clearImgPreview();
-        appendMessage(msg);
-        lastMsgId = msg.msg_id;
-      }).catch(()=>alert('Failed to send'))
-        .finally(()=>{ btn.disabled=false; input.focus(); });
+      })
+        .then(r => r.json())
+        .then(msg => {
+          if (msg.error) {
+            alert(msg.error);
+            return;
+          }
+          input.value = '';
+          input.style.height = 'auto';
+          clearImgPreview();
+          appendMessage(msg);
+          lastMsgId = msg.msg_id;
+        })
+        .catch(() => alert('Failed to send'))
+        .finally(() => {
+          btn.disabled = false;
+          input.focus();
+        });
     }
 
+    // ── Append message ──
     function appendMessage(msg) {
       if (document.querySelector(`.msg-row[data-msg-id="${msg.msg_id}"]`)) return;
+
       const isMe = msg.sender === ME;
       const msgDate = fmtDate(msg.created_at);
       const lastSep = wrap.querySelector('.date-sep:last-of-type');
+
       if (!lastSep || lastSep.textContent !== msgDate) {
         const sep = document.createElement('div');
-        sep.className = 'date-sep'; sep.textContent = msgDate;
+        sep.className = 'date-sep';
+        sep.innerHTML = `<span>${msgDate}</span>`;
         wrap.appendChild(sep);
       }
+
       const row = document.createElement('div');
       row.className = 'msg-row' + (isMe ? ' mine' : '');
       row.dataset.msgId = msg.msg_id;
-      const imgHtml = msg.media_url ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">` : '';
+
+      const imgHtml = msg.media_url 
+        ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">` 
+        : '';
+
       const textHtml = msg.text ? escHtml(msg.text) : '';
+
       row.innerHTML = `
-        ${isMe ? `<button class="del-msg-btn" onclick="deleteMsg('${escAttr(msg.msg_id)}', this)">🗑️</button>` : ''}
-        <div class="msg-av">${msg.sender[0].toUpperCase()}</div>
+        <div class="msg-avatar">${msg.sender[0].toUpperCase()}</div>
         <div class="bubble-wrap">
           ${isMe ? '' : `<div class="bubble-sender">${escHtml(msg.sender)}</div>`}
-          <div class="bubble">${imgHtml}${textHtml}<div class="bubble-time">${fmtTime(msg.created_at)}</div></div>
-        </div>`;
+          <div class="bubble">
+            ${imgHtml}
+            ${textHtml}
+            <div class="bubble-time">
+              ${fmtTime(msg.created_at)}
+              ${isMe ? '<span class="checkmark"><i class="fas fa-check-double"></i></span>' : ''}
+            </div>
+          </div>
+        </div>
+        <div class="msg-actions">
+          ${isMe ? `<button class="msg-action-btn" onclick="deleteMsg('${escAttr(msg.msg_id)}', this)"><i class="fas fa-trash"></i></button>` : ''}
+        </div>
+      `;
+
       wrap.appendChild(row);
       applyMemberColors();
+
+      // Remove empty state if exists
+      const empty = wrap.querySelector('.empty-state');
+      if (empty) empty.remove();
+
       const atBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
       if (atBottom) scrollBottom(true);
     }
 
+    // ── Polling ──
     function pollMessages() {
-      fetch(`/api/groups/${GROUP_ID}/poll?after=${encodeURIComponent(lastMsgId||'')}`)
-        .then(r=>r.json()).then(data => {
-          (data.messages||[]).forEach(msg => {
+      fetch(`/api/groups/${GROUP_ID}/poll?after=${encodeURIComponent(lastMsgId || '')}`)
+        .then(r => r.json())
+        .then(data => {
+          (data.messages || []).forEach(msg => {
             if (msg.sender !== ME) appendMessage(msg);
             lastMsgId = msg.msg_id;
           });
-        }).catch(()=>{});
+        })
+        .catch(() => {});
     }
     setInterval(pollMessages, 3000);
 
+    // ── Lightbox ──
     function openLightbox(src) {
       document.getElementById('lightbox-img').src = src;
       document.getElementById('lightbox').classList.add('show');
     }
-    function closeLightbox() { document.getElementById('lightbox').classList.remove('show'); }
 
-    // ===== Add Member =====
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('show');
+    }
+
+    // ── Add Member ──
     let _addTimer = null;
 
-    function openAddModal() { document.getElementById('add-modal').classList.add('open'); }
+    function openAddModal() {
+      document.getElementById('add-modal').classList.add('open');
+      document.getElementById('add-search').focus();
+    }
+
     function closeAddModal() {
       document.getElementById('add-modal').classList.remove('open');
       document.getElementById('add-search').value = '';
@@ -392,76 +1165,132 @@
     function searchAdd(q) {
       clearTimeout(_addTimer);
       const box = document.getElementById('add-results');
-      if (!q || q.length < 2) { box.style.display='none'; return; }
+      if (!q || q.length < 2) {
+        box.style.display = 'none';
+        return;
+      }
+
       _addTimer = setTimeout(() => {
         fetch('/api/global_search?q=' + encodeURIComponent(q))
-          .then(r=>r.json()).then(results => {
+          .then(r => r.json())
+          .then(results => {
             const users = results.filter(r => r.type === 'user');
-            if (!users.length) { box.style.display='none'; return; }
-            box.innerHTML = users.map(u =>
-              `<div class="search-result" onclick="addMember('${escAttr(u.title)}')">${escHtml(u.title)}</div>`
-            ).join('');
+            if (!users.length) {
+              box.style.display = 'none';
+              return;
+            }
+            box.innerHTML = users.map(u => `
+              <div class="search-result" onclick="addMember('${escAttr(u.title)}')">
+                <div class="result-avatar">${u.title[0].toUpperCase()}</div>
+                <span class="result-name">${escHtml(u.title)}</span>
+                <span class="add-icon"><i class="fas fa-plus-circle"></i></span>
+              </div>
+            `).join('');
             box.style.display = 'block';
-          }).catch(()=>{ box.style.display='none'; });
+          })
+          .catch(() => { box.style.display = 'none'; });
       }, 280);
     }
 
     function addMember(username) {
       fetch(`/api/groups/${GROUP_ID}/members`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
-      }).then(r=>r.json()).then(d => {
-        if (d.error) { alert(d.error); return; }
-        closeAddModal();
-        const line = document.getElementById('members-line');
-        if (line && !line.textContent.includes(username)) {
-          line.textContent += ', ' + username;
-          const pill = document.getElementById('member-pill');
-          if (pill) {
-            const count = line.textContent.split(',').length;
-            pill.textContent = count + ' members';
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            alert(d.error);
+            return;
           }
-        }
-      }).catch(()=>{});
+          closeAddModal();
+          const line = document.getElementById('members-line');
+          if (line && !line.textContent.includes(username)) {
+            const parts = line.textContent.split('·');
+            const members = parts[1] ? parts[1].split(',').map(m => m.trim()) : [];
+            members.push(username);
+            const count = members.length;
+            line.innerHTML = `<span id="member-count">${count}</span> members · ${members.join(', ')}`;
+          }
+        })
+        .catch(() => {});
     }
 
+    // ── Upload group photo ──
     function uploadGroupPhoto(input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 5*1024*1024) { alert('Max 5 MB'); input.value=''; return; }
-      const fd = new FormData(); fd.append('file', file);
-      fetch(`/api/groups/${GROUP_ID}/photo`, { method:'POST', body:fd })
-        .then(r=>r.json()).then(d => {
-          if (d.error) { alert(d.error); return; }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Max file size is 5 MB');
+        input.value = '';
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fetch(`/api/groups/${GROUP_ID}/photo`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            alert(d.error);
+            return;
+          }
           const av = document.getElementById('grp-av');
-          av.innerHTML = `<img src="${d.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-        }).catch(()=>alert('Photo upload failed'));
-      input.value='';
+          av.innerHTML = `
+            <img src="${d.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover;">
+            <div class="online-indicator"></div>
+          `;
+        })
+        .catch(() => alert('Photo upload failed'));
+      input.value = '';
     }
 
+    // ── Delete group ──
     function deleteGroup() {
       if (!confirm('Delete this group for everyone? This cannot be undone.')) return;
-      fetch(`/api/groups/${GROUP_ID}`, { method:'DELETE' })
-        .then(r=>r.json()).then(d => {
-          if (d.error) { alert(d.error); return; }
+      fetch(`/api/groups/${GROUP_ID}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            alert(d.error);
+            return;
+          }
           window.location.href = '/messages';
-        }).catch(()=>alert('Failed to delete group'));
+        })
+        .catch(() => alert('Failed to delete group'));
     }
 
+    // ── Delete message ──
     function deleteMsg(msgId, btn) {
       if (!confirm('Delete this message?')) return;
       fetch(`/api/groups/${GROUP_ID}/messages/${msgId}`, { method: 'DELETE' })
-        .then(r => r.json()).then(d => {
-          if (d.error) { alert(d.error); return; }
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) {
+            alert(d.error);
+            return;
+          }
           btn.closest('.msg-row')?.remove();
-        }).catch(() => alert('Failed to delete'));
+        })
+        .catch(() => alert('Failed to delete'));
     }
 
+    // ── Close modal on overlay click ──
     document.getElementById('add-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('add-modal')) closeAddModal();
     });
 
+    // ── Focus input ──
     input.focus();
+
+    // ── Keyboard shortcut ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+        closeAddModal();
+      }
+    });
   </script>
   <script src="/static/pwa.js"></script>
 </body>
