@@ -1340,11 +1340,11 @@
             </div>
             <!-- Bubble Actions -->
             <div class="bubble-actions">
-              <button class="bubble-action-btn" onclick="replyToMessage('{{ msg.msg_id }}', '{{ msg.sender }}', '{{ msg.text|escapejs }}')" title="Reply">
+              <button class="bubble-action-btn" onclick="replyToMessage('{{ msg.msg_id }}', '{{ msg.sender }}', {{ msg.text|tojson }})" title="Reply">
                 <i class="fas fa-reply"></i>
               </button>
               {% if msg.sender == username %}
-              <button class="bubble-action-btn" onclick="editMessage('{{ msg.msg_id }}', '{{ msg.text|escapejs }}')" title="Edit">
+              <button class="bubble-action-btn" onclick="editMessage('{{ msg.msg_id }}', {{ msg.text|tojson }})" title="Edit">
                 <i class="fas fa-pen"></i>
               </button>
               <button class="bubble-action-btn danger" onclick="deleteMsg('{{ msg.msg_id }}', this)" title="Delete">
