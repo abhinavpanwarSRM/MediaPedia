@@ -466,9 +466,11 @@
       fetch('/api/media_search?q=' + encodeURIComponent(q))
         .then(r => r.json()).then(results => {
           if (!results.length) { dd.style.display = 'none'; return; }
-          dd.innerHTML = results.map(r =>
-            `<div class="tag-option" onclick="selectTag(${JSON.stringify(r)})">${esc(r.title)} <span style="color:var(--muted);font-size:0.72rem;">${r.kind}</span></div>`
-          ).join('');
+          dd.innerHTML = results.map((r, i) => {
+            const key = 'tag_' + i;
+            window['_tagOpt_' + key] = r;
+            return `<div class="tag-option" onclick="selectTag(window['_tagOpt_${key}'])">${esc(r.title)} <span style="color:var(--muted);font-size:0.72rem;">${r.kind}</span></div>`;
+          }).join('');
           dd.style.display = 'block';
         }).catch(() => { dd.style.display = 'none'; });
     }, 280);
