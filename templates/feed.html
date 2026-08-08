@@ -491,18 +491,21 @@
 
   function submitPost() {
     if (!FEED_VIEWER) { window.location.href = '/login'; return; }
-    const text = document.getElementById('compose-text').value.trim();
+    const text = (document.getElementById('compose-text').value || '').trim();
     if (!text && !_taggedMedia) return;
+    const btn = document.querySelector('.composer-submit');
+    if (btn) btn.disabled = true;
     fetch('/api/posts', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ text, tagged_media: _taggedMedia })
+      body: JSON.stringify({ text, tagged_media: _taggedMedia || null })
     }).then(r => r.json()).then(p => {
-      if (p.error) return;
+      if (btn) btn.disabled = false;
+      if (p.error) { alert(p.error); return; }
       document.getElementById('compose-text').value = '';
       clearTag();
       const el = document.getElementById('mutuals-feed');
-      el.insertAdjacentHTML('afterbegin', renderPost(p));
-    }).catch(() => {});
+      if (el) el.insertAdjacentHTML('afterbegin', renderPost(p));
+    }).catch(() => { if (btn) btn.disabled = false; });
   }
 
   // Close tag dropdown on outside click
