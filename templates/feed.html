@@ -100,6 +100,9 @@
     /* Repost btn */
     .repost-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
     .repost-btn:hover { color: #ffc107; }
+    /* Delete post btn */
+    .delete-post-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.82rem; padding: 0.2rem 0; margin-left: auto; transition: color 0.15s; }
+    .delete-post-btn:hover { color: #e50914; }
     /* Ticker */
     .ticker-item { font-size: 0.78rem; color: #bbb; padding: 0.35rem 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
     .ticker-item:last-child { border-bottom: none; }
@@ -336,6 +339,7 @@
           <button class="comment-toggle" onclick="toggleComments('${esc(p.post_id)}', this)">
             💬 <span>${commentCount}</span>
           </button>
+          ${FEED_VIEWER === p.username ? `<button class="delete-post-btn" onclick="deletePost('${esc(p.post_id)}', this)" title="Delete post">🗑️</button>` : ''}
         </div>
         <div class="comments-section" id="comments-${esc(p.post_id)}">
           <div class="comments-list" id="clist-${esc(p.post_id)}">
@@ -408,6 +412,17 @@
       const toggle = document.querySelector(`#post-${postId} .comment-toggle span`);
       if (toggle) toggle.textContent = parseInt(toggle.textContent || 0) + 1;
     }).catch(() => {});
+  }
+
+  function deletePost(postId, btn) {
+    if (!confirm('Delete this post?')) return;
+    fetch(`/api/posts/${postId}`, { method: 'DELETE' })
+      .then(r => r.json()).then(d => {
+        if (d.success) {
+          const el = document.getElementById('post-' + postId);
+          if (el) el.remove();
+        }
+      }).catch(() => {});
   }
 
   function loadMutualsFeed() {
