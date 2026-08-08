@@ -2627,14 +2627,155 @@ def delete_group_message(group_id, msg_id):
     username = current_user()
     if not username or groups_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
-    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1})
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'creator': 1})
     if not group or username not in group.get('members', []):
         return jsonify({'error': 'Not a member'}), 403
+    if group.get('creator') == username:
+        groups_collection.update_one({'group_id': group_id}, {'$pull': {'messages': {'msg_id': msg_id}}})
+    else:
+        groups_collection.update_one({'group_id': group_id}, {'$pull': {'messages': {'msg_id': msg_id, 'sender': username}}})
+    socketio.emit('group_msg_deleted', {'msg_id': msg_id}, to=group_id)
+    return jsonify({'success': True})
+
+@app.route('/api/groups/<group_id>/messages/<msg_id>/react', methods=['POST'])
+def react_group_message(group_id, msg_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'messages': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    emoji = (request.json or {}).get('emoji', '').strip()
+    if not emoji:
+        return jsonify({'error': 'emoji required'}), 400
+    msg = next((m for m in group.get('messages', []) if m['msg_id'] == msg_id), None)
+    if not msg:
+        return jsonify({'error': 'Message not found'}), 404
+    reactions = msg.get('reactions', {})
+    users = reactions.get(emoji, [])
+    if username in users:
+        users.remove(username)
+    else:
+        users.append(username)
+    if users:
+        reactions[emoji] = users
+    else:
+        reactions.pop(emoji, None)
+    groups_collection.update_one(
+        {'group_id': group_id, 'messages.msg_id': msg_id},
+        {'$set': {'messages.$.reactions': reactions}}
+    )
+    socketio.emit('group_reaction', {'msg_id': msg_id, 'reactions': reactions}, to=group_id)
+    return jsonify({'reactions': reactions})
+
+@app.route('/api/groups/<group_id>/messages/<msg_id>/edit', methods=['PATCH'])
+def edit_group_message(group_id, msg_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'messages': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    new_text = (request.json or {}).get('text', '').strip()[:1000]
+    msg = next((m for m in group.get('messages', []) if m['msg_id'] == msg_id), None)
+    if not msg or msg.get('sender') != username:
+        return jsonify({'error': 'Not your message'}), 403
+    groups_collection.update_one(
+        {'group_id': group_id, 'messages.msg_id': msg_id},
+        {'$set': {'messages.$.text': new_text, 'messages.$.edited': True}}
+    )
+    socketio.emit('group_edit', {'msg_id': msg_id, 'text': new_text}, to=group_id)
+    return jsonify({'success': True})
+
+@app.route('/api/groups/<group_id>/pin', methods=['POST'])
+def pin_group_message(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    msg_id = (request.json or {}).get('msg_id', '').strip()
+    msg = next((m for m in group.get('messages', []) if m['msg_id'] == msg_id), None)
+    if not msg:
+        return jsonify({'error': 'Message not found'}), 404
+    pin_data = {'msg_id': msg_id, 'text': msg.get('text', ''), 'sender': msg.get('sender', ''), 'pinned_by': username}
+    groups_collection.update_one({'group_id': group_id}, {'$set': {'pinned_message': pin_data}})
+    socketio.emit('group_pin', pin_data, to=group_id)
+    return jsonify({'success': True})
+
+@app.route('/api/groups/<group_id>/pin', methods=['DELETE'])
+def unpin_group_message(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    groups_collection.update_one({'group_id': group_id}, {'$unset': {'pinned_message': ''}})
+    socketio.emit('group_unpin', {}, to=group_id)
+    return jsonify({'success': True})
+
+@app.route('/api/groups/<group_id>/read', methods=['POST'])
+def mark_group_read(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'ok': True})
     groups_collection.update_one(
         {'group_id': group_id},
-        {'$pull': {'messages': {'msg_id': msg_id, 'sender': username}}}
+        {'$set': {f'read_by.{username}': datetime.now(timezone.utc).isoformat()}}
     )
+    socketio.emit('group_read', {'username': username}, to=group_id)
+    return jsonify({'ok': True})
+
+@app.route('/api/groups/<group_id>/rename', methods=['PATCH'])
+def rename_group(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id})
+    if not group or group.get('creator') != username:
+        return jsonify({'error': 'Only creator can rename'}), 403
+    name = (request.json or {}).get('name', '').strip()[:60]
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    groups_collection.update_one({'group_id': group_id}, {'$set': {'name': name}})
+    socketio.emit('group_renamed', {'name': name}, to=group_id)
     return jsonify({'success': True})
+
+_online_users = {}
+
+@app.route('/api/presence/ping', methods=['POST'])
+def presence_ping():
+    username = current_user()
+    if username:
+        _online_users[username] = datetime.now(timezone.utc).isoformat()
+    return jsonify({'ok': True})
+
+@app.route('/api/presence/<group_id>')
+def group_presence(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({})
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1})
+    if not group:
+        return jsonify({})
+    now = datetime.now(timezone.utc)
+    result = {}
+    for m in group.get('members', []):
+        last = _online_users.get(m)
+        if last:
+            try:
+                dt = datetime.fromisoformat(last)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                diff = (now - dt).total_seconds()
+                result[m] = 'online' if diff < 30 else last
+            except Exception:
+                result[m] = last
+        else:
+            result[m] = None
+    return jsonify(result)
 
 @app.route('/api/groups/<group_id>/members', methods=['POST'])
 def add_group_member(group_id):
@@ -3157,12 +3298,82 @@ def end_party(party_id):
     party_collection.delete_one({'party_id': party_id, 'host': username})
     return jsonify({'success': True})
 
+# ===== Group Chat SocketIO events =====
+@socketio.on('join_group')
+def on_join_group(data):
+    group_id = data.get('group_id')
+    username = session.get('username')
+    if group_id and username:
+        join_room(group_id)
+        _online_users[username] = datetime.now(timezone.utc).isoformat()
+
+@socketio.on('leave_group')
+def on_leave_group(data):
+    group_id = data.get('group_id')
+    if group_id:
+        leave_room(group_id)
+
+@socketio.on('group_typing')
+def on_group_typing(data):
+    group_id = data.get('group_id')
+    username = session.get('username')
+    if group_id and username:
+        emit('typing', {'username': username, 'typing': data.get('typing', True)}, to=group_id, include_self=False)
+
+@socketio.on('group_message')
+def on_group_message(data):
+    group_id = data.get('group_id')
+    username = session.get('username')
+    if not group_id or not username or groups_collection is None:
+        return
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1, 'name': 1})
+    if not group or username not in group.get('members', []):
+        return
+    text = (data.get('text') or '').strip()[:1000]
+    media_url = (data.get('media_url') or '').strip()[:500]
+    reply_to = data.get('reply_to')
+    if not text and not media_url:
+        return
+    if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
+        return
+    msg = {
+        'msg_id': str(uuid.uuid4())[:12],
+        'sender': username,
+        'text': text,
+        'media_url': media_url,
+        'reply_to': reply_to,
+        'reactions': {},
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    groups_collection.update_one(
+        {'group_id': group_id},
+        {'$push': {'messages': msg}, '$set': {'updated_at': datetime.now(timezone.utc)}}
+    )
+    IST = timedelta(hours=5, minutes=30)
+    try:
+        dt = datetime.fromisoformat(msg['created_at'])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        msg['created_at'] = (dt + IST).strftime('%Y-%m-%dT%H:%M:%S')
+    except Exception:
+        pass
+    emit('group_message', msg, to=group_id)
+    for m in group.get('members', []):
+        if m != username:
+            send_push(m, {
+                'title': f'\U0001f4ac {username} in {group["name"]}',
+                'body': text[:80] if text else '\U0001f4f7 Photo',
+                'url': f'/group/{group_id}',
+                'tag': f'group-msg-{group_id}'
+            })
+
 # ===== SocketIO Connect — join personal room for invite notifications =====
 @socketio.on('connect')
 def on_connect():
     username = session.get('username')
     if username:
-        join_room(username)  # personal room so party_invite events are delivered
+        join_room(username)
+        _online_users[username] = datetime.now(timezone.utc).isoformat()
 
 # ===== SocketIO Party Events =====
 @socketio.on('join_party')
