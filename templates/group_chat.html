@@ -2482,6 +2482,19 @@
       }).catch(() => alert('Failed to set destination'));
     }
 
+    // ── Wake Lock ──
+    let _wakeLock = null;
+    async function _requestWakeLock() {
+      if (!('wakeLock' in navigator)) return;
+      try { _wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
+    }
+    async function _releaseWakeLock() {
+      if (_wakeLock) { await _wakeLock.release(); _wakeLock = null; }
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && _tripLiveActive) _requestWakeLock();
+    });
+
     // ── Live location ──
     function toggleLiveLoc() {
       const btn = document.getElementById('trip-live-btn');
@@ -2490,10 +2503,12 @@
         clearInterval(_tripLiveInterval);
         btn.textContent = '🔴 Go Live';
         btn.classList.remove('active');
+        _releaseWakeLock();
       } else {
         _tripLiveActive = true;
         btn.textContent = '⏹ Stop';
         btn.classList.add('active');
+        _requestWakeLock();
         _pushLiveLoc();
         _tripLiveInterval = setInterval(_pushLiveLoc, 10000);
       }
