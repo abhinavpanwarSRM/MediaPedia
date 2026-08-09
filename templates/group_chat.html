@@ -377,7 +377,7 @@
     }
 
     .msg-row.mine .bubble-time .checkmark {
-      color: #34b7f1;
+      color: var(--whatsapp-gray);
     }
 
     .msg-actions {
@@ -1237,7 +1237,7 @@
               <div class="bubble-time">
                 {{ msg.created_at[11:16] }}
                 {% if msg.sender == username %}
-                <span class="checkmark"><i class="fas fa-check-double"></i></span>
+                <span class="checkmark" style="color:var(--whatsapp-gray)"><i class="fas fa-check"></i></span>
                 {% endif %}
               </div>
             </div>
@@ -1877,7 +1877,7 @@
             ${replyHtml}${imgHtml}${locHtml}${pollHtml}${mediaCardHtml}${textHtml}
             <div class="bubble-time">
               ${fmtTime(msg.created_at)}
-              ${isMe ? '<span class="checkmark"><i class="fas fa-check-double"></i></span>' : ''}
+              ${isMe ? '<span class="checkmark"><i class="fas fa-check"></i></span>' : ''}
             </div>
           </div>
           <div class="bubble-reactions" id="reactions-${msg.msg_id}"></div>
