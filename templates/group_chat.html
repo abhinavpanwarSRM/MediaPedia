@@ -2650,7 +2650,8 @@
 
     // ── Drop a pin on canvas click ──
     document.getElementById('trip-canvas').addEventListener('click', function(e) {
-      if (!_tripDestination && !Object.keys(_tripMembers).length) return;
+      const memberPts = Object.values(_tripMembers);
+      if (!memberPts.length) return;
       const canvas = this;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -2659,8 +2660,7 @@
       const cy = (e.clientY - rect.top) * scaleY;
       const W = canvas.width, H = canvas.height;
       const pad = 0.12 * devicePixelRatio;
-      const allPts = [...Object.values(_tripMembers)];
-      if (_tripDestination) allPts.push(_tripDestination);
+      const allPts = memberPts;
       if (!allPts.length) return;
       const minLat = Math.min(...allPts.map(p=>p.lat)), maxLat = Math.max(...allPts.map(p=>p.lat));
       const minLng = Math.min(...allPts.map(p=>p.lng)), maxLng = Math.max(...allPts.map(p=>p.lng));
