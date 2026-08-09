@@ -854,18 +854,34 @@
       display:flex; flex-direction:column; gap:0.3rem; }
     .trip-member-row { display:flex; align-items:center; gap:0.6rem;
       padding:0.45rem 0.6rem; background:rgba(255,255,255,0.04);
-      border-radius:8px; font-size:0.8rem; transition:background 0.2s; }
+      border-radius:8px; font-size:0.8rem; transition:background 0.2s; flex-wrap:wrap; }
     .trip-member-row:hover { background:rgba(255,255,255,0.08); }
     .trip-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-    .trip-name { flex:1; color:#fff; font-weight:500; }
+    .trip-name { flex:1; color:#fff; font-weight:500; min-width:0; }
+    .trip-rank { font-size:0.7rem; font-weight:700; min-width:18px; text-align:center; }
     .trip-dist { color:var(--whatsapp-gray); font-size:0.75rem; }
     .trip-eta { color:var(--whatsapp-green); font-size:0.72rem; font-weight:600; }
     .trip-arrived { color:#1db954; font-size:0.72rem; font-weight:700; }
     .trip-no-loc { color:var(--whatsapp-gray); font-size:0.72rem; font-style:italic; }
+    .trip-badge { font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:600; }
+    .trip-badge.leader { background:rgba(255,215,0,0.2); color:#ffd700; }
+    .trip-badge.slowpoke { background:rgba(134,150,160,0.2); color:var(--whatsapp-gray); }
+    .trip-badge.speedy { background:rgba(0,168,132,0.2); color:var(--whatsapp-green); }
+    .trip-speed { font-size:0.68rem; color:var(--whatsapp-gray); }
+    .trip-stale { font-size:0.65rem; color:#f5a623; }
+    .trip-progress-wrap { width:100%; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:3px; }
+    .trip-progress-bar { height:100%; border-radius:2px; transition:width 0.6s ease; }
+    .trip-summary { display:flex; gap:0.5rem; flex-wrap:wrap; padding:0.4rem 0.6rem;
+      background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:0.3rem; }
+    .trip-summary-stat { display:flex; flex-direction:column; align-items:center;
+      flex:1; min-width:60px; gap:1px; }
+    .trip-summary-val { font-size:0.85rem; font-weight:700; color:#fff; }
+    .trip-summary-lbl { font-size:0.6rem; color:var(--whatsapp-gray); text-align:center; }
     #trip-legend { padding:0.4rem 0.75rem; font-size:0.7rem; color:var(--whatsapp-gray);
       border-top:1px solid var(--whatsapp-border); flex-shrink:0; display:flex;
-      gap:1rem; flex-wrap:wrap; }
+      gap:0.75rem; flex-wrap:wrap; align-items:center; }
     #trip-legend span { display:flex; align-items:center; gap:4px; }
+    @keyframes marchDash { to { stroke-dashoffset: -20; } }
 
     /* ── SCROLL TO BOTTOM ── */
     #scroll-btn {
@@ -1101,8 +1117,11 @@
     <div id="trip-legend">
       <span>🟢 You</span>
       <span>🔵 Others</span>
-      <span>⭐ Destination</span>
-      <span style="color:var(--whatsapp-gray);font-size:0.68rem">Updates every 10s</span>
+      <span>⭐ Dest</span>
+      <span>⚪ Center</span>
+      <span>🏆 Leader</span>
+      <span>🐢 Slowpoke</span>
+      <span style="color:var(--whatsapp-gray);font-size:0.68rem">↻ 10s</span>
     </div>
   </div>
 
@@ -1916,6 +1935,11 @@
       return R * 2 * Math.asin(Math.sqrt(h));
     }
 
+    // ── Speed tracking (position delta between polls) ──
+    let _prevTripMembers = {};
+    let _prevTripTs = 0;
+    let _memberSpeeds = {}; // km/h estimates
+
     // ── Stats panel ──
     function _renderTripStats() {
       const el = document.getElementById('trip-stats');
@@ -1924,25 +1948,77 @@
         el.innerHTML = '<div style="color:var(--whatsapp-gray);font-size:0.8rem;padding:0.5rem">No live locations yet. Tap 🔴 Go Live to share yours.</div>';
         return;
       }
+
+      // Compute speed deltas
+      const now = Date.now();
+      if (_prevTripTs && now - _prevTripTs > 0) {
+        const dtHrs = (now - _prevTripTs) / 3600000;
+        members.forEach(([name, loc]) => {
+          const prev = _prevTripMembers[name];
+          if (prev) {
+            const d = _haversine(prev, loc);
+            _memberSpeeds[name] = d / dtHrs;
+          }
+        });
+      }
+      _prevTripMembers = Object.fromEntries(members.map(([n,l]) => [n, {...l}]));
+      _prevTripTs = now;
+
       // Sort by distance to destination
       const rows = members.map(([name, loc]) => {
-        let dist = null, eta = null, arrived = false;
+        let dist = null, eta = null, arrived = false, progress = 0;
         if (_tripDestination) {
           dist = _haversine(loc, _tripDestination);
           arrived = dist < 0.1;
-          // ETA: walking ~5km/h, driving ~40km/h — show walking if <2km
           const speed = dist < 2 ? 5 : 40;
           const hrs = dist / speed;
           const mins = Math.round(hrs * 60);
           eta = arrived ? null : (mins < 1 ? '<1 min' : `~${mins} min`);
         }
-        return { name, loc, dist, eta, arrived };
+        const staleMs = now - (loc.ts || now);
+        const stale = staleMs > 30000;
+        const staleLabel = staleMs < 5000 ? 'just now' : staleMs < 60000 ? `${Math.round(staleMs/1000)}s ago` : `${Math.round(staleMs/60000)}m ago`;
+        return { name, loc, dist, eta, arrived, progress, stale, staleLabel };
       }).sort((a, b) => (a.dist ?? 999) - (b.dist ?? 999));
 
-      el.innerHTML = rows.map(r => `
-        <div class="trip-member-row">
+      const maxDist = Math.max(...rows.map(r => r.dist ?? 0), 0.001);
+
+      // Summary stats
+      const allDists = rows.filter(r => r.dist !== null).map(r => r.dist);
+      const spread = allDists.length >= 2
+        ? Math.max(...members.flatMap(([n1,l1]) => members.map(([n2,l2]) => n1!==n2 ? _haversine(l1,l2) : 0)))
+        : 0;
+      const arrivedCount = rows.filter(r => r.arrived).length;
+      const avgDist = allDists.length ? (allDists.reduce((a,b)=>a+b,0)/allDists.length) : null;
+
+      let summaryHtml = '';
+      if (_tripDestination) {
+        summaryHtml = `<div class="trip-summary">
+          <div class="trip-summary-stat"><span class="trip-summary-val">${arrivedCount}/${rows.length}</span><span class="trip-summary-lbl">Arrived</span></div>
+          ${avgDist !== null ? `<div class="trip-summary-stat"><span class="trip-summary-val">${avgDist < 1 ? (avgDist*1000).toFixed(0)+'m' : avgDist.toFixed(1)+'km'}</span><span class="trip-summary-lbl">Avg dist</span></div>` : ''}
+          ${spread > 0 ? `<div class="trip-summary-stat"><span class="trip-summary-val">${spread < 1 ? (spread*1000).toFixed(0)+'m' : spread.toFixed(1)+'km'}</span><span class="trip-summary-lbl">Group spread</span></div>` : ''}
+          <div class="trip-summary-stat"><span class="trip-summary-val">${rows.length}</span><span class="trip-summary-lbl">Live</span></div>
+        </div>`;
+      }
+
+      el.innerHTML = summaryHtml + rows.map((r, i) => {
+        const rank = i + 1;
+        const isLeader = _tripDestination && !r.arrived && rank === 1 && rows.length > 1;
+        const isSlowpoke = _tripDestination && !r.arrived && rank === rows.length && rows.length > 1;
+        const spd = _memberSpeeds[r.name];
+        const speedHtml = spd > 0.5 ? `<span class="trip-speed">${spd > 15 ? '🚗' : '🚶'} ${spd.toFixed(1)} km/h</span>` : '';
+        const progressPct = r.dist !== null ? Math.max(0, Math.min(100, 100 - (r.dist / maxDist) * 100)) : 0;
+        const progressBar = _tripDestination && r.dist !== null && !r.arrived
+          ? `<div class="trip-progress-wrap"><div class="trip-progress-bar" style="width:${progressPct}%;background:${tripColor(r.name)}"></div></div>` : '';
+
+        return `<div class="trip-member-row">
+          <span class="trip-rank" style="color:${tripColor(r.name)}">${r.arrived ? '✅' : '#'+rank}</span>
           <div class="trip-dot" style="background:${tripColor(r.name)}"></div>
-          <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' (you)' : ''}</span>
+          <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' <span style="opacity:0.5;font-size:0.7rem">(you)</span>' : ''}</span>
+          ${isLeader ? '<span class="trip-badge leader">🏆 Leading</span>' : ''}
+          ${isSlowpoke ? '<span class="trip-badge slowpoke">🐢 Slowpoke</span>' : ''}
+          ${speedHtml}
+          ${r.stale ? `<span class="trip-stale">⚠ ${r.staleLabel}</span>` : `<span style="font-size:0.65rem;color:var(--whatsapp-green)">● ${r.staleLabel}</span>`}
           ${r.arrived
             ? '<span class="trip-arrived">✅ Arrived!</span>'
             : r.dist !== null
@@ -1950,8 +2026,9 @@
                  <span class="trip-eta">${r.eta}</span>`
               : '<span class="trip-no-loc">no destination set</span>'
           }
-        </div>
-      `).join('');
+          ${progressBar}
+        </div>`;
+      }).join('');
     }
 
     // ── Canvas map drawing ──
@@ -1999,17 +2076,58 @@
           return [x, y];
         }
 
-        // Draw lines from each member to destination
+        // Draw group center marker
+        if (members.length >= 2) {
+          const centerLat = members.reduce((s,[,l]) => s+l.lat, 0) / members.length;
+          const centerLng = members.reduce((s,[,l]) => s+l.lng, 0) / members.length;
+          const [cx, cy] = project(centerLat, centerLng);
+          ctx.beginPath();
+          ctx.arc(cx, cy, 5 * devicePixelRatio, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+          ctx.lineWidth = 1 * devicePixelRatio;
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.font = `${8 * devicePixelRatio}px Inter,sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText('center', cx, cy + 6 * devicePixelRatio);
+        }
+
+        // Draw animated marching lines from each member to destination
         if (_tripDestination) {
           const [dx, dy] = project(_tripDestination.lat, _tripDestination.lng);
+          const dashOffset = (_tripPulse / (Math.PI * 2)) * 20;
           members.forEach(([name, loc]) => {
             const [mx, my] = project(loc.lat, loc.lng);
             const color = tripColor(name);
             ctx.setLineDash([6 * devicePixelRatio, 4 * devicePixelRatio]);
-            ctx.strokeStyle = color + '55';
+            ctx.lineDashOffset = -dashOffset * devicePixelRatio;
+            ctx.strokeStyle = color + '66';
             ctx.lineWidth = 1.5 * devicePixelRatio;
             ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(dx, dy); ctx.stroke();
             ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
+
+            // Bearing arrow on dot toward destination
+            const angle = Math.atan2(dy - my, dx - mx);
+            const [ax, ay] = project(loc.lat, loc.lng);
+            const arrowLen = 14 * devicePixelRatio;
+            ctx.beginPath();
+            ctx.moveTo(ax + Math.cos(angle) * 10 * devicePixelRatio, ay + Math.sin(angle) * 10 * devicePixelRatio);
+            ctx.lineTo(ax + Math.cos(angle) * arrowLen, ay + Math.sin(angle) * arrowLen);
+            ctx.strokeStyle = color + 'aa';
+            ctx.lineWidth = 2 * devicePixelRatio;
+            ctx.stroke();
+            // arrowhead
+            ctx.beginPath();
+            ctx.moveTo(ax + Math.cos(angle) * arrowLen, ay + Math.sin(angle) * arrowLen);
+            ctx.lineTo(ax + Math.cos(angle - 0.5) * (arrowLen - 5 * devicePixelRatio), ay + Math.sin(angle - 0.5) * (arrowLen - 5 * devicePixelRatio));
+            ctx.lineTo(ax + Math.cos(angle + 0.5) * (arrowLen - 5 * devicePixelRatio), ay + Math.sin(angle + 0.5) * (arrowLen - 5 * devicePixelRatio));
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
           });
         }
 
