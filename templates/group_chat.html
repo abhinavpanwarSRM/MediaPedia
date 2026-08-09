@@ -837,6 +837,52 @@
       transform: translateY(-1px);
     }
 
+    /* ── POLL BUBBLE ── */
+    .poll-bubble { display:flex; flex-direction:column; gap:6px; min-width:180px; }
+    .poll-question { font-size:0.82rem; font-weight:600; color:#fff; line-height:1.3; }
+    .poll-option { display:flex; align-items:center; gap:6px; cursor:pointer;
+      padding:5px 8px; border-radius:8px; border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.05); transition:background 0.15s, border-color 0.15s;
+      position:relative; overflow:hidden; }
+    .poll-option:hover { background:rgba(255,255,255,0.1); border-color:rgba(0,168,132,0.4); }
+    .poll-option.voted { border-color:var(--whatsapp-green); background:rgba(0,168,132,0.12); }
+    .poll-option-bar { position:absolute; left:0; top:0; height:100%;
+      background:rgba(0,168,132,0.15); border-radius:8px; transition:width 0.5s ease; z-index:0; }
+    .poll-option-text { font-size:0.78rem; color:#fff; flex:1; position:relative; z-index:1; }
+    .poll-option-pct { font-size:0.7rem; color:var(--whatsapp-green); font-weight:600;
+      position:relative; z-index:1; min-width:28px; text-align:right; }
+    .poll-meta { font-size:0.65rem; color:var(--whatsapp-gray); }
+    .poll-voted-label { font-size:0.65rem; color:var(--whatsapp-green); }
+
+    /* ── POLL MODAL ── */
+    #poll-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+      z-index:300; align-items:flex-end; justify-content:center; padding:1rem;
+      backdrop-filter:blur(4px); animation:fadeIn 0.2s; }
+    #poll-modal.open { display:flex; }
+    #poll-box { background:var(--whatsapp-header); border-radius:12px 12px 0 0;
+      padding:1.2rem; width:100%; max-width:500px;
+      display:flex; flex-direction:column; gap:0.75rem;
+      animation:slideUp 0.3s ease-out; }
+    #poll-options-wrap { display:flex; flex-direction:column; gap:0.4rem; }
+    .poll-opt-input { width:100%; padding:0.45rem 0.7rem;
+      background:var(--whatsapp-darker); border:1px solid var(--whatsapp-border);
+      border-radius:8px; color:#fff; font-size:0.82rem; font-family:inherit;
+      outline:none; transition:border-color 0.2s; }
+    .poll-opt-input:focus { border-color:var(--whatsapp-green); }
+    #poll-add-opt { background:none; border:1px dashed var(--whatsapp-border);
+      color:var(--whatsapp-gray); border-radius:8px; padding:0.35rem;
+      font-size:0.78rem; cursor:pointer; transition:all 0.2s; width:100%; }
+    #poll-add-opt:hover { border-color:var(--whatsapp-green); color:var(--whatsapp-green); }
+    #poll-submit { background:var(--whatsapp-green); border:none; color:#fff;
+      border-radius:8px; padding:0.5rem; font-size:0.85rem; cursor:pointer;
+      font-family:inherit; font-weight:600; transition:background 0.2s; }
+    #poll-submit:hover { background:#00b894; }
+
+    /* ── SYSTEM MESSAGE ── */
+    .sys-msg { text-align:center; font-size:0.72rem; color:var(--whatsapp-gray);
+      padding:0.3rem 0.8rem; background:rgba(255,255,255,0.04);
+      border-radius:12px; margin:0.3rem auto; max-width:80%; }
+
     /* ── STATS MODAL ── */
     #stats-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
       z-index:300; align-items:center; justify-content:center; padding:1rem;
@@ -1102,6 +1148,19 @@
                 <a class="loc-open" href="https://www.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Open in Maps</a>
               </div>
               {% endif %}
+              {% if msg.poll %}
+              <div class="poll-bubble" data-poll-id="{{ msg.poll.poll_id }}">
+                <div class="poll-question"><i class="fas fa-poll" style="color:var(--whatsapp-green);margin-right:4px"></i>{{ msg.poll.question }}</div>
+                {% for opt in msg.poll.options %}
+                <div class="poll-option" onclick="votePoll('{{ msg.poll.poll_id }}','{{ opt }}',this)">
+                  <div class="poll-option-bar" style="width:0%"></div>
+                  <span class="poll-option-text">{{ opt }}</span>
+                  <span class="poll-option-pct"></span>
+                </div>
+                {% endfor %}
+                <div class="poll-meta">0 votes</div>
+              </div>
+              {% endif %}
               {% if msg.text %}{{ msg.text }}{% endif %}
               <div class="bubble-time">
                 {{ msg.created_at[11:16] }}
@@ -1167,6 +1226,23 @@
     </div>
   </div>
 
+  <!-- POLL MODAL -->
+  <div id="poll-modal">
+    <div id="poll-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-poll" style="color:var(--whatsapp-green);margin-right:0.4rem"></i>Create Poll</h3>
+        <button class="modal-close" onclick="closePollModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <input class="poll-opt-input" id="poll-question" placeholder="Ask a question..." maxlength="200">
+      <div id="poll-options-wrap">
+        <input class="poll-opt-input" placeholder="Option 1" maxlength="100">
+        <input class="poll-opt-input" placeholder="Option 2" maxlength="100">
+      </div>
+      <button id="poll-add-opt" onclick="addPollOption()"><i class="fas fa-plus"></i> Add option</button>
+      <button id="poll-submit" onclick="submitPoll()">Send Poll</button>
+    </div>
+  </div>
+
   <!-- STATS MODAL -->
   <div id="stats-modal">
     <div id="stats-box">
@@ -1211,6 +1287,9 @@
   <div class="input-bar" id="input-bar">
     <button class="input-btn" onclick="shareLocation()" title="Share location" id="loc-btn" style="color:#00a884">
       <i class="fas fa-map-marker-alt"></i>
+    </button>
+    <button class="input-btn" onclick="openPollModal()" title="Create poll" style="color:var(--whatsapp-gray)">
+      <i class="fas fa-poll"></i>
     </button>
     <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
       <i class="fas fa-paperclip"></i>
@@ -1263,6 +1342,96 @@
         if (sender) sender.style.color = color;
       });
     }
+
+    // ── Polls ──
+    function openPollModal() {
+      document.getElementById('poll-modal').classList.add('open');
+      document.getElementById('poll-question').focus();
+    }
+    function closePollModal() {
+      document.getElementById('poll-modal').classList.remove('open');
+      document.getElementById('poll-question').value = '';
+      const wrap = document.getElementById('poll-options-wrap');
+      wrap.innerHTML = '<input class="poll-opt-input" placeholder="Option 1" maxlength="100"><input class="poll-opt-input" placeholder="Option 2" maxlength="100">';
+    }
+    function addPollOption() {
+      const wrap = document.getElementById('poll-options-wrap');
+      if (wrap.children.length >= 6) return;
+      const inp = document.createElement('input');
+      inp.className = 'poll-opt-input';
+      inp.placeholder = `Option ${wrap.children.length + 1}`;
+      inp.maxLength = 100;
+      wrap.appendChild(inp);
+      inp.focus();
+    }
+    function submitPoll() {
+      const question = document.getElementById('poll-question').value.trim();
+      const options = [...document.querySelectorAll('#poll-options-wrap .poll-opt-input')]
+        .map(i => i.value.trim()).filter(Boolean);
+      if (!question) return alert('Enter a question');
+      if (options.length < 2) return alert('Add at least 2 options');
+      fetch(`/api/groups/${GROUP_ID}/polls`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question, options})
+      }).then(r => r.json()).then(d => {
+        if (d.error) return alert(d.error);
+        closePollModal();
+        if (d.msg) { appendMessage(d.msg); lastMsgId = d.msg.msg_id; }
+      }).catch(() => alert('Failed to create poll'));
+    }
+    function pollBubbleHtml(poll) {
+      const totalVotes = Object.keys(poll.votes || {}).length;
+      const myVote = (poll.votes || {})[ME];
+      return `<div class="poll-bubble" data-poll-id="${escAttr(poll.poll_id)}">
+        <div class="poll-question"><i class="fas fa-poll" style="color:var(--whatsapp-green);margin-right:4px"></i>${escHtml(poll.question)}</div>
+        ${poll.options.map(opt => {
+          const count = Object.values(poll.votes || {}).filter(v => v === opt).length;
+          const pct = totalVotes ? Math.round(count / totalVotes * 100) : 0;
+          const isVoted = myVote === opt;
+          return `<div class="poll-option${isVoted ? ' voted' : ''}" onclick="votePoll('${escAttr(poll.poll_id)}','${escAttr(opt)}',this)">
+            <div class="poll-option-bar" style="width:${pct}%"></div>
+            <span class="poll-option-text">${escHtml(opt)}</span>
+            <span class="poll-option-pct">${totalVotes ? pct+'%' : ''}</span>
+          </div>`;
+        }).join('')}
+        <div class="poll-meta">${totalVotes} vote${totalVotes !== 1 ? 's' : ''}${myVote ? ` · <span class="poll-voted-label">You voted: ${escHtml(myVote)}</span>` : ''}</div>
+      </div>`;
+    }
+    function votePoll(pollId, option, el) {
+      fetch(`/api/groups/${GROUP_ID}/polls/${pollId}/vote`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({option})
+      }).then(r => r.json()).then(d => {
+        if (d.error) return;
+        // Re-render all poll bubbles with this poll_id
+        document.querySelectorAll(`.poll-bubble[data-poll-id="${pollId}"]`).forEach(bubble => {
+          fetch(`/api/groups/${GROUP_ID}/polls/${pollId}`)
+            .then(r => r.json()).then(poll => {
+              const tmp = document.createElement('div');
+              tmp.innerHTML = pollBubbleHtml(poll);
+              bubble.replaceWith(tmp.firstChild);
+            });
+        });
+      }).catch(() => {});
+    }
+    function refreshPolls() {
+      document.querySelectorAll('.poll-bubble[data-poll-id]').forEach(bubble => {
+        const pollId = bubble.dataset.pollId;
+        fetch(`/api/groups/${GROUP_ID}/polls/${pollId}`)
+          .then(r => r.json()).then(poll => {
+            if (poll.error) return;
+            const tmp = document.createElement('div');
+            tmp.innerHTML = pollBubbleHtml(poll);
+            bubble.replaceWith(tmp.firstChild);
+          }).catch(() => {});
+      });
+    }
+    setInterval(refreshPolls, 5000);
+    document.getElementById('poll-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('poll-modal')) closePollModal();
+    });
 
     // ── Location ──
     function shareLocation() {
@@ -1526,6 +1695,7 @@
         ? `<img src="${escAttr(msg.media_url)}" alt="" onclick="openLightbox('${escAttr(msg.media_url)}')" onerror="this.style.display='none'">` 
         : '';
       const locHtml = msg.location ? locBubbleHtml(msg.location) : '';
+      const pollHtml = msg.poll ? pollBubbleHtml({...msg.poll, votes: {}}) : '';
       const textHtml = msg.text ? escHtml(msg.text) : '';
       const replyHtml = msg.reply_to
         ? `<div class="reply-preview" onclick="scrollToMsg('${escAttr(msg.reply_to.msg_id)}')"><strong>${escHtml(msg.reply_to.sender)}</strong>${escHtml((msg.reply_to.text||'').slice(0,60))}</div>`
@@ -1537,7 +1707,7 @@
         <div class="bubble-wrap">
           ${isMe ? '' : `<div class="bubble-sender">${escHtml(msg.sender)}</div>`}
           <div class="bubble">
-            ${replyHtml}${imgHtml}${locHtml}${textHtml}
+            ${replyHtml}${imgHtml}${locHtml}${pollHtml}${textHtml}
             <div class="bubble-time">
               ${fmtTime(msg.created_at)}
               ${isMe ? '<span class="checkmark"><i class="fas fa-check-double"></i></span>' : ''}
@@ -1974,6 +2144,8 @@
           _tripMembers = {};
           (d.members || []).forEach(m => { _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts }; });
           _renderTripStats();
+          _checkProximity();
+          _checkTripSummary();
         }).catch(() => {});
     }
 
@@ -1984,6 +2156,64 @@
       const dLng = (b.lng - a.lng) * Math.PI / 180;
       const h = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
       return R * 2 * Math.asin(Math.sqrt(h));
+    }
+
+    // ── Proximity alerts ──
+    const _proxAlerted = new Set();
+    function _checkProximity() {
+      const members = Object.entries(_tripMembers);
+      if (!members.length) return;
+      const now = Date.now();
+      // Member-to-destination alerts
+      if (_tripDestination) {
+        members.forEach(([name, loc]) => {
+          const dist = _haversine(loc, _tripDestination);
+          const key = `dest-${name}`;
+          if (dist < 0.2 && dist > 0.05 && !_proxAlerted.has(key) && (now - (loc.ts*1000||now)) < 20000) {
+            _proxAlerted.add(key);
+            _postSystemMsg(`🎯 ${escHtml(name)} is ${dist < 0.1 ? 'almost' : Math.round(dist*1000)+'m from'} the destination!`);
+          }
+        });
+      }
+      // Member-to-member proximity alerts
+      for (let i = 0; i < members.length; i++) {
+        for (let j = i+1; j < members.length; j++) {
+          const [n1, l1] = members[i], [n2, l2] = members[j];
+          const dist = _haversine(l1, l2);
+          const key = `prox-${[n1,n2].sort().join('-')}`;
+          if (dist < 0.3 && !_proxAlerted.has(key)) {
+            _proxAlerted.add(key);
+            _postSystemMsg(`📍 ${escHtml(n1)} and ${escHtml(n2)} are ${Math.round(dist*1000)}m apart!`);
+          }
+        }
+      }
+    }
+
+    // ── Trip summary card ──
+    let _tripSummaryPosted = false;
+    let _tripStartTs = null;
+    function _checkTripSummary() {
+      const members = Object.entries(_tripMembers);
+      if (!members.length || !_tripDestination || _tripSummaryPosted) return;
+      if (!_tripStartTs) { _tripStartTs = Date.now(); return; }
+      const allArrived = members.every(([,loc]) => _haversine(loc, _tripDestination) < 0.1);
+      if (!allArrived) return;
+      _tripSummaryPosted = true;
+      const durationMins = Math.round((Date.now() - _tripStartTs) / 60000);
+      const sorted = [...members].sort((a,b) => _haversine(a[1],_tripDestination) - _haversine(b[1],_tripDestination));
+      const dists = members.map(([,l]) => _haversine(l, _tripDestination));
+      const farthest = members[dists.indexOf(Math.max(...dists))][0];
+      _postSystemMsg(`🏁 Trip complete! 🏆 ${escHtml(sorted[0][0])} arrived first · 🐢 ${escHtml(farthest)} traveled farthest · ⏱ ${durationMins}min total`);
+    }
+
+    function _postSystemMsg(text) {
+      fetch(`/api/groups/${GROUP_ID}/send`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, system: true})
+      }).then(r => r.json()).then(msg => {
+        if (!msg.error) { appendMessage(msg); lastMsgId = msg.msg_id; }
+      }).catch(() => {});
     }
 
     // ── Speed tracking (position delta between polls) ──
@@ -2105,6 +2335,7 @@
           ctx.font = `${13 * devicePixelRatio}px Inter,sans-serif`;
           ctx.textAlign = 'center';
           ctx.fillText('Share your location to see the map', W/2, H/2);
+          ctx.textBaseline = 'alphabetic';
           return;
         }
 
@@ -2249,6 +2480,33 @@
       }
       draw();
     }
+
+    // ── Drop a pin on canvas click ──
+    document.getElementById('trip-canvas').addEventListener('click', function(e) {
+      if (!_tripDestination && !Object.keys(_tripMembers).length) return;
+      const canvas = this;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const cx = (e.clientX - rect.left) * scaleX;
+      const cy = (e.clientY - rect.top) * scaleY;
+      const W = canvas.width, H = canvas.height;
+      const pad = 0.12 * devicePixelRatio;
+      const allPts = [...Object.values(_tripMembers)];
+      if (_tripDestination) allPts.push(_tripDestination);
+      if (!allPts.length) return;
+      const minLat = Math.min(...allPts.map(p=>p.lat)), maxLat = Math.max(...allPts.map(p=>p.lat));
+      const minLng = Math.min(...allPts.map(p=>p.lng)), maxLng = Math.max(...allPts.map(p=>p.lng));
+      const rangeX = (maxLng-minLng)||0.01, rangeY = (maxLat-minLat)||0.01;
+      const lng = ((cx - W*pad) / (W*(1-2*pad))) * rangeX + minLng;
+      const lat = maxLat - ((cy - H*pad) / (H*(1-2*pad))) * rangeY;
+      if (isNaN(lat)||isNaN(lng)) return;
+      const label = `Pin (${lat.toFixed(4)},${lng.toFixed(4)})`;
+      document.getElementById('trip-dest-input').value = label;
+      _saveDestination(lat, lng, label);
+    });
+    document.getElementById('trip-canvas').title = 'Tap to drop a pin as destination';
+    document.getElementById('trip-canvas').style.cursor = 'crosshair';
 
     // ── Focus input ──
     input.focus();

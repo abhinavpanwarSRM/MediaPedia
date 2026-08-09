@@ -2784,6 +2784,57 @@ def group_react(group_id, msg_id):
 def group_reactions_get(group_id):
     return jsonify(_group_reactions.get(group_id, {}))
 
+# ── Group polls (in-memory) ──
+_group_polls = {}  # {group_id: {poll_id: {question, options, votes, creator, ts}}}
+
+@app.route('/api/groups/<group_id>/polls', methods=['POST'])
+def group_poll_create(group_id):
+    username = current_user()
+    if not username or groups_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    group = groups_collection.find_one({'group_id': group_id}, {'_id': 0, 'members': 1})
+    if not group or username not in group.get('members', []):
+        return jsonify({'error': 'Not a member'}), 403
+    data = request.json or {}
+    question = data.get('question', '').strip()[:200]
+    options = [o.strip()[:100] for o in data.get('options', []) if o.strip()][:6]
+    if not question or len(options) < 2:
+        return jsonify({'error': 'question and at least 2 options required'}), 400
+    import time
+    poll_id = str(uuid.uuid4())[:8]
+    poll = {'poll_id': poll_id, 'question': question, 'options': options,
+            'votes': {}, 'creator': username, 'ts': time.time()}
+    _group_polls.setdefault(group_id, {})[poll_id] = poll
+    # Post as a message so it appears in chat
+    msg = {'msg_id': str(uuid.uuid4())[:12], 'sender': username, 'text': '',
+           'poll': {'poll_id': poll_id, 'question': question, 'options': options},
+           'created_at': datetime.now(timezone.utc).isoformat()}
+    groups_collection.update_one({'group_id': group_id},
+        {'$push': {'messages': msg}, '$set': {'updated_at': datetime.now(timezone.utc)}})
+    return jsonify({**poll, 'msg': msg}), 201
+
+@app.route('/api/groups/<group_id>/polls/<poll_id>/vote', methods=['POST'])
+def group_poll_vote(group_id, poll_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Unauthorized'}), 401
+    polls = _group_polls.get(group_id, {})
+    poll = polls.get(poll_id)
+    if not poll:
+        return jsonify({'error': 'Poll not found'}), 404
+    option = (request.json or {}).get('option', '').strip()
+    if option not in poll['options']:
+        return jsonify({'error': 'Invalid option'}), 400
+    poll['votes'][username] = option
+    return jsonify({'votes': poll['votes'], 'options': poll['options']})
+
+@app.route('/api/groups/<group_id>/polls/<poll_id>', methods=['GET'])
+def group_poll_get(group_id, poll_id):
+    poll = _group_polls.get(group_id, {}).get(poll_id)
+    if not poll:
+        return jsonify({'error': 'Poll not found'}), 404
+    return jsonify(poll)
+
 # ── Group live location (in-memory, 5min TTL) ──
 _group_live_locs = {}   # {group_id: {username: {lat, lng, ts}}}
 _group_destinations = {}  # {group_id: {lat, lng, label}}
