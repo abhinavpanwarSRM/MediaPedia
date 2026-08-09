@@ -1053,7 +1053,7 @@
     #trip-fullscreen-btn {
       display: none;
       position: absolute;
-      top: 8px; right: 8px;
+      top: 8px; left: 8px;
       background: rgba(0,0,0,0.55);
       border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
@@ -1073,39 +1073,52 @@
       display: none;
       position: absolute;
       bottom: 10px;
-      right: 10px;
+      left: 10px;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       z-index: 10;
       align-items: center;
     }
     @media (max-width: 520px) {
       #trip-map-controls { display: flex; }
     }
-    .map-ctrl-btn {
-      width: 38px; height: 38px;
-      background: rgba(15,27,42,0.88);
-      border: 1px solid rgba(255,255,255,0.18);
+    #joystick-base {
+      width: 72px; height: 72px;
       border-radius: 50%;
+      background: rgba(10,20,30,0.7);
+      border: 2px solid rgba(255,255,255,0.15);
+      position: relative;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #joystick-knob {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.35), rgba(0,168,132,0.7));
+      border: 2px solid rgba(255,255,255,0.4);
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+    .zoom-row { display: flex; gap: 6px; }
+    .zoom-btn {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(10,20,30,0.7);
+      border: 2px solid rgba(255,255,255,0.15);
       color: #fff;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
     }
-    .map-ctrl-btn:active { background: rgba(0,168,132,0.4); }
-    .joystick-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 38px);
-      grid-template-rows: repeat(3, 38px);
-      gap: 3px;
-    }
-    .joystick-grid .map-ctrl-btn { border-radius: 8px; }
-    .joystick-grid .map-ctrl-btn.empty { background: none; border: none; pointer-events: none; }
-    .zoom-row { display: flex; gap: 6px; }
-    .map-ctrl-btn.zoom { border-radius: 8px; width: 38px; height: 38px; font-size: 1.3rem; font-weight: 700; }
+    .zoom-btn:active { background: rgba(0,168,132,0.5); }
     #trip-canvas { display:block; width:100%; }
     #trip-dest-bar { display:flex; gap:0.5rem; padding:0.5rem 0.75rem;
       background:var(--whatsapp-input); flex-shrink:0; border-bottom:1px solid var(--whatsapp-border); }
@@ -1432,20 +1445,10 @@
       <canvas id="trip-canvas" height="260"></canvas>
       <button id="trip-fullscreen-btn" onclick="toggleTripFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
       <div id="trip-map-controls">
-        <div class="joystick-grid">
-          <div class="map-ctrl-btn empty"></div>
-          <div class="map-ctrl-btn" id="jUp"><i class="fas fa-chevron-up"></i></div>
-          <div class="map-ctrl-btn empty"></div>
-          <div class="map-ctrl-btn" id="jLeft"><i class="fas fa-chevron-left"></i></div>
-          <div class="map-ctrl-btn empty"></div>
-          <div class="map-ctrl-btn" id="jRight"><i class="fas fa-chevron-right"></i></div>
-          <div class="map-ctrl-btn empty"></div>
-          <div class="map-ctrl-btn" id="jDown"><i class="fas fa-chevron-down"></i></div>
-          <div class="map-ctrl-btn empty"></div>
-        </div>
+        <div id="joystick-base"><div id="joystick-knob"></div></div>
         <div class="zoom-row">
-          <div class="map-ctrl-btn zoom" id="jZoomIn">+</div>
-          <div class="map-ctrl-btn zoom" id="jZoomOut">−</div>
+          <div class="zoom-btn" id="jZoomIn">+</div>
+          <div class="zoom-btn" id="jZoomOut">−</div>
         </div>
       </div>
     </div>
@@ -2876,48 +2879,90 @@
       _tripZoom = newZoom;
     }, { passive: false });
 
-    // ── Joystick / zoom controls (mobile) ──
-    const _panStep = 30;
-    const _zoomStep = 1.25;
-    let _joyInterval = null;
+    // ── Analog joystick (mobile) ──
+    (function() {
+      const base = document.getElementById('joystick-base');
+      const knob = document.getElementById('joystick-knob');
+      const R = 36; // base radius
+      const deadzone = 4;
+      let active = false, joyX = 0, joyY = 0, rafId = null;
 
-    function _startJoy(fn) {
-      fn();
-      _joyInterval = setInterval(fn, 80);
-    }
-    function _stopJoy() { clearInterval(_joyInterval); _joyInterval = null; }
+      function getOffset(e) {
+        const rect = base.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const src = e.touches ? e.touches[0] : e;
+        return { dx: src.clientX - cx, dy: src.clientY - cy };
+      }
 
-    function _bindJoy(id, fn) {
-      const el = document.getElementById(id);
-      el.addEventListener('touchstart', e => { e.preventDefault(); _startJoy(fn); }, { passive: false });
-      el.addEventListener('touchend', e => { e.preventDefault(); _stopJoy(); }, { passive: false });
-      el.addEventListener('mousedown', e => { e.preventDefault(); _startJoy(fn); });
-      el.addEventListener('mouseup', () => _stopJoy());
-      el.addEventListener('mouseleave', () => _stopJoy());
-    }
+      function onStart(e) {
+        e.preventDefault();
+        active = true;
+        onMove(e);
+        rafId = requestAnimationFrame(panLoop);
+      }
 
-    _bindJoy('jUp',      () => { _tripPanY += _panStep; });
-    _bindJoy('jDown',    () => { _tripPanY -= _panStep; });
-    _bindJoy('jLeft',    () => { _tripPanX += _panStep; });
-    _bindJoy('jRight',   () => { _tripPanX -= _panStep; });
-    _bindJoy('jZoomIn',  () => {
-      const canvas = document.getElementById('trip-canvas');
-      const cx = canvas.width / 2, cy = canvas.height / 2;
-      const newZoom = Math.min(_tripZoom * _zoomStep, 8);
-      const scale = newZoom / _tripZoom;
-      _tripPanX = cx - scale * (cx - _tripPanX);
-      _tripPanY = cy - scale * (cy - _tripPanY);
-      _tripZoom = newZoom;
-    });
-    _bindJoy('jZoomOut', () => {
-      const canvas = document.getElementById('trip-canvas');
-      const cx = canvas.width / 2, cy = canvas.height / 2;
-      const newZoom = Math.max(_tripZoom / _zoomStep, 0.5);
-      const scale = newZoom / _tripZoom;
-      _tripPanX = cx - scale * (cx - _tripPanX);
-      _tripPanY = cy - scale * (cy - _tripPanY);
-      _tripZoom = newZoom;
-    });
+      function onMove(e) {
+        if (!active) return;
+        e.preventDefault();
+        let { dx, dy } = getOffset(e);
+        const dist = Math.hypot(dx, dy);
+        if (dist > R) { dx = dx / dist * R; dy = dy / dist * R; }
+        knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        joyX = Math.abs(dx) > deadzone ? dx / R : 0;
+        joyY = Math.abs(dy) > deadzone ? dy / R : 0;
+      }
+
+      function onEnd(e) {
+        e.preventDefault();
+        active = false;
+        joyX = 0; joyY = 0;
+        knob.style.transform = 'translate(-50%, -50%)';
+        cancelAnimationFrame(rafId);
+      }
+
+      function panLoop() {
+        if (!active) return;
+        const speed = 6;
+        _tripPanX -= joyX * speed * devicePixelRatio;
+        _tripPanY -= joyY * speed * devicePixelRatio;
+        rafId = requestAnimationFrame(panLoop);
+      }
+
+      base.addEventListener('touchstart', onStart, { passive: false });
+      base.addEventListener('touchmove',  onMove,  { passive: false });
+      base.addEventListener('touchend',   onEnd,   { passive: false });
+      base.addEventListener('mousedown',  onStart);
+      window.addEventListener('mousemove', e => { if (active) onMove(e); });
+      window.addEventListener('mouseup',   e => { if (active) onEnd(e); });
+    })();
+
+    // ── Zoom buttons ──
+    (function() {
+      const _zoomStep = 1.2;
+      function doZoom(dir) {
+        const canvas = document.getElementById('trip-canvas');
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        const newZoom = dir > 0 ? Math.min(_tripZoom * _zoomStep, 8) : Math.max(_tripZoom / _zoomStep, 0.5);
+        const scale = newZoom / _tripZoom;
+        _tripPanX = cx - scale * (cx - _tripPanX);
+        _tripPanY = cy - scale * (cy - _tripPanY);
+        _tripZoom = newZoom;
+      }
+      function bindZoom(id, dir) {
+        const el = document.getElementById(id);
+        let iv = null;
+        const start = e => { e.preventDefault(); doZoom(dir); iv = setInterval(() => doZoom(dir), 120); };
+        const stop  = e => { e.preventDefault(); clearInterval(iv); };
+        el.addEventListener('touchstart', start, { passive: false });
+        el.addEventListener('touchend',   stop,  { passive: false });
+        el.addEventListener('mousedown',  start);
+        el.addEventListener('mouseup',    stop);
+        el.addEventListener('mouseleave', stop);
+      }
+      bindZoom('jZoomIn',  1);
+      bindZoom('jZoomOut', -1);
+    })();
 
     // ── Fullscreen toggle (mobile) ──
     function toggleTripFullscreen() {
