@@ -1050,6 +1050,62 @@
       cursor:pointer; padding:6px; border-radius:50%; transition:all 0.2s; }
     #trip-close:hover { background:rgba(255,255,255,0.1); color:#fff; }
     #trip-canvas-wrap { position:relative; flex-shrink:0; background:#0d1b2a; }
+    #trip-fullscreen-btn {
+      display: none;
+      position: absolute;
+      top: 8px; right: 8px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      z-index: 10;
+      gap: 5px;
+      align-items: center;
+    }
+    @media (max-width: 520px) {
+      #trip-fullscreen-btn { display: flex; }
+    }
+    /* Mobile map controls */
+    #trip-map-controls {
+      display: none;
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+      align-items: center;
+    }
+    @media (max-width: 520px) {
+      #trip-map-controls { display: flex; }
+    }
+    .map-ctrl-btn {
+      width: 38px; height: 38px;
+      background: rgba(15,27,42,0.88);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    .map-ctrl-btn:active { background: rgba(0,168,132,0.4); }
+    .joystick-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 38px);
+      grid-template-rows: repeat(3, 38px);
+      gap: 3px;
+    }
+    .joystick-grid .map-ctrl-btn { border-radius: 8px; }
+    .joystick-grid .map-ctrl-btn.empty { background: none; border: none; pointer-events: none; }
+    .zoom-row { display: flex; gap: 6px; }
+    .map-ctrl-btn.zoom { border-radius: 8px; width: 38px; height: 38px; font-size: 1.3rem; font-weight: 700; }
     #trip-canvas { display:block; width:100%; }
     #trip-dest-bar { display:flex; gap:0.5rem; padding:0.5rem 0.75rem;
       background:var(--whatsapp-input); flex-shrink:0; border-bottom:1px solid var(--whatsapp-border); }
@@ -1374,6 +1430,24 @@
     </div>
     <div id="trip-canvas-wrap">
       <canvas id="trip-canvas" height="260"></canvas>
+      <button id="trip-fullscreen-btn" onclick="toggleTripFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
+      <div id="trip-map-controls">
+        <div class="joystick-grid">
+          <div class="map-ctrl-btn empty"></div>
+          <div class="map-ctrl-btn" id="jUp"><i class="fas fa-chevron-up"></i></div>
+          <div class="map-ctrl-btn empty"></div>
+          <div class="map-ctrl-btn" id="jLeft"><i class="fas fa-chevron-left"></i></div>
+          <div class="map-ctrl-btn empty"></div>
+          <div class="map-ctrl-btn" id="jRight"><i class="fas fa-chevron-right"></i></div>
+          <div class="map-ctrl-btn empty"></div>
+          <div class="map-ctrl-btn" id="jDown"><i class="fas fa-chevron-down"></i></div>
+          <div class="map-ctrl-btn empty"></div>
+        </div>
+        <div class="zoom-row">
+          <div class="map-ctrl-btn zoom" id="jZoomIn">+</div>
+          <div class="map-ctrl-btn zoom" id="jZoomOut">−</div>
+        </div>
+      </div>
     </div>
     <div id="trip-stats"></div>
     <div id="trip-legend">
@@ -2782,7 +2856,6 @@
     let _tripZoom = 1;      // zoom multiplier
     let _tripPanX = 0;     // pan offset in canvas pixels
     let _tripPanY = 0;
-    let _tripPinchDist = null;
     let _tripDragging = false;
     let _tripDragStart = null;
 
@@ -2803,46 +2876,78 @@
       _tripZoom = newZoom;
     }, { passive: false });
 
-    // Pinch zoom
-    _tripCanvas.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 2) {
-        _tripPinchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-      } else if (e.touches.length === 1) {
-        _tripDragging = true;
-        _tripDragStart = { x: e.touches[0].clientX - _tripPanX, y: e.touches[0].clientY - _tripPanY };
-      }
-    }, { passive: true });
+    // ── Joystick / zoom controls (mobile) ──
+    const _panStep = 30;
+    const _zoomStep = 1.25;
+    let _joyInterval = null;
 
-    _tripCanvas.addEventListener('touchmove', function(e) {
-      if (e.touches.length === 2 && _tripPinchDist !== null) {
-        e.preventDefault();
-        const dist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = dist / _tripPinchDist;
-        const rect = this.getBoundingClientRect();
-        const mx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * (this.width / rect.width);
-        const my = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) * (this.height / rect.height);
-        const newZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
-        const scale = newZoom / _tripZoom;
-        _tripPanX = mx - scale * (mx - _tripPanX);
-        _tripPanY = my - scale * (my - _tripPanY);
-        _tripZoom = newZoom;
-        _tripPinchDist = dist;
-      } else if (e.touches.length === 1 && _tripDragging) {
-        _tripPanX = e.touches[0].clientX - _tripDragStart.x;
-        _tripPanY = e.touches[0].clientY - _tripDragStart.y;
-      }
-    }, { passive: false });
+    function _startJoy(fn) {
+      fn();
+      _joyInterval = setInterval(fn, 80);
+    }
+    function _stopJoy() { clearInterval(_joyInterval); _joyInterval = null; }
 
-    _tripCanvas.addEventListener('touchend', function(e) {
-      if (e.touches.length < 2) _tripPinchDist = null;
-      if (e.touches.length === 0) _tripDragging = false;
+    function _bindJoy(id, fn) {
+      const el = document.getElementById(id);
+      el.addEventListener('touchstart', e => { e.preventDefault(); _startJoy(fn); }, { passive: false });
+      el.addEventListener('touchend', e => { e.preventDefault(); _stopJoy(); }, { passive: false });
+      el.addEventListener('mousedown', e => { e.preventDefault(); _startJoy(fn); });
+      el.addEventListener('mouseup', () => _stopJoy());
+      el.addEventListener('mouseleave', () => _stopJoy());
+    }
+
+    _bindJoy('jUp',      () => { _tripPanY += _panStep; });
+    _bindJoy('jDown',    () => { _tripPanY -= _panStep; });
+    _bindJoy('jLeft',    () => { _tripPanX += _panStep; });
+    _bindJoy('jRight',   () => { _tripPanX -= _panStep; });
+    _bindJoy('jZoomIn',  () => {
+      const canvas = document.getElementById('trip-canvas');
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const newZoom = Math.min(_tripZoom * _zoomStep, 8);
+      const scale = newZoom / _tripZoom;
+      _tripPanX = cx - scale * (cx - _tripPanX);
+      _tripPanY = cy - scale * (cy - _tripPanY);
+      _tripZoom = newZoom;
     });
+    _bindJoy('jZoomOut', () => {
+      const canvas = document.getElementById('trip-canvas');
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const newZoom = Math.max(_tripZoom / _zoomStep, 0.5);
+      const scale = newZoom / _tripZoom;
+      _tripPanX = cx - scale * (cx - _tripPanX);
+      _tripPanY = cy - scale * (cy - _tripPanY);
+      _tripZoom = newZoom;
+    });
+
+    // ── Fullscreen toggle (mobile) ──
+    function toggleTripFullscreen() {
+      const modal = document.getElementById('trip-modal');
+      const btn = document.getElementById('trip-fullscreen-btn');
+      const isFs = modal.dataset.fs === '1';
+      if (!isFs) {
+        modal.dataset.fs = '1';
+        modal.style.cssText = 'display:flex;position:fixed;inset:0;z-index:9999;flex-direction:column;background:rgba(0,0,0,0.95);';
+        const wrap = document.getElementById('trip-canvas-wrap');
+        wrap.style.flex = '1';
+        const canvas = document.getElementById('trip-canvas');
+        canvas.style.height = '100%';
+        canvas.style.width = '100%';
+        canvas.height = canvas.offsetHeight * devicePixelRatio;
+        canvas.width = canvas.offsetWidth * devicePixelRatio;
+        btn.innerHTML = '<i class="fas fa-compress"></i> Exit';
+      } else {
+        modal.dataset.fs = '0';
+        modal.style.cssText = '';
+        const wrap = document.getElementById('trip-canvas-wrap');
+        wrap.style.flex = '';
+        const canvas = document.getElementById('trip-canvas');
+        canvas.style.height = '260px';
+        canvas.style.width = '100%';
+        canvas.height = 260 * devicePixelRatio;
+        canvas.width = canvas.offsetWidth * devicePixelRatio;
+        btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+      }
+    }
 
     // Mouse drag pan
     _tripCanvas.addEventListener('mousedown', function(e) {
