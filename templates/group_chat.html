@@ -789,6 +789,8 @@
     .typing-row { display:flex; align-items:center; gap:0.5rem; padding:0.2rem 0; min-height:28px; }
     .typing-dots { display:none; gap:3px; align-items:center; }
     .typing-dots.show { display:flex; }
+    .typing-name { font-size:0.72rem; color:var(--whatsapp-gray); margin-left:4px;
+      font-style:italic; animation: fadeIn 0.2s; }
     .dot { width:6px; height:6px; border-radius:50%; background:var(--whatsapp-gray); animation:blink 1.2s ease-in-out infinite; }
     .dot:nth-child(2) { animation-delay:0.2s; }
     .dot:nth-child(3) { animation-delay:0.4s; }
@@ -800,7 +802,7 @@
       align-items:center; gap:5px; letter-spacing:0.02em; }
     .loc-label i { color:var(--whatsapp-green); font-size:0.7rem; }
     .loc-map {
-      width:220px; height:130px; border-radius:12px; overflow:hidden;
+      width:100%; max-width:220px; height:130px; border-radius:12px; overflow:hidden;
       border:1px solid rgba(0,168,132,0.25);
       box-shadow: 0 4px 16px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,168,132,0.08);
       background: linear-gradient(110deg, #1a2a33 25%, #243340 50%, #1a2a33 75%);
@@ -809,6 +811,7 @@
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       position: relative;
     }
+    .loc-map.loaded { animation: none; background: none; }
     .loc-map:hover {
       transform: translateY(-2px) scale(1.01);
       box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,168,132,0.2);
@@ -818,7 +821,6 @@
       0%   { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
-    .loc-map iframe[src] { animation: none; background: none; }
     .loc-open {
       display:inline-flex; align-items:center; gap:5px; font-size:0.7rem;
       color:var(--whatsapp-green); text-decoration:none;
@@ -838,11 +840,17 @@
     /* ── STATS MODAL ── */
     #stats-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
       z-index:300; align-items:center; justify-content:center; padding:1rem;
-      backdrop-filter:blur(4px); }
+      backdrop-filter:blur(4px); animation: fadeIn 0.2s; }
     #stats-modal.open { display:flex; }
     #stats-box { background:var(--whatsapp-header); border-radius:12px; padding:1.2rem;
       width:100%; max-width:360px; max-height:80vh; overflow-y:auto;
-      display:flex; flex-direction:column; gap:0.75rem; }
+      display:flex; flex-direction:column; gap:0.75rem;
+      animation: statsSlideIn 0.25s cubic-bezier(.25,.46,.45,.94);
+    }
+    @keyframes statsSlideIn {
+      from { opacity:0; transform: scale(0.94) translateY(12px); }
+      to   { opacity:1; transform: scale(1)   translateY(0); }
+    }
     #stats-box h3 { font-size:0.95rem; font-weight:600; color:#fff;
       display:flex; align-items:center; gap:0.5rem; }
     .stat-row { display:flex; justify-content:space-between; align-items:center;
@@ -873,7 +881,7 @@
       background:var(--whatsapp-input); flex-shrink:0; border-bottom:1px solid var(--whatsapp-border); }
     #trip-dest-input { flex:1; background:var(--whatsapp-darker); border:1px solid var(--whatsapp-border);
       border-radius:8px; color:#fff; font-size:0.82rem; padding:0.35rem 0.6rem;
-      font-family:inherit; outline:none; transition:border-color 0.2s; }
+      font-family:inherit; outline:none; transition:border-color 0.2s; min-width:0; }
     #trip-dest-input:focus { border-color:var(--whatsapp-green); }
     #trip-dest-btn { background:var(--whatsapp-green); border:none; color:#fff;
       border-radius:8px; padding:0.35rem 0.75rem; font-size:0.8rem; cursor:pointer;
@@ -1089,8 +1097,8 @@
               {% if msg.media_url %}<img src="{{ msg.media_url }}" alt="" onclick="openLightbox('{{ msg.media_url }}')" onerror="this.style.display='none'">{% endif %}
               {% if msg.location %}
               <div class="loc-bubble">
-                <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location</div>
-                <div class="loc-map"><iframe src="https://maps.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}&z=14&output=embed" loading="lazy"></iframe></div>
+                <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location <span style="opacity:0.5;font-size:0.65rem">{{ msg.location.lat | round(4) }}, {{ msg.location.lng | round(4) }}</span></div>
+                <div class="loc-map" id="loc-map-{{ msg.msg_id }}"><iframe src="https://maps.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}&z=14&output=embed" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
                 <a class="loc-open" href="https://www.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Open in Maps</a>
               </div>
               {% endif %}
@@ -1140,7 +1148,7 @@
       <button id="trip-close" onclick="closeTrip()"><i class="fas fa-times"></i></button>
     </div>
     <div id="trip-dest-bar">
-      <input id="trip-dest-input" placeholder="Set destination (lat,lng or address)" autocomplete="off">
+      <input id="trip-dest-input" placeholder="lat,lng  or type 'here'" autocomplete="off">
       <button id="trip-dest-btn" onclick="setDestination()">📍 Set</button>
       <button id="trip-live-btn" onclick="toggleLiveLoc()">🔴 Go Live</button>
     </div>
@@ -1201,7 +1209,7 @@
 
   <!-- INPUT BAR -->
   <div class="input-bar" id="input-bar">
-    <button class="input-btn" onclick="shareLocation()" title="Share location" id="loc-btn">
+    <button class="input-btn" onclick="shareLocation()" title="Share location" id="loc-btn" style="color:#00a884">
       <i class="fas fa-map-marker-alt"></i>
     </button>
     <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
@@ -1283,8 +1291,8 @@
       const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
       const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
       return `<div class="loc-bubble">
-        <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location</div>
-        <div class="loc-map"><iframe src="${embedUrl}" loading="lazy"></iframe></div>
+        <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location <span style="opacity:0.5;font-size:0.65rem">${lat.toFixed(4)}, ${lng.toFixed(4)}</span></div>
+        <div class="loc-map"><iframe src="${embedUrl}" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
         <a class="loc-open" href="${mapsUrl}" target="_blank" rel="noopener">
           <i class="fas fa-external-link-alt"></i> Open in Maps
         </a>
@@ -1639,8 +1647,16 @@
         .then(d => {
           const others = (d.typers || []).filter(u => u !== ME);
           const dots = document.getElementById('typing-dots');
-          if (others.length) dots.classList.add('show');
-          else dots.classList.remove('show');
+          const row = document.getElementById('typing-row');
+          if (others.length) {
+            dots.classList.add('show');
+            let nameEl = row.querySelector('.typing-name');
+            if (!nameEl) { nameEl = document.createElement('span'); nameEl.className = 'typing-name'; row.appendChild(nameEl); }
+            nameEl.textContent = others.length === 1 ? `${others[0]} is typing…` : `${others.length} people are typing…`;
+          } else {
+            dots.classList.remove('show');
+            row.querySelector('.typing-name')?.remove();
+          }
         }).catch(() => {});
     }
     setInterval(pollTyping, 2500);
