@@ -168,6 +168,8 @@
       display: flex;
       gap: 0.25rem;
       flex-shrink: 0;
+      align-items: center;
+      position: relative;
     }
 
     .header-btn {
@@ -195,6 +197,48 @@
     .header-btn.danger:hover {
       background: rgba(229, 9, 20, 0.2);
       color: #e50914;
+    }
+
+    /* overflow menu — hidden on desktop */
+    #header-overflow-btn { display: none; }
+    #header-overflow-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: var(--whatsapp-header);
+      border: 1px solid var(--whatsapp-border);
+      border-radius: 10px;
+      padding: 4px 0;
+      min-width: 160px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      z-index: 50;
+      animation: pickerPop 0.15s cubic-bezier(.34,1.56,.64,1);
+    }
+    #header-overflow-menu.open { display: block; }
+    .overflow-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      color: #ddd;
+      cursor: pointer;
+      transition: background 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+    }
+    .overflow-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+    .overflow-item.danger:hover { background: rgba(229,9,20,0.15); color: #e50914; }
+    .overflow-item i { width: 16px; text-align: center; color: var(--whatsapp-green); }
+    .overflow-item.danger i { color: #e50914; }
+
+    @media (max-width: 520px) {
+      #header-overflow-btn { display: flex; }
+      .header-btn-overflow-hide { display: none; }
     }
 
     /* ── MESSAGES ── */
@@ -1119,12 +1163,18 @@
     /* ── RESPONSIVE ── */
     @media (max-width: 480px) {
       .header {
-        padding: 0.4rem 0.75rem;
-        min-height: 56px;
+        padding: 0.4rem 0.5rem;
+        gap: 0.4rem;
+        min-height: 52px;
       }
 
+      .group-avatar-wrapper { width: 36px; height: 36px; }
+
       .group-name {
-        font-size: 0.9rem;
+        font-size: 0.88rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .bubble {
@@ -1189,17 +1239,27 @@
       <button class="header-btn" onclick="openTrip()" title="Trip tracker">
         <i class="fas fa-route"></i>
       </button>
-      <button class="header-btn" onclick="openStats()" title="Location stats">
+      <button class="header-btn header-btn-overflow-hide" onclick="openStats()" title="Location stats">
         <i class="fas fa-chart-bar"></i>
       </button>
-      <button class="header-btn" onclick="openAddModal()" title="Add member">
+      <button class="header-btn header-btn-overflow-hide" onclick="openAddModal()" title="Add member">
         <i class="fas fa-user-plus"></i>
       </button>
       {% if group.creator == username %}
-      <button class="header-btn danger" onclick="deleteGroup()" title="Delete group">
+      <button class="header-btn danger header-btn-overflow-hide" onclick="deleteGroup()" title="Delete group">
         <i class="fas fa-trash"></i>
       </button>
       {% endif %}
+      <button class="header-btn" id="header-overflow-btn" onclick="toggleHeaderMenu()" title="More">
+        <i class="fas fa-ellipsis-v"></i>
+      </button>
+      <div id="header-overflow-menu">
+        <button class="overflow-item" onclick="openStats();closeHeaderMenu()"><i class="fas fa-chart-bar"></i> Location Stats</button>
+        <button class="overflow-item" onclick="openAddModal();closeHeaderMenu()"><i class="fas fa-user-plus"></i> Add Member</button>
+        {% if group.creator == username %}
+        <button class="overflow-item danger" onclick="deleteGroup()"><i class="fas fa-trash"></i> Delete Group</button>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -1631,6 +1691,21 @@
     setInterval(refreshPolls, 5000);
     document.getElementById('poll-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('poll-modal')) closePollModal();
+    });
+
+    // ── Header overflow menu ──
+    function toggleHeaderMenu() {
+      document.getElementById('header-overflow-menu').classList.toggle('open');
+    }
+    function closeHeaderMenu() {
+      document.getElementById('header-overflow-menu').classList.remove('open');
+    }
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('header-overflow-menu');
+      const btn = document.getElementById('header-overflow-btn');
+      if (menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        closeHeaderMenu();
+      }
     });
 
     // ── Extras toggle (mobile) ──
