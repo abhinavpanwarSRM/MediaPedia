@@ -2582,7 +2582,7 @@ def send_group_message(group_id):
     data = request.json or {}
     text = data.get('text', '').strip()[:1000]
     media_url = data.get('media_url', '').strip()[:500]
-    if not text and not media_url and not data.get('location'):
+    if not text and not media_url and not data.get('location') and not data.get('media_card'):
         return jsonify({'error': 'Message required'}), 400
     if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
         return jsonify({'error': 'Invalid URL'}), 400
@@ -2593,6 +2593,7 @@ def send_group_message(group_id):
         'media_url': media_url,
         'reply_to': data.get('reply_to'),
         'location': data.get('location'),
+        'media_card': data.get('media_card'),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     groups_collection.update_one(
@@ -2925,6 +2926,46 @@ def group_location_stats(group_id):
     closest = min(locations, key=lambda l: haversine(l, center))
     closest['dist_km'] = haversine(closest, center)
     return jsonify({'locations': locations, 'distances': distances, 'closest_to_center': closest})
+
+@app.route('/api/chat_media_search')
+def chat_media_search():
+    q = request.args.get('q', '').strip().lower()
+    if not q or len(q) < 2:
+        return jsonify([])
+    movies = [
+        {'kind': 'movie', 'id': int(r['ID']), 'title': r['Movie Name'],
+         'genre': r.get('Genre', ''), 'rating': r.get('Rating', ''),
+         'url': f"/movie/{r['ID']}", 'poster': ''}
+        for _, r in df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(6).iterrows()
+    ]
+    series = [
+        {'kind': 'series', 'id': int(r['ID']), 'title': r['Title'],
+         'genre': r.get('Genres', ''), 'rating': r.get('Rating', ''),
+         'url': f"/series/{r['ID']}", 'poster': ''}
+        for _, r in series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(4).iterrows()
+    ]
+    return jsonify(movies + series)
+
+@app.route('/api/chat_media_recs')
+def chat_media_recs():
+    import random as _r
+    top_movies = df[pd.to_numeric(df['Rating'], errors='coerce') >= 8].head(100)
+    sample_m = top_movies.sample(n=min(5, len(top_movies))).to_dict(orient='records')
+    top_series = series_df[pd.to_numeric(series_df['Rating'], errors='coerce') >= 8].head(100)
+    sample_s = top_series.sample(n=min(4, len(top_series))).to_dict(orient='records')
+    result = [
+        {'kind': 'movie', 'id': int(m['ID']), 'title': m['Movie Name'],
+         'genre': m.get('Genre', ''), 'rating': m.get('Rating', ''),
+         'url': f"/movie/{m['ID']}", 'poster': ''}
+        for m in sample_m
+    ] + [
+        {'kind': 'series', 'id': int(s['ID']), 'title': s['Title'],
+         'genre': s.get('Genres', ''), 'rating': s.get('Rating', ''),
+         'url': f"/series/{s['ID']}", 'poster': ''}
+        for s in sample_s
+    ]
+    _r.shuffle(result)
+    return jsonify(result)
 
 # ===== Messaging =====
 @app.route('/messages')

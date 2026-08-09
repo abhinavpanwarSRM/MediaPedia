@@ -878,6 +878,62 @@
       font-family:inherit; font-weight:600; transition:background 0.2s; }
     #poll-submit:hover { background:#00b894; }
 
+    /* ── MEDIA CARD BUBBLE ── */
+    .media-card { display:flex; gap:10px; min-width:200px; max-width:240px;
+      text-decoration:none; color:inherit; }
+    .media-card-poster { width:64px; height:96px; border-radius:8px; object-fit:cover;
+      flex-shrink:0; background:var(--whatsapp-input);
+      box-shadow:0 2px 8px rgba(0,0,0,0.4); }
+    .media-card-poster-placeholder { width:64px; height:96px; border-radius:8px;
+      flex-shrink:0; background:var(--whatsapp-input);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.6rem; }
+    .media-card-info { display:flex; flex-direction:column; gap:4px; justify-content:center; min-width:0; }
+    .media-card-kind { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.06em;
+      color:var(--whatsapp-green); font-weight:600; }
+    .media-card-title { font-size:0.82rem; font-weight:700; color:#fff;
+      line-height:1.3; word-break:break-word; }
+    .media-card-meta { font-size:0.7rem; color:var(--whatsapp-gray); }
+    .media-card-rating { font-size:0.72rem; color:#f5a623; font-weight:600; }
+    .media-card-link { font-size:0.68rem; color:var(--whatsapp-green); margin-top:2px;
+      display:inline-flex; align-items:center; gap:3px; }
+
+    /* ── MEDIA SEARCH MODAL ── */
+    #media-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+      z-index:300; align-items:flex-end; justify-content:center; padding:1rem;
+      backdrop-filter:blur(4px); animation:fadeIn 0.2s; }
+    #media-modal.open { display:flex; }
+    #media-box { background:var(--whatsapp-header); border-radius:12px 12px 0 0;
+      padding:1.2rem; width:100%; max-width:500px; max-height:82vh;
+      display:flex; flex-direction:column; gap:0.75rem;
+      animation:slideUp 0.3s ease-out; }
+    #media-search-input { width:100%; padding:0.5rem 0.75rem;
+      background:var(--whatsapp-darker); border:1px solid var(--whatsapp-border);
+      border-radius:8px; color:#fff; font-size:0.88rem; font-family:inherit;
+      outline:none; transition:border-color 0.2s; }
+    #media-search-input:focus { border-color:var(--whatsapp-green); }
+    #media-results { overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem;
+      flex:1; min-height:0; }
+    .media-result-row { display:flex; align-items:center; gap:0.6rem;
+      padding:0.45rem 0.5rem; border-radius:8px; cursor:pointer;
+      transition:background 0.15s; border:1px solid transparent; }
+    .media-result-row:hover { background:rgba(255,255,255,0.06); border-color:rgba(0,168,132,0.2); }
+    .media-result-thumb { width:36px; height:54px; border-radius:5px; object-fit:cover;
+      background:var(--whatsapp-input); flex-shrink:0; }
+    .media-result-thumb-ph { width:36px; height:54px; border-radius:5px;
+      background:var(--whatsapp-input); flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:1.1rem; }
+    .media-result-info { flex:1; min-width:0; }
+    .media-result-title { font-size:0.82rem; font-weight:600; color:#fff;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .media-result-sub { font-size:0.68rem; color:var(--whatsapp-gray); }
+    .media-result-send { background:var(--whatsapp-green); border:none; color:#fff;
+      border-radius:6px; padding:4px 10px; font-size:0.72rem; cursor:pointer;
+      flex-shrink:0; transition:background 0.15s; }
+    .media-result-send:hover { background:#00b894; }
+    #media-section-label { font-size:0.68rem; font-weight:600; color:var(--whatsapp-green);
+      text-transform:uppercase; letter-spacing:0.05em; padding:0.2rem 0; }
+
     /* ── SYSTEM MESSAGE ── */
     .sys-msg { text-align:center; font-size:0.72rem; color:var(--whatsapp-gray);
       padding:0.3rem 0.8rem; background:rgba(255,255,255,0.04);
@@ -1161,6 +1217,22 @@
                 <div class="poll-meta">0 votes</div>
               </div>
               {% endif %}
+              {% if msg.media_card %}
+              <a class="media-card" href="{{ msg.media_card.url }}" target="_blank" rel="noopener">
+                {% if msg.media_card.poster %}
+                <img class="media-card-poster" src="{{ msg.media_card.poster }}" alt="" onerror="this.style.display='none'">
+                {% else %}
+                <div class="media-card-poster-placeholder">🎬</div>
+                {% endif %}
+                <div class="media-card-info">
+                  <span class="media-card-kind">{{ msg.media_card.kind }}</span>
+                  <span class="media-card-title">{{ msg.media_card.title }}</span>
+                  {% if msg.media_card.genre %}<span class="media-card-meta">{{ msg.media_card.genre[:30] }}</span>{% endif %}
+                  {% if msg.media_card.rating %}<span class="media-card-rating">⭐ {{ msg.media_card.rating }}</span>{% endif %}
+                  <span class="media-card-link"><i class="fas fa-external-link-alt"></i> View</span>
+                </div>
+              </a>
+              {% endif %}
               {% if msg.text %}{{ msg.text }}{% endif %}
               <div class="bubble-time">
                 {{ msg.created_at[11:16] }}
@@ -1223,6 +1295,18 @@
       <span>🏆 Leader</span>
       <span>🐢 Slowpoke</span>
       <span style="color:var(--whatsapp-gray);font-size:0.68rem">↻ 10s</span>
+    </div>
+  </div>
+
+  <!-- MEDIA SEARCH MODAL -->
+  <div id="media-modal">
+    <div id="media-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-film" style="color:var(--whatsapp-green);margin-right:0.4rem"></i>Share Movie / Series</h3>
+        <button class="modal-close" onclick="closeMediaModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <input id="media-search-input" placeholder="Search title..." autocomplete="off" oninput="searchMedia(this.value)">
+      <div id="media-results"></div>
     </div>
   </div>
 
@@ -1291,6 +1375,9 @@
     <button class="input-btn" onclick="openPollModal()" title="Create poll" style="color:var(--whatsapp-gray)">
       <i class="fas fa-poll"></i>
     </button>
+    <button class="input-btn" onclick="openMediaModal()" title="Share movie/series" style="color:var(--whatsapp-gray)">
+      <i class="fas fa-film"></i>
+    </button>
     <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
       <i class="fas fa-paperclip"></i>
     </button>
@@ -1341,6 +1428,85 @@
         av.style.boxShadow = `0 2px 8px ${color}44`;
         if (sender) sender.style.color = color;
       });
+    }
+
+    // ── Media card ──
+    function _mediaCardHtml(c) {
+      const posterHtml = c.poster
+        ? `<img class="media-card-poster" src="${escAttr(c.poster)}" alt="" onerror="this.style.display='none'">`
+        : `<div class="media-card-poster-placeholder">🎬</div>`;
+      return `<a class="media-card" href="${escAttr(c.url)}" target="_blank" rel="noopener">
+        ${posterHtml}
+        <div class="media-card-info">
+          <span class="media-card-kind">${escHtml(c.kind)}</span>
+          <span class="media-card-title">${escHtml(c.title)}</span>
+          ${c.genre ? `<span class="media-card-meta">${escHtml(String(c.genre).slice(0,30))}</span>` : ''}
+          ${c.rating ? `<span class="media-card-rating">⭐ ${escHtml(String(c.rating))}</span>` : ''}
+          <span class="media-card-link"><i class="fas fa-external-link-alt"></i> View</span>
+        </div>
+      </a>`;
+    }
+
+    let _mediaSearchTimer = null;
+    function openMediaModal() {
+      document.getElementById('media-modal').classList.add('open');
+      document.getElementById('media-search-input').value = '';
+      document.getElementById('media-search-input').focus();
+      _loadMediaRecommendations();
+    }
+    function closeMediaModal() {
+      document.getElementById('media-modal').classList.remove('open');
+    }
+    document.getElementById('media-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('media-modal')) closeMediaModal();
+    });
+
+    function _loadMediaRecommendations() {
+      const el = document.getElementById('media-results');
+      el.innerHTML = '<div id="media-section-label">🔥 Recommendations</div>';
+      fetch('/api/chat_media_recs')
+        .then(r => r.json())
+        .then(items => { el.innerHTML = '<div id="media-section-label">🔥 Recommendations</div>' + items.map(_mediaRowHtml).join(''); })
+        .catch(() => {});
+    }
+
+    function searchMedia(q) {
+      clearTimeout(_mediaSearchTimer);
+      const el = document.getElementById('media-results');
+      if (!q || q.length < 2) { _loadMediaRecommendations(); return; }
+      _mediaSearchTimer = setTimeout(() => {
+        fetch('/api/chat_media_search?q=' + encodeURIComponent(q))
+          .then(r => r.json())
+          .then(items => {
+            if (!items.length) { el.innerHTML = '<div style="color:var(--whatsapp-gray);font-size:0.82rem;padding:0.5rem">No results found</div>'; return; }
+            el.innerHTML = '<div id="media-section-label">Search Results</div>' + items.map(_mediaRowHtml).join('');
+          }).catch(() => {});
+      }, 280);
+    }
+
+    function _mediaRowHtml(item) {
+      const thumbHtml = item.poster
+        ? `<img class="media-result-thumb" src="${escAttr(item.poster)}" alt="" onerror="this.outerHTML='<div class=media-result-thumb-ph>🎬</div>'">`
+        : `<div class="media-result-thumb-ph">🎬</div>`;
+      return `<div class="media-result-row" onclick="sendMediaCard(${JSON.stringify(item).replace(/"/g,'&quot;')})">
+        ${thumbHtml}
+        <div class="media-result-info">
+          <div class="media-result-title">${escHtml(item.title)}</div>
+          <div class="media-result-sub">${escHtml(item.kind.toUpperCase())}${item.genre ? ' · ' + escHtml(String(item.genre).slice(0,24)) : ''}${item.rating ? ' · ⭐'+item.rating : ''}</div>
+        </div>
+        <button class="media-result-send" onclick="event.stopPropagation();sendMediaCard(${JSON.stringify(item).replace(/"/g,'&quot;')})">Send</button>
+      </div>`;
+    }
+
+    function sendMediaCard(item) {
+      closeMediaModal();
+      fetch(`/api/groups/${GROUP_ID}/send`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: '', media_card: item})
+      }).then(r => r.json()).then(msg => {
+        if (!msg.error) { appendMessage(msg); lastMsgId = msg.msg_id; }
+      }).catch(() => {});
     }
 
     // ── Polls ──
@@ -1696,6 +1862,7 @@
         : '';
       const locHtml = msg.location ? locBubbleHtml(msg.location) : '';
       const pollHtml = msg.poll ? pollBubbleHtml({...msg.poll, votes: {}}) : '';
+      const mediaCardHtml = msg.media_card ? _mediaCardHtml(msg.media_card) : '';
       const textHtml = msg.text ? escHtml(msg.text) : '';
       const replyHtml = msg.reply_to
         ? `<div class="reply-preview" onclick="scrollToMsg('${escAttr(msg.reply_to.msg_id)}')"><strong>${escHtml(msg.reply_to.sender)}</strong>${escHtml((msg.reply_to.text||'').slice(0,60))}</div>`
@@ -1707,7 +1874,7 @@
         <div class="bubble-wrap">
           ${isMe ? '' : `<div class="bubble-sender">${escHtml(msg.sender)}</div>`}
           <div class="bubble">
-            ${replyHtml}${imgHtml}${locHtml}${pollHtml}${textHtml}
+            ${replyHtml}${imgHtml}${locHtml}${pollHtml}${mediaCardHtml}${textHtml}
             <div class="bubble-time">
               ${fmtTime(msg.created_at)}
               ${isMe ? '<span class="checkmark"><i class="fas fa-check-double"></i></span>' : ''}
