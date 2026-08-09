@@ -2479,6 +2479,18 @@
       }).join('');
     }
 
+    // ── Shared bounding box (members only — stable reference for click inverse-projection) ──
+    function _tripBounds() {
+      const pts = Object.values(_tripMembers);
+      if (!pts.length) return null;
+      return {
+        minLat: Math.min(...pts.map(p => p.lat)),
+        maxLat: Math.max(...pts.map(p => p.lat)),
+        minLng: Math.min(...pts.map(p => p.lng)),
+        maxLng: Math.max(...pts.map(p => p.lng)),
+      };
+    }
+
     // ── Canvas map drawing ──
     function _startTripDraw() {
       const canvas = document.getElementById('trip-canvas');
@@ -2506,15 +2518,13 @@
           return;
         }
 
-        // Collect all points to compute bounding box
-        const allPts = [...members.map(([,l]) => l)];
-        if (_tripDestination) allPts.push(_tripDestination);
-        if (allPts.length === 0) return;
-
-        const minLat = Math.min(...allPts.map(p => p.lat));
-        const maxLat = Math.max(...allPts.map(p => p.lat));
-        const minLng = Math.min(...allPts.map(p => p.lng));
-        const maxLng = Math.max(...allPts.map(p => p.lng));
+        // Bounding box: members only (same as click handler)
+        const bounds = _tripBounds();
+        if (!bounds && !_tripDestination) return;
+        const { minLat, maxLat, minLng, maxLng } = bounds || {
+          minLat: _tripDestination.lat, maxLat: _tripDestination.lat,
+          minLng: _tripDestination.lng, maxLng: _tripDestination.lng
+        };
         const pad = 0.12 * devicePixelRatio;
         const rangeX = (maxLng - minLng) || 0.01;
         const rangeY = (maxLat - minLat) || 0.01;
@@ -2650,8 +2660,8 @@
 
     // ── Drop a pin on canvas click ──
     document.getElementById('trip-canvas').addEventListener('click', function(e) {
-      const memberPts = Object.values(_tripMembers);
-      if (!memberPts.length) return;
+      const bounds = _tripBounds();
+      if (!bounds) return;
       const canvas = this;
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
@@ -2660,14 +2670,12 @@
       const cy = (e.clientY - rect.top) * scaleY;
       const W = canvas.width, H = canvas.height;
       const pad = 0.12 * devicePixelRatio;
-      const allPts = memberPts;
-      if (!allPts.length) return;
-      const minLat = Math.min(...allPts.map(p=>p.lat)), maxLat = Math.max(...allPts.map(p=>p.lat));
-      const minLng = Math.min(...allPts.map(p=>p.lng)), maxLng = Math.max(...allPts.map(p=>p.lng));
-      const rangeX = (maxLng-minLng)||0.01, rangeY = (maxLat-minLat)||0.01;
+      const { minLat, maxLat, minLng, maxLng } = bounds;
+      const rangeX = (maxLng - minLng) || 0.01;
+      const rangeY = (maxLat - minLat) || 0.01;
       const lng = ((cx - W*pad) / (W*(1-2*pad))) * rangeX + minLng;
       const lat = maxLat - ((cy - H*pad) / (H*(1-2*pad))) * rangeY;
-      if (isNaN(lat)||isNaN(lng)) return;
+      if (isNaN(lat) || isNaN(lng)) return;
       const label = `Pin (${lat.toFixed(4)},${lng.toFixed(4)})`;
       document.getElementById('trip-dest-input').value = label;
       _saveDestination(lat, lng, label);
