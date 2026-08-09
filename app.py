@@ -2927,24 +2927,61 @@ def group_location_stats(group_id):
     closest['dist_km'] = haversine(closest, center)
     return jsonify({'locations': locations, 'distances': distances, 'closest_to_center': closest})
 
+def _fetch_poster(title, kind, year=''):
+    """Fetch poster from TMDB cache or API. Returns poster URL string."""
+    cache_key = f"{kind}:{title}:{year}"
+    if poster_cache_collection is not None:
+        cached = poster_cache_collection.find_one({'title': cache_key}, {'_id': 0, 'poster': 1})
+        if cached and cached.get('poster'):
+            return cached['poster']
+    token = os.getenv('TMDB_TOKEN', '')
+    if not token:
+        return ''
+    try:
+        endpoint = 'search/movie' if kind == 'movie' else 'search/tv'
+        params = {'query': title, 'language': 'en-US'}
+        if year:
+            params['year' if kind == 'movie' else 'first_air_date_year'] = year
+        resp = http_requests.get(
+            f'https://api.themoviedb.org/3/{endpoint}',
+            headers={'Authorization': f'Bearer {token}'},
+            params=params, timeout=4
+        )
+        results = resp.json().get('results', [])
+        poster = ''
+        if results:
+            best = next((r for r in results if r.get('title', r.get('name', '')).lower() == title.lower()), results[0])
+            p = best.get('poster_path', '')
+            poster = f'https://image.tmdb.org/t/p/w185{p}' if p else ''
+        if poster_cache_collection is not None:
+            poster_cache_collection.update_one(
+                {'title': cache_key},
+                {'$set': {'title': cache_key, 'poster': poster}},
+                upsert=True
+            )
+        return poster
+    except Exception:
+        return ''
+
 @app.route('/api/chat_media_search')
 def chat_media_search():
     q = request.args.get('q', '').strip().lower()
     if not q or len(q) < 2:
         return jsonify([])
-    movies = [
-        {'kind': 'movie', 'id': int(r['ID']), 'title': r['Movie Name'],
-         'genre': r.get('Genre', ''), 'rating': r.get('Rating', ''),
-         'url': f"/movie/{r['ID']}", 'poster': ''}
-        for _, r in df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(6).iterrows()
-    ]
-    series = [
-        {'kind': 'series', 'id': int(r['ID']), 'title': r['Title'],
-         'genre': r.get('Genres', ''), 'rating': r.get('Rating', ''),
-         'url': f"/series/{r['ID']}", 'poster': ''}
-        for _, r in series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(4).iterrows()
-    ]
-    return jsonify(movies + series)
+    movie_rows = df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(6)
+    series_rows = series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(4)
+    result = []
+    for _, r in movie_rows.iterrows():
+        result.append({'kind': 'movie', 'id': int(r['ID']), 'title': r['Movie Name'],
+                       'genre': r.get('Genre', ''), 'rating': r.get('Rating', ''),
+                       'url': f"/movie/{r['ID']}",
+                       'poster': _fetch_poster(r['Movie Name'], 'movie')})
+    for _, r in series_rows.iterrows():
+        result.append({'kind': 'series', 'id': int(r['ID']), 'title': r['Title'],
+                       'genre': r.get('Genres', ''), 'rating': r.get('Rating', ''),
+                       'url': f"/series/{r['ID']}",
+                       'poster': _fetch_poster(r['Title'], 'tv')})
+    return jsonify(result)
 
 @app.route('/api/chat_media_recs')
 def chat_media_recs():
@@ -2956,12 +2993,14 @@ def chat_media_recs():
     result = [
         {'kind': 'movie', 'id': int(m['ID']), 'title': m['Movie Name'],
          'genre': m.get('Genre', ''), 'rating': m.get('Rating', ''),
-         'url': f"/movie/{m['ID']}", 'poster': ''}
+         'url': f"/movie/{m['ID']}",
+         'poster': _fetch_poster(m['Movie Name'], 'movie')}
         for m in sample_m
     ] + [
         {'kind': 'series', 'id': int(s['ID']), 'title': s['Title'],
          'genre': s.get('Genres', ''), 'rating': s.get('Rating', ''),
-         'url': f"/series/{s['ID']}", 'poster': ''}
+         'url': f"/series/{s['ID']}",
+         'poster': _fetch_poster(s['Title'], 'tv')}
         for s in sample_s
     ]
     _r.shuffle(result)
