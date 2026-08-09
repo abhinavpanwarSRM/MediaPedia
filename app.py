@@ -2836,9 +2836,15 @@ def group_poll_get(group_id, poll_id):
         return jsonify({'error': 'Poll not found'}), 404
     return jsonify(poll)
 
-# ── Group live location (in-memory, 5min TTL) ──
-_group_live_locs = {}   # {group_id: {username: {lat, lng, ts}}}
-_group_destinations = {}  # {group_id: {lat, lng, label}}
+# ── Group live location (MongoDB-persisted) ──
+group_trip_collection = None
+try:
+    if db is not None:
+        group_trip_collection = db.group_trip
+        group_trip_collection.create_index([('group_id', 1), ('username', 1)], unique=True)
+        group_trip_collection.create_index('ts')
+except Exception as e:
+    log.error('Failed to init group_trip: %s', e)
 
 @app.route('/api/groups/<group_id>/live_loc', methods=['POST'])
 def group_live_loc_post(group_id):
@@ -2850,9 +2856,13 @@ def group_live_loc_post(group_id):
     if lat is None or lng is None:
         return jsonify({'error': 'lat and lng required'}), 400
     import time
-    _group_live_locs.setdefault(group_id, {})[username] = {
-        'lat': float(lat), 'lng': float(lng), 'ts': time.time()
-    }
+    ts = time.time()
+    if group_trip_collection is not None:
+        group_trip_collection.update_one(
+            {'group_id': group_id, 'username': username},
+            {'$set': {'lat': float(lat), 'lng': float(lng), 'ts': ts, 'type': 'loc'}},
+            upsert=True
+        )
     return jsonify({'ok': True})
 
 @app.route('/api/groups/<group_id>/live_loc', methods=['GET'])
@@ -2861,13 +2871,14 @@ def group_live_loc_get(group_id):
     if not username:
         return jsonify({'members': []})
     import time
-    now = time.time()
-    locs = _group_live_locs.get(group_id, {})
-    # 5 minute TTL
-    active = [{'username': u, 'lat': v['lat'], 'lng': v['lng'], 'ts': v['ts']}
-              for u, v in locs.items() if now - v['ts'] < 300]
-    _group_live_locs[group_id] = {u: v for u, v in locs.items() if now - v['ts'] < 300}
-    return jsonify({'members': active})
+    cutoff = time.time() - 300  # 5 min TTL
+    if group_trip_collection is None:
+        return jsonify({'members': []})
+    docs = list(group_trip_collection.find(
+        {'group_id': group_id, 'type': 'loc', 'ts': {'$gt': cutoff}},
+        {'_id': 0, 'username': 1, 'lat': 1, 'lng': 1, 'ts': 1}
+    ))
+    return jsonify({'members': docs})
 
 @app.route('/api/groups/<group_id>/destination', methods=['POST'])
 def group_destination_post(group_id):
@@ -2878,16 +2889,24 @@ def group_destination_post(group_id):
     lat, lng = data.get('lat'), data.get('lng')
     if lat is None or lng is None:
         return jsonify({'error': 'lat and lng required'}), 400
-    _group_destinations[group_id] = {
-        'lat': float(lat), 'lng': float(lng),
-        'label': data.get('label', ''),
-        'set_by': username
-    }
-    return jsonify(_group_destinations[group_id])
+    dest = {'lat': float(lat), 'lng': float(lng), 'label': data.get('label', ''), 'set_by': username}
+    if group_trip_collection is not None:
+        group_trip_collection.update_one(
+            {'group_id': group_id, 'username': '__dest__'},
+            {'$set': {**dest, 'type': 'dest'}},
+            upsert=True
+        )
+    return jsonify(dest)
 
 @app.route('/api/groups/<group_id>/destination', methods=['GET'])
 def group_destination_get(group_id):
-    return jsonify(_group_destinations.get(group_id, {}))
+    if group_trip_collection is None:
+        return jsonify({})
+    doc = group_trip_collection.find_one(
+        {'group_id': group_id, 'username': '__dest__'},
+        {'_id': 0, 'lat': 1, 'lng': 1, 'label': 1, 'set_by': 1}
+    )
+    return jsonify(doc or {})
 
 @app.route('/api/groups/<group_id>/location_stats', methods=['GET'])
 def group_location_stats(group_id):

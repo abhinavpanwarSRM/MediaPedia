@@ -2721,9 +2721,11 @@
       const rect = this.getBoundingClientRect();
       const mx = (e.clientX - rect.left) * (this.width / rect.width);
       const my = (e.clientY - rect.top) * (this.height / rect.height);
-      _tripPanX = mx - factor * (mx - _tripPanX);
-      _tripPanY = my - factor * (my - _tripPanY);
-      _tripZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+      const newZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+      const scale = newZoom / _tripZoom;
+      _tripPanX = mx - scale * (mx - _tripPanX);
+      _tripPanY = my - scale * (my - _tripPanY);
+      _tripZoom = newZoom;
     }, { passive: false });
 
     // Pinch zoom
@@ -2750,9 +2752,11 @@
         const rect = this.getBoundingClientRect();
         const mx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * (this.width / rect.width);
         const my = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) * (this.height / rect.height);
-        _tripPanX = mx - factor * (mx - _tripPanX);
-        _tripPanY = my - factor * (my - _tripPanY);
-        _tripZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+        const newZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+        const scale = newZoom / _tripZoom;
+        _tripPanX = mx - scale * (mx - _tripPanX);
+        _tripPanY = my - scale * (my - _tripPanY);
+        _tripZoom = newZoom;
         _tripPinchDist = dist;
       } else if (e.touches.length === 1 && _tripDragging) {
         _tripPanX = e.touches[0].clientX - _tripDragStart.x;
