@@ -447,6 +447,34 @@
       border-top: 1px solid var(--whatsapp-border);
     }
 
+    /* Extra action buttons — hidden on mobile behind + toggle */
+    .input-extras {
+      display: contents;
+    }
+    #extras-toggle { display: none; }
+
+    @media (max-width: 520px) {
+      .input-bar { gap: 0.3rem; padding: 0.4rem 0.5rem; }
+      #extras-toggle { display: flex; }
+      .input-extras {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 0.5rem;
+        background: var(--whatsapp-header);
+        border: 1px solid var(--whatsapp-border);
+        border-radius: 12px;
+        padding: 6px;
+        gap: 4px;
+        flex-direction: row;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        z-index: 20;
+        animation: pickerPop 0.18s cubic-bezier(.34,1.56,.64,1);
+      }
+      .input-extras.open { display: flex; }
+      #input-bar { position: relative; }
+    }
+
     .input-bar .input-group {
       flex: 1;
       display: flex;
@@ -1276,6 +1304,7 @@
     <div id="trip-header">
       <i class="fas fa-route" style="color:var(--whatsapp-green)"></i>
       <h3>Trip Tracker</h3>
+      <button onclick="_tripFitAll()" style="background:rgba(255,255,255,0.08);border:none;color:var(--whatsapp-gray);border-radius:8px;padding:4px 10px;font-size:0.75rem;cursor:pointer;" title="Fit all">⊞ Fit</button>
       <button id="trip-close" onclick="closeTrip()"><i class="fas fa-times"></i></button>
     </div>
     <div id="trip-dest-bar">
@@ -1369,18 +1398,23 @@
 
   <!-- INPUT BAR -->
   <div class="input-bar" id="input-bar">
-    <button class="input-btn" onclick="shareLocation()" title="Share location" id="loc-btn" style="color:#00a884">
-      <i class="fas fa-map-marker-alt"></i>
+    <button class="input-btn" id="extras-toggle" onclick="toggleExtras()" title="More">
+      <i class="fas fa-plus"></i>
     </button>
-    <button class="input-btn" onclick="openPollModal()" title="Create poll" style="color:var(--whatsapp-gray)">
-      <i class="fas fa-poll"></i>
-    </button>
-    <button class="input-btn" onclick="openMediaModal()" title="Share movie/series" style="color:var(--whatsapp-gray)">
-      <i class="fas fa-film"></i>
-    </button>
-    <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
-      <i class="fas fa-paperclip"></i>
-    </button>
+    <div class="input-extras" id="input-extras">
+      <button class="input-btn" onclick="shareLocation()" title="Share location" id="loc-btn" style="color:#00a884">
+        <i class="fas fa-map-marker-alt"></i>
+      </button>
+      <button class="input-btn" onclick="openPollModal()" title="Create poll" style="color:var(--whatsapp-gray)">
+        <i class="fas fa-poll"></i>
+      </button>
+      <button class="input-btn" onclick="openMediaModal()" title="Share movie/series" style="color:var(--whatsapp-gray)">
+        <i class="fas fa-film"></i>
+      </button>
+      <button class="input-btn" onclick="document.getElementById('img-file').click()" title="Attach photo">
+        <i class="fas fa-paperclip"></i>
+      </button>
+    </div>
     <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImagePick(this)">
     
     <div class="input-group">
@@ -1597,6 +1631,22 @@
     setInterval(refreshPolls, 5000);
     document.getElementById('poll-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('poll-modal')) closePollModal();
+    });
+
+    // ── Extras toggle (mobile) ──
+    function toggleExtras() {
+      const el = document.getElementById('input-extras');
+      const btn = document.getElementById('extras-toggle').querySelector('i');
+      el.classList.toggle('open');
+      btn.className = el.classList.contains('open') ? 'fas fa-times' : 'fas fa-plus';
+    }
+    document.addEventListener('click', e => {
+      const extras = document.getElementById('input-extras');
+      if (!extras.classList.contains('open')) return;
+      if (!extras.contains(e.target) && e.target.id !== 'extras-toggle' && !document.getElementById('extras-toggle').contains(e.target)) {
+        extras.classList.remove('open');
+        document.getElementById('extras-toggle').querySelector('i').className = 'fas fa-plus';
+      }
     });
 
     // ── Location ──
@@ -2276,6 +2326,7 @@
       }).then(r => r.json()).then(d => {
         _tripDestination = { lat, lng, label };
         document.getElementById('trip-dest-input').value = label || `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        _tripFitAll();
       }).catch(() => alert('Failed to set destination'));
     }
 
@@ -2484,9 +2535,10 @@
       }).join('');
     }
 
-    // ── Shared bounding box (members only — stable reference for click inverse-projection) ──
+    // ── Bounding box: members + destination ──
     function _tripBounds() {
-      const pts = Object.values(_tripMembers);
+      const pts = [...Object.values(_tripMembers)];
+      if (_tripDestination) pts.push(_tripDestination);
       if (!pts.length) return null;
       return {
         minLat: Math.min(...pts.map(p => p.lat)),
@@ -2496,175 +2548,157 @@
       };
     }
 
+    // Auto-fit all points into view
+    function _tripFitAll() {
+      const canvas = document.getElementById('trip-canvas');
+      const W = canvas.width, H = canvas.height;
+      const b = _tripBounds();
+      if (!b) { _tripZoom = 1; _tripPanX = 0; _tripPanY = 0; return; }
+      const pad = 0.12;
+      const rangeX = (b.maxLng - b.minLng) || 0.001;
+      const rangeY = (b.maxLat - b.minLat) || 0.001;
+      // project with zoom=1 pan=0
+      function p0(lat, lng) {
+        return [
+          ((lng - b.minLng) / rangeX) * (W * (1 - 2*pad)) + W * pad,
+          H - (((lat - b.minLat) / rangeY) * (H * (1 - 2*pad)) + H * pad)
+        ];
+      }
+      const pts = [...Object.values(_tripMembers)];
+      if (_tripDestination) pts.push(_tripDestination);
+      const projected = pts.map(p => p0(p.lat, p.lng));
+      const xs = projected.map(p => p[0]), ys = projected.map(p => p[1]);
+      const pW = Math.max(...xs) - Math.min(...xs) || 1;
+      const pH = Math.max(...ys) - Math.min(...ys) || 1;
+      _tripZoom = Math.min(W * 0.82 / pW, H * 0.82 / pH, 6);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      _tripPanX = W / 2 - _tripZoom * cx;
+      _tripPanY = H / 2 - _tripZoom * cy;
+    }
+
     // ── Canvas map drawing ──
     function _startTripDraw() {
       const canvas = document.getElementById('trip-canvas');
       const ctx = canvas.getContext('2d');
+      let _prevMemberCount = 0;
       function draw() {
         _tripAnimFrame = requestAnimationFrame(draw);
         if (!document.getElementById('trip-modal').classList.contains('open')) return;
         _tripPulse = (_tripPulse + 0.04) % (Math.PI * 2);
         const W = canvas.width, H = canvas.height;
+        const dpr = devicePixelRatio;
         ctx.clearRect(0, 0, W, H);
 
         // Background grid
-        ctx.save();
-        ctx.translate(_tripPanX, _tripPanY);
-        ctx.scale(_tripZoom, _tripZoom);
-
         ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-        ctx.lineWidth = 1 / _tripZoom;
-        for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-        for (let y = 0; y < H; y += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+        ctx.lineWidth = 1;
+        for (let x = 0; x < W; x += 40 * dpr) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+        for (let y = 0; y < H; y += 40 * dpr) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
         const members = Object.entries(_tripMembers);
+
+        // Auto-fit when new members appear
+        if (members.length !== _prevMemberCount) {
+          _prevMemberCount = members.length;
+          if (members.length > 0) _tripFitAll();
+        }
+
         if (!members.length && !_tripDestination) {
           ctx.fillStyle = 'rgba(134,150,160,0.5)';
-          ctx.font = `${13 * devicePixelRatio}px Inter,sans-serif`;
+          ctx.font = `${13 * dpr}px Inter,sans-serif`;
           ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
           ctx.fillText('Share your location to see the map', W/2, H/2);
-          ctx.textBaseline = 'alphabetic';
           return;
         }
 
-        // Bounding box: members only (same as click handler)
-        const bounds = _tripBounds();
-        if (!bounds && !_tripDestination) return;
-        const { minLat, maxLat, minLng, maxLng } = bounds || {
-          minLat: _tripDestination.lat, maxLat: _tripDestination.lat,
-          minLng: _tripDestination.lng, maxLng: _tripDestination.lng
-        };
-        const pad = 0.12 * devicePixelRatio;
-        const rangeX = (maxLng - minLng) || 0.01;
-        const rangeY = (maxLat - minLat) || 0.01;
+        const b = _tripBounds();
+        if (!b) return;
+        const pad = 0.12;
+        const rangeX = (b.maxLng - b.minLng) || 0.001;
+        const rangeY = (b.maxLat - b.minLat) || 0.001;
 
+        // Base projection (zoom=1, pan=0), then apply zoom+pan
         function project(lat, lng) {
-          const x = ((lng - minLng) / rangeX) * (W * (1 - 2*pad)) + W * pad;
-          const y = H - (((lat - minLat) / rangeY) * (H * (1 - 2*pad)) + H * pad);
-          return [x, y];
+          const bx = ((lng - b.minLng) / rangeX) * (W * (1 - 2*pad)) + W * pad;
+          const by = H - (((lat - b.minLat) / rangeY) * (H * (1 - 2*pad)) + H * pad);
+          return [bx * _tripZoom + _tripPanX, by * _tripZoom + _tripPanY];
         }
 
-        // Draw group center marker
+        // Group center
         if (members.length >= 2) {
-          const centerLat = members.reduce((s,[,l]) => s+l.lat, 0) / members.length;
-          const centerLng = members.reduce((s,[,l]) => s+l.lng, 0) / members.length;
-          const [cx, cy] = project(centerLat, centerLng);
-          ctx.beginPath();
-          ctx.arc(cx, cy, 5 * devicePixelRatio, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.15)';
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-          ctx.lineWidth = 1 * devicePixelRatio;
-          ctx.stroke();
+          const cLat = members.reduce((s,[,l]) => s+l.lat, 0) / members.length;
+          const cLng = members.reduce((s,[,l]) => s+l.lng, 0) / members.length;
+          const [cx, cy] = project(cLat, cLng);
+          ctx.beginPath(); ctx.arc(cx, cy, 5*dpr, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = dpr; ctx.stroke();
           ctx.fillStyle = 'rgba(255,255,255,0.4)';
-          ctx.font = `${8 * devicePixelRatio}px Inter,sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText('center', cx, cy + 6 * devicePixelRatio);
+          ctx.font = `${8*dpr}px Inter,sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText('center', cx, cy + 6*dpr);
         }
 
-        // Draw animated marching lines from each member to destination
+        // Marching lines + arrows to destination
         if (_tripDestination) {
           const [dx, dy] = project(_tripDestination.lat, _tripDestination.lng);
-          const dashOffset = (_tripPulse / (Math.PI * 2)) * 20;
+          const dashOff = (_tripPulse / (Math.PI*2)) * 20;
           members.forEach(([name, loc]) => {
             const [mx, my] = project(loc.lat, loc.lng);
             const color = tripColor(name);
-            ctx.setLineDash([6 * devicePixelRatio, 4 * devicePixelRatio]);
-            ctx.lineDashOffset = -dashOffset * devicePixelRatio;
-            ctx.strokeStyle = color + '66';
-            ctx.lineWidth = 1.5 * devicePixelRatio;
-            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(dx, dy); ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.lineDashOffset = 0;
-
-            // Bearing arrow on dot toward destination
-            const angle = Math.atan2(dy - my, dx - mx);
-            const [ax, ay] = project(loc.lat, loc.lng);
-            const arrowLen = 14 * devicePixelRatio;
+            ctx.setLineDash([6*dpr, 4*dpr]); ctx.lineDashOffset = -dashOff*dpr;
+            ctx.strokeStyle = color+'66'; ctx.lineWidth = 1.5*dpr;
+            ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(dx,dy); ctx.stroke();
+            ctx.setLineDash([]); ctx.lineDashOffset = 0;
+            const angle = Math.atan2(dy-my, dx-mx);
+            const aLen = 14*dpr;
             ctx.beginPath();
-            ctx.moveTo(ax + Math.cos(angle) * 10 * devicePixelRatio, ay + Math.sin(angle) * 10 * devicePixelRatio);
-            ctx.lineTo(ax + Math.cos(angle) * arrowLen, ay + Math.sin(angle) * arrowLen);
-            ctx.strokeStyle = color + 'aa';
-            ctx.lineWidth = 2 * devicePixelRatio;
-            ctx.stroke();
-            // arrowhead
+            ctx.moveTo(mx+Math.cos(angle)*10*dpr, my+Math.sin(angle)*10*dpr);
+            ctx.lineTo(mx+Math.cos(angle)*aLen, my+Math.sin(angle)*aLen);
+            ctx.strokeStyle = color+'aa'; ctx.lineWidth = 2*dpr; ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(ax + Math.cos(angle) * arrowLen, ay + Math.sin(angle) * arrowLen);
-            ctx.lineTo(ax + Math.cos(angle - 0.5) * (arrowLen - 5 * devicePixelRatio), ay + Math.sin(angle - 0.5) * (arrowLen - 5 * devicePixelRatio));
-            ctx.lineTo(ax + Math.cos(angle + 0.5) * (arrowLen - 5 * devicePixelRatio), ay + Math.sin(angle + 0.5) * (arrowLen - 5 * devicePixelRatio));
-            ctx.closePath();
-            ctx.fillStyle = color;
-            ctx.fill();
+            ctx.moveTo(mx+Math.cos(angle)*aLen, my+Math.sin(angle)*aLen);
+            ctx.lineTo(mx+Math.cos(angle-0.5)*(aLen-5*dpr), my+Math.sin(angle-0.5)*(aLen-5*dpr));
+            ctx.lineTo(mx+Math.cos(angle+0.5)*(aLen-5*dpr), my+Math.sin(angle+0.5)*(aLen-5*dpr));
+            ctx.closePath(); ctx.fillStyle = color; ctx.fill();
           });
         }
 
-        // Draw destination star with pulsing ring
+        // Destination star
         if (_tripDestination) {
           const [dx, dy] = project(_tripDestination.lat, _tripDestination.lng);
-          const pulse = 0.5 + 0.5 * Math.sin(_tripPulse);
-          // outer ring
-          ctx.beginPath();
-          ctx.arc(dx, dy, (18 + pulse * 8) * devicePixelRatio, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255,215,0,${0.15 + pulse * 0.2})`;
-          ctx.lineWidth = 2 * devicePixelRatio;
-          ctx.stroke();
-          // inner ring
-          ctx.beginPath();
-          ctx.arc(dx, dy, (10 + pulse * 4) * devicePixelRatio, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255,215,0,${0.3 + pulse * 0.3})`;
-          ctx.lineWidth = 1.5 * devicePixelRatio;
-          ctx.stroke();
-          // star dot
-          ctx.beginPath();
-          ctx.arc(dx, dy, 7 * devicePixelRatio, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffd700';
-          ctx.fill();
-          ctx.fillStyle = '#000';
-          ctx.font = `bold ${9 * devicePixelRatio}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('★', dx, dy);
+          const pulse = 0.5 + 0.5*Math.sin(_tripPulse);
+          ctx.beginPath(); ctx.arc(dx,dy,(18+pulse*8)*dpr,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(255,215,0,${0.15+pulse*0.2})`; ctx.lineWidth=2*dpr; ctx.stroke();
+          ctx.beginPath(); ctx.arc(dx,dy,(10+pulse*4)*dpr,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(255,215,0,${0.3+pulse*0.3})`; ctx.lineWidth=1.5*dpr; ctx.stroke();
+          ctx.beginPath(); ctx.arc(dx,dy,7*dpr,0,Math.PI*2);
+          ctx.fillStyle='#ffd700'; ctx.fill();
+          ctx.fillStyle='#000'; ctx.font=`bold ${9*dpr}px sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('★',dx,dy);
         }
 
-        // Draw member dots
+        // Member dots
         members.forEach(([name, loc]) => {
           const [x, y] = project(loc.lat, loc.lng);
           const color = tripColor(name);
           const isMe = name === ME;
-          const pulse = 0.5 + 0.5 * Math.sin(_tripPulse + (isMe ? 0 : 1.2));
-
-          // pulsing aura
-          const grad = ctx.createRadialGradient(x, y, 0, x, y, (22 + pulse * 10) * devicePixelRatio);
-          grad.addColorStop(0, color + '44');
-          grad.addColorStop(1, color + '00');
-          ctx.beginPath();
-          ctx.arc(x, y, (22 + pulse * 10) * devicePixelRatio, 0, Math.PI * 2);
-          ctx.fillStyle = grad;
-          ctx.fill();
-
-          // dot
-          ctx.beginPath();
-          ctx.arc(x, y, (isMe ? 9 : 7) * devicePixelRatio, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2 * devicePixelRatio;
-          ctx.stroke();
-
-          // label
-          ctx.fillStyle = '#fff';
-          ctx.font = `${isMe ? 'bold ' : ''}${10 * devicePixelRatio}px Inter,sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          // shadow
-          ctx.shadowColor = 'rgba(0,0,0,0.8)';
-          ctx.shadowBlur = 4 * devicePixelRatio;
-          ctx.fillText(name.length > 8 ? name.slice(0,7)+'…' : name, x, y + 11 * devicePixelRatio);
-          ctx.shadowBlur = 0;
+          const pulse = 0.5 + 0.5*Math.sin(_tripPulse + (isMe ? 0 : 1.2));
+          const grad = ctx.createRadialGradient(x,y,0,x,y,(22+pulse*10)*dpr);
+          grad.addColorStop(0, color+'44'); grad.addColorStop(1, color+'00');
+          ctx.beginPath(); ctx.arc(x,y,(22+pulse*10)*dpr,0,Math.PI*2);
+          ctx.fillStyle=grad; ctx.fill();
+          ctx.beginPath(); ctx.arc(x,y,(isMe?9:7)*dpr,0,Math.PI*2);
+          ctx.fillStyle=color; ctx.fill();
+          ctx.strokeStyle='#fff'; ctx.lineWidth=2*dpr; ctx.stroke();
+          ctx.fillStyle='#fff';
+          ctx.font=`${isMe?'bold ':''}${10*dpr}px Inter,sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='top';
+          ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4*dpr;
+          ctx.fillText(name.length>8?name.slice(0,7)+'…':name, x, y+11*dpr);
+          ctx.shadowBlur=0;
         });
-
-        ctx.restore();
       }
       draw();
     }
