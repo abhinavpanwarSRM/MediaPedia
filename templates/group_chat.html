@@ -2209,12 +2209,17 @@
       return name === ME ? '#1db954' : memberColor(name);
     }
 
+    function _pollTripAll() {
+      _pollTripLocs();
+      _loadTripDest();
+    }
+
     function openTrip() {
       document.getElementById('trip-modal').classList.add('open');
       _resizeTripCanvas();
-      _loadTripDest();
-      _pollTripLocs();
-      _tripPollInterval = setInterval(_pollTripLocs, 10000);
+      _tripZoom = 1; _tripPanX = 0; _tripPanY = 0;
+      _pollTripAll();
+      _tripPollInterval = setInterval(_pollTripAll, 10000);
       _startTripDraw();
     }
 
@@ -2503,8 +2508,12 @@
         ctx.clearRect(0, 0, W, H);
 
         // Background grid
+        ctx.save();
+        ctx.translate(_tripPanX, _tripPanY);
+        ctx.scale(_tripZoom, _tripZoom);
+
         ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / _tripZoom;
         for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
         for (let y = 0; y < H; y += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
 
@@ -2654,34 +2663,87 @@
           ctx.fillText(name.length > 8 ? name.slice(0,7)+'…' : name, x, y + 11 * devicePixelRatio);
           ctx.shadowBlur = 0;
         });
+
+        ctx.restore();
       }
       draw();
     }
 
-    // ── Drop a pin on canvas click ──
-    document.getElementById('trip-canvas').addEventListener('click', function(e) {
-      const bounds = _tripBounds();
-      if (!bounds) return;
-      const canvas = this;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const cx = (e.clientX - rect.left) * scaleX;
-      const cy = (e.clientY - rect.top) * scaleY;
-      const W = canvas.width, H = canvas.height;
-      const pad = 0.12 * devicePixelRatio;
-      const { minLat, maxLat, minLng, maxLng } = bounds;
-      const rangeX = (maxLng - minLng) || 0.01;
-      const rangeY = (maxLat - minLat) || 0.01;
-      const lng = ((cx - W*pad) / (W*(1-2*pad))) * rangeX + minLng;
-      const lat = maxLat - ((cy - H*pad) / (H*(1-2*pad))) * rangeY;
-      if (isNaN(lat) || isNaN(lng)) return;
-      const label = `Pin (${lat.toFixed(4)},${lng.toFixed(4)})`;
-      document.getElementById('trip-dest-input').value = label;
-      _saveDestination(lat, lng, label);
+    // ── Canvas zoom ──
+    let _tripZoom = 1;      // zoom multiplier
+    let _tripPanX = 0;     // pan offset in canvas pixels
+    let _tripPanY = 0;
+    let _tripPinchDist = null;
+    let _tripDragging = false;
+    let _tripDragStart = null;
+
+    const _tripCanvas = document.getElementById('trip-canvas');
+    _tripCanvas.style.cursor = 'grab';
+
+    // Scroll wheel zoom
+    _tripCanvas.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const rect = this.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (this.width / rect.width);
+      const my = (e.clientY - rect.top) * (this.height / rect.height);
+      _tripPanX = mx - factor * (mx - _tripPanX);
+      _tripPanY = my - factor * (my - _tripPanY);
+      _tripZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+    }, { passive: false });
+
+    // Pinch zoom
+    _tripCanvas.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        _tripPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      } else if (e.touches.length === 1) {
+        _tripDragging = true;
+        _tripDragStart = { x: e.touches[0].clientX - _tripPanX, y: e.touches[0].clientY - _tripPanY };
+      }
+    }, { passive: true });
+
+    _tripCanvas.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2 && _tripPinchDist !== null) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / _tripPinchDist;
+        const rect = this.getBoundingClientRect();
+        const mx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) * (this.width / rect.width);
+        const my = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) * (this.height / rect.height);
+        _tripPanX = mx - factor * (mx - _tripPanX);
+        _tripPanY = my - factor * (my - _tripPanY);
+        _tripZoom = Math.min(Math.max(_tripZoom * factor, 0.5), 8);
+        _tripPinchDist = dist;
+      } else if (e.touches.length === 1 && _tripDragging) {
+        _tripPanX = e.touches[0].clientX - _tripDragStart.x;
+        _tripPanY = e.touches[0].clientY - _tripDragStart.y;
+      }
+    }, { passive: false });
+
+    _tripCanvas.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) _tripPinchDist = null;
+      if (e.touches.length === 0) _tripDragging = false;
     });
-    document.getElementById('trip-canvas').title = 'Tap to drop a pin as destination';
-    document.getElementById('trip-canvas').style.cursor = 'crosshair';
+
+    // Mouse drag pan
+    _tripCanvas.addEventListener('mousedown', function(e) {
+      _tripDragging = true;
+      _tripDragStart = { x: e.clientX - _tripPanX, y: e.clientY - _tripPanY };
+      this.style.cursor = 'grabbing';
+    });
+    _tripCanvas.addEventListener('mousemove', function(e) {
+      if (!_tripDragging) return;
+      _tripPanX = e.clientX - _tripDragStart.x;
+      _tripPanY = e.clientY - _tripDragStart.y;
+    });
+    _tripCanvas.addEventListener('mouseup', function() { _tripDragging = false; this.style.cursor = 'grab'; });
+    _tripCanvas.addEventListener('mouseleave', function() { _tripDragging = false; this.style.cursor = 'grab'; });
 
     // ── Focus input ──
     input.focus();
