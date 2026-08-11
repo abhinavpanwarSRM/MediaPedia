@@ -2532,7 +2532,7 @@
         .then(r => r.json())
         .then(d => {
           _tripMembers = {};
-          (d.members || []).forEach(m => { _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts }; });
+          (d.members || []).forEach(m => { _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts * 1000 }; });
           _renderTripStats();
           _checkProximity();
           _checkTripSummary();
@@ -2628,7 +2628,11 @@
           const prev = _prevTripMembers[name];
           if (prev) {
             const d = _haversine(prev, loc);
-            _memberSpeeds[name] = d / dtHrs;
+            const raw = d / dtHrs;
+            // smooth with previous reading to reduce GPS jitter
+            _memberSpeeds[name] = _memberSpeeds[name]
+              ? _memberSpeeds[name] * 0.4 + raw * 0.6
+              : raw;
           }
         });
       }
@@ -2641,7 +2645,8 @@
         if (_tripDestination) {
           dist = _haversine(loc, _tripDestination);
           arrived = dist < 0.1;
-          const speed = dist < 2 ? 5 : 40;
+          const spd = _memberSpeeds[name];
+          const speed = (spd && spd > 1) ? spd : (dist < 2 ? 5 : 40);
           const hrs = dist / speed;
           const mins = Math.round(hrs * 60);
           eta = arrived ? null : (mins < 1 ? '<1 min' : `~${mins} min`);
