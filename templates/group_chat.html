@@ -1136,25 +1136,30 @@
     #trip-live-btn.active { background:rgba(229,9,20,0.25); color:#ff6b6b; }
     #trip-stats { flex:1; overflow-y:auto; padding:0.5rem 0.75rem;
       display:flex; flex-direction:column; gap:0.3rem; }
-    .trip-member-row { display:flex; align-items:center; gap:0.6rem;
+    .trip-member-row { display:grid; grid-template-columns: 18px 10px 1fr auto; align-items:center; gap:0.4rem;
       padding:0.45rem 0.6rem; background:rgba(255,255,255,0.04);
-      border-radius:8px; font-size:0.8rem; transition:background 0.2s; flex-wrap:wrap; }
+      border-radius:8px; font-size:0.8rem; transition:background 0.2s; }
     .trip-member-row:hover { background:rgba(255,255,255,0.08); }
     .trip-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-    .trip-name { flex:1; color:#fff; font-weight:500; min-width:0; }
-    .trip-rank { font-size:0.7rem; font-weight:700; min-width:18px; text-align:center; }
-    .trip-dist { color:var(--whatsapp-gray); font-size:0.75rem; }
-    .trip-eta { color:var(--whatsapp-green); font-size:0.72rem; font-weight:600; }
-    .trip-arrived { color:#1db954; font-size:0.72rem; font-weight:700; }
-    .trip-no-loc { color:var(--whatsapp-gray); font-size:0.72rem; font-style:italic; }
-    .trip-badge { font-size:0.68rem; padding:1px 6px; border-radius:10px; font-weight:600; }
+    .trip-name { color:#fff; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .trip-rank { font-size:0.7rem; font-weight:700; text-align:center; }
+    .trip-right { display:flex; flex-wrap:wrap; align-items:center; gap:3px; justify-content:flex-end; min-width:0; }
+    .trip-dist { color:var(--whatsapp-gray); font-size:0.75rem; white-space:nowrap; }
+    .trip-eta { color:var(--whatsapp-green); font-size:0.72rem; font-weight:600; white-space:nowrap; }
+    .trip-arrived { color:#1db954; font-size:0.72rem; font-weight:700; white-space:nowrap; }
+    .trip-no-loc { color:var(--whatsapp-gray); font-size:0.72rem; font-style:italic; white-space:nowrap; }
+    .trip-badge { font-size:0.65rem; padding:1px 5px; border-radius:10px; font-weight:600; white-space:nowrap; }
     .trip-badge.leader { background:rgba(255,215,0,0.2); color:#ffd700; }
     .trip-badge.slowpoke { background:rgba(134,150,160,0.2); color:var(--whatsapp-gray); }
     .trip-badge.speedy { background:rgba(0,168,132,0.2); color:var(--whatsapp-green); }
-    .trip-speed { font-size:0.68rem; color:var(--whatsapp-gray); }
-    .trip-stale { font-size:0.65rem; color:#f5a623; }
-    .trip-progress-wrap { width:100%; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:3px; }
+    .trip-speed { font-size:0.65rem; color:var(--whatsapp-gray); white-space:nowrap; }
+    .trip-stale { font-size:0.62rem; color:#f5a623; white-space:nowrap; }
+    .trip-progress-wrap { grid-column: 1 / -1; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:1px; }
     .trip-progress-bar { height:100%; border-radius:2px; transition:width 0.6s ease; }
+    @media (max-width: 360px) {
+      .trip-member-row { grid-template-columns: 14px 8px 1fr auto; gap:0.3rem; padding:0.35rem 0.4rem; font-size:0.75rem; }
+      .trip-speed { display:none; }
+    }
     .trip-summary { display:flex; gap:0.5rem; flex-wrap:wrap; padding:0.4rem 0.6rem;
       background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:0.3rem; }
     .trip-summary-stat { display:flex; flex-direction:column; align-items:center;
@@ -2886,18 +2891,19 @@
         return `<div class="trip-member-row" onclick="_focusUser('${escAttr(r.name)}');setTripViewFocus()" style="cursor:pointer">
           <span class="trip-rank" style="color:${tripColor(r.name)}">${r.arrived ? '✅' : '#'+rank}</span>
           <div class="trip-dot" style="background:${tripColor(r.name)}"></div>
-          <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' <span style="opacity:0.5;font-size:0.7rem">(you)</span>' : ''}</span>
-          ${isLeader ? '<span class="trip-badge leader">🏆 Leading</span>' : ''}
-          ${isSlowpoke ? '<span class="trip-badge slowpoke">🐢 Slowpoke</span>' : ''}
-          ${speedHtml}
-          ${r.stale ? `<span class="trip-stale">⚠ ${r.staleLabel}</span>` : `<span style="font-size:0.65rem;color:var(--whatsapp-green)">● ${r.staleLabel}</span>`}
-          ${r.arrived
-            ? '<span class="trip-arrived">✅ Arrived!</span>'
-            : r.dist !== null
-              ? `<span class="trip-dist">${r.dist < 1 ? (r.dist*1000).toFixed(0)+'m' : r.dist.toFixed(1)+'km'}</span>
-                 <span class="trip-eta">${r.eta}</span>`
-              : '<span class="trip-no-loc">no destination set</span>'
-          }
+          <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' <span style="opacity:0.5;font-size:0.65rem">(you)</span>' : ''}</span>
+          <div class="trip-right">
+            ${isLeader ? '<span class="trip-badge leader">🏆 Lead</span>' : ''}
+            ${isSlowpoke ? '<span class="trip-badge slowpoke">🐢</span>' : ''}
+            ${speedHtml}
+            ${r.stale ? `<span class="trip-stale">⚠ ${r.staleLabel}</span>` : `<span style="font-size:0.62rem;color:var(--whatsapp-green)">● ${r.staleLabel}</span>`}
+            ${r.arrived
+              ? '<span class="trip-arrived">✅ Here!</span>'
+              : r.dist !== null
+                ? `<span class="trip-dist">${r.dist < 1 ? (r.dist*1000).toFixed(0)+'m' : r.dist.toFixed(1)+'km'}</span><span class="trip-eta">${r.eta}</span>`
+                : '<span class="trip-no-loc">no dest</span>'
+            }
+          </div>
           ${progressBar}
         </div>`;
       }).join('');
