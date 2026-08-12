@@ -889,19 +889,6 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,168,132,0.2);
     }
     .loc-map iframe { width:100%; height:100%; border:none; pointer-events:none; display:block; }
-    .loc-views { display:flex; gap:4px; margin-bottom:2px; }
-    .loc-view-btn {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 6px;
-      color: var(--whatsapp-gray);
-      font-size: 0.68rem;
-      padding: 2px 7px;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .loc-view-btn:hover, .loc-view-btn.active { background: rgba(0,168,132,0.2); border-color: var(--whatsapp-green); color: #fff; }
     @keyframes loc-shimmer {
       0%   { background-position: 200% 0; }
       100% { background-position: -200% 0; }
@@ -1370,14 +1357,8 @@
               {% if msg.location %}
               <div class="loc-bubble">
                 <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location <span style="opacity:0.5;font-size:0.65rem">{{ msg.location.lat | round(4) }}, {{ msg.location.lng | round(4) }}</span></div>
-                <div class="loc-views">
-                  <button class="loc-view-btn active" onclick="_locView('loc-map-{{ msg.msg_id }}','map',this)">📍 Map</button>
-                  <button class="loc-view-btn" onclick="_locView('loc-map-{{ msg.msg_id }}','sat',this)">🛰 Satellite</button>
-                  <button class="loc-view-btn" onclick="_locView('loc-map-{{ msg.msg_id }}','osm',this)">🗺 OSM</button>
-                  <button class="loc-view-btn" onclick="_locView('loc-map-{{ msg.msg_id }}','dir',this)">🧭 Directions</button>
-                </div>
-                <div class="loc-map" id="loc-map-{{ msg.msg_id }}" data-lat="{{ msg.location.lat }}" data-lng="{{ msg.location.lng }}"><iframe src="https://maps.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}&z=14&output=embed" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
-                <a class="loc-open" href="https://www.google.com/maps/dir/?api=1&destination={{ msg.location.lat }},{{ msg.location.lng }}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Get Directions</a>
+                <div class="loc-map" id="loc-map-{{ msg.msg_id }}"><iframe src="https://maps.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}&z=14&output=embed" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
+                <a class="loc-open" href="https://www.google.com/maps?q={{ msg.location.lat }},{{ msg.location.lng }}" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Open in Maps</a>
               </div>
               {% endif %}
               {% if msg.poll %}
@@ -1844,40 +1825,15 @@
 
     function locBubbleHtml(loc) {
       const { lat, lng } = loc;
-      const id = 'lm-' + Math.random().toString(36).slice(2);
-      const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+      const embedUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`;
       return `<div class="loc-bubble">
         <div class="loc-label"><i class="fas fa-map-marker-alt"></i> Shared location <span style="opacity:0.5;font-size:0.65rem">${lat.toFixed(4)}, ${lng.toFixed(4)}</span></div>
-        <div class="loc-views">
-          <button class="loc-view-btn active" onclick="_locView('${id}','map',this)">📍 Map</button>
-          <button class="loc-view-btn" onclick="_locView('${id}','sat',this)">🛰 Satellite</button>
-          <button class="loc-view-btn" onclick="_locView('${id}','osm',this)">🗺 OSM</button>
-          <button class="loc-view-btn" onclick="_locView('${id}','dir',this)">🧭 Directions</button>
-        </div>
-        <div class="loc-map" id="${id}" data-lat="${lat}" data-lng="${lng}"><iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
+        <div class="loc-map"><iframe src="${embedUrl}" loading="lazy" onload="this.closest('.loc-map').classList.add('loaded')"></iframe></div>
         <a class="loc-open" href="${mapsUrl}" target="_blank" rel="noopener">
-          <i class="fas fa-external-link-alt"></i> Get Directions
+          <i class="fas fa-external-link-alt"></i> Open in Maps
         </a>
       </div>`;
-    }
-
-    function _locView(id, type, btn) {
-      const wrap = document.getElementById(id);
-      if (!wrap) return;
-      btn.closest('.loc-views').querySelectorAll('.loc-view-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const iframe = wrap.querySelector('iframe');
-      const lat = parseFloat(wrap.dataset.lat);
-      const lng = parseFloat(wrap.dataset.lng);
-      wrap.classList.remove('loaded');
-      const urls = {
-        map: `https://maps.google.com/maps?q=${lat},${lng}&z=14&output=embed`,
-        sat: `https://maps.google.com/maps?q=${lat},${lng}&z=14&t=k&output=embed`,
-        osm: `https://www.openstreetmap.org/export/embed.html?bbox=${lng-.01},${lat-.01},${lng+.01},${lat+.01}&layer=mapnik&marker=${lat},${lng}`,
-        dir: `https://maps.google.com/maps?saddr=My+Location&daddr=${lat},${lng}&output=embed`
-      };
-      iframe.src = urls[type];
-      iframe.onload = () => wrap.classList.add('loaded');
     }
 
     // ── Stats ──
