@@ -1457,9 +1457,7 @@
     <div id="trip-dest-bar">
       <input id="trip-dest-input" placeholder="lat,lng  or type 'here'" autocomplete="off">
       <button id="trip-dest-btn" onclick="setDestination()">📍 Set</button>
-      <button id="trip-copy-btn" onclick="copyDestCoords()" title="Copy destination coords" style="background:rgba(255,255,255,0.08);border:1px solid var(--whatsapp-border);color:var(--whatsapp-gray);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;">📋</button>
       <button id="trip-live-btn" onclick="toggleLiveLoc()">🔴 Go Live</button>
-      <button onclick="_focusUser(ME)" title="Focus on me" style="background:rgba(0,168,132,0.15);border:1px solid rgba(0,168,132,0.3);color:var(--whatsapp-green);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;white-space:nowrap;">🎯 Me</button>
     </div>
     <div id="trip-canvas-wrap">
       <canvas id="trip-canvas" height="260"></canvas>
@@ -2514,17 +2512,6 @@
     function _pollTripAll() {
       _pollTripLocs();
       _loadTripDest();
-    }
-
-    // ── Copy destination coords to clipboard ──
-    function copyDestCoords() {
-      if (!_tripDestination) return;
-      const txt = `${_tripDestination.lat.toFixed(6)},${_tripDestination.lng.toFixed(6)}`;
-      navigator.clipboard?.writeText(txt).then(() => {
-        const btn = document.getElementById('trip-copy-btn');
-        btn.textContent = '✅';
-        setTimeout(() => { btn.textContent = '📋'; }, 1500);
-      }).catch(() => {});
     }
 
     function openTrip() {
