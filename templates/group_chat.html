@@ -1166,6 +1166,17 @@
       gap:0.75rem; flex-wrap:wrap; align-items:center; }
     #trip-legend span { display:flex; align-items:center; gap:4px; }
     @keyframes marchDash { to { stroke-dashoffset: -20; } }
+    /* ── MAP VIEW SWITCHER ── */
+    #trip-view-bar { display:flex; gap:4px; padding:0.4rem 0.75rem;
+      background:var(--whatsapp-input); border-bottom:1px solid var(--whatsapp-border);
+      flex-shrink:0; overflow-x:auto; scrollbar-width:none; }
+    #trip-view-bar::-webkit-scrollbar { display:none; }
+    .trip-view-btn { background:rgba(255,255,255,0.07); border:1px solid var(--whatsapp-border);
+      color:var(--whatsapp-gray); border-radius:20px; padding:3px 12px; font-size:0.75rem;
+      cursor:pointer; white-space:nowrap; transition:all 0.18s; font-family:inherit; }
+    .trip-view-btn.active { background:var(--whatsapp-green); border-color:var(--whatsapp-green); color:#fff; }
+    #trip-map-layer { display:none; width:100%; height:260px; border:none; flex-shrink:0; }
+    #trip-map-layer.show { display:block; }
 
     /* ── SCROLL TO BOTTOM ── */
     #scroll-btn {
@@ -1436,13 +1447,23 @@
       <button onclick="_tripFitAll()" style="background:rgba(255,255,255,0.08);border:none;color:var(--whatsapp-gray);border-radius:8px;padding:4px 10px;font-size:0.75rem;cursor:pointer;" title="Fit all">⊞ Fit</button>
       <button id="trip-close" onclick="closeTrip()"><i class="fas fa-times"></i></button>
     </div>
+    <div id="trip-view-bar">
+      <button class="trip-view-btn active" onclick="setTripView('custom')">🗺 Custom</button>
+      <button class="trip-view-btn" onclick="setTripView('roadmap')">🛣 Street</button>
+      <button class="trip-view-btn" onclick="setTripView('satellite')">🛰 Satellite</button>
+      <button class="trip-view-btn" onclick="setTripView('terrain')">⛰ Terrain</button>
+      <button class="trip-view-btn" onclick="setTripView('route')">📍 Route</button>
+    </div>
     <div id="trip-dest-bar">
       <input id="trip-dest-input" placeholder="lat,lng  or type 'here'" autocomplete="off">
       <button id="trip-dest-btn" onclick="setDestination()">📍 Set</button>
+      <button id="trip-copy-btn" onclick="copyDestCoords()" title="Copy destination coords" style="background:rgba(255,255,255,0.08);border:1px solid var(--whatsapp-border);color:var(--whatsapp-gray);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;">📋</button>
       <button id="trip-live-btn" onclick="toggleLiveLoc()">🔴 Go Live</button>
+      <button onclick="_focusUser(ME)" title="Focus on me" style="background:rgba(0,168,132,0.15);border:1px solid rgba(0,168,132,0.3);color:var(--whatsapp-green);border-radius:8px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;white-space:nowrap;">🎯 Me</button>
     </div>
     <div id="trip-canvas-wrap">
       <canvas id="trip-canvas" height="260"></canvas>
+      <iframe id="trip-map-layer" allowfullscreen loading="lazy"></iframe>
       <button id="trip-fullscreen-btn" onclick="toggleTripFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
       <div id="trip-map-controls">
         <div id="joystick-base"><div id="joystick-knob"></div></div>
@@ -2397,6 +2418,52 @@
       window.visualViewport.addEventListener('resize', setVh);
     }
 
+    // ── Map view switcher ──
+    let _tripView = 'custom'; // custom | roadmap | satellite | terrain | route
+
+    function setTripView(view) {
+      _tripView = view;
+      document.querySelectorAll('.trip-view-btn').forEach(b => b.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      const canvas = document.getElementById('trip-canvas');
+      const mapLayer = document.getElementById('trip-map-layer');
+      const controls = document.getElementById('trip-map-controls');
+      const fsBtn = document.getElementById('trip-fullscreen-btn');
+      if (view === 'custom') {
+        canvas.style.display = 'block';
+        mapLayer.classList.remove('show');
+        if (controls) controls.style.display = '';
+      } else {
+        canvas.style.display = 'none';
+        mapLayer.classList.add('show');
+        if (controls) controls.style.display = 'none';
+        _updateTripMapLayer();
+      }
+    }
+
+    function _updateTripMapLayer() {
+      if (_tripView === 'custom') return;
+      const mapLayer = document.getElementById('trip-map-layer');
+      const members = Object.entries(_tripMembers);
+      // Pick center: prefer my location, else first member, else destination
+      let centerLat, centerLng;
+      if (_tripMembers[ME]) { centerLat = _tripMembers[ME].lat; centerLng = _tripMembers[ME].lng; }
+      else if (members.length) { centerLat = members[0][1].lat; centerLng = members[0][1].lng; }
+      else if (_tripDestination) { centerLat = _tripDestination.lat; centerLng = _tripDestination.lng; }
+      else return;
+
+      let src = '';
+      if (_tripView === 'route' && _tripDestination && members.length) {
+        // Use Directions embed: origin = my loc (or first member), destination = trip dest
+        const origin = _tripMembers[ME] || members[0][1];
+        src = `https://maps.google.com/maps?saddr=${origin.lat},${origin.lng}&daddr=${_tripDestination.lat},${_tripDestination.lng}&output=embed`;
+      } else {
+        const maptype = _tripView; // roadmap | satellite | terrain
+        src = `https://maps.google.com/maps?q=${centerLat},${centerLng}&z=14&t=${maptype === 'roadmap' ? 'm' : maptype === 'satellite' ? 'k' : 'p'}&output=embed`;
+      }
+      if (mapLayer.src !== src) mapLayer.src = src;
+    }
+
     // ── Trip Tracker ──
     let _tripLiveInterval = null;
     let _tripPollInterval = null;
@@ -2405,10 +2472,43 @@
     let _tripMembers = {};         // {username: {lat, lng, ts}}
     let _tripAnimFrame = null;
     let _tripPulse = 0;
+    let _tripTrails = {};          // {username: [{lat,lng}, ...]}
+    const TRAIL_MAX = 12;
+    let _tripFocusUser = null;     // username to keep centered, null = free pan
 
     // member color map (reuse memberColor)
     function tripColor(name) {
       return name === ME ? '#1db954' : memberColor(name);
+    }
+
+    function setTripViewFocus() {
+      if (_tripView !== 'custom') {
+        _tripView = 'custom';
+        document.querySelectorAll('.trip-view-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.trip-view-btn')?.classList.add('active');
+        document.getElementById('trip-canvas').style.display = 'block';
+        document.getElementById('trip-map-layer').classList.remove('show');
+        const ctrl = document.getElementById('trip-map-controls');
+        if (ctrl) ctrl.style.display = '';
+      }
+    }
+
+    // ── Focus a user on the canvas ──
+    function _focusUser(name) {
+      const loc = _tripMembers[name];
+      if (!loc) return;
+      _tripFocusUser = name;
+      const canvas = document.getElementById('trip-canvas');
+      const W = canvas.width, H = canvas.height;
+      const b = _tripBounds();
+      if (!b) return;
+      const pad = 0.12;
+      const rangeX = (b.maxLng - b.minLng) || 0.001;
+      const rangeY = (b.maxLat - b.minLat) || 0.001;
+      const bx = ((loc.lng - b.minLng) / rangeX) * (W * (1 - 2*pad)) + W * pad;
+      const by = H - (((loc.lat - b.minLat) / rangeY) * (H * (1 - 2*pad)) + H * pad);
+      _tripPanX = W / 2 - _tripZoom * bx;
+      _tripPanY = H / 2 - _tripZoom * by;
     }
 
     function _pollTripAll() {
@@ -2416,10 +2516,22 @@
       _loadTripDest();
     }
 
+    // ── Copy destination coords to clipboard ──
+    function copyDestCoords() {
+      if (!_tripDestination) return;
+      const txt = `${_tripDestination.lat.toFixed(6)},${_tripDestination.lng.toFixed(6)}`;
+      navigator.clipboard?.writeText(txt).then(() => {
+        const btn = document.getElementById('trip-copy-btn');
+        btn.textContent = '✅';
+        setTimeout(() => { btn.textContent = '📋'; }, 1500);
+      }).catch(() => {});
+    }
+
     function openTrip() {
       document.getElementById('trip-modal').classList.add('open');
       _resizeTripCanvas();
       _tripZoom = 1; _tripPanX = 0; _tripPanY = 0;
+      _tripTrails = {}; _tripFocusUser = null;
       _pollTripAll();
       _tripPollInterval = setInterval(_pollTripAll, 10000);
       _startTripDraw();
@@ -2479,6 +2591,7 @@
         _tripDestination = { lat, lng, label };
         document.getElementById('trip-dest-input').value = label || `${lat.toFixed(4)},${lng.toFixed(4)}`;
         _tripFitAll();
+        _updateTripMapLayer();
       }).catch(() => alert('Failed to set destination'));
     }
 
@@ -2532,10 +2645,24 @@
         .then(r => r.json())
         .then(d => {
           _tripMembers = {};
-          (d.members || []).forEach(m => { _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts * 1000 }; });
+          (d.members || []).forEach(m => {
+            const prev = _tripMembers[m.username];
+            _tripMembers[m.username] = { lat: m.lat, lng: m.lng, ts: m.ts * 1000 };
+            // Append to trail
+            if (!_tripTrails[m.username]) _tripTrails[m.username] = [];
+            const trail = _tripTrails[m.username];
+            const last = trail[trail.length - 1];
+            if (!last || last.lat !== m.lat || last.lng !== m.lng) {
+              trail.push({ lat: m.lat, lng: m.lng });
+              if (trail.length > TRAIL_MAX) trail.shift();
+            }
+          });
+          // Re-center if focus mode active
+          if (_tripFocusUser && _tripMembers[_tripFocusUser]) _focusUser(_tripFocusUser);
           _renderTripStats();
           _checkProximity();
           _checkTripSummary();
+          _updateTripMapLayer();
         }).catch(() => {});
     }
 
@@ -2687,7 +2814,7 @@
         const progressBar = _tripDestination && r.dist !== null && !r.arrived
           ? `<div class="trip-progress-wrap"><div class="trip-progress-bar" style="width:${progressPct}%;background:${tripColor(r.name)}"></div></div>` : '';
 
-        return `<div class="trip-member-row">
+        return `<div class="trip-member-row" onclick="_focusUser('${escAttr(r.name)}');setTripViewFocus()" style="cursor:pointer">
           <span class="trip-rank" style="color:${tripColor(r.name)}">${r.arrived ? '✅' : '#'+rank}</span>
           <div class="trip-dot" style="background:${tripColor(r.name)}"></div>
           <span class="trip-name">${escHtml(r.name)}${r.name === ME ? ' <span style="opacity:0.5;font-size:0.7rem">(you)</span>' : ''}</span>
@@ -2798,6 +2925,22 @@
           return [bx * _tripZoom + _tripPanX, by * _tripZoom + _tripPanY];
         }
 
+        // Draw trails
+        members.forEach(([name, loc]) => {
+          const trail = _tripTrails[name];
+          if (!trail || trail.length < 2) return;
+          const color = tripColor(name);
+          for (let i = 1; i < trail.length; i++) {
+            const alpha = (i / trail.length) * 0.55;
+            const [x1, y1] = project(trail[i-1].lat, trail[i-1].lng);
+            const [x2, y2] = project(trail[i].lat, trail[i].lng);
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color + Math.round(alpha * 255).toString(16).padStart(2,'0');
+            ctx.lineWidth = (1.5 + i * 0.15) * dpr;
+            ctx.setLineDash([]); ctx.stroke();
+          }
+        });
+
         // Group center
         if (members.length >= 2) {
           const cLat = members.reduce((s,[,l]) => s+l.lat, 0) / members.length;
@@ -2861,9 +3004,29 @@
           grad.addColorStop(0, color+'44'); grad.addColorStop(1, color+'00');
           ctx.beginPath(); ctx.arc(x,y,(22+pulse*10)*dpr,0,Math.PI*2);
           ctx.fillStyle=grad; ctx.fill();
+          // Bearing arrow (direction of movement from trail)
+          const trail = _tripTrails[name];
+          if (trail && trail.length >= 2) {
+            const prev = trail[trail.length - 2];
+            const bearing = Math.atan2(loc.lng - prev.lng, loc.lat - prev.lat);
+            const ar = (isMe ? 14 : 12) * dpr;
+            ctx.beginPath();
+            ctx.moveTo(x + Math.cos(bearing) * ar, y - Math.sin(bearing) * ar);
+            ctx.lineTo(x + Math.cos(bearing + 2.4) * ar * 0.45, y - Math.sin(bearing + 2.4) * ar * 0.45);
+            ctx.lineTo(x + Math.cos(bearing - 2.4) * ar * 0.45, y - Math.sin(bearing - 2.4) * ar * 0.45);
+            ctx.closePath();
+            ctx.fillStyle = color; ctx.fill();
+          }
+
           ctx.beginPath(); ctx.arc(x,y,(isMe?9:7)*dpr,0,Math.PI*2);
           ctx.fillStyle=color; ctx.fill();
           ctx.strokeStyle='#fff'; ctx.lineWidth=2*dpr; ctx.stroke();
+          // Focus ring
+          if (_tripFocusUser === name) {
+            ctx.beginPath(); ctx.arc(x, y, (isMe?14:12)*dpr, 0, Math.PI*2);
+            ctx.strokeStyle = color; ctx.lineWidth = 2*dpr;
+            ctx.setLineDash([4*dpr, 3*dpr]); ctx.stroke(); ctx.setLineDash([]);
+          }
           ctx.fillStyle='#fff';
           ctx.font=`${isMe?'bold ':''}${10*dpr}px Inter,sans-serif`;
           ctx.textAlign='center'; ctx.textBaseline='top';
@@ -3000,6 +3163,7 @@
         canvas.height = canvas.offsetHeight * devicePixelRatio;
         canvas.width = canvas.offsetWidth * devicePixelRatio;
         btn.innerHTML = '<i class="fas fa-compress"></i> Exit';
+        document.getElementById('trip-map-layer').style.height = '100%';
       } else {
         modal.dataset.fs = '0';
         modal.style.cssText = '';
@@ -3011,12 +3175,14 @@
         canvas.height = 260 * devicePixelRatio;
         canvas.width = canvas.offsetWidth * devicePixelRatio;
         btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+        document.getElementById('trip-map-layer').style.height = '260px';
       }
     }
 
     // Mouse drag pan
     _tripCanvas.addEventListener('mousedown', function(e) {
       _tripDragging = true;
+      _tripFocusUser = null; // release focus lock on manual pan
       _tripDragStart = { x: e.clientX - _tripPanX, y: e.clientY - _tripPanY };
       this.style.cursor = 'grabbing';
     });
