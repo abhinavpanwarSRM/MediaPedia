@@ -1287,6 +1287,8 @@
     }
   </style>
   <link rel="manifest" href="/static/manifest.json" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <!-- HEADER -->
@@ -1449,9 +1451,8 @@
     </div>
     <div id="trip-view-bar">
       <button class="trip-view-btn active" onclick="setTripView('custom')">🗺 Custom</button>
-      <button class="trip-view-btn" onclick="setTripView('roadmap')">🛣 Street</button>
       <button class="trip-view-btn" onclick="setTripView('satellite')">🛰 Satellite</button>
-      <button class="trip-view-btn" onclick="setTripView('terrain')">⛰ Terrain</button>
+      <button class="trip-view-btn" onclick="setTripView('terrain')">🌍 Nearby</button>
       <button class="trip-view-btn" onclick="setTripView('route')">📍 Route</button>
     </div>
     <div id="trip-dest-bar">
@@ -1461,7 +1462,7 @@
     </div>
     <div id="trip-canvas-wrap">
       <canvas id="trip-canvas" height="260"></canvas>
-      <iframe id="trip-map-layer" allowfullscreen loading="lazy"></iframe>
+      <div id="trip-map-layer"></div>
       <button id="trip-fullscreen-btn" onclick="toggleTripFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
       <div id="trip-map-controls">
         <div id="joystick-base"><div id="joystick-knob"></div></div>
@@ -2416,8 +2417,103 @@
       window.visualViewport.addEventListener('resize', setVh);
     }
 
+    // ── Leaflet map ──
+    let _leafletMap = null;
+    let _leafletTileLayer = null;
+    let _leafletMarkers = {};   // {username: L.marker}
+    let _leafletTrails = {};    // {username: L.polyline}
+    let _leafletDestMarker = null;
+    let _leafletRouteLines = {}; // {username: L.polyline}
+
+    const TILE_SATELLITE = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    const TILE_TERRAIN   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    function _initLeaflet() {
+      if (_leafletMap) return;
+      const el = document.getElementById('trip-map-layer');
+      _leafletMap = L.map(el, { zoomControl: true, attributionControl: false });
+      _leafletTileLayer = L.tileLayer(TILE_SATELLITE, { maxZoom: 19 }).addTo(_leafletMap);
+      _leafletMap.setView([20, 0], 2);
+    }
+
+    function _leafletSetTiles(url) {
+      if (!_leafletMap) return;
+      if (_leafletTileLayer) _leafletTileLayer.remove();
+      _leafletTileLayer = L.tileLayer(url, { maxZoom: 19 }).addTo(_leafletMap);
+    }
+
+    function _leafletUpdate() {
+      if (!_leafletMap) return;
+      const members = Object.entries(_tripMembers);
+
+      // Destination marker
+      if (_tripDestination) {
+        const ll = [_tripDestination.lat, _tripDestination.lng];
+        if (!_leafletDestMarker) {
+          _leafletDestMarker = L.marker(ll, {
+            icon: L.divIcon({ className: '', html: '<div style="font-size:22px;line-height:1">⭐</div>', iconAnchor: [11,11] })
+          }).addTo(_leafletMap).bindPopup(_tripDestination.label || 'Destination');
+        } else {
+          _leafletDestMarker.setLatLng(ll);
+        }
+      }
+
+      // Member markers + trails + route lines
+      members.forEach(([name, loc]) => {
+        const color = tripColor(name);
+        const ll = [loc.lat, loc.lng];
+        const label = name.length > 8 ? name.slice(0,7) + '…' : name;
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="background:${color};border:2px solid #fff;border-radius:50%;width:${name===ME?18:14}px;height:${name===ME?18:14}px;box-shadow:0 0 6px ${color}88;display:flex;align-items:center;justify-content:center;"></div>
+                 <div style="color:#fff;font-size:10px;font-weight:600;text-align:center;text-shadow:0 1px 3px #000;margin-top:2px;white-space:nowrap">${label}</div>`,
+          iconAnchor: [name===ME?9:7, name===ME?9:7]
+        });
+        if (!_leafletMarkers[name]) {
+          _leafletMarkers[name] = L.marker(ll, { icon }).addTo(_leafletMap).bindPopup(name);
+        } else {
+          _leafletMarkers[name].setLatLng(ll).setIcon(icon);
+        }
+
+        // Trail polyline
+        const trail = (_tripTrails[name] || []).map(p => [p.lat, p.lng]);
+        if (trail.length >= 2) {
+          if (!_leafletTrails[name]) {
+            _leafletTrails[name] = L.polyline(trail, { color, weight: 3, opacity: 0.6 }).addTo(_leafletMap);
+          } else {
+            _leafletTrails[name].setLatLngs(trail);
+          }
+        }
+
+        // Route line to destination
+        if (_tripDestination) {
+          const routePts = [ll, [_tripDestination.lat, _tripDestination.lng]];
+          if (!_leafletRouteLines[name]) {
+            _leafletRouteLines[name] = L.polyline(routePts, { color, weight: 2, opacity: 0.4, dashArray: '6,5' }).addTo(_leafletMap);
+          } else {
+            _leafletRouteLines[name].setLatLngs(routePts);
+          }
+        }
+      });
+
+      // Remove markers for members who left
+      Object.keys(_leafletMarkers).forEach(name => {
+        if (!_tripMembers[name]) {
+          _leafletMarkers[name].remove(); delete _leafletMarkers[name];
+          _leafletTrails[name]?.remove(); delete _leafletTrails[name];
+          _leafletRouteLines[name]?.remove(); delete _leafletRouteLines[name];
+        }
+      });
+
+      // Fit bounds to all points
+      const pts = members.map(([,l]) => [l.lat, l.lng]);
+      if (_tripDestination) pts.push([_tripDestination.lat, _tripDestination.lng]);
+      if (pts.length === 1) _leafletMap.setView(pts[0], Math.max(_leafletMap.getZoom(), 14));
+      else if (pts.length > 1) _leafletMap.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 16 });
+    }
+
     // ── Map view switcher ──
-    let _tripView = 'custom'; // custom | roadmap | satellite | terrain | route
+    let _tripView = 'custom';
 
     function setTripView(view) {
       _tripView = view;
@@ -2426,7 +2522,6 @@
       const canvas = document.getElementById('trip-canvas');
       const mapLayer = document.getElementById('trip-map-layer');
       const controls = document.getElementById('trip-map-controls');
-      const fsBtn = document.getElementById('trip-fullscreen-btn');
       if (view === 'custom') {
         canvas.style.display = 'block';
         mapLayer.classList.remove('show');
@@ -2435,31 +2530,16 @@
         canvas.style.display = 'none';
         mapLayer.classList.add('show');
         if (controls) controls.style.display = 'none';
-        _updateTripMapLayer();
+        _initLeaflet();
+        if (view === 'satellite') _leafletSetTiles(TILE_SATELLITE);
+        else if (view === 'terrain') _leafletSetTiles(TILE_TERRAIN);
+        else if (view === 'route') _leafletSetTiles(TILE_SATELLITE); // route uses satellite base
+        setTimeout(() => { _leafletMap.invalidateSize(); _leafletUpdate(); }, 50);
       }
     }
 
     function _updateTripMapLayer() {
-      if (_tripView === 'custom') return;
-      const mapLayer = document.getElementById('trip-map-layer');
-      const members = Object.entries(_tripMembers);
-      // Pick center: prefer my location, else first member, else destination
-      let centerLat, centerLng;
-      if (_tripMembers[ME]) { centerLat = _tripMembers[ME].lat; centerLng = _tripMembers[ME].lng; }
-      else if (members.length) { centerLat = members[0][1].lat; centerLng = members[0][1].lng; }
-      else if (_tripDestination) { centerLat = _tripDestination.lat; centerLng = _tripDestination.lng; }
-      else return;
-
-      let src = '';
-      if (_tripView === 'route' && _tripDestination && members.length) {
-        // Use Directions embed: origin = my loc (or first member), destination = trip dest
-        const origin = _tripMembers[ME] || members[0][1];
-        src = `https://maps.google.com/maps?saddr=${origin.lat},${origin.lng}&daddr=${_tripDestination.lat},${_tripDestination.lng}&output=embed`;
-      } else {
-        const maptype = _tripView; // roadmap | satellite | terrain
-        src = `https://maps.google.com/maps?q=${centerLat},${centerLng}&z=14&t=${maptype === 'roadmap' ? 'm' : maptype === 'satellite' ? 'k' : 'p'}&output=embed`;
-      }
-      if (mapLayer.src !== src) mapLayer.src = src;
+      if (_tripView !== 'custom' && _leafletMap) _leafletUpdate();
     }
 
     // ── Trip Tracker ──
@@ -2519,6 +2599,8 @@
       _resizeTripCanvas();
       _tripZoom = 1; _tripPanX = 0; _tripPanY = 0;
       _tripTrails = {}; _tripFocusUser = null;
+      // Reset leaflet markers so they get recreated with fresh data
+      _leafletMarkers = {}; _leafletTrails = {}; _leafletRouteLines = {}; _leafletDestMarker = null;
       _pollTripAll();
       _tripPollInterval = setInterval(_pollTripAll, 10000);
       _startTripDraw();
@@ -3150,7 +3232,7 @@
         canvas.height = canvas.offsetHeight * devicePixelRatio;
         canvas.width = canvas.offsetWidth * devicePixelRatio;
         btn.innerHTML = '<i class="fas fa-compress"></i> Exit';
-        document.getElementById('trip-map-layer').style.height = '100%';
+        if (_leafletMap) setTimeout(() => _leafletMap.invalidateSize(), 50);
       } else {
         modal.dataset.fs = '0';
         modal.style.cssText = '';
@@ -3162,7 +3244,7 @@
         canvas.height = 260 * devicePixelRatio;
         canvas.width = canvas.offsetWidth * devicePixelRatio;
         btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
-        document.getElementById('trip-map-layer').style.height = '260px';
+        if (_leafletMap) setTimeout(() => _leafletMap.invalidateSize(), 50);
       }
     }
 
