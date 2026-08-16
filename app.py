@@ -80,8 +80,9 @@ app.register_blueprint(splitwise_bp)
 
 # ===== Tier List Game =====
 from game import game_bp, init_game, register_socketio_events as _reg_tl_sio
+import sys as _sys
 if db is not None:
-    init_game(socketio, db, df if 'df' in dir() else None, series_df if 'series_df' in dir() else None)
+    init_game(socketio, db, app_module=_sys.modules[__name__])
 app.register_blueprint(game_bp)
 _reg_tl_sio(socketio)
 

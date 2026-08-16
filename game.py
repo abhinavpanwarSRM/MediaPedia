@@ -10,6 +10,7 @@ _socketio = None
 _tl_rooms_col = None
 _movies_df = None
 _series_df = None
+_app_module = None
 
 DEFAULT_ROWS = [
     {'label': 'S', 'color': '#ff4d4d'},
@@ -20,13 +21,14 @@ DEFAULT_ROWS = [
 ]
 
 
-def init_game(socketio, db, movies_df=None, series_df=None):
-    global _socketio, _tl_rooms_col, _movies_df, _series_df
+def init_game(socketio, db, movies_df=None, series_df=None, app_module=None):
+    global _socketio, _tl_rooms_col, _movies_df, _series_df, _app_module
     _socketio = socketio
     _tl_rooms_col = db.tl_game_rooms
     _tl_rooms_col.create_index('code', unique=True)
     _movies_df = movies_df
     _series_df = series_df
+    _app_module = app_module
 
 
 def _user():
@@ -134,7 +136,9 @@ def update_settings(code):
     username = _user()
     if not username:
         return jsonify({'error': 'Login required'}), 401
-    room = _tl_rooms_col.find_one({'code': code}) if _tl_rooms_col else None
+    if _tl_rooms_col is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    room = _tl_rooms_col.find_one({'code': code})
     if not room:
         return jsonify({'error': 'Room not found'}), 404
     if room['host'] != username:
@@ -145,7 +149,8 @@ def update_settings(code):
     if 'max_per_tier1' in data:
         v = data['max_per_tier1']
         upd['max_per_tier1'] = max(1, int(v)) if v is not None else None
-    _tl_rooms_col.update_one({'code': code}, {'$set': upd})
+    if upd:
+        _tl_rooms_col.update_one({'code': code}, {'$set': upd})
     _emit_room(code)
     return jsonify({'ok': True})
 
@@ -221,7 +226,7 @@ def add_item(code):
         return jsonify({'error': 'Room not found'}), 404
     if username not in room['players']:
         return jsonify({'error': 'Not in room'}), 403
-    if room['state'] != 'adding':
+    if room['state'] not in ('lobby', 'adding'):
         return jsonify({'error': 'Not in adding phase'}), 400
 
     data = request.json or {}
@@ -230,6 +235,11 @@ def add_item(code):
     img = str(data.get('img', '')).strip()[:500]
     if not title:
         return jsonify({'error': 'Title required'}), 400
+
+    # Auto-transition lobby -> adding on first item add
+    if room['state'] == 'lobby':
+        _tl_rooms_col.update_one({'code': code}, {'$set': {'state': 'adding'}})
+        room['state'] = 'adding'
 
     items = room.get('items', [])
 
@@ -263,7 +273,7 @@ def remove_item(code):
         return jsonify({'error': 'Room not found'}), 404
     if username not in room['players']:
         return jsonify({'error': 'Not in room'}), 403
-    if room['state'] != 'adding':
+    if room['state'] not in ('lobby', 'adding'):
         return jsonify({'error': 'Not in adding phase'}), 400
 
     item_id = (request.json or {}).get('item_id')
@@ -292,7 +302,7 @@ def start_game(code):
         return jsonify({'error': 'Room not found'}), 404
     if room['host'] != username:
         return jsonify({'error': 'Host only'}), 403
-    if room['state'] != 'adding':
+    if room['state'] not in ('lobby', 'adding'):
         return jsonify({'error': 'Must be in adding phase'}), 400
 
     items = room.get('items', [])
@@ -585,7 +595,10 @@ def tlg_search():
         return jsonify([])
 
     results = []
+    # Lazily grab dataframes from app module if not injected at startup
     df = _movies_df if kind == 'movie' else _series_df
+    if df is None and _app_module is not None:
+        df = getattr(_app_module, 'df', None) if kind == 'movie' else getattr(_app_module, 'series_df', None)
     if df is not None:
         title_col = next((c for c in df.columns if 'title' in c.lower() or 'name' in c.lower()), None)
         if title_col:
