@@ -78,6 +78,13 @@ if db is not None:
     init_splitwise(db)
 app.register_blueprint(splitwise_bp)
 
+# ===== Tier List Game =====
+from game import game_bp, init_game, register_socketio_events as _reg_tl_sio
+if db is not None:
+    init_game(socketio, db, df if 'df' in dir() else None, series_df if 'series_df' in dir() else None)
+app.register_blueprint(game_bp)
+_reg_tl_sio(socketio)
+
 # ===== Tier Lists =====
 tierlists_collection = None
 try:

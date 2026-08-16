@@ -1,0 +1,1655 @@
+<!-- templates/tier_list_game.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tier List Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           GLOBAL STYLES - Matching Existing Games
+           ============================================================ */
+        :root {
+            --bg-primary: #0a0a14;
+            --bg-secondary: #12121f;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --border-glow: rgba(120, 80, 255, 0.15);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+            --accent-purple: #7c3aed;
+            --accent-cyan: #06b6d4;
+            --accent-pink: #ec4899;
+            --accent-gold: #f59e0b;
+            --tier-s: #ff2d55;
+            --tier-a: #ff6b35;
+            --tier-b: #f7c948;
+            --tier-c: #34c759;
+            --tier-d: #00b4d8;
+            --tier-e: #6c757d;
+            --radius: 16px;
+            --shadow-glow: 0 0 40px rgba(124, 58, 237, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(6, 182, 212, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(236, 72, 153, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-purple);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6d28d9;
+        }
+
+        /* ============================================================
+           NAVBAR - Matching Existing
+           ============================================================ */
+        .navbar {
+            background: rgba(10, 10, 20, 0.92) !important;
+            backdrop-filter: blur(20px) saturate(1.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 12px 0;
+            z-index: 1050;
+            position: fixed;
+            width: 100%;
+            top: 0;
+        }
+
+        .navbar-brand {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 1.4rem;
+            background: linear-gradient(135deg, #a78bfa, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .navbar-brand i {
+            -webkit-text-fill-color: initial;
+            color: #a78bfa;
+            margin-right: 6px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary) !important;
+            font-weight: 500;
+            transition: color 0.2s;
+            font-size: 0.9rem;
+        }
+        .nav-link:hover {
+            color: var(--text-primary) !important;
+        }
+
+        /* ============================================================
+           GLASS CARD
+           ============================================================ */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-glow);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 40px rgba(124, 58, 237, 0.06);
+        }
+
+        /* ============================================================
+           GAME CONTAINER
+           ============================================================ */
+        .game-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            margin-top: 80px;
+        }
+
+        /* ============================================================
+           ROOM CODE - Glowing Display
+           ============================================================ */
+        .room-code-display {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 2.2rem;
+            letter-spacing: 6px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 12px 28px;
+            border-radius: 12px;
+            border: 1px solid rgba(124, 58, 237, 0.2);
+            box-shadow: 0 0 30px rgba(124, 58, 237, 0.06);
+            display: inline-block;
+            position: relative;
+        }
+
+        .room-code-display::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(6, 182, 212, 0.1));
+            z-index: -1;
+            filter: blur(4px);
+        }
+
+        /* ============================================================
+           TIER ROWS - Neon Glow
+           ============================================================ */
+        .tier-row {
+            display: flex;
+            min-height: 100px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.25s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tier-row:hover {
+            transform: scale(1.005);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .tier-row::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.02), transparent);
+            pointer-events: none;
+        }
+
+        .tier-label {
+            min-width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 1.6rem;
+            color: #fff;
+            border-radius: 12px 0 0 12px;
+            padding: 12px 18px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tier-label .badge-full {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            font-size: 0.45rem;
+            padding: 2px 6px;
+            background: rgba(255, 0, 0, 0.8);
+            border-radius: 20px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+        }
+
+        .tier-items {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 0 12px 12px 0;
+            min-height: 80px;
+            border: 2px dashed rgba(255, 255, 255, 0.04);
+            position: relative;
+            z-index: 1;
+            transition: all 0.2s ease;
+        }
+
+        .tier-row.drag-over .tier-items {
+            border-color: rgba(124, 58, 237, 0.3);
+            background: rgba(124, 58, 237, 0.06);
+            box-shadow: inset 0 0 30px rgba(124, 58, 237, 0.04);
+        }
+
+        /* Tier Item */
+        .tier-item {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: grab;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            position: relative;
+            backdrop-filter: blur(4px);
+        }
+
+        .tier-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .tier-item.dragging {
+            opacity: 0.4;
+            transform: scale(0.95);
+        }
+
+        .tier-item .item-votes {
+            font-size: 0.65rem;
+            opacity: 0.7;
+            background: rgba(0,0,0,0.4);
+            padding: 1px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .tier-item .badge-current {
+            font-size: 0.5rem;
+            padding: 2px 8px;
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        .tier-item img {
+            width: 28px;
+            height: 28px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* ============================================================
+           CURRENT ITEM CARD - Pulsing Glow
+           ============================================================ */
+        .current-item-card {
+            background: rgba(245, 158, 11, 0.05);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            border-radius: var(--radius);
+            padding: 18px 24px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            animation: pulse-glow 2.5s ease-in-out infinite;
+        }
+
+        .current-item-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(245, 158, 11, 0.03), transparent 60%);
+            pointer-events: none;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { border-color: rgba(245, 158, 11, 0.1); box-shadow: 0 0 30px rgba(245, 158, 11, 0.02); }
+            50% { border-color: rgba(245, 158, 11, 0.25); box-shadow: 0 0 50px rgba(245, 158, 11, 0.05); }
+        }
+
+        /* ============================================================
+           PLAYER BADGE
+           ============================================================ */
+        .player-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .player-badge:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .player-badge.host {
+            border-color: rgba(245, 158, 11, 0.3);
+            background: rgba(245, 158, 11, 0.08);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.04);
+        }
+
+        .player-badge .host-icon {
+            color: #fbbf24;
+        }
+
+        /* ============================================================
+           VOTE BUTTONS - Neon
+           ============================================================ */
+        .vote-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: none;
+            transition: all 0.2s ease;
+            letter-spacing: 0.3px;
+        }
+
+        .vote-yes {
+            background: rgba(52, 199, 89, 0.15);
+            color: #34c759;
+            border: 1px solid rgba(52, 199, 89, 0.2);
+        }
+
+        .vote-yes:hover {
+            background: rgba(52, 199, 89, 0.25);
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(52, 199, 89, 0.1);
+        }
+
+        .vote-yes.active {
+            background: #34c759;
+            color: #fff;
+            box-shadow: 0 0 40px rgba(52, 199, 89, 0.2);
+            border-color: #34c759;
+        }
+
+        .vote-no {
+            background: rgba(255, 45, 85, 0.15);
+            color: #ff2d55;
+            border: 1px solid rgba(255, 45, 85, 0.2);
+        }
+
+        .vote-no:hover {
+            background: rgba(255, 45, 85, 0.25);
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 45, 85, 0.1);
+        }
+
+        .vote-no.active {
+            background: #ff2d55;
+            color: #fff;
+            box-shadow: 0 0 40px rgba(255, 45, 85, 0.2);
+            border-color: #ff2d55;
+        }
+
+        .vote-progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .vote-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #34c759, #fbbf24, #ff2d55);
+            transition: width 0.4s ease;
+            border-radius: 4px;
+        }
+
+        /* ============================================================
+           BUTTONS - Glowing
+           ============================================================ */
+        .btn-primary-glow {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 12px;
+            transition: all 0.25s ease;
+            box-shadow: 0 0 30px rgba(124, 58, 237, 0.1);
+        }
+
+        .btn-primary-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 40px rgba(124, 58, 237, 0.2);
+            color: #fff;
+        }
+
+        .btn-success-glow {
+            background: linear-gradient(135deg, #34c759, #28a745);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 12px;
+            transition: all 0.25s ease;
+            box-shadow: 0 0 30px rgba(52, 199, 89, 0.08);
+        }
+
+        .btn-success-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 40px rgba(52, 199, 89, 0.15);
+            color: #fff;
+        }
+
+        .btn-outline-glow {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 12px;
+            transition: all 0.25s ease;
+        }
+
+        .btn-outline-glow:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* ============================================================
+           MODAL - Glass
+           ============================================================ */
+        .modal-content {
+            background: rgba(18, 18, 31, 0.96);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px 24px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 16px 24px;
+        }
+
+        .modal-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .modal .form-control,
+        .modal .form-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 10px 14px;
+            transition: all 0.2s ease;
+        }
+
+        .modal .form-control:focus,
+        .modal .form-select:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(124, 58, 237, 0.3);
+            box-shadow: 0 0 25px rgba(124, 58, 237, 0.05);
+            color: var(--text-primary);
+        }
+
+        .modal .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+        }
+
+        .modal .btn-close {
+            filter: invert(1) brightness(0.8);
+        }
+
+        /* Search Result */
+        .search-result-item {
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .search-result-item:hover {
+            background: rgba(124, 58, 237, 0.08);
+            border-color: rgba(124, 58, 237, 0.15);
+            transform: translateX(4px);
+        }
+
+        /* ============================================================
+           LOBBY VIEW - Hero
+           ============================================================ */
+        .lobby-hero {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .lobby-hero .icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: rgba(124, 58, 237, 0.08);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2.5rem;
+            color: #a78bfa;
+            border: 1px solid rgba(124, 58, 237, 0.1);
+        }
+
+        .lobby-hero h1 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #a78bfa, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .lobby-hero p {
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 12px auto 30px;
+            font-size: 1.05rem;
+        }
+
+        /* ============================================================
+           TOAST
+           ============================================================ */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1060;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 380px;
+            width: 100%;
+        }
+
+        .toast {
+            background: rgba(18, 18, 31, 0.96);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            color: var(--text-primary);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        .toast .toast-header {
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 16px;
+        }
+
+        .toast .toast-body {
+            padding: 12px 16px;
+            font-size: 0.9rem;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            .tier-row {
+                flex-direction: column;
+            }
+            .tier-label {
+                border-radius: 12px 12px 0 0;
+                min-width: unset;
+                padding: 8px 16px;
+                font-size: 1.2rem;
+            }
+            .tier-items {
+                border-radius: 0 0 12px 12px;
+                min-height: 50px;
+                padding: 8px;
+            }
+            .room-code-display {
+                font-size: 1.4rem;
+                padding: 10px 18px;
+                letter-spacing: 4px;
+            }
+            .game-container {
+                padding: 12px;
+                margin-top: 70px;
+            }
+            .lobby-hero h1 {
+                font-size: 1.8rem;
+            }
+            .glass-card {
+                padding: 16px;
+            }
+            .current-item-card {
+                padding: 14px 16px;
+            }
+            .toast-container {
+                right: 10px;
+                left: 10px;
+                max-width: unset;
+                width: auto;
+            }
+            .vote-pill {
+                padding: 6px 14px;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .room-code-display {
+                font-size: 1.1rem;
+                letter-spacing: 3px;
+                padding: 8px 14px;
+            }
+            .tier-item {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+            .tier-item img {
+                width: 20px;
+                height: 20px;
+            }
+            .player-badge {
+                font-size: 0.75rem;
+                padding: 4px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     NAVBAR
+     ============================================================ -->
+<nav class="navbar navbar-expand-lg">
+    <div class="container-fluid px-3 px-md-4">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-film"></i> MediaPedia
+        </a>
+        <span class="text-secondary d-none d-md-inline" style="font-size:0.85rem; opacity:0.6;">
+            <i class="bi bi-grid-3x3-gap-fill"></i> Tier List
+        </span>
+        <div class="ms-auto d-flex align-items-center gap-2 gap-md-3">
+            <span class="text-light small" id="usernameDisplay" style="opacity:0.8;">
+                <i class="bi bi-person-circle"></i> {{ username }}
+            </span>
+            <a href="/logout" class="btn btn-outline-glow btn-sm">
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- ============================================================
+     GAME CONTAINER
+     ============================================================ -->
+<div class="game-container">
+
+    <!-- ============================================================
+         LOBBY VIEW
+         ============================================================ -->
+    <div id="lobbyView">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="glass-card lobby-hero">
+                    <div class="icon-wrapper">
+                        <i class="bi bi-grid-3x3-gap-fill"></i>
+                    </div>
+                    <h1>Tier List Game</h1>
+                    <p>
+                        Create a collaborative tier list with friends.<br>
+                        Vote on placements democratically!
+                    </p>
+
+                    <div class="row g-3 justify-content-center mt-2">
+                        <div class="col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);border-right:none;color:var(--text-secondary);">
+                                    <i class="bi bi-hash"></i>
+                                </span>
+                                <input type="text" id="roomCodeInput" class="form-control" 
+                                       style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#fff;border-radius:0;"
+                                       placeholder="Enter room code" maxlength="6" style="text-transform:uppercase;">
+                                <button class="btn btn-primary-glow" onclick="joinRoom()" style="border-radius:0 12px 12px 0;">
+                                    <i class="bi bi-box-arrow-in-right"></i> Join
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                            <span style="color:var(--text-secondary);font-size:0.9rem;">or</span>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-success-glow w-100" onclick="createRoom()">
+                                <i class="bi bi-plus-circle"></i> Create Room
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr style="border-color:rgba(255,255,255,0.04);margin:28px 0 16px;">
+                    <div style="color:var(--text-secondary);font-size:0.8rem;opacity:0.6;">
+                        <i class="bi bi-info-circle"></i>
+                        Each player adds items, then the host proposes placements and everyone votes.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         GAME VIEW
+         ============================================================ -->
+    <div id="gameView" style="display:none;">
+
+        <!-- Room Header -->
+        <div class="glass-card">
+            <div class="row align-items-center g-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="room-code-display" id="roomCodeDisplay">------</div>
+                        <span class="badge" id="roomStateBadge" style="background:rgba(255,255,255,0.06);color:var(--text-secondary);padding:6px 14px;font-weight:600;text-transform:uppercase;font-size:0.7rem;letter-spacing:0.5px;">Lobby</span>
+                        <button class="btn btn-outline-glow btn-sm" onclick="copyRoomCode()" title="Copy code">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-flex flex-wrap gap-2 justify-content-md-end" id="playersList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <input type="text" id="titleInput" class="form-control" 
+                               style="max-width:300px;display:inline-block;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#fff;border-radius:10px;padding:8px 14px;"
+                               placeholder="Tier list title...">
+                        <button class="btn btn-outline-glow btn-sm" onclick="updateTitle()">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <span class="badge" id="playerCountBadge" style="background:rgba(255,255,255,0.04);color:var(--text-secondary);font-weight:400;padding:6px 14px;">
+                            <i class="bi bi-people"></i> 0 players
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vote Area -->
+        <div id="voteArea" style="display:none;">
+            <div class="current-item-card">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;padding:6px 14px;font-weight:700;">
+                                <i class="bi bi-star-fill"></i> Current Item
+                            </span>
+                            <span id="currentItemTitle" class="fs-5 fw-bold" style="color:#fff;">Loading...</span>
+                        </div>
+                        <div class="mt-1" style="color:var(--text-secondary);font-size:0.85rem;">
+                            Proposed row: <strong id="proposedRowLabel" style="color:#fff;">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex gap-3 align-items-center flex-wrap">
+                            <span style="color:var(--text-secondary);font-size:0.8rem;font-weight:600;">Vote:</span>
+                            <button class="vote-pill vote-yes" onclick="castVote('yes')">
+                                <i class="bi bi-check-circle"></i> Yes
+                            </button>
+                            <button class="vote-pill vote-no" onclick="castVote('no')">
+                                <i class="bi bi-x-circle"></i> No
+                            </button>
+                            <div style="color:var(--text-secondary);font-size:0.8rem;" id="voteCountDisplay">
+                                <span id="yesVotes">0</span> yes · 
+                                <span id="noVotes">0</span> no
+                            </div>
+                            <button class="btn btn-outline-glow btn-sm" onclick="forceResolve()" id="forceResolveBtn" style="display:none;border-color:rgba(255,45,85,0.2);color:#ff2d55;">
+                                <i class="bi bi-forward"></i> Force
+                            </button>
+                        </div>
+                        <div class="vote-progress">
+                            <div class="vote-progress-bar" id="voteProgressBar" style="width:0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Section -->
+        <div id="addSection" class="glass-card" style="padding:16px 20px;">
+            <div class="d-flex flex-wrap gap-3 align-items-center">
+                <button class="btn btn-primary-glow" onclick="openAddModal()">
+                    <i class="bi bi-plus-circle"></i> Add Item
+                </button>
+                <button id="startGameBtn" class="btn btn-success-glow" onclick="startGame()" style="display:none;">
+                    <i class="bi bi-play-fill"></i> Start Game
+                </button>
+                <button class="btn btn-outline-glow btn-sm" onclick="openSettingsModal()">
+                    <i class="bi bi-gear"></i> Settings
+                </button>
+                <span style="color:var(--text-secondary);font-size:0.85rem;" id="itemCountDisplay">0 items</span>
+            </div>
+        </div>
+
+        <!-- Tier Rows -->
+        <div id="tierRows" style="margin-top:12px;">
+            <!-- Populated by JS -->
+        </div>
+
+        <!-- Reorder Section -->
+        <div id="reorderSection" style="display:none;" class="glass-card mt-3" style="padding:14px 20px;">
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+                <span style="color:var(--text-secondary);font-size:0.85rem;">
+                    <i class="bi bi-arrows-move"></i> Drag items to reorder
+                </span>
+                <span id="reorderHint" style="color:var(--text-secondary);font-size:0.8rem;opacity:0.6;">
+                    Host: drag an item to propose a new position
+                </span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-3 d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-glow btn-sm" onclick="leaveRoom()" style="border-color:rgba(255,45,85,0.15);color:#ff2d55;">
+                <i class="bi bi-box-arrow-left"></i> Leave Room
+            </button>
+            <button class="btn btn-outline-glow btn-sm" onclick="refreshRoom()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     ADD ITEM MODAL
+     ============================================================ -->
+<div class="modal fade" id="addModal" tabindex="-1" data-bs-backdrop="blur">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle" style="color:#a78bfa;"></i> Add Item</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem;font-weight:600;">Search for a movie or series</label>
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="Type to search...">
+                        <button class="btn btn-primary-glow" onclick="searchItems()" style="border-radius:0 10px 10px 0;">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem;font-weight:600;">Or add custom title</label>
+                    <input type="text" id="customTitleInput" class="form-control" 
+                           placeholder="Custom item name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem;font-weight:600;">Type</label>
+                    <select id="itemTypeSelect" class="form-select">
+                        <option value="movie">🎬 Movie</option>
+                        <option value="series">📺 Series</option>
+                    </select>
+                </div>
+                <div id="searchResults" class="mt-2">
+                    <!-- Search results populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-glow" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary-glow" onclick="addCustomItem()">
+                    <i class="bi bi-plus"></i> Add Custom
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SETTINGS MODAL
+     ============================================================ -->
+<div class="modal fade" id="settingsModal" tabindex="-1" data-bs-backdrop="blur">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-gear" style="color:#a78bfa;"></i> Settings</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem;font-weight:600;">Max items in S-tier</label>
+                    <input type="number" id="maxTierInput" class="form-control" 
+                           placeholder="Leave empty for unlimited" min="1">
+                    <small style="color:var(--text-secondary);font-size:0.7rem;opacity:0.5;">If set, S-tier will reject items after this limit</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="color:var(--text-secondary);font-size:0.85rem;font-weight:600;">Rows (label, color)</label>
+                    <div id="rowEditor">
+                        <!-- Populated by JS -->
+                    </div>
+                    <button class="btn btn-outline-glow btn-sm mt-2" onclick="addRowField()">
+                        <i class="bi bi-plus"></i> Add Row
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-glow" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary-glow" onclick="saveSettings()">
+                    <i class="bi bi-check"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div class="toast-container"></div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    const state = {
+        roomCode: null,
+        username: '{{ username }}',
+        socket: null,
+        room: null,
+        isHost: false,
+        myVote: null,
+    };
+
+    // ============================================================
+    // SOCKET.IO
+    // ============================================================
+    function initSocket() {
+        const socket = io();
+        state.socket = socket;
+
+        socket.on('connect', () => {
+            console.log('Socket connected');
+            if (state.roomCode) {
+                socket.emit('tl_join', { room_code: state.roomCode });
+            }
+        });
+
+        socket.on('tl_state', (data) => {
+            if (data.room) {
+                state.room = data.room;
+                renderRoom(data.room);
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+            showToast('Connection lost. Reconnecting...', 'warning');
+        });
+    }
+
+    // ============================================================
+    // API HELPERS
+    // ============================================================
+    async function apiCall(url, method = 'GET', body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body) opts.body = JSON.stringify(body);
+        const resp = await fetch(url, opts);
+        const data = await resp.json();
+        if (!resp.ok) {
+            throw new Error(data.error || 'Request failed');
+        }
+        return data;
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.querySelector('.toast-container');
+        const colors = {
+            info: 'rgba(6,182,212,0.1)',
+            success: 'rgba(52,199,89,0.1)',
+            warning: 'rgba(245,158,11,0.1)',
+            danger: 'rgba(255,45,85,0.1)',
+        };
+        const borderColors = {
+            info: 'rgba(6,182,212,0.2)',
+            success: 'rgba(52,199,89,0.2)',
+            warning: 'rgba(245,158,11,0.2)',
+            danger: 'rgba(255,45,85,0.2)',
+        };
+        const icons = {
+            info: 'bi-info-circle',
+            success: 'bi-check-circle',
+            warning: 'bi-exclamation-triangle',
+            danger: 'bi-x-circle',
+        };
+        const bg = colors[type] || colors.info;
+        const border = borderColors[type] || borderColors.info;
+        const icon = icons[type] || icons.info;
+
+        const html = `
+            <div class="toast show" role="alert" style="border-left:3px solid ${border};">
+                <div class="toast-header" style="background:${bg};">
+                    <i class="bi ${icon}" style="color:${type === 'warning' ? '#fbbf24' : type === 'danger' ? '#ff2d55' : type === 'success' ? '#34c759' : '#06b6d4'};"></i>
+                    <strong class="me-auto" style="color:var(--text-primary);">${type.toUpperCase()}</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">${message}</div>
+            </div>
+        `;
+        const el = document.createElement('div');
+        el.innerHTML = html;
+        container.prepend(el.firstElementChild);
+        setTimeout(() => {
+            const toasts = container.querySelectorAll('.toast');
+            if (toasts.length > 5) toasts[toasts.length - 1].remove();
+        }, 100);
+    }
+
+    // ============================================================
+    // ROOM CRUD
+    // ============================================================
+    async function createRoom() {
+        try {
+            const data = await apiCall('/api/tlg/room', 'POST', {});
+            state.roomCode = data.code;
+            document.getElementById('lobbyView').style.display = 'none';
+            document.getElementById('gameView').style.display = 'block';
+            document.getElementById('roomCodeDisplay').textContent = data.code;
+            if (state.socket) {
+                state.socket.emit('tl_join', { room_code: data.code });
+            }
+            showToast(`Room created! Code: ${data.code}`, 'success');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function joinRoom() {
+        const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+        if (!code) {
+            showToast('Enter a room code', 'warning');
+            return;
+        }
+        try {
+            await apiCall(`/api/tlg/room/${code}/join`, 'POST');
+            state.roomCode = code;
+            document.getElementById('lobbyView').style.display = 'none';
+            document.getElementById('gameView').style.display = 'block';
+            document.getElementById('roomCodeDisplay').textContent = code;
+            if (state.socket) {
+                state.socket.emit('tl_join', { room_code: code });
+            }
+            showToast(`Joined room ${code}`, 'success');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function leaveRoom() {
+        if (state.socket) {
+            state.socket.emit('tl_leave', { room_code: state.roomCode });
+        }
+        state.roomCode = null;
+        document.getElementById('gameView').style.display = 'none';
+        document.getElementById('lobbyView').style.display = 'block';
+        showToast('Left room', 'info');
+    }
+
+    async function refreshRoom() {
+        if (!state.roomCode) return;
+        try {
+            const data = await apiCall(`/api/tlg/room/${state.roomCode}`);
+            state.room = data;
+            renderRoom(data);
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    function copyRoomCode() {
+        const code = document.getElementById('roomCodeDisplay').textContent;
+        navigator.clipboard?.writeText(code).then(() => {
+            showToast('Copied!', 'success');
+        }).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = code;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            el.remove();
+            showToast('Copied!', 'success');
+        });
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    function renderRoom(room) {
+        state.room = room;
+        state.isHost = room.host === state.username;
+
+        // State badge
+        const stateMap = {
+            'lobby': 'rgba(255,255,255,0.06)',
+            'adding': 'rgba(6,182,212,0.15)',
+            'playing': 'rgba(245,158,11,0.15)',
+            'finished': 'rgba(52,199,89,0.15)',
+        };
+        const stateColors = {
+            'lobby': 'var(--text-secondary)',
+            'adding': '#06b6d4',
+            'playing': '#fbbf24',
+            'finished': '#34c759',
+        };
+        const badge = document.getElementById('roomStateBadge');
+        badge.textContent = room.state.toUpperCase();
+        badge.style.background = stateMap[room.state] || stateMap.lobby;
+        badge.style.color = stateColors[room.state] || stateColors.lobby;
+
+        // Players
+        const playersList = document.getElementById('playersList');
+        playersList.innerHTML = room.players.map(p => `
+            <span class="player-badge ${p === room.host ? 'host' : ''}">
+                ${p === room.host ? '<i class="bi bi-crown-fill host-icon"></i>' : ''}
+                ${p}
+            </span>
+        `).join('');
+        document.getElementById('playerCountBadge').innerHTML = `<i class="bi bi-people"></i> ${room.players.length} players`;
+
+        // Title
+        document.getElementById('titleInput').value = room.title || 'My Tier List';
+
+        // Item count
+        document.getElementById('itemCountDisplay').textContent = `${room.items?.length || 0} items`;
+
+        // Host controls
+        const startBtn = document.getElementById('startGameBtn');
+        if ((room.state === 'lobby' || room.state === 'adding') && state.isHost) {
+            startBtn.style.display = 'inline-block';
+            startBtn.textContent = room.items?.length ? '🎯 Start Game' : 'Add items first';
+            startBtn.disabled = !(room.items?.length > 0);
+        } else {
+            startBtn.style.display = 'none';
+        }
+
+        // Tier rows
+        renderTiers(room);
+
+        // Vote area
+        renderVote(room);
+
+        // Reorder section
+        const reorderSection = document.getElementById('reorderSection');
+        if (room.state === 'finished') {
+            reorderSection.style.display = 'block';
+            document.getElementById('reorderHint').textContent = 
+                state.isHost ? 'Drag an item to propose moving it' : 'Host can drag items to reorder';
+        } else {
+            reorderSection.style.display = 'none';
+        }
+
+        // Add section visibility
+        document.getElementById('addSection').style.display = 
+            (room.state === 'lobby' || room.state === 'adding') ? 'block' : 'none';
+
+        // Force resolve button
+        const forceBtn = document.getElementById('forceResolveBtn');
+        forceBtn.style.display = (room.vote && state.isHost) ? 'inline-block' : 'none';
+    }
+
+    function renderTiers(room) {
+        const container = document.getElementById('tierRows');
+        const rows = room.rows || [
+            { label: 'S', color: '#ff2d55' },
+            { label: 'A', color: '#ff6b35' },
+            { label: 'B', color: '#f7c948' },
+            { label: 'C', color: '#34c759' },
+            { label: 'D', color: '#00b4d8' },
+        ];
+        const items = room.items || [];
+        const currentItemId = room.current_item_id;
+        const maxT1 = room.max_per_tier1;
+        const tier1Label = rows[0]?.label;
+
+        let html = '';
+        rows.forEach((row, idx) => {
+            const rowItems = items.filter(i => i.row === row.label);
+            const isFull = maxT1 && row.label === tier1Label && rowItems.length >= maxT1;
+            html += `
+                <div class="tier-row" data-row="${row.label}" data-index="${idx}">
+                    <div class="tier-label" style="background:${row.color}">
+                        ${row.label}
+                        ${isFull ? '<span class="badge-full">FULL</span>' : ''}
+                    </div>
+                    <div class="tier-items" data-row="${row.label}" 
+                         ondragover="onDragOver(event)" ondrop="onDrop(event, '${row.label}')">
+                        ${rowItems.map(item => `
+                            <div class="tier-item ${item.id === currentItemId ? 'border-warning' : ''}" 
+                                 draggable="${room.state === 'finished'}"
+                                 data-id="${item.id}" data-row="${item.row || ''}"
+                                 ondragstart="onDragStart(event, '${item.id}')" 
+                                 ondragend="onDragEnd(event)">
+                                ${item.img ? `<img src="${item.img}" alt="">` : ''}
+                                ${item.title}
+                                ${item.votes ? `<span class="item-votes">${item.votes}✓</span>` : ''}
+                                ${item.id === currentItemId ? '<span class="badge-current">Current</span>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderVote(room) {
+        const vote = room.vote;
+        const area = document.getElementById('voteArea');
+
+        if (!vote || room.state !== 'playing') {
+            area.style.display = 'none';
+            return;
+        }
+
+        area.style.display = 'block';
+        const item = room.items?.find(i => i.id === vote.item_id);
+        document.getElementById('currentItemTitle').textContent = item?.title || 'Unknown';
+        document.getElementById('proposedRowLabel').textContent = vote.row_label || '?';
+
+        const yesCount = vote.yes?.length || 0;
+        const noCount = vote.no?.length || 0;
+        document.getElementById('yesVotes').textContent = yesCount;
+        document.getElementById('noVotes').textContent = noCount;
+
+        const total = room.players.length;
+        const voted = yesCount + noCount;
+        const progress = total > 0 ? (voted / total) * 100 : 0;
+        document.getElementById('voteProgressBar').style.width = `${Math.min(100, progress)}%`;
+
+        // Highlight my vote
+        const yesBtn = document.querySelector('.vote-yes');
+        const noBtn = document.querySelector('.vote-no');
+        const myVote = vote.yes?.includes(state.username) ? 'yes' : 
+                       vote.no?.includes(state.username) ? 'no' : null;
+        yesBtn.classList.toggle('active', myVote === 'yes');
+        noBtn.classList.toggle('active', myVote === 'no');
+        state.myVote = myVote;
+    }
+
+    // ============================================================
+    // ADD ITEMS
+    // ============================================================
+    let addModal = null;
+
+    function openAddModal() {
+        if (!addModal) {
+            addModal = new bootstrap.Modal(document.getElementById('addModal'));
+        }
+        document.getElementById('searchInput').value = '';
+        document.getElementById('customTitleInput').value = '';
+        document.getElementById('searchResults').innerHTML = '';
+        addModal.show();
+    }
+
+    async function searchItems() {
+        const q = document.getElementById('searchInput').value.trim();
+        const kind = document.getElementById('itemTypeSelect').value;
+        if (!q) {
+            showToast('Enter a search term', 'warning');
+            return;
+        }
+        try {
+            const data = await apiCall(`/api/tlg/search?q=${encodeURIComponent(q)}&kind=${kind}`);
+            const container = document.getElementById('searchResults');
+            if (!data.length) {
+                container.innerHTML = '<div style="color:var(--text-secondary);font-size:0.9rem;padding:12px 0;">No results found. Try adding custom.</div>';
+                return;
+            }
+            container.innerHTML = data.map(item => `
+                <div class="search-result-item d-flex justify-content-between align-items-center"
+                     onclick="addSearchItem('${item.title}', '${item.kind}', '${item.img || ''}')">
+                    <span>${item.title}</span>
+                    <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-secondary);font-weight:400;">${item.kind}</span>
+                </div>
+            `).join('');
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function addSearchItem(title, kind, img) {
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/add_item`, 'POST', {
+                title, kind, img
+            });
+            showToast(`Added: ${title}`, 'success');
+            addModal.hide();
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function addCustomItem() {
+        const title = document.getElementById('customTitleInput').value.trim();
+        const kind = document.getElementById('itemTypeSelect').value;
+        if (!title) {
+            showToast('Enter a title', 'warning');
+            return;
+        }
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/add_item`, 'POST', {
+                title, kind, img: ''
+            });
+            showToast(`Added: ${title}`, 'success');
+            addModal.hide();
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchItems();
+    });
+    document.getElementById('customTitleInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addCustomItem();
+    });
+
+    // ============================================================
+    // GAME CONTROLS
+    // ============================================================
+    async function startGame() {
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/start_game`, 'POST');
+            showToast('Game started!', 'success');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function castVote(choice) {
+        if (!state.room?.vote) {
+            showToast('No active vote', 'warning');
+            return;
+        }
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/cast_vote`, 'POST', { choice });
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function forceResolve() {
+        if (!state.isHost) return;
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/force_resolve`, 'POST');
+            showToast('Vote resolved', 'info');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    async function updateTitle() {
+        const title = document.getElementById('titleInput').value.trim() || 'My Tier List';
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/title`, 'POST', { title });
+            showToast('Title updated', 'success');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    // ============================================================
+    // SETTINGS
+    // ============================================================
+    let settingsModal = null;
+
+    function openSettingsModal() {
+        if (!settingsModal) {
+            settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+        }
+        const room = state.room;
+        if (!room) return;
+
+        document.getElementById('maxTierInput').value = room.max_per_tier1 || '';
+
+        const editor = document.getElementById('rowEditor');
+        editor.innerHTML = (room.rows || []).map((row, idx) => `
+            <div class="row g-2 mb-2" data-index="${idx}">
+                <div class="col-4">
+                    <input class="form-control form-control-sm row-label" 
+                           value="${row.label}" placeholder="Label" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#fff;border-radius:8px;padding:6px 10px;">
+                </div>
+                <div class="col-6">
+                    <input class="form-control form-control-sm row-color" 
+                           value="${row.color}" placeholder="#color" type="color" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px 6px;height:38px;">
+                </div>
+                <div class="col-2">
+                    <button class="btn btn-outline-glow btn-sm" onclick="removeRowField(this)" style="border-color:rgba(255,45,85,0.15);color:#ff2d55;padding:4px 8px;">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        settingsModal.show();
+    }
+
+    function addRowField() {
+        const editor = document.getElementById('rowEditor');
+        const idx = editor.children.length;
+        const div = document.createElement('div');
+        div.className = 'row g-2 mb-2';
+        div.dataset.index = idx;
+        div.innerHTML = `
+            <div class="col-4">
+                <input class="form-control form-control-sm row-label" 
+                       placeholder="Label" value="Z" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#fff;border-radius:8px;padding:6px 10px;">
+            </div>
+            <div class="col-6">
+                <input class="form-control form-control-sm row-color" 
+                       placeholder="#color" type="color" value="#888888" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px 6px;height:38px;">
+            </div>
+            <div class="col-2">
+                <button class="btn btn-outline-glow btn-sm" onclick="removeRowField(this)" style="border-color:rgba(255,45,85,0.15);color:#ff2d55;padding:4px 8px;">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        editor.appendChild(div);
+    }
+
+    function removeRowField(btn) {
+        const row = btn.closest('.row');
+        if (document.querySelectorAll('#rowEditor .row').length <= 1) {
+            showToast('Need at least one row', 'warning');
+            return;
+        }
+        row.remove();
+    }
+
+    async function saveSettings() {
+        const maxTier = document.getElementById('maxTierInput').value;
+        const maxPerTier1 = maxTier ? parseInt(maxTier) : null;
+
+        const rowFields = document.querySelectorAll('#rowEditor .row');
+        const rows = [];
+        rowFields.forEach(row => {
+            const label = row.querySelector('.row-label').value.trim();
+            const color = row.querySelector('.row-color').value;
+            if (label) {
+                rows.push({ label, color });
+            }
+        });
+        if (rows.length < 1) {
+            showToast('Need at least one row', 'warning');
+            return;
+        }
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/settings`, 'POST', {
+                max_per_tier1: maxPerTier1
+            });
+            await apiCall(`/api/tlg/room/${state.roomCode}/rows`, 'POST', { rows });
+            showToast('Settings saved', 'success');
+            settingsModal.hide();
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+    }
+
+    // ============================================================
+    // DRAG & DROP
+    // ============================================================
+    let draggedItemId = null;
+
+    function onDragStart(e, itemId) {
+        if (state.room?.state !== 'finished') {
+            e.preventDefault();
+            return;
+        }
+        draggedItemId = itemId;
+        e.target.classList.add('dragging');
+    }
+
+    function onDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        const row = e.target.closest('.tier-items');
+        if (row) {
+            row.closest('.tier-row').classList.add('drag-over');
+        }
+    }
+
+    async function onDrop(e, targetRow) {
+        e.preventDefault();
+        document.querySelectorAll('.tier-row').forEach(el => el.classList.remove('drag-over'));
+
+        if (!draggedItemId || !state.isHost) {
+            draggedItemId = null;
+            return;
+        }
+
+        const items = document.querySelectorAll(`.tier-items[data-row="${targetRow}"] .tier-item`);
+        let targetIndex = items.length;
+
+        const mouseY = e.clientY;
+        for (let i = 0; i < items.length; i++) {
+            const rect = items[i].getBoundingClientRect();
+            if (mouseY < rect.top + rect.height / 2) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        try {
+            await apiCall(`/api/tlg/room/${state.roomCode}/reorder`, 'POST', {
+                item_id: draggedItemId,
+                new_row: targetRow,
+                new_index: targetIndex
+            });
+            showToast('Reorder proposed! Vote now.', 'info');
+            await refreshRoom();
+        } catch (e) {
+            showToast(e.message, 'danger');
+        }
+        draggedItemId = null;
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        initSocket();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        if (code) {
+            document.getElementById('roomCodeInput').value = code;
+            joinRoom();
+        }
+
+        document.getElementById('roomCodeInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') joinRoom();
+        });
+
+        setInterval(() => {
+            if (state.roomCode) {
+                refreshRoom();
+            }
+        }, 10000);
+    });
+</script>
+
+</body>
+</html>
