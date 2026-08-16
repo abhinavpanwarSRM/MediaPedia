@@ -78,6 +78,89 @@ if db is not None:
     init_splitwise(db)
 app.register_blueprint(splitwise_bp)
 
+# ===== Tier Lists =====
+tierlists_collection = None
+try:
+    if db is not None:
+        tierlists_collection = db.tierlists
+        tierlists_collection.create_index('tierlist_id', unique=True)
+        tierlists_collection.create_index('username')
+except Exception as e:
+    log.error('Failed to init tierlists: %s', e)
+
+@app.route('/api/tierlists/user/<target_username>', methods=['GET'])
+def get_user_tierlists(target_username):
+    if tierlists_collection is None:
+        return jsonify([])
+    tls = list(tierlists_collection.find({'username': target_username}, {'_id': 0, 'rows': 0}))
+    for t in tls:
+        if isinstance(t.get('created_at'), datetime):
+            t['created_at'] = t['created_at'].isoformat()
+    return jsonify(tls)
+
+@app.route('/api/tierlists/<tierlist_id>', methods=['GET'])
+def get_tierlist(tierlist_id):
+    if tierlists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    tl = tierlists_collection.find_one({'tierlist_id': tierlist_id}, {'_id': 0})
+    if not tl:
+        return jsonify({'error': 'Not found'}), 404
+    if isinstance(tl.get('created_at'), datetime):
+        tl['created_at'] = tl['created_at'].isoformat()
+    return jsonify(tl)
+
+@app.route('/api/tierlists', methods=['POST'])
+def save_tierlist():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if tierlists_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    title = data.get('title', '').strip()[:80] or 'My Tier List'
+    rows = data.get('rows', [])  # [{label, items: [{id, title, kind, img}]}]
+    tierlist_id = data.get('tierlist_id') or str(uuid.uuid4())[:10]
+    tierlists_collection.update_one(
+        {'tierlist_id': tierlist_id, 'username': username},
+        {'$set': {'tierlist_id': tierlist_id, 'username': username,
+                  'title': title, 'rows': rows,
+                  'updated_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    # set created_at only on insert
+    tierlists_collection.update_one(
+        {'tierlist_id': tierlist_id, 'created_at': {'$exists': False}},
+        {'$set': {'created_at': datetime.now(timezone.utc)}}
+    )
+    return jsonify({'tierlist_id': tierlist_id, 'title': title}), 201
+
+@app.route('/api/tierlists/<tierlist_id>', methods=['DELETE'])
+def delete_tierlist(tierlist_id):
+    username = current_user()
+    if not username or tierlists_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    tierlists_collection.delete_one({'tierlist_id': tierlist_id, 'username': username})
+    return jsonify({'success': True})
+
+@app.route('/api/tierlist_search')
+def tierlist_search():
+    q = request.args.get('q', '').strip().lower()
+    kind = request.args.get('kind', 'movie')  # movie | series | song
+    if not q or len(q) < 2:
+        return jsonify([])
+    if kind == 'series':
+        hits = series_df[series_df['Title'].str.lower().str.contains(q, na=False)].head(8)
+        return jsonify([{'id': int(r['ID']), 'title': r['Title'], 'kind': 'series',
+                         'sub': r.get('Genres', '')} for _, r in hits.iterrows()])
+    elif kind == 'song':
+        hits = artists_df[artists_df['artist_name'].str.lower().str.contains(q, na=False)].head(8)
+        return jsonify([{'id': int(r['ID']), 'title': r['artist_name'], 'kind': 'song',
+                         'sub': r.get('artist_genre', '')} for _, r in hits.iterrows()])
+    else:
+        hits = df[df['Movie Name'].str.lower().str.contains(q, na=False)].head(8)
+        return jsonify([{'id': int(r['ID']), 'title': r['Movie Name'], 'kind': 'movie',
+                         'sub': r.get('Genre', '')} for _, r in hits.iterrows()])
+
 # ===== TMDB Poster Cache =====
 poster_cache_collection = None
 try:

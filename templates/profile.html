@@ -277,6 +277,48 @@
       .stats { grid-template-columns: repeat(3, 1fr); }
       .tab { padding: 0.6rem 0.8rem; font-size: 0.82rem; }
     }
+
+    /* Tier List */
+    .tl-row { border-radius: 10px; margin-bottom: 0.6rem; overflow: hidden; border: 1px solid var(--border); }
+    .tl-row-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem;
+                   background: rgba(255,255,255,0.06); }
+    .tl-row-label { font-weight: 700; font-size: 0.9rem; min-width: 32px; text-align: center;
+                    padding: 0.2rem 0.5rem; border-radius: 6px; cursor: pointer; }
+    .tl-row-label-input { width: 60px; padding: 0.2rem 0.4rem; background: rgba(255,255,255,0.08);
+                          border: 1px solid var(--border); border-radius: 6px; color: #fff;
+                          font-size: 0.85rem; font-weight: 700; text-align: center; }
+    .tl-row-items { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem;
+                    min-height: 72px; background: rgba(255,255,255,0.02); }
+    .tl-item { position: relative; width: 52px; cursor: grab; flex-shrink: 0; }
+    .tl-item img { width: 52px; height: 74px; object-fit: cover; border-radius: 5px;
+                   display: block; background: #222; }
+    .tl-item .tl-item-title { font-size: 0.58rem; color: #ccc; text-align: center;
+                               white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                               max-width: 52px; margin-top: 2px; }
+    .tl-item .tl-item-del { display: none; position: absolute; top: -5px; right: -5px;
+                             background: #e50914; color: #fff; border: none; border-radius: 50%;
+                             width: 16px; height: 16px; font-size: 0.6rem; cursor: pointer;
+                             align-items: center; justify-content: center; line-height: 1; }
+    .tl-item:hover .tl-item-del { display: flex; }
+    .tl-row-del { background: none; border: none; color: var(--muted); font-size: 0.8rem;
+                  cursor: pointer; margin-left: auto; padding: 0.1rem 0.3rem; }
+    .tl-row-del:hover { color: #ff4757; }
+    /* View-only tier list */
+    .tl-view-row { border-radius: 10px; margin-bottom: 0.5rem; overflow: hidden;
+                   border: 1px solid var(--border); }
+    .tl-view-head { padding: 0.35rem 0.8rem; font-weight: 700; font-size: 0.88rem; }
+    .tl-view-items { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.5rem;
+                     background: rgba(255,255,255,0.02); min-height: 40px; }
+    .tl-view-item { width: 52px; text-decoration: none; }
+    .tl-view-item img { width: 52px; height: 74px; object-fit: cover; border-radius: 5px;
+                        display: block; background: #222; }
+    .tl-view-item .tl-item-title { font-size: 0.58rem; color: #ccc; text-align: center;
+                                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                                    max-width: 52px; margin-top: 2px; }
+    .tl-card { background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+               border-radius: 10px; padding: 0.9rem 1.1rem; margin-bottom: 0.6rem;
+               cursor: pointer; transition: all 0.2s; }
+    .tl-card:hover { border-color: rgba(229,9,20,0.4); transform: translateX(3px); }
   </style>
     <link rel="manifest" href="/static/manifest.json" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -444,6 +486,7 @@
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('lists',this)">Lists</button>
+      <button class="tab" onclick="switchTab('tierlists',this)">&#127942; Tier Lists</button>
       <button class="tab" onclick="switchTab('playlists',this)">&#127925; Playlists</button>
       <button class="tab" onclick="switchTab('reviews',this)">Reviews</button>
       <button class="tab" onclick="switchTab('posts',this)">&#128247; Posts</button>
@@ -471,6 +514,49 @@
         {% else %}
         <p class="empty">No lists yet.</p>
         {% endfor %}
+      </div>
+    </div>
+
+    <!-- Tier Lists -->
+    <div class="tab-panel" id="tab-tierlists">
+      <div id="tl-list-view">
+        {% if viewer == username %}
+        <button class="btn btn-red" onclick="tlShowBuilder(null)" style="margin-bottom:1.2rem;">+ New Tier List</button>
+        {% endif %}
+        <div id="tl-cards-container"><p class="empty">Loading...</p></div>
+      </div>
+
+      <!-- Builder (hidden by default) -->
+      <div id="tl-builder" style="display:none;">
+        <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="btn" style="border-color:var(--border);color:var(--muted);" onclick="tlShowList()">← Back</button>
+          <input id="tl-title" type="text" maxlength="80" placeholder="Tier list title…"
+            style="flex:1;min-width:160px;padding:0.55rem 0.85rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.9rem;" />
+          <button class="btn btn-red" onclick="tlSave()">💾 Save</button>
+        </div>
+
+        <!-- Search bar -->
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <select id="tl-kind" style="padding:0.5rem 0.7rem;background:#1c1c1c;border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.85rem;">
+            <option value="movie">🎬 Movie</option>
+            <option value="series">📺 Series</option>
+            <option value="song">🎵 Artist/Song</option>
+          </select>
+          <input id="tl-search" type="text" placeholder="Search to add items…" autocomplete="off"
+            style="flex:1;min-width:160px;padding:0.5rem 0.85rem;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:0.88rem;"
+            oninput="tlSearchDebounce()" />
+        </div>
+        <div id="tl-search-results" style="display:none;background:#1c1c1c;border:1px solid var(--border);border-radius:10px;margin-bottom:0.8rem;max-height:220px;overflow-y:auto;"></div>
+
+        <!-- Unplaced items pool -->
+        <div id="tl-pool" style="min-height:56px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);border-radius:10px;padding:0.5rem;display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;"
+          ondragover="event.preventDefault()" ondrop="tlDropToPool(event)">
+          <span id="tl-pool-hint" style="color:var(--muted);font-size:0.78rem;align-self:center;padding:0.2rem 0.4rem;">Items not yet placed</span>
+        </div>
+
+        <!-- Tier rows -->
+        <div id="tl-rows"></div>
+        <button class="btn btn-blue" onclick="tlAddRow()" style="margin-top:0.6rem;font-size:0.82rem;">+ Add Row</button>
       </div>
     </div>
 
@@ -1130,6 +1216,315 @@
   </script>
   {% endif %}
   <script src="/static/pwa.js"></script>
+  <script>
+    // ===== TIER LIST =====
+    const TL_OWNER = VIEWER === PROFILE_USER && VIEWER !== '';
+    const TL_ROW_COLORS = ['#e50914','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e74c3c'];
+    let tlData = null; // current tierlist being edited
+    let tlSearchTimer = null;
+    let tlDragItem = null; // {id, title, kind, img}
+    let tlDragFrom = null; // 'pool' | rowIndex
+    let tlTierlistsLoaded = false;
+
+    function tlShowList() {
+      document.getElementById('tl-builder').style.display = 'none';
+      document.getElementById('tl-list-view').style.display = '';
+      tlLoadCards();
+    }
+
+    function tlShowBuilder(tl) {
+      // tl = null for new, or existing tierlist object
+      tlData = tl ? JSON.parse(JSON.stringify(tl)) : {
+        tierlist_id: null,
+        title: '',
+        rows: [
+          {label: 'S', color: TL_ROW_COLORS[0], items: []},
+          {label: 'A', color: TL_ROW_COLORS[1], items: []},
+          {label: 'B', color: TL_ROW_COLORS[2], items: []},
+          {label: 'C', color: TL_ROW_COLORS[3], items: []},
+          {label: 'D', color: TL_ROW_COLORS[4], items: []},
+        ]
+      };
+      document.getElementById('tl-title').value = tlData.title || '';
+      document.getElementById('tl-list-view').style.display = 'none';
+      document.getElementById('tl-builder').style.display = '';
+      document.getElementById('tl-search').value = '';
+      document.getElementById('tl-search-results').style.display = 'none';
+      tlRenderPool();
+      tlRenderRows();
+    }
+
+    function tlRenderPool() {
+      const pool = document.getElementById('tl-pool');
+      const hint = document.getElementById('tl-pool-hint');
+      // collect all placed item ids
+      const placed = new Set();
+      (tlData.rows || []).forEach(r => (r.items || []).forEach(it => placed.add(it.id + ':' + it.kind)));
+      const unplaced = (tlData._pool || []).filter(it => !placed.has(it.id + ':' + it.kind));
+      // remove old items (keep hint)
+      Array.from(pool.children).forEach(c => { if (c !== hint) c.remove(); });
+      hint.style.display = unplaced.length ? 'none' : '';
+      unplaced.forEach(it => pool.appendChild(tlMakeItemEl(it, 'pool', null)));
+    }
+
+    function tlRenderRows() {
+      const cont = document.getElementById('tl-rows');
+      cont.innerHTML = '';
+      (tlData.rows || []).forEach((row, ri) => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'tl-row';
+        rowEl.dataset.ri = ri;
+        const head = document.createElement('div');
+        head.className = 'tl-row-head';
+        const inp = document.createElement('input');
+        inp.className = 'tl-row-label-input';
+        inp.value = row.label;
+        inp.style.color = row.color || '#fff';
+        inp.style.borderColor = row.color || 'var(--border)';
+        inp.maxLength = 6;
+        inp.oninput = () => { tlData.rows[ri].label = inp.value; };
+        const colorPick = document.createElement('input');
+        colorPick.type = 'color';
+        colorPick.value = row.color || '#888888';
+        colorPick.style.cssText = 'width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0;border-radius:4px;';
+        colorPick.oninput = () => {
+          tlData.rows[ri].color = colorPick.value;
+          inp.style.color = colorPick.value;
+          inp.style.borderColor = colorPick.value;
+          itemsEl.style.borderLeft = `3px solid ${colorPick.value}`;
+        };
+        const delBtn = document.createElement('button');
+        delBtn.className = 'tl-row-del'; delBtn.textContent = '✕';
+        delBtn.onclick = () => {
+          // return items to pool
+          tlData._pool = tlData._pool || [];
+          (tlData.rows[ri].items || []).forEach(it => {
+            if (!tlData._pool.find(p => p.id === it.id && p.kind === it.kind)) tlData._pool.push(it);
+          });
+          tlData.rows.splice(ri, 1);
+          tlRenderPool(); tlRenderRows();
+        };
+        head.appendChild(inp); head.appendChild(colorPick); head.appendChild(delBtn);
+        const itemsEl = document.createElement('div');
+        itemsEl.className = 'tl-row-items';
+        itemsEl.style.borderLeft = `3px solid ${row.color || '#888'}`;
+        itemsEl.dataset.ri = ri;
+        itemsEl.ondragover = e => e.preventDefault();
+        itemsEl.ondrop = e => tlDropToRow(e, ri);
+        (row.items || []).forEach(it => itemsEl.appendChild(tlMakeItemEl(it, 'row', ri)));
+        rowEl.appendChild(head); rowEl.appendChild(itemsEl);
+        cont.appendChild(rowEl);
+      });
+    }
+
+    function tlMakeItemEl(item, from, ri) {
+      const wrap = document.createElement('div');
+      wrap.className = 'tl-item';
+      wrap.draggable = true;
+      wrap.ondragstart = e => { tlDragItem = item; tlDragFrom = from === 'row' ? ri : 'pool'; e.dataTransfer.effectAllowed = 'move'; };
+      const img = document.createElement('img');
+      img.src = item.img || '';
+      img.alt = item.title;
+      img.loading = 'lazy';
+      img.onerror = () => { img.src = ''; img.style.background = '#333'; };
+      const title = document.createElement('div');
+      title.className = 'tl-item-title';
+      title.textContent = item.title;
+      if (TL_OWNER) {
+        const del = document.createElement('button');
+        del.className = 'tl-item-del'; del.textContent = '✕';
+        del.onclick = e => { e.stopPropagation(); tlRemoveItem(item, from, ri); };
+        wrap.appendChild(del);
+      }
+      wrap.appendChild(img); wrap.appendChild(title);
+      return wrap;
+    }
+
+    function tlRemoveItem(item, from, ri) {
+      if (from === 'pool') {
+        tlData._pool = (tlData._pool || []).filter(p => !(p.id === item.id && p.kind === item.kind));
+      } else {
+        tlData.rows[ri].items = (tlData.rows[ri].items || []).filter(p => !(p.id === item.id && p.kind === item.kind));
+      }
+      tlRenderPool(); tlRenderRows();
+    }
+
+    function tlDropToRow(e, ri) {
+      e.preventDefault();
+      if (!tlDragItem) return;
+      // remove from source
+      if (tlDragFrom === 'pool') {
+        tlData._pool = (tlData._pool || []).filter(p => !(p.id === tlDragItem.id && p.kind === tlDragItem.kind));
+      } else if (tlDragFrom !== null) {
+        tlData.rows[tlDragFrom].items = (tlData.rows[tlDragFrom].items || []).filter(p => !(p.id === tlDragItem.id && p.kind === tlDragItem.kind));
+      }
+      // add to target row if not already there
+      if (!tlData.rows[ri].items.find(p => p.id === tlDragItem.id && p.kind === tlDragItem.kind))
+        tlData.rows[ri].items.push(tlDragItem);
+      tlDragItem = null; tlDragFrom = null;
+      tlRenderPool(); tlRenderRows();
+    }
+
+    function tlDropToPool(e) {
+      e.preventDefault();
+      if (!tlDragItem) return;
+      if (tlDragFrom !== 'pool' && tlDragFrom !== null) {
+        tlData.rows[tlDragFrom].items = (tlData.rows[tlDragFrom].items || []).filter(p => !(p.id === tlDragItem.id && p.kind === tlDragItem.kind));
+      }
+      tlData._pool = tlData._pool || [];
+      if (!tlData._pool.find(p => p.id === tlDragItem.id && p.kind === tlDragItem.kind))
+        tlData._pool.push(tlDragItem);
+      tlDragItem = null; tlDragFrom = null;
+      tlRenderPool(); tlRenderRows();
+    }
+
+    function tlAddRow() {
+      const ci = tlData.rows.length;
+      tlData.rows.push({label: String.fromCharCode(69 + ci), color: TL_ROW_COLORS[ci % TL_ROW_COLORS.length], items: []});
+      tlRenderRows();
+    }
+
+    function tlSearchDebounce() {
+      clearTimeout(tlSearchTimer);
+      tlSearchTimer = setTimeout(tlDoSearch, 280);
+    }
+
+    function tlDoSearch() {
+      const q = document.getElementById('tl-search').value.trim();
+      const kind = document.getElementById('tl-kind').value;
+      const res = document.getElementById('tl-search-results');
+      if (q.length < 2) { res.style.display = 'none'; return; }
+      fetch(`/api/tierlist_search?q=${encodeURIComponent(q)}&kind=${kind}`)
+        .then(r => r.json())
+        .then(hits => {
+          if (!hits.length) { res.innerHTML = '<div style="padding:0.7rem 1rem;color:var(--muted);font-size:0.85rem;">No results</div>'; res.style.display = ''; return; }
+          res.style.display = '';
+          res.innerHTML = hits.map(h =>
+            `<div style="display:flex;align-items:center;gap:0.7rem;padding:0.55rem 0.9rem;cursor:pointer;border-bottom:1px solid var(--border);" onclick="tlAddItem(${JSON.stringify(h).replace(/"/g,'&quot;')})">
+              <span style="font-size:0.85rem;">${escHtml(h.title)}</span>
+              <span style="font-size:0.72rem;color:var(--muted);margin-left:auto;">${escHtml(h.sub||'')}</span>
+            </div>`
+          ).join('');
+        }).catch(() => { res.style.display = 'none'; });
+    }
+
+    function tlAddItem(hit) {
+      document.getElementById('tl-search-results').style.display = 'none';
+      document.getElementById('tl-search').value = '';
+      tlData._pool = tlData._pool || [];
+      if (tlData._pool.find(p => p.id === hit.id && p.kind === hit.kind)) { showToast('Already added'); return; }
+      if (tlData.rows.some(r => r.items.find(p => p.id === hit.id && p.kind === hit.kind))) { showToast('Already in a row'); return; }
+      // fetch image then add
+      const item = {id: hit.id, title: hit.title, kind: hit.kind, img: ''};
+      tlData._pool.push(item);
+      tlRenderPool();
+      // async load image
+      if (hit.kind === 'movie') {
+        fetch(`/api/poster?title=${encodeURIComponent(hit.title)}&kind=movie`)
+          .then(r=>r.json()).then(d=>{ item.img = d.poster||''; tlRenderPool(); }).catch(()=>{});
+      } else if (hit.kind === 'series') {
+        fetch(`/api/poster?title=${encodeURIComponent(hit.title)}&kind=tv`)
+          .then(r=>r.json()).then(d=>{ item.img = d.poster||''; tlRenderPool(); }).catch(()=>{});
+      } else {
+        // song/artist — use YouTube thumbnail via search
+        const ytKeys = ['{{ api_key_1 }}','{{ api_key_2 }}','{{ api_key_3 }}','{{ api_key_4 }}','{{ api_key_5 }}'].filter(k=>k);
+        if (ytKeys.length) {
+          fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(hit.title)}&type=video&maxResults=1&key=${ytKeys[0]}`)
+            .then(r=>r.json()).then(d=>{
+              const thumb = d.items?.[0]?.snippet?.thumbnails?.medium?.url || '';
+              item.img = thumb; tlRenderPool();
+            }).catch(()=>{});
+        }
+      }
+    }
+
+    async function tlSave() {
+      const title = document.getElementById('tl-title').value.trim() || 'My Tier List';
+      const payload = {
+        tierlist_id: tlData.tierlist_id,
+        title,
+        rows: (tlData.rows || []).map(r => ({label: r.label, color: r.color, items: r.items || []}))
+      };
+      const r = await fetch('/api/tierlists', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+      const d = await r.json();
+      if (d.error) { showToast(d.error); return; }
+      tlData.tierlist_id = d.tierlist_id;
+      showToast('Tier list saved ✅');
+      tlShowList();
+    }
+
+    function tlLoadCards() {
+      fetch(`/api/tierlists/user/{{ username }}`)
+        .then(r => r.json())
+        .then(tls => {
+          const c = document.getElementById('tl-cards-container');
+          if (!tls.length) { c.innerHTML = '<p class="empty">No tier lists yet.</p>'; return; }
+          c.innerHTML = tls.map(tl => `
+            <div class="tl-card" id="tlcard-${tl.tierlist_id}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                <span style="font-weight:700;font-size:0.95rem;">🏆 ${escHtml(tl.title)}</span>
+                <div style="display:flex;gap:0.4rem;">
+                  ${TL_OWNER ? `<button class="btn btn-blue" style="font-size:0.75rem;padding:0.3rem 0.7rem;" onclick="event.stopPropagation();tlEditCard('${tl.tierlist_id}')">Edit</button>
+                  <button class="btn btn-red" style="font-size:0.75rem;padding:0.3rem 0.7rem;" onclick="event.stopPropagation();tlDeleteCard('${tl.tierlist_id}')">Delete</button>` : ''}
+                </div>
+              </div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:0.3rem;">${(tl.updated_at||'').slice(0,10)}</div>
+              <div id="tlpreview-${tl.tierlist_id}" style="margin-top:0.7rem;"><span style="color:var(--muted);font-size:0.78rem;">Click to expand</span></div>
+            </div>`).join('');
+          tls.forEach(tl => {
+            document.getElementById(`tlcard-${tl.tierlist_id}`).addEventListener('click', () => tlTogglePreview(tl.tierlist_id));
+          });
+        })
+        .catch(() => { document.getElementById('tl-cards-container').innerHTML = '<p class="empty">Could not load.</p>'; });
+    }
+
+    const _tlExpanded = new Set();
+    function tlTogglePreview(id) {
+      if (_tlExpanded.has(id)) { _tlExpanded.delete(id); tlCollapsePreview(id); return; }
+      _tlExpanded.add(id);
+      const el = document.getElementById(`tlpreview-${id}`);
+      el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">Loading…</span>';
+      fetch(`/api/tierlists/${id}`).then(r=>r.json()).then(tl => {
+        el.innerHTML = (tl.rows||[]).map(row => `
+          <div class="tl-view-row" style="margin-top:0.4rem;">
+            <div class="tl-view-head" style="background:${row.color||'#555'}22;border-left:3px solid ${row.color||'#888'};">${escHtml(row.label)}</div>
+            <div class="tl-view-items">
+              ${(row.items||[]).map(it => `
+                <a class="tl-view-item" href="${it.kind==='song'?'/artist/'+it.id:'/'+it.kind+'/'+it.id}" target="_blank" title="${escHtml(it.title)}">
+                  <img src="${escAttr(it.img||'')}" alt="${escHtml(it.title)}" loading="lazy" onerror="this.style.background='#333';this.src='';">
+                  <div class="tl-item-title">${escHtml(it.title)}</div>
+                </a>`).join('')}
+              ${!(row.items||[]).length ? '<span style="color:var(--muted);font-size:0.75rem;padding:0.3rem;">Empty</span>' : ''}
+            </div>
+          </div>`).join('');
+      }).catch(() => { el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">Could not load.</span>'; });
+    }
+    function tlCollapsePreview(id) {
+      const el = document.getElementById(`tlpreview-${id}`);
+      if (el) el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">Click to expand</span>';
+    }
+
+    function tlEditCard(id) {
+      fetch(`/api/tierlists/${id}`).then(r=>r.json()).then(tl => {
+        tl._pool = [];
+        tlShowBuilder(tl);
+      });
+    }
+
+    function tlDeleteCard(id) {
+      if (!confirm('Delete this tier list?')) return;
+      fetch(`/api/tierlists/${id}`, {method:'DELETE'}).then(r=>r.json()).then(d => {
+        if (d.success) { document.getElementById(`tlcard-${id}`)?.remove(); showToast('Deleted'); }
+      });
+    }
+
+    // Load tier lists when tab is first opened
+    const _origSwitchTab = switchTab;
+    switchTab = function(name, btn) {
+      _origSwitchTab(name, btn);
+      if (name === 'tierlists' && !tlTierlistsLoaded) { tlTierlistsLoaded = true; tlLoadCards(); }
+    };
+  </script>
   <script>
     // ===== KOC PROFILE SECTION =====
     fetch('/api/koc/player/{{ username }}')
