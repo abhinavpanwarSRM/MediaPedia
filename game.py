@@ -94,6 +94,7 @@ def create_tl_room():
         'current_item_id': None,
         'vote': None,              # {item_id, row_label, yes:[], no:[]}
         'max_per_tier1': max_per_tier1,
+        'round': 0,
         'created_at': _now(),
     }
     _tl_rooms_col.insert_one(room)
@@ -318,6 +319,7 @@ def start_game(code):
         'queue': queue,
         'current_item_id': queue[0],
         'vote': None,
+        'round': room.get('round', 0) + 1
     }})
     _emit_room(code)
     return jsonify({'ok': True})
@@ -336,6 +338,8 @@ def propose_placement(code):
         return jsonify({'error': 'Host only'}), 403
     if room['state'] != 'playing':
         return jsonify({'error': 'Not in playing phase'}), 400
+    if room.get('vote'):
+        return jsonify({'error': 'A vote is already in progress'}), 400
 
     data = request.json or {}
     row_label = data.get('row_label', '')
@@ -347,6 +351,15 @@ def propose_placement(code):
     rows = room.get('rows', [])
     if not any(r['label'] == row_label for r in rows):
         return jsonify({'error': 'Invalid row'}), 400
+
+    # Check S-tier limit
+    max_t1 = room.get('max_per_tier1')
+    tier1_label = rows[0]['label'] if rows else None
+    if max_t1 and row_label == tier1_label:
+        items = room.get('items', [])
+        placed_in_t1 = sum(1 for i in items if i.get('row') == tier1_label)
+        if placed_in_t1 >= max_t1:
+            return jsonify({'error': f'S-tier is full ({max_t1} items max)'}), 400
 
     vote = {
         'item_id': item_id,
@@ -370,6 +383,8 @@ def cast_vote(code):
         return jsonify({'error': 'Room not found'}), 404
     if username not in room['players']:
         return jsonify({'error': 'Not in room'}), 403
+    if room['state'] != 'playing':
+        return jsonify({'error': 'Not in playing phase'}), 400
 
     vote = room.get('vote')
     if not vote:
@@ -454,6 +469,45 @@ def _resolve_vote(room, vote, yes_list, no_list):
     return upd
 
 
+@game_bp.route('/api/tlg/room/<code>/skip_item', methods=['POST'])
+def skip_item(code):
+    """Host skips the current item (removes it from queue without placing)."""
+    username = _user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    room = _room(code)
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+    if room['host'] != username:
+        return jsonify({'error': 'Host only'}), 403
+    if room['state'] != 'playing':
+        return jsonify({'error': 'Not in playing phase'}), 400
+    if room.get('vote'):
+        return jsonify({'error': 'Cannot skip during a vote'}), 400
+
+    queue = room.get('queue', [])
+    current_id = room.get('current_item_id')
+    
+    if not current_id or not queue:
+        return jsonify({'error': 'No current item'}), 400
+    
+    # Remove current item from queue
+    new_queue = [q for q in queue if q != current_id]
+    
+    upd = {
+        'queue': new_queue,
+        'current_item_id': new_queue[0] if new_queue else None,
+        'vote': None
+    }
+    
+    if not new_queue:
+        upd['state'] = 'finished'
+    
+    _tl_rooms_col.update_one({'code': code}, {'$set': upd})
+    _emit_room(code)
+    return jsonify({'ok': True})
+
+
 @game_bp.route('/api/tlg/room/<code>/force_resolve', methods=['POST'])
 def force_resolve(code):
     """Host force-resolves current vote (in case someone disconnected)."""
@@ -465,6 +519,8 @@ def force_resolve(code):
         return jsonify({'error': 'Room not found'}), 404
     if room['host'] != username:
         return jsonify({'error': 'Host only'}), 403
+    if room['state'] != 'playing':
+        return jsonify({'error': 'Not in playing phase'}), 400
 
     vote = room.get('vote')
     if not vote:
@@ -472,6 +528,15 @@ def force_resolve(code):
 
     yes_list = vote.get('yes', [])
     no_list = vote.get('no', [])
+    
+    # If no one has voted, default to yes (approve placement)
+    if not yes_list and not no_list:
+        # Get all players
+        players = room.get('players', [])
+        # Host votes yes by default
+        yes_list = [room['host']]
+        # Other players are considered abstained (not counted)
+    
     upd = _resolve_vote(room, vote, yes_list, no_list)
     _tl_rooms_col.update_one({'code': code}, {'$set': upd})
     _emit_room(code)
@@ -496,6 +561,8 @@ def reorder_items(code):
         return jsonify({'error': 'Host only'}), 403
     if room['state'] != 'finished':
         return jsonify({'error': 'Only after game is finished'}), 400
+    if room.get('vote'):
+        return jsonify({'error': 'A vote is already in progress'}), 400
 
     data = request.json or {}
     item_id = data.get('item_id')

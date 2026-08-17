@@ -1,4 +1,3 @@
-<!-- templates/tier_list_game.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,9 +44,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ============================================================
-           NAVBAR
-           ============================================================ */
         .topnav {
             display: flex;
             justify-content: space-between;
@@ -90,9 +86,6 @@
             font-weight: 600;
         }
 
-        /* ============================================================
-           CONTAINER
-           ============================================================ */
         .container {
             max-width: 820px;
             margin: 0 auto;
@@ -113,9 +106,6 @@
             line-height: 1.6;
         }
 
-        /* ============================================================
-           PANEL / CARD
-           ============================================================ */
         .panel {
             background: var(--card);
             border: 1px solid var(--border);
@@ -133,9 +123,6 @@
             gap: 0.5rem;
         }
 
-        /* ============================================================
-           INPUTS
-           ============================================================ */
         .input-row {
             display: flex;
             gap: 0.6rem;
@@ -165,9 +152,6 @@
             color: var(--muted);
         }
 
-        /* ============================================================
-           BUTTONS
-           ============================================================ */
         .btn {
             padding: 0.65rem 1.2rem;
             border-radius: 8px;
@@ -236,9 +220,6 @@
             color: var(--text);
         }
 
-        /* ============================================================
-           DIVIDER
-           ============================================================ */
         .divider {
             color: var(--muted);
             font-size: 0.8rem;
@@ -246,9 +227,6 @@
             margin: 0.6rem 0;
         }
 
-        /* ============================================================
-           ROOM CODE
-           ============================================================ */
         .code-display {
             font-size: clamp(1.6rem, 6vw, 2.2rem);
             font-weight: 800;
@@ -268,9 +246,6 @@
             margin-bottom: 0.8rem;
         }
 
-        /* ============================================================
-           PLAYER CHIPS
-           ============================================================ */
         .players-row {
             display: flex;
             flex-wrap: wrap;
@@ -301,9 +276,6 @@
             background: rgba(255, 215, 0, 0.08);
         }
 
-        /* ============================================================
-           STATUS
-           ============================================================ */
         .status-msg {
             text-align: center;
             color: var(--muted);
@@ -318,9 +290,6 @@
             min-height: 1.2em;
         }
 
-        /* ============================================================
-           TIER ROWS
-           ============================================================ */
         .tier-row {
             display: flex;
             min-height: 80px;
@@ -329,10 +298,16 @@
             transition: all 0.2s ease;
             overflow: hidden;
             border: 1px solid var(--border);
+            cursor: pointer;
         }
 
         .tier-row:hover {
             border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .tier-row.propose-enabled:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
         }
 
         .tier-label {
@@ -432,9 +407,6 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        /* ============================================================
-           CURRENT ITEM (VOTE)
-           ============================================================ */
         .current-item-card {
             background: rgba(255, 215, 0, 0.04);
             border: 1px solid rgba(255, 215, 0, 0.12);
@@ -521,9 +493,6 @@
             border-radius: 2px;
         }
 
-        /* ============================================================
-           LOBBY HERO
-           ============================================================ */
         .lobby-hero {
             text-align: center;
             padding: 2.5rem 1.5rem;
@@ -557,9 +526,6 @@
             line-height: 1.7;
         }
 
-        /* ============================================================
-           SEARCH RESULTS
-           ============================================================ */
         .search-results {
             display: flex;
             flex-direction: column;
@@ -619,9 +585,6 @@
             cursor: not-allowed;
         }
 
-        /* ============================================================
-           TOAST
-           ============================================================ */
         .toast-container {
             position: fixed;
             bottom: 1.5rem;
@@ -649,9 +612,6 @@
             opacity: 1;
         }
 
-        /* ============================================================
-           HIDDEN / SCREENS
-           ============================================================ */
         .hidden {
             display: none !important;
         }
@@ -670,9 +630,6 @@
             display: block;
         }
 
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
         @media (max-width: 600px) {
             .topnav {
                 padding: 0.6rem 1rem;
@@ -737,12 +694,6 @@
                 font-size: 1.4rem;
                 letter-spacing: 3px;
             }
-
-            .room-code-display {
-                font-size: 1.2rem;
-                letter-spacing: 3px;
-                padding: 8px 14px;
-            }
         }
 
         @media (max-width: 400px) {
@@ -770,18 +721,12 @@
 </head>
 <body>
 
-<!-- ============================================================
-     NAVBAR
-     ============================================================ -->
 <nav class="topnav">
     <a href="/" class="brand"><i class="bi bi-film"></i> MediaPedia</a>
     <a href="/games" style="color: var(--purple); font-weight: 600">← Games</a>
     <a href="/u/{{ username }}" class="user-link">{{ username }}</a>
 </nav>
 
-<!-- ============================================================
-     CONTAINER
-     ============================================================ -->
 <div class="container">
 
     <h1>📊 Tier List Game</h1>
@@ -789,9 +734,7 @@
         Create a collaborative tier list with friends. Vote on placements democratically!
     </p>
 
-    <!-- ============================================================
-         LOBBY
-         ============================================================ -->
+    <!-- LOBBY -->
     <div id="screen-lobby" class="active">
         <div class="panel">
             <div class="lobby-hero">
@@ -818,9 +761,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         ADD SONGS (Items)
-         ============================================================ -->
+    <!-- ADD SONGS -->
     <div id="screen-add-songs">
         <div class="panel">
             <h2>🎯 Room Code</h2>
@@ -862,9 +803,7 @@
         </div>
     </div>
 
-    <!-- ============================================================
-         PLAYING (Voting)
-         ============================================================ -->
+    <!-- PLAYING -->
     <div id="screen-playing">
         <div class="panel">
             <h2>🗳 Vote on Placement</h2>
@@ -905,14 +844,24 @@
                 <!-- Populated by JS -->
             </div>
 
+            <div id="propose-area" style="display:none; margin-top:1rem; padding:1rem; background:rgba(255,215,0,0.04); border-radius:12px; border:1px solid rgba(255,215,0,0.1);">
+                <div style="color:var(--gold); font-weight:600; margin-bottom:0.5rem;">
+                    <i class="bi bi-lightning-fill"></i> Host Action
+                </div>
+                <p style="color:var(--muted); font-size:0.85rem; margin-bottom:0.5rem;">
+                    Click on a tier row above to propose placing the current item there.
+                </p>
+                <button class="btn btn-red" onclick="skipCurrentItem()" style="font-size:0.8rem;">
+                    Skip Current Item
+                </button>
+            </div>
+
             <div class="status-msg" id="vote-status"></div>
             <div id="vote-status-bar" class="players-row" style="justify-content:center; margin-top:0.5rem;"></div>
         </div>
     </div>
 
-    <!-- ============================================================
-         FINISHED
-         ============================================================ -->
+    <!-- FINISHED -->
     <div id="screen-finished">
         <div class="panel" style="text-align:center; border-color:rgba(255,215,0,0.2);">
             <div style="font-size:2.5rem; margin-bottom:0.5rem;">🏆</div>
@@ -923,7 +872,7 @@
             <h2>📊 Final Rankings</h2>
             <div id="final-tier-rows"></div>
             <div style="margin-top:1.2rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
-                <button class="btn btn-purple" onclick="location.href='/games/tier-list'">Play Again</button>
+                <button class="btn btn-purple" onclick="location.href='/games/tier-list-game'">Play Again</button>
                 <button class="btn btn-outline" onclick="location.href='/games'">Back to Games</button>
             </div>
         </div>
@@ -931,16 +880,10 @@
 
 </div>
 
-<!-- ============================================================
-     TOAST
-     ============================================================ -->
 <div class="toast-container">
     <div class="toast" id="toast"></div>
 </div>
 
-<!-- ============================================================
-     SCRIPTS
-     ============================================================ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
 <script>
     // ============================================================
@@ -958,6 +901,7 @@
     let lastRound = 0;
     let voteLocked = false;
     let isGameFinished = false;
+    let pendingItems = [];
 
     // ============================================================
     // TOAST
@@ -1000,7 +944,7 @@
         btn.disabled = true;
         btn.textContent = 'Creating...';
         try {
-            const res = await fetch('/api/games/room', {
+            const res = await fetch('/api/tlg/room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ game_type: 'tier_list' })
@@ -1028,7 +972,7 @@
             return;
         }
         try {
-            const res = await fetch('/api/games/room/' + code + '/join', { method: 'POST' });
+            const res = await fetch('/api/tlg/room/' + code + '/join', { method: 'POST' });
             const d = await res.json();
             if (d.error) {
                 document.getElementById('lobby-error').textContent = d.error;
@@ -1059,10 +1003,10 @@
         socket = io();
 
         socket.on('connect', function() {
-            socket.emit('game_join', { room_code: roomCode, username: ME });
+            socket.emit('tl_join', { room_code: roomCode, username: ME });
         });
 
-        socket.on('game_state', function(data) {
+        socket.on('tl_state', function(data) {
             if (data.room) {
                 handleRoomState(data.room);
             }
@@ -1074,7 +1018,7 @@
 
         socket.on('reconnect', function() {
             showToast('Reconnected!');
-            socket.emit('game_join', { room_code: roomCode, username: ME });
+            socket.emit('tl_join', { room_code: roomCode, username: ME });
         });
     }
 
@@ -1088,10 +1032,10 @@
             showToast('Minimum is 1');
             return;
         }
-        await fetch('/api/games/room/' + roomCode + '/action', {
+        await fetch('/api/tlg/room/' + roomCode + '/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'set_max_tier', value: val })
+            body: JSON.stringify({ max_per_tier1: val })
         });
         showToast('S-tier limit set to ' + val);
         fetchRoomState();
@@ -1204,7 +1148,7 @@
     }
 
     // ============================================================
-    // READY
+    // READY / START GAME
     // ============================================================
     async function markReady() {
         if (localItems.length === 0) {
@@ -1215,22 +1159,34 @@
         btn.disabled = true;
         document.getElementById('add-status').textContent = 'Uploading items...';
 
+        // Add all local items to the room
         for (const s of localItems) {
-            await fetch('/api/games/room/' + roomCode + '/action', {
+            await fetch('/api/tlg/room/' + roomCode + '/add_item', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'add_item', item: s })
+                body: JSON.stringify({ 
+                    title: s.title,
+                    kind: s.kind,
+                    img: s.img
+                })
             });
         }
         localItems = [];
         renderAddedItems();
-        document.getElementById('add-status').textContent = 'Waiting for others...';
+        document.getElementById('add-status').textContent = 'Starting game...';
 
-        const res = await fetch('/api/games/room/' + roomCode + '/ready', { method: 'POST' });
+        // Start the game
+        const res = await fetch('/api/tlg/room/' + roomCode + '/start_game', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
         const data = await res.json();
-
-        if (data.started) {
-            document.getElementById('add-status').textContent = '✅ Starting game...';
+        
+        if (data.error) {
+            document.getElementById('add-status').textContent = '❌ ' + data.error;
+            btn.disabled = false;
+        } else {
+            document.getElementById('add-status').textContent = '✅ Game started!';
             setTimeout(fetchRoomState, 1000);
         }
     }
@@ -1250,13 +1206,75 @@
         document.querySelectorAll('.vote-pill').forEach(b => b.disabled = true);
         document.getElementById('vote-status').textContent = 'Vote cast! Waiting for others...';
 
-        await fetch('/api/games/room/' + roomCode + '/action', {
+        await fetch('/api/tlg/room/' + roomCode + '/cast_vote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'cast_vote', choice: choice })
+            body: JSON.stringify({ choice: choice })
         });
 
         fetchRoomState();
+    }
+
+    // ============================================================
+    // HOST ACTIONS
+    // ============================================================
+    function proposePlacement(rowLabel) {
+        if (!isHost) return;
+        if (!gameState || gameState.state !== 'playing') return;
+        if (gameState.vote) {
+            showToast('A vote is already in progress');
+            return;
+        }
+        if (!gameState.current_item_id) {
+            showToast('No current item');
+            return;
+        }
+
+        // Check S-tier limit
+        const maxT1 = gameState.max_per_tier1;
+        const rows = gameState.rows || [];
+        const tier1Label = rows[0]?.label;
+        if (maxT1 && rowLabel === tier1Label) {
+            const placedInT1 = (gameState.items || []).filter(i => i.row === tier1Label).length;
+            if (placedInT1 >= maxT1) {
+                showToast('S-tier is full! (' + maxT1 + ' items max)');
+                return;
+            }
+        }
+
+        fetch('/api/tlg/room/' + roomCode + '/propose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row_label: rowLabel })
+        }).then(res => res.json()).then(data => {
+            if (data.error) {
+                showToast('❌ ' + data.error);
+            } else {
+                showToast('✅ Proposed placement in ' + rowLabel + '-tier');
+                fetchRoomState();
+            }
+        }).catch(() => showToast('Error proposing placement'));
+    }
+
+    async function skipCurrentItem() {
+        if (!isHost) return;
+        if (!gameState || gameState.state !== 'playing') return;
+        if (gameState.vote) {
+            showToast('Cannot skip during a vote');
+            return;
+        }
+
+        const res = await fetch('/api/tlg/room/' + roomCode + '/skip_item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.error) {
+            showToast('❌ ' + data.error);
+        } else {
+            showToast('⏭️ Skipped current item');
+            fetchRoomState();
+        }
     }
 
     // ============================================================
@@ -1267,20 +1285,26 @@
         gameState = room;
         isHost = room.host === ME;
 
-        // Update players
+        // Update players - handle both string and object formats
+        const players = room.players || [];
         const pl = document.getElementById('players-list');
         if (pl) {
-            pl.innerHTML = (room.players || []).map(p => `
-                <span class="player-chip ${p.ready ? 'ready' : ''} ${room.host === p.username ? 'host' : ''}">
-                    ${esc(p.username)}${p.ready ? ' ✓' : ''}${room.host === p.username ? ' 👑' : ''}
-                </span>
-            `).join('');
+            pl.innerHTML = players.map(p => {
+                const username = typeof p === 'string' ? p : p.username;
+                const ready = typeof p === 'string' ? false : (p.ready || false);
+                const isRoomHost = room.host === username;
+                return `<span class="player-chip ${ready ? 'ready' : ''} ${isRoomHost ? 'host' : ''}">
+                    ${esc(username)}${ready ? ' ✓' : ''}${isRoomHost ? ' 👑' : ''}
+                </span>`;
+            }).join('');
         }
 
         // State transitions
         if (room.state === 'lobby' || room.state === 'adding') {
             if (!document.getElementById('screen-add-songs').classList.contains('active')) {
                 showScreen('add-songs');
+                // Restore host controls
+                document.getElementById('host-controls').classList.toggle('hidden', !isHost);
             }
         } else if (room.state === 'playing') {
             showScreen('playing');
@@ -1298,9 +1322,8 @@
     }
 
     function renderPlaying(room) {
-        const data = room.data || {};
-        const items = data.items || [];
-        const rows = data.rows || [
+        const items = room.items || [];
+        const rows = room.rows || [
             { label: 'S', color: '#ff2d55' },
             { label: 'A', color: '#ff6b35' },
             { label: 'B', color: '#f7c948' },
@@ -1311,6 +1334,22 @@
         // Vote area
         const vote = room.vote;
         const voteArea = document.getElementById('vote-area');
+        const proposeArea = document.getElementById('propose-area');
+        
+        // Show/hide propose area for host
+        if (isHost && room.state === 'playing') {
+            proposeArea.style.display = 'block';
+            if (room.vote) {
+                proposeArea.style.opacity = '0.5';
+                proposeArea.querySelector('p').textContent = 'Waiting for votes to complete...';
+            } else {
+                proposeArea.style.opacity = '1';
+                proposeArea.querySelector('p').textContent = 'Click on a tier row above to propose placing the current item there.';
+            }
+        } else {
+            proposeArea.style.display = 'none';
+        }
+
         if (vote && room.state === 'playing') {
             voteArea.style.display = 'block';
             const item = items.find(i => i.id === vote.item_id);
@@ -1333,23 +1372,28 @@
             const myVoteChoice = vote.yes?.includes(ME) ? 'yes' : vote.no?.includes(ME) ? 'no' : null;
             yesBtn.classList.toggle('active', myVoteChoice === 'yes');
             noBtn.classList.toggle('active', myVoteChoice === 'no');
-            yesBtn.disabled = !!myVoteChoice || hasVoted;
-            noBtn.disabled = !!myVoteChoice || hasVoted;
+            yesBtn.disabled = !!myVoteChoice || hasVoted || voteLocked;
+            noBtn.disabled = !!myVoteChoice || hasVoted || voteLocked;
         } else {
             voteArea.style.display = 'none';
         }
 
-        // Render tiers
+        // Render tiers with click handlers for host
         const container = document.getElementById('tier-rows-container');
-        const maxT1 = data.max_per_tier1;
+        const maxT1 = room.max_per_tier1;
         const tier1Label = rows[0]?.label;
 
         let html = '';
         rows.forEach(row => {
             const rowItems = items.filter(i => i.row === row.label);
             const isFull = maxT1 && row.label === tier1Label && rowItems.length >= maxT1;
+            const canPropose = isHost && !room.vote && room.state === 'playing' && !isFull;
+            
             html += `
-                <div class="tier-row" data-row="${row.label}">
+                <div class="tier-row ${canPropose ? 'propose-enabled' : ''}" 
+                     data-row="${row.label}"
+                     onclick="${canPropose ? `proposePlacement('${row.label}')` : ''}"
+                     style="${canPropose ? 'cursor:pointer;' : ''}">
                     <div class="tier-label" style="background:${row.color}">
                         ${row.label}
                         ${isFull ? '<span class="badge-full">FULL</span>' : ''}
@@ -1363,6 +1407,11 @@
                                 ${item.id === vote?.item_id ? '<span class="badge-current">Voting</span>' : ''}
                             </div>
                         `).join('')}
+                        ${canPropose && rowItems.length === 0 ? `
+                            <div style="color:var(--muted); font-size:0.75rem; opacity:0.5; width:100%; text-align:center; padding:4px;">
+                                Click to propose placing here
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1372,19 +1421,22 @@
         // Vote status bar
         const bar = document.getElementById('vote-status-bar');
         if (vote) {
-            const voters = room.players || [];
-            bar.innerHTML = voters.map(p => {
-                const voted = vote.yes?.includes(p.username) || vote.no?.includes(p.username);
+            const players = room.players || [];
+            bar.innerHTML = players.map(p => {
+                const username = typeof p === 'string' ? p : p.username;
+                const voted = vote.yes?.includes(username) || vote.no?.includes(username);
                 return `<span class="player-chip ${voted ? 'ready' : ''}" style="${voted ? 'border-color:var(--green);color:var(--green);' : ''}">
-                    ${esc(p.username)}${voted ? ' ✅' : ' ⏳'}
+                    ${esc(username)}${voted ? ' ✅' : ' ⏳'}
                 </span>`;
             }).join('');
         } else {
             bar.innerHTML = '';
         }
 
+        const currentItem = items.find(i => i.id === room.current_item_id);
         document.getElementById('vote-status').textContent = 
-            vote ? `${items.length} items · ${Object.keys(vote.yes || {}).length + Object.keys(vote.no || {}).length}/${room.players.length} votes` : 'Waiting for votes...';
+            vote ? `${items.length} items · ${(vote.yes?.length || 0) + (vote.no?.length || 0)}/${room.players.length} votes` : 
+            (currentItem ? `Waiting for host to propose placement for: ${currentItem.title}` : 'No current item');
     }
 
     function showFinished(room) {
@@ -1392,15 +1444,14 @@
         clearTimeout(pollTimer);
         showScreen('finished');
 
-        const data = room.data || {};
-        const rows = data.rows || [
+        const rows = room.rows || [
             { label: 'S', color: '#ff2d55' },
             { label: 'A', color: '#ff6b35' },
             { label: 'B', color: '#f7c948' },
             { label: 'C', color: '#34c759' },
             { label: 'D', color: '#00b4d8' }
         ];
-        const items = data.items || [];
+        const items = room.items || [];
 
         const container = document.getElementById('final-tier-rows');
         let html = '';
@@ -1435,7 +1486,7 @@
 
     async function fetchRoomState() {
         try {
-            const res = await fetch('/api/games/room/' + roomCode);
+            const res = await fetch('/api/tlg/room/' + roomCode);
             const room = await res.json();
             handleRoomState(room);
         } catch (e) {}
@@ -1455,7 +1506,6 @@
     // ============================================================
     showScreen('lobby');
 
-    // Enter key for search
     document.getElementById('item-search-input').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') searchItems();
     });
@@ -1463,10 +1513,9 @@
         if (e.key === 'Enter') addCustomItem();
     });
 
-    // Clean up
     window.addEventListener('beforeunload', function() {
         if (socket && roomCode) {
-            socket.emit('game_leave', { room_code: roomCode });
+            socket.emit('tl_leave', { room_code: roomCode });
         }
     });
 </script>
