@@ -1222,8 +1222,20 @@
               clearTimeout(clickTimer);
               clickTimer = setTimeout(function(){
                 if(clickCount >= 3){
-                  // Easter egg: open full playlist
-                  window.open('https://www.youtube.com/playlist?list=PLyPzbOwpPVNT-kH1Sw1t_K9d0_SpVM4jS','_blank');
+                  // Easter egg: show shloka number input
+                  var existing = document.getElementById('shloka-easter');
+                  if(existing){ existing.remove(); return; }
+                  var box = document.createElement('div');
+                  box.id = 'shloka-easter';
+                  box.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);background:rgba(15,15,15,0.97);border:1px solid rgba(255,153,0,0.5);border-radius:10px;padding:1rem 1.2rem;z-index:9999;display:flex;gap:0.6rem;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,0.6);';
+                  box.innerHTML = '<span style="color:#ff9900;font-size:0.85rem;font-weight:600;white-space:nowrap;">🪔 Shloka</span>'
+                    + '<input id="shloka-num" type="number" min="1" max="80" placeholder="1–80" style="width:70px;padding:0.4rem 0.6rem;background:rgba(255,255,255,0.07);border:1px solid rgba(255,153,0,0.4);border-radius:6px;color:#fff;font-size:0.9rem;outline:none;" />'
+                    + '<button onclick="playShlokaNum()" style="background:#ff9900;border:none;color:#000;padding:0.4rem 0.8rem;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem;">▶</button>'
+                    + '<button onclick="document.getElementById(\"shloka-easter\").remove()" style="background:transparent;border:none;color:#888;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>';
+                  document.body.appendChild(box);
+                  setTimeout(function(){ document.getElementById('shloka-num') && document.getElementById('shloka-num').focus(); }, 50);
+                  // play on Enter
+                  box.querySelector('input').addEventListener('keydown', function(e){ if(e.key==='Enter') playShlokaNum(); });
                 } else {
                   openDailyShloka();
                 }
@@ -1232,11 +1244,64 @@
             });
           })();
 
+          // All 80 shloka video IDs from the playlist (index 1–80)
+          var shlokaIds = [
+            'fLHa-Z6gh18','nUlMOFU-CA0','rsbWo0PFLTc','DLAa4exD3c8','FX5DFtBw7iY',
+            'KpBPLdc39sc','INfQLf6Ykvw','em4SHDRxLDw','TdtLNF75ZrI','CPzoi8Pg7Xk',
+            'DpV3C5Ya48k','2kRyV8XCPlA','AsKkDC-_5qE','JWwfFEqpc2I','Ky5uyjHxTBE',
+            'o0OV-0ODyWc','jvS2uipraKs','VES-uGbyDvg','pHWe6JI_zGA','awiZEXqeMSk',
+            'PeGBqU3ckDM','-jdbuZsXvSs','BwileEyR17Y','TokZCKgYIZg','2fPWzIGzjwQ',
+            'bCRuv9ROkm0','ah5wIbAqJhA','s-qsa8AapdY','SHG2jQD22cs','FPAOQauOvzI',
+            '-vQCZEx0uwI','c_rm4-02TSU','4Hm17OWPqwg','qvdhzUsN6z4','t1Aqxf6PntM',
+            'dM2dzu7GPHg','bjxeJMxcaoY','Dsi9ZqYSo3w','h-d5X_LF6xA','l_82C_aHMjA',
+            'cqoB_bdXsWk','24OLLyarAk8','tx6qZmLlub0','BdSKvKj1fjY','cy0Z7v_11JI',
+            '7NPN-JcFSmQ','nlOJRTiWIcw','rxMyNPh2dS0','4L25iLtm-kI','GAXLKljKZFc',
+            'b-tYM474VoU','KfYkbcqOnI4','T5UXOoEBVFA','GkVhl_tbFlY','58G4FxsQLzQ',
+            'nMjC5eKb0do','gaPhrSytxKY','2T-8MSDrmKw','1KFqSrkBWCc','FfoHp9RT2nI',
+            'eS2EryvECKc','-vz-80_Iakw','8mwGKOgTnPs','98Ae8-T9Haw','Fjf882nWG2k',
+            'iAWAWAHtrvM','vkS5BQQUYpQ','RsP1ebDHfC0','NO8oJRV8oWQ','6f1mTwy6dGM',
+            'JBRLa3N5WA8','zvqppC92aVE','7f_9dkQM__U','L_KntfBeFZ4','1v8eAJZPSk8',
+            'e4cAS28xNPg','qWUy1zm72gM','xIdcUUc3vvc','P61jJ8H_DHw','jtEvaVHMU9g'
+          ];
+
+          function showShlokaToast(title) {
+            var t = document.getElementById('shloka-toast');
+            if (!t) {
+              t = document.createElement('div');
+              t.id = 'shloka-toast';
+              t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:rgba(20,20,20,0.95);border:1px solid rgba(255,153,0,0.5);color:#ff9900;padding:0.7rem 1.4rem;border-radius:8px;font-size:0.9rem;font-weight:600;z-index:9999;pointer-events:none;transition:opacity 0.4s;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;';
+              document.body.appendChild(t);
+            }
+            t.textContent = '🪔 ' + title;
+            t.style.opacity = '1';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(function(){ t.style.opacity = '0'; }, 2000);
+          }
+
           function openDailyShloka(){
             var epoch = new Date('2025-01-01').getTime();
             var idx = Math.floor((Date.now() - epoch) / 86400000) % 80;
-            var url = 'https://www.youtube.com/watch?v=2T-8MSDrmKw&list=PLyPzbOwpPVNT-kH1Sw1t_K9d0_SpVM4jS&index=' + (idx + 1);
-            window.open(url, '_blank');
+            var videoId = shlokaIds[idx];
+            playShloka(videoId, idx + 1);
+          }
+
+          function playShlokaNum(){
+            var n = parseInt(document.getElementById('shloka-num').value);
+            if(!n || n < 1 || n > 80) return;
+            document.getElementById('shloka-easter').remove();
+            playShloka(shlokaIds[n - 1], n);
+          }
+
+          function playShloka(videoId, num){
+            if (typeof player !== 'undefined' && typeof playerReady !== 'undefined' && playerReady) {
+              player.loadVideoById(videoId);
+              fetch('https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=' + videoId + '&format=json')
+                .then(function(r){ return r.json(); })
+                .then(function(d){ showShlokaToast(d.title || 'Shloka ' + num); })
+                .catch(function(){ showShlokaToast('Shloka ' + num + ' / 80'); });
+            } else {
+              window.open('https://www.youtube.com/watch?v=' + videoId + '&list=PLyPzbOwpPVNT-kH1Sw1t_K9d0_SpVM4jS&index=' + num, '_blank');
+            }
           }
         </script>
         <div id="vibe-panel" style="display:none;margin-top:1.5rem;"></div>
