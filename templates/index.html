@@ -1212,7 +1212,33 @@
           <button onclick="showFranchises()" style="background:rgba(126,87,194,0.15);border:1px solid rgba(126,87,194,0.4);color:#9c6fe4;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;">&#127916; Franchise Tracker</button>
           <a href="/games" style="background:rgba(156,111,228,0.15);border:1px solid rgba(156,111,228,0.4);color:#9c6fe4;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">&#127918; Games</a>
           <a href="/splitwise" style="background:rgba(46,213,115,0.15);border:1px solid rgba(46,213,115,0.4);color:#2ed573;padding:0.6rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">&#128176; Split Bills</a>
+          <button id="shloka-btn" onclick="openDailyShloka()" ondblclick="return false;" style="background:rgba(255,153,0,0.15);border:1px solid rgba(255,153,0,0.4);color:#ff9900;padding:0.6rem 1.2rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:0.9rem;" title="Triple-click to hear all 80 shlokas">&#129717; Shloka of the Day</button>
         </div>
+        <script>
+          (function(){
+            var clickCount = 0, clickTimer = null;
+            document.getElementById('shloka-btn').addEventListener('click', function(){
+              clickCount++;
+              clearTimeout(clickTimer);
+              clickTimer = setTimeout(function(){
+                if(clickCount >= 3){
+                  // Easter egg: open full playlist
+                  window.open('https://www.youtube.com/playlist?list=PLyPzbOwpPVNT-kH1Sw1t_K9d0_SpVM4jS','_blank');
+                } else {
+                  openDailyShloka();
+                }
+                clickCount = 0;
+              }, 400);
+            });
+          })();
+
+          function openDailyShloka(){
+            var epoch = new Date('2025-01-01').getTime();
+            var idx = Math.floor((Date.now() - epoch) / 86400000) % 80;
+            var url = 'https://www.youtube.com/watch?v=2T-8MSDrmKw&list=PLyPzbOwpPVNT-kH1Sw1t_K9d0_SpVM4jS&index=' + (idx + 1);
+            window.open(url, '_blank');
+          }
+        </script>
         <div id="vibe-panel" style="display:none;margin-top:1.5rem;"></div>
         <div id="hottakes-panel" style="display:none;margin-top:1.5rem;"></div>
         <div id="franchise-panel" style="display:none;margin-top:1.5rem;"></div>
