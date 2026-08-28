@@ -5521,7 +5521,7 @@ def game_action(code):
             spp = int(data.get('songs_per_player', 1))
             cd = int(data.get('clip_duration', 5))
             update['data.songs_per_player'] = max(1, min(5, spp))
-            update['data.clip_duration'] = max(3, min(10, cd))
+            update['data.clip_duration'] = max(3, min(300, cd))
 
         elif action == 'submit_song':
             song = data.get('song', {})
