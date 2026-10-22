@@ -1230,9 +1230,9 @@
               <!-- Options will be populated by JavaScript -->
             </div>
             <div class="navigation-buttons">
-              <button id="prev-btn" class="nav-btn" disabled>â† Previous</button>
+              <button id="prev-btn" class="nav-btn" disabled>&#8592; Previous</button>
               <span id="question-counter">1/5</span>
-              <button id="next-btn" class="nav-btn">Next â†’</button>
+              <button id="next-btn" class="nav-btn">Next &#8594;</button>
             </div>
           </div>
           <div
@@ -3149,21 +3149,6 @@
       }, 2000);
     </script>
     <script>
-      document.getElementById("prev-btn").addEventListener("click", () => {
-        document
-          .getElementById("recommendation-engine")
-          .scrollIntoView({ behavior: "smooth" });
-      });
-      document.getElementById("next-btn").addEventListener("click", () => {
-        document
-          .getElementById("recommendation-engine")
-          .scrollIntoView({ behavior: "smooth" });
-      });
-      document.getElementById("restart-btn").addEventListener("click", () => {
-        document
-          .getElementById("recommendation-engine")
-          .scrollIntoView({ behavior: "smooth" });
-      });
       // Recommendation Engine Questions
       const questions = [
         {
@@ -3306,7 +3291,7 @@
               document.querySelectorAll(".option-btn.selected")
             ).map((btn) => btn.dataset.value);
 
-            if (selectedOptions.length === 0 && currentQuestionIndex > 0) {
+            if (selectedOptions.length === 0) {
               alert("Please select at least one option");
               return;
             }
@@ -3318,7 +3303,7 @@
             const selectedOption = document.querySelector(
               ".option-btn.selected"
             );
-            if (!selectedOption && currentQuestionIndex > 0) {
+            if (!selectedOption) {
               alert("Please select an option");
               return;
             }
@@ -3361,8 +3346,8 @@
 
         // Update next button text
         const nextBtn = document.getElementById("next-btn");
-        nextBtn.textContent =
-          index === questions.length - 1 ? "Get Recommendations â†’" : "Next â†’";
+        nextBtn.innerHTML =
+          index === questions.length - 1 ? "Get Recommendations &#8594;" : "Next &#8594;";
 
         // Clear and populate options
         optionsContainer.innerHTML = "";
@@ -3431,13 +3416,11 @@
 
         // Build query based on user answers
         const minRating =
-          userAnswers.rating === "6+ (Decent)"
-            ? 6
-            : userAnswers.rating === "7+ (Good)"
-            ? 7
-            : userAnswers.rating === "8+ (Great)"
-            ? 8
-            : 9;
+          userAnswers.rating === "6+ (Decent)" ? 6
+          : userAnswers.rating === "7+ (Good)" ? 7
+          : userAnswers.rating === "8+ (Great)" ? 8
+          : userAnswers.rating === "9+ (Excellent)" ? 9
+          : 6;
 
         // Apply genre filter for multiple genres
         let genreFilters = [];
