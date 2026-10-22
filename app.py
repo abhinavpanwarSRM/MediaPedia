@@ -2868,8 +2868,14 @@ def group_react(group_id, msg_id):
 def group_reactions_get(group_id):
     return jsonify(_group_reactions.get(group_id, {}))
 
-# ── Group polls (in-memory) ──
-_group_polls = {}  # {group_id: {poll_id: {question, options, votes, creator, ts}}}
+# ── Group polls (MongoDB-persisted) ──
+group_polls_collection = None
+try:
+    if db is not None:
+        group_polls_collection = db.group_polls
+        group_polls_collection.create_index([('group_id', 1), ('poll_id', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init group_polls: %s', e)
 
 @app.route('/api/groups/<group_id>/polls', methods=['POST'])
 def group_poll_create(group_id):
@@ -2886,35 +2892,47 @@ def group_poll_create(group_id):
         return jsonify({'error': 'question and at least 2 options required'}), 400
     import time
     poll_id = str(uuid.uuid4())[:8]
-    poll = {'poll_id': poll_id, 'question': question, 'options': options,
-            'votes': {}, 'creator': username, 'ts': time.time()}
-    _group_polls.setdefault(group_id, {})[poll_id] = poll
+    poll = {'group_id': group_id, 'poll_id': poll_id, 'question': question,
+            'options': options, 'votes': {}, 'creator': username, 'ts': time.time()}
+    if group_polls_collection is not None:
+        group_polls_collection.insert_one(
+            {'group_id': group_id, 'poll_id': poll_id, 'question': question,
+             'options': options, 'votes': {}, 'creator': username, 'ts': time.time()}
+        )
     # Post as a message so it appears in chat
     msg = {'msg_id': str(uuid.uuid4())[:12], 'sender': username, 'text': '',
            'poll': {'poll_id': poll_id, 'question': question, 'options': options},
            'created_at': datetime.now(timezone.utc).isoformat()}
     groups_collection.update_one({'group_id': group_id},
         {'$push': {'messages': msg}, '$set': {'updated_at': datetime.now(timezone.utc)}})
-    return jsonify({**poll, 'msg': msg}), 201
+    poll_resp = {k: v for k, v in poll.items() if k != 'group_id'}
+    return jsonify({**poll_resp, 'msg': msg}), 201
 
 @app.route('/api/groups/<group_id>/polls/<poll_id>/vote', methods=['POST'])
 def group_poll_vote(group_id, poll_id):
     username = current_user()
     if not username:
         return jsonify({'error': 'Unauthorized'}), 401
-    polls = _group_polls.get(group_id, {})
-    poll = polls.get(poll_id)
+    if group_polls_collection is None:
+        return jsonify({'error': 'Poll not found'}), 404
+    poll = group_polls_collection.find_one({'group_id': group_id, 'poll_id': poll_id}, {'_id': 0})
     if not poll:
         return jsonify({'error': 'Poll not found'}), 404
     option = (request.json or {}).get('option', '').strip()
     if option not in poll['options']:
         return jsonify({'error': 'Invalid option'}), 400
-    poll['votes'][username] = option
-    return jsonify({'votes': poll['votes'], 'options': poll['options']})
+    group_polls_collection.update_one(
+        {'group_id': group_id, 'poll_id': poll_id},
+        {'$set': {f'votes.{username}': option}}
+    )
+    updated = group_polls_collection.find_one({'group_id': group_id, 'poll_id': poll_id}, {'_id': 0})
+    return jsonify({'votes': updated['votes'], 'options': updated['options']})
 
 @app.route('/api/groups/<group_id>/polls/<poll_id>', methods=['GET'])
 def group_poll_get(group_id, poll_id):
-    poll = _group_polls.get(group_id, {}).get(poll_id)
+    if group_polls_collection is None:
+        return jsonify({'error': 'Poll not found'}), 404
+    poll = group_polls_collection.find_one({'group_id': group_id, 'poll_id': poll_id}, {'_id': 0})
     if not poll:
         return jsonify({'error': 'Poll not found'}), 404
     return jsonify(poll)
