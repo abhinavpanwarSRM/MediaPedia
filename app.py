@@ -1075,12 +1075,14 @@ def era_movies():
     mood = request.args.get('mood', '').lower()
     content = request.args.get('content', 'movies')
     mood_genre_map = {
-        'happy': ['Comedy', 'Animation', 'Family', 'Musical'],
-        'thrilling': ['Action', 'Thriller', 'Crime', 'Mystery'],
-        'emotional': ['Drama', 'Romance', 'Biography'],
-        'scary': ['Horror', 'Mystery', 'Thriller'],
-        'inspiring': ['Biography', 'Sport', 'History', 'Drama'],
-        'adventurous': ['Adventure', 'Action', 'Sci-Fi', 'Fantasy'],
+        'happy':       ['Comedy', 'Animation', 'Family', 'Musical', 'Music', 'Game-Show'],
+        'thrilling':   ['Action', 'Thriller', 'Crime', 'Mystery', 'War'],
+        'emotional':   ['Drama', 'Romance', 'Biography', 'History'],
+        'scary':       ['Horror', 'Mystery', 'Thriller', 'Film-Noir'],
+        'inspiring':   ['Biography', 'Sport', 'History', 'Drama', 'Documentary'],
+        'adventurous': ['Adventure', 'Action', 'Sci-Fi', 'Fantasy', 'Western'],
+        'chill':       ['Comedy', 'Family', 'Animation', 'Music', 'Talk-Show', 'Reality-TV'],
+        'dark':        ['Crime', 'Film-Noir', 'Thriller', 'Horror', 'War', 'Mystery'],
     }
     target_genres = mood_genre_map.get(mood, [])
     if content == 'series':
@@ -1121,17 +1123,25 @@ def complete_vibe():
         lambda g: any(genre in g for genre in genres)
     )].sort_values('Rating', ascending=False).head(1)
     genre_music_map = {
-        'action': 'Hip-Hop', 'drama': 'R&B', 'comedy': 'Pop', 'thriller': 'Electronic',
-        'romance': 'Pop', 'sci-fi': 'Electronic', 'horror': 'Rock', 'adventure': 'Rock',
-        'crime': 'Hip-Hop', 'biography': 'R&B', 'history': 'Classical', 'war': 'Rock'
+        'action': 'Hip-Hop', 'adventure': 'Rock', 'animation': 'Pop',
+        'biography': 'R&B', 'comedy': 'Pop', 'crime': 'Hip-Hop',
+        'documentary': 'Classical', 'drama': 'R&B', 'family': 'Pop',
+        'fantasy': 'Electronic', 'film-noir': 'Jazz', 'history': 'Classical',
+        'horror': 'Rock', 'music': 'Pop', 'musical': 'Pop',
+        'mystery': 'Electronic', 'romance': 'Pop', 'sci-fi': 'Electronic',
+        'sport': 'Hip-Hop', 'thriller': 'Electronic', 'war': 'Rock', 'western': 'Country',
     }
     music_genre = next((genre_music_map[g] for g in genres if g in genre_music_map), 'Pop')
     artist_pool = artists_df[artists_df['artist_genre'].str.lower().str.contains(music_genre.lower(), na=False)]
     artist_match = artist_pool.sample(n=min(1, len(artist_pool))) if not artist_pool.empty else artist_pool
     game_genre_map = {
-        'action': 'Action', 'adventure': 'Adventure', 'comedy': 'Misc',
-        'thriller': 'Action', 'sci-fi': 'Shooter', 'horror': 'Action',
-        'crime': 'Action', 'drama': 'Role-Playing', 'romance': 'Misc'
+        'action': 'Action', 'adventure': 'Adventure', 'animation': 'Platform',
+        'biography': 'Role-Playing', 'comedy': 'Misc', 'crime': 'Action',
+        'documentary': 'Misc', 'drama': 'Role-Playing', 'family': 'Misc',
+        'fantasy': 'Role-Playing', 'film-noir': 'Action', 'history': 'Strategy',
+        'horror': 'Action', 'music': 'Misc', 'musical': 'Misc',
+        'mystery': 'Adventure', 'romance': 'Misc', 'sci-fi': 'Shooter',
+        'sport': 'Sports', 'thriller': 'Action', 'war': 'Shooter', 'western': 'Action',
     }
     game_genre = next((game_genre_map[g] for g in genres if g in game_genre_map), 'Action')
     game_match = games_df[games_df['Genre'].str.lower().str.contains(game_genre.lower(), na=False)]\
