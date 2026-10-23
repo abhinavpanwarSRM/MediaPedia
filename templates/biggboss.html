@@ -119,6 +119,7 @@
     .reel-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;}
     .reel-card:hover{border-color:rgba(229,9,20,.4);}
     .reel-embed{width:100%;aspect-ratio:16/9;border:none;}
+    .reel-embed-ig{aspect-ratio:9/16;max-height:480px;}
     .reel-body{padding:.8rem 1rem;}
     .reel-caption{font-size:.85rem;color:#ccc;margin-bottom:.5rem;}
     .reel-meta{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);}
@@ -397,7 +398,7 @@
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
         <div style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:1px;">Share a Clip</div>
         <div class="form-row">
-          <input class="inp" id="reel-url" placeholder="YouTube URL" />
+          <input class="inp" id="reel-url" placeholder="YouTube or Instagram Reel URL" />
           <input class="inp" id="reel-caption" placeholder="Caption (optional)" />
           <select class="inp" id="reel-cat" style="max-width:130px;">
             <option value="">Category</option>
@@ -1099,9 +1100,14 @@
     // ===== REELS =====
     let _reelFilter = '';
 
-    function ytEmbedUrl(url) {
-      const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/);
-      return m ? 'https://www.youtube.com/embed/'+m[1] : null;
+    function getEmbedInfo(url) {
+      // YouTube
+      const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/);
+      if (yt) return {type:'youtube', src:'https://www.youtube.com/embed/'+yt[1]};
+      // Instagram reel/post
+      const ig = url.match(/instagram\.com\/(reel|p)\/([A-Za-z0-9_-]+)/);
+      if (ig) return {type:'instagram', src:'https://www.instagram.com/'+ig[1]+'/'+ig[2]+'/embed/'};
+      return null;
     }
 
     function loadReels() {
@@ -1124,9 +1130,9 @@
       if (_reelFilter) reels = reels.filter(r=>(r.category||'')=== _reelFilter);
       if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips in this category.</p>'; return; }
       wrap.innerHTML = reels.map(r => {
-        const embedUrl = ytEmbedUrl(r.url);
-        const media = embedUrl
-          ? `<iframe class="reel-embed" src="${embedUrl}" allowfullscreen loading="lazy"></iframe>`
+        const embed = getEmbedInfo(r.url);
+        const media = embed
+          ? `<iframe class="reel-embed${embed.type==='instagram'?' reel-embed-ig':''}" src="${embed.src}" allowfullscreen loading="lazy" scrolling="no"></iframe>`
           : `<a href="${r.url}" target="_blank" rel="noopener" style="display:block;padding:1rem;font-size:.85rem;color:var(--bb);">▶ Open Clip</a>`;
         const likes = (r.likes||[]).length;
         const liked = (r.likes||[]).includes(VIEWER);
@@ -1154,9 +1160,10 @@
       const caption = document.getElementById('reel-caption').value.trim();
       const category = document.getElementById('reel-cat').value;
       if (!url) { showToast('URL required'); return; }
+      const platform = url.includes('youtube') ? 'youtube' : url.includes('instagram') ? 'instagram' : 'other';
       fetch('/api/bb/reels', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({url, caption, category, platform: url.includes('youtube')?'youtube':'other'})
+        body:JSON.stringify({url, caption, category, platform})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         document.getElementById('reel-url').value='';
