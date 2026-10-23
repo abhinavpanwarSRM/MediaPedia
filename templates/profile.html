@@ -413,7 +413,7 @@
     <div class="profile-head">
       <div>
         <h1>{{ username }}</h1>
-        <div class="handle">@{{ username }}</div>
+        <div class="handle">@{{ username }}{% if twitch_url %} <a href="{{ twitch_url }}" target="_blank" rel="noopener" style="font-size:0.75rem;color:#9146ff;text-decoration:none;margin-left:0.4rem;vertical-align:middle;">🟣 Twitch</a>{% endif %}</div>
       </div>
       <div class="head-actions">
         {% if viewer and viewer != username %}

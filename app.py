@@ -1242,7 +1242,8 @@ def user_profile(username):
                            followers=followers, following=following,
                            is_following=is_following, viewer=viewer,
                            user_lists=user_lists, bio=bio, avatar_url=avatar_url,
-                           birthdate=birthdate)
+                           birthdate=birthdate,
+                           twitch_url='https://twitch.tv/'+username.split('(twitch)')[0] if username.endswith('(twitch)') else '')
 
 # ===== Hot Takes Feed =====
 @app.route("/api/hot_takes")
