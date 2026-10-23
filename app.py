@@ -4222,6 +4222,8 @@ def bb_vote_poll(poll_id):
     if option not in poll.get('options', []):
         return jsonify({'error': 'Invalid option'}), 400
     already_voted = poll.get('votes', {}).get(username)
+    if already_voted:
+        return jsonify({'error': 'You have already voted'}), 400
     bb_polls_collection.update_one({'poll_id': poll_id}, {'$set': {f'votes.{username}': option}})
     updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
     if not already_voted:

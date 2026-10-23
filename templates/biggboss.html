@@ -1109,6 +1109,7 @@
       if (!VIEWER) { showToast('Login to vote'); return; }
       const poll = _allPolls.find(p=>p.poll_id===pollId);
       if (poll && poll.closed) { showToast('This poll is closed'); return; }
+      if (poll && poll.votes && poll.votes[VIEWER]) { showToast('You have already voted'); return; }
       fetch('/api/bb/polls/'+pollId+'/vote', {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({option})
       }).then(r=>r.json()).then(d => {
