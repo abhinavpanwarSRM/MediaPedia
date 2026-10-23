@@ -4037,7 +4037,8 @@ except Exception as e:
 
 @app.route('/biggboss')
 def biggboss():
-    return render_template('biggboss.html', username=current_user())
+    u = current_user()
+    return render_template('biggboss.html', username=u, is_bb_admin=_is_bb_admin())
 
 @app.route('/api/bb/season', methods=['GET'])
 def bb_get_season():
@@ -4586,14 +4587,46 @@ try:
 except Exception as e:
     log.error('Failed to init bb_user_points: %s', e)
 
-def _bb_award_points(username, pts, reason):
+def _bb_recalc_points(username):
+    """Recompute a user's points from scratch based on current DB state."""
     if not username or bb_points_collection is None:
         return
+    pts = 0
+    # Reels posted (+1 each)
+    if bb_reels_collection is not None:
+        pts += bb_reels_collection.count_documents({'username': username})
+    # Reel likes given (+1 each)
+    if bb_reels_collection is not None:
+        pts += bb_reels_collection.count_documents({'likes': username})
+    # Reel comments (+1 each)
+    if bb_reel_comments_collection is not None:
+        pts += bb_reel_comments_collection.count_documents({'username': username})
+    # Contestant comments (+1 each)
+    if bb_contestant_comments_collection is not None:
+        pts += bb_contestant_comments_collection.count_documents({'username': username})
+    # Contestant ratings (+1 per unique rating)
+    if bb_ratings_collection is not None:
+        pts += bb_ratings_collection.count_documents({'username': username})
+    # Poll votes (+1 per vote)
+    if bb_polls_collection is not None:
+        pts += bb_polls_collection.count_documents({f'votes.{username}': {'$exists': True}})
+    # Correct predictions on closed polls (+10 each)
+    if bb_polls_collection is not None:
+        for p in bb_polls_collection.find(
+            {'closed': True, 'result': {'$exists': True, '$ne': ''}, f'votes.{username}': {'$exists': True}},
+            {'_id': 0, 'votes': 1, 'result': 1}
+        ):
+            if p.get('votes', {}).get(username) == p.get('result'):
+                pts += 10
     bb_points_collection.update_one(
         {'username': username},
-        {'$inc': {'points': pts}, '$push': {'log': {'pts': pts, 'reason': reason, 'ts': datetime.now(timezone.utc).isoformat()}}},
+        {'$set': {'points': pts, 'updated_at': datetime.now(timezone.utc).isoformat()}},
         upsert=True
     )
+
+def _bb_award_points(username, pts, reason):
+    """Trigger a full recalc for the user (pts/reason args kept for call-site compat)."""
+    _bb_recalc_points(username)
 
 @app.route('/api/bb/points/leaderboard', methods=['GET'])
 def bb_points_leaderboard():
@@ -4637,54 +4670,32 @@ def bb_reset_points():
 
 @app.route('/api/bb/points/backfill', methods=['POST'])
 def bb_backfill_points():
-    """Retroactively award points for all existing BB activity in the DB."""
+    """Recompute points for ALL users from current DB state."""
     if current_user() != 'abhinav':
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_points_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
-    tally = {}  # {username: points}
-    def add(u, pts):
-        if u: tally[u] = tally.get(u, 0) + pts
-    # Reels posted (+1 each)
+    # Collect every username that has any BB activity
+    users = set()
     if bb_reels_collection is not None:
-        for r in bb_reels_collection.find({}, {'_id': 0, 'username': 1}):
-            add(r.get('username'), 1)
-    # Reel likes (+1 per like given)
-    if bb_reels_collection is not None:
-        for r in bb_reels_collection.find({}, {'_id': 0, 'likes': 1}):
-            for u in r.get('likes', []):
-                add(u, 1)
-    # Reel comments (+1 each)
+        for r in bb_reels_collection.find({}, {'_id': 0, 'username': 1, 'likes': 1}):
+            if r.get('username'): users.add(r['username'])
+            for u in r.get('likes', []): users.add(u)
     if bb_reel_comments_collection is not None:
         for c in bb_reel_comments_collection.find({}, {'_id': 0, 'username': 1}):
-            add(c.get('username'), 1)
-    # Contestant comments (+1 each)
+            if c.get('username'): users.add(c['username'])
     if bb_contestant_comments_collection is not None:
         for c in bb_contestant_comments_collection.find({}, {'_id': 0, 'username': 1}):
-            add(c.get('username'), 1)
-    # Contestant ratings (+1 per unique rating)
+            if c.get('username'): users.add(c['username'])
     if bb_ratings_collection is not None:
         for r in bb_ratings_collection.find({}, {'_id': 0, 'username': 1}):
-            add(r.get('username'), 1)
-    # Poll votes (+1 per vote)
+            if r.get('username'): users.add(r['username'])
     if bb_polls_collection is not None:
         for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
-            for u in p.get('votes', {}).keys():
-                add(u, 1)
-    # Correct predictions on closed polls (+10 all types)
-    if bb_polls_collection is not None:
-        for p in bb_polls_collection.find({'closed': True, 'result': {'$exists': True, '$ne': ''}}, {'_id': 0, 'votes': 1, 'result': 1}):
-            for u, choice in p.get('votes', {}).items():
-                if choice == p.get('result'):
-                    add(u, 10)
-    # Write to DB — upsert each user's total, replacing any existing points
-    for username, pts in tally.items():
-        bb_points_collection.update_one(
-            {'username': username},
-            {'$set': {'points': pts, 'log': [{'pts': pts, 'reason': 'backfill', 'ts': datetime.now(timezone.utc).isoformat()}]}},
-            upsert=True
-        )
-    return jsonify({'success': True, 'users_updated': len(tally), 'breakdown': tally})
+            for u in p.get('votes', {}).keys(): users.add(u)
+    for username in users:
+        _bb_recalc_points(username)
+    return jsonify({'success': True, 'users_updated': len(users)})
 
 # ===== BB Nominations =====
 bb_nominations_collection = None

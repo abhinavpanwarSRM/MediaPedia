@@ -260,7 +260,7 @@
   <div class="content">
 
     <!-- ADMIN PANEL -->
-    {% if username == 'abhinav' %}
+    {% if is_bb_admin %}
     <section style="margin-bottom:2.5rem;">
       <div class="section-title" style="font-size:1rem;">⚙️ Admin Controls</div>
 
@@ -584,9 +584,9 @@
 
   <script>
     const VIEWER = '{{ username or "" }}';
-    let IS_ADMIN = VIEWER === 'abhinav';
+    let IS_ADMIN = {{ 'true' if is_bb_admin else 'false' }};
 
-    // Load granted admins and upgrade IS_ADMIN if viewer is in the list
+    // Load granted admins list for display (abhinav only manages them)
     if (VIEWER && !IS_ADMIN) {
       fetch('/api/bb/admins').then(r=>r.ok?r.json():Promise.reject()).then(list => {
         if (Array.isArray(list) && list.includes(VIEWER)) { IS_ADMIN = true; loadSeason(); loadContestants(); loadPolls(); loadNominations(); }
@@ -637,7 +637,7 @@
         } else {
           bg.style.backgroundImage = '';
         }
-        if (IS_ADMIN) {
+        if (IS_ADMIN && document.getElementById('a-season-name')) {
           document.getElementById('a-season-name').value = d.name || '';
           document.getElementById('a-season-host').value = d.host || '';
           document.getElementById('a-season-year').value = d.year || '';
