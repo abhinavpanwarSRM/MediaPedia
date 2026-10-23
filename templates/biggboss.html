@@ -72,7 +72,8 @@
 
     /* FAN LEADERBOARD */
     .fan-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-    .fan-lb-row{display:grid;grid-template-columns:32px 1fr 60px 60px 60px 70px;
+    .fan-lb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .fan-lb-row{display:grid;grid-template-columns:32px minmax(120px,1fr) 60px 60px 60px 70px;
       align-items:center;padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.4rem;}
     .fan-lb-row:last-child{border-bottom:none;}
     .fan-lb-row.hdr{background:rgba(229,9,20,.07);font-size:.68rem;letter-spacing:1px;
@@ -367,15 +368,17 @@
     <!-- FAN LEADERBOARD TAB -->
     <div id="tab-leaderboard" style="display:none;">
       <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Community ratings across Likability, Gameplay &amp; Entertainment.</p>
-      <div class="fan-lb" id="fan-lb-wrap">
-        <div class="fan-lb-row hdr">
-          <div>#</div><div>Contestant</div>
-          <div style="text-align:center;">Like</div>
-          <div style="text-align:center;">Game</div>
-          <div style="text-align:center;">Entmt</div>
-          <div style="text-align:center;">Overall</div>
+      <div class="fan-lb-scroll">
+        <div class="fan-lb" id="fan-lb-wrap">
+          <div class="fan-lb-row hdr">
+            <div>#</div><div>Contestant</div>
+            <div style="text-align:center;">Like</div>
+            <div style="text-align:center;">Game</div>
+            <div style="text-align:center;">Entmt</div>
+            <div style="text-align:center;">Overall</div>
+          </div>
+          <div id="fan-lb-rows"><p style="padding:1rem;color:var(--muted);font-size:.85rem;">Loading...</p></div>
         </div>
-        <div id="fan-lb-rows"><p style="padding:1rem;color:var(--muted);font-size:.85rem;">Loading...</p></div>
       </div>
     </div>
 
