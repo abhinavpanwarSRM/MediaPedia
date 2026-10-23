@@ -30,10 +30,11 @@
 
     .hero{min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
       text-align:center;padding:4rem 2rem 3rem;
-      background:radial-gradient(ellipse at center top,rgba(229,9,20,.15) 0%,transparent 70%),
+      background:radial-gradient(ellipse at center top,rgba(229,9,20,.25) 0%,transparent 70%),
                  linear-gradient(180deg,#1a0000 0%,#0d0d0d 100%);
       border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
-    .hero-bg{position:absolute;top:0;left:0;width:100%;height:100%;min-height:50vh;background-size:cover;background-position:center;opacity:.25;z-index:0;}
+    .hero-bg{position:absolute;top:0;left:0;width:100%;height:100%;min-height:50vh;background-size:cover;background-position:center;opacity:.55;z-index:0;}
+    .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(13,13,13,.7) 100%);}
     .hero>*{position:relative;z-index:1;}
     .hero h1{font-size:clamp(2.5rem,9vw,5rem);font-weight:900;letter-spacing:3px;
       background:linear-gradient(135deg,#ff6b35,#e50914,#ff6b35);
