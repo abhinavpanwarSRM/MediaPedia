@@ -3935,6 +3935,35 @@ def bb_get_season():
     doc = bb_collection.find_one({'key': 'current_season'}, {'_id': 0})
     return jsonify(doc or {})
 
+@app.route('/api/bb/season/bg', methods=['POST'])
+def bb_upload_season_bg():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_collection is None or images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No file'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id, 'data': data, 'mime': mime,
+        'uploaded_by': current_user(), 'created_at': datetime.now(timezone.utc)
+    })
+    bg_url = f'/api/img/{image_id}'
+    bb_collection.update_one(
+        {'key': 'current_season'},
+        {'$set': {'bg_url': bg_url, 'updated_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    return jsonify({'bg_url': bg_url})
+
 @app.route('/api/bb/season', methods=['POST'])
 def bb_set_season():
     if not _is_bb_admin():
