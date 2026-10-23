@@ -4477,6 +4477,10 @@ def bb_get_contestant_rating(contestant):
         doc = bb_ratings_collection.find_one({'contestant': contestant, 'username': username}, {'_id': 0})
         if doc:
             mine = {'likability': doc['likability'], 'gameplay': doc['gameplay'], 'entertainment': doc['entertainment']}
+    if stats.get('count'):
+        stats['overall'] = round((stats['likability'] + stats['gameplay'] + stats['entertainment']) / 3, 2)
+    else:
+        stats['overall'] = 0
     return jsonify({**stats, 'mine': mine})
 
 # ===== BB Contestant Comments =====
@@ -4723,6 +4727,10 @@ def bb_backfill_points():
     if bb_polls_collection is not None:
         for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
             for u in p.get('votes', {}).keys(): users.add(u)
+    # Also include users already tracked in points collection (may have stale data)
+    if bb_points_collection is not None:
+        for doc in bb_points_collection.find({}, {'_id': 0, 'username': 1}):
+            if doc.get('username'): users.add(doc['username'])
     for username in users:
         _bb_recalc_points(username)
     return jsonify({'success': True, 'users_updated': len(users)})
