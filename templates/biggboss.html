@@ -1618,8 +1618,13 @@
               <span style="font-size:.72rem;color:#aaa;min-width:52px;">${fmtFollowers(r.current)}</span>
             </div>
           </div>
-          ${IS_ADMIN ? `<button onclick="clearInstaEntry('${r.name.replace(/'/g,"\\'")}')"
-            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;margin-top:.5rem;">🗑 Remove</button>` : ''}
+          ${IS_ADMIN ? `
+            <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+              <button onclick="editInstaEntry('${r.name.replace(/'/g,"\\'")}')"
+                style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;">✏️ Edit</button>
+              <button onclick="clearInstaEntry('${r.name.replace(/'/g,"\\'")}')"
+                style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;">🗑 Remove</button>
+            </div>` : ''}
         </div>`;
       }).join('');
     }
@@ -1646,6 +1651,19 @@
         document.getElementById('a-insta-current').value='';
         _allInsta = []; loadInsta();
       }).catch(() => showToast('Save failed'));
+    }
+
+    function editInstaEntry(name) {
+      const snaps = _allInsta.filter(s => s.contestant === name);
+      const entry = snaps.find(s => s.type === 'entry');
+      const current = snaps.find(s => s.type === 'current');
+      const sel = document.getElementById('a-insta-name');
+      if (sel) sel.value = name;
+      if (entry) document.getElementById('a-insta-entry').value = entry.followers;
+      if (current) document.getElementById('a-insta-current').value = current.followers;
+      // scroll to admin form
+      document.getElementById('a-insta-name').scrollIntoView({behavior:'smooth', block:'center'});
+      showToast('Edit counts for '+name+' then hit Save');
     }
 
     function clearInstaEntry(name) {
