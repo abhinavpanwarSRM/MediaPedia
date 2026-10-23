@@ -454,7 +454,20 @@
 
     <!-- INSTAGRAM TAB -->
     <div id="tab-insta" style="display:none;">
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.5rem;">Follower count before entering Bigg Boss vs now. See who gained the most fame.</p>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1rem;">Follower count before entering Bigg Boss vs now. See who gained the most fame.</p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1.2rem;">
+        <div style="display:flex;gap:.3rem;">
+          <button class="tab-btn active" id="insta-sort-gain" onclick="setInstaSort('gain',this)">📈 By Gain</button>
+          <button class="tab-btn" id="insta-sort-pct" onclick="setInstaSort('pct',this)">% Growth</button>
+          <button class="tab-btn" id="insta-sort-current" onclick="setInstaSort('current',this)">👥 Current</button>
+        </div>
+        <button class="tab-btn" id="insta-dir-btn" onclick="toggleInstaDir()">⬇ Desc</button>
+        <div style="display:flex;gap:.3rem;margin-left:auto;">
+          <button class="tab-btn active" id="insta-unit-l" onclick="setInstaUnit('L',this)">L/Cr</button>
+          <button class="tab-btn" id="insta-unit-m" onclick="setInstaUnit('M',this)">M</button>
+          <button class="tab-btn" id="insta-unit-k" onclick="setInstaUnit('K',this)">K</button>
+        </div>
+      </div>
       <div id="insta-chart-wrap"></div>
     </div>
 
@@ -1460,11 +1473,50 @@
     }
 
     // ===== INSTAGRAM =====
+    let _instaSort = 'gain';   // 'gain' | 'pct' | 'current'
+    let _instaDir  = 'desc';   // 'desc' | 'asc'
+    let _instaUnit = 'L';      // 'L' | 'M' | 'K'
+
     function fmtFollowers(n) {
-      if (n >= 1e7) return (n/1e7).toFixed(2)+'Cr';
-      if (n >= 1e5) return (n/1e5).toFixed(1)+'L';
-      if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+      if (_instaUnit === 'M') {
+        if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(2)+'M';
+        if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+        return n.toString();
+      }
+      if (_instaUnit === 'K') {
+        if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+        return n.toString();
+      }
+      // default L/Cr (Indian)
+      if (Math.abs(n) >= 1e7) return (n/1e7).toFixed(2)+'Cr';
+      if (Math.abs(n) >= 1e5) return (n/1e5).toFixed(1)+'L';
+      if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
       return n.toString();
+    }
+
+    function setInstaSort(key, btn) {
+      _instaSort = key;
+      ['insta-sort-gain','insta-sort-pct','insta-sort-current'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active', el.id === 'insta-sort-'+key);
+      });
+      renderInstaChart();
+    }
+
+    function toggleInstaDir() {
+      _instaDir = _instaDir === 'desc' ? 'asc' : 'desc';
+      const btn = document.getElementById('insta-dir-btn');
+      if (btn) btn.textContent = _instaDir === 'desc' ? '⬇ Desc' : '⬆ Asc';
+      renderInstaChart();
+    }
+
+    function setInstaUnit(unit, btn) {
+      _instaUnit = unit;
+      ['insta-unit-l','insta-unit-m','insta-unit-k'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active', el.id === 'insta-unit-'+unit.toLowerCase());
+      });
+      renderInstaChart();
     }
 
     function loadInsta() {
@@ -1481,19 +1533,16 @@
 
     function renderInstaChart() {
       const wrap = document.getElementById('insta-chart-wrap');
-      // Build per-contestant entry/current from snaps
       const byC = {};
       _allInsta.forEach(s => {
         if (!byC[s.contestant]) byC[s.contestant] = {};
         if (s.type === 'entry') byC[s.contestant].entry = s.followers;
         else if (s.type === 'current') byC[s.contestant].current = s.followers;
-        // legacy: if no type, use date order — first = entry, last = current
         else {
           if (!byC[s.contestant]._snaps) byC[s.contestant]._snaps = [];
           byC[s.contestant]._snaps.push(s);
         }
       });
-      // resolve legacy snaps
       Object.values(byC).forEach(d => {
         if (d._snaps && d._snaps.length) {
           const sorted = d._snaps.sort((a,b)=>a.date?.localeCompare(b.date||''));
@@ -1502,7 +1551,7 @@
         }
       });
 
-      const rows = Object.entries(byC)
+      let rows = Object.entries(byC)
         .filter(([,d]) => d.entry || d.current)
         .map(([name, d]) => {
           const entry = d.entry || 0;
@@ -1511,8 +1560,13 @@
           const pct = entry ? ((gain/entry)*100) : 0;
           const c = _contestants.find(x=>x.name===name);
           return {name, entry, current, gain, pct, img: c?.img||''};
-        })
-        .sort((a,b) => b.gain - a.gain);
+        });
+
+      // Sort
+      rows.sort((a,b) => {
+        const v = _instaSort === 'pct' ? (b.pct - a.pct) : _instaSort === 'current' ? (b.current - a.current) : (b.gain - a.gain);
+        return _instaDir === 'asc' ? -v : v;
+      });
 
       if (!rows.length) {
         wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No follower data yet. Admin can add entry &amp; current counts above.</p>';
@@ -1529,6 +1583,11 @@
         const av = r.img
           ? `<img src="${r.img}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
           : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(229,9,20,.2);border:2px solid var(--bb);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;flex-shrink:0;color:var(--bb);">${(r.name||'?')[0].toUpperCase()}</div>`;
+        const sortVal = _instaSort === 'pct'
+          ? `${gainSign}${r.pct.toFixed(1)}%`
+          : _instaSort === 'current'
+          ? fmtFollowers(r.current)
+          : `${gainSign}${fmtFollowers(r.gain)}`;
         return `
         <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.8rem;">
           <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;">
@@ -1539,11 +1598,10 @@
               <div style="font-size:.75rem;color:${gainColor};font-weight:600;margin-top:.1rem;">${gainSign}${fmtFollowers(r.gain)} (${gainSign}${r.pct.toFixed(1)}%)</div>
             </div>
             <div style="text-align:right;">
-              <div style="font-size:1.1rem;font-weight:900;color:#fff;">${fmtFollowers(r.current)}</div>
-              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Current</div>
+              <div style="font-size:1.1rem;font-weight:900;color:${gainColor};">${sortVal}</div>
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_instaSort === 'pct' ? 'growth' : _instaSort === 'current' ? 'now' : 'gained'}</div>
             </div>
           </div>
-          <!-- Bar chart -->
           <div style="display:flex;flex-direction:column;gap:.4rem;">
             <div style="display:flex;align-items:center;gap:.6rem;">
               <span style="font-size:.68rem;color:var(--muted);width:52px;text-align:right;flex-shrink:0;">BB Entry</span>
