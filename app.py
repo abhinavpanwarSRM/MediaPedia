@@ -28,6 +28,12 @@ app.permanent_session_lifetime = timedelta(days=30)
 bcrypt = Bcrypt(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
+@app.context_processor
+def inject_display_user():
+    from flask import session
+    u = session.get('username')
+    return {'display_username': u}
+
 MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
 
@@ -1376,6 +1382,11 @@ def _to_ist_str(ts):
 def current_user():
     return session.get('username')
 
+def display_user(username=None):
+    """Returns display name: john(twitch) -> john(twitch), others unchanged."""
+    u = username or session.get('username')
+    return u
+
 # ===== Register =====
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1506,8 +1517,8 @@ def twitch_callback():
     if not twitch_id:
         return redirect('/login?error=Could+not+get+Twitch+ID')
 
-    # Derive a stable MediaPedia username: twitch_<login>
-    username = f'twitch_{twitch_login_name}'
+    # Derive a stable MediaPedia username: <login>(twitch)
+    username = f'{twitch_login_name}(twitch)'
 
     if users_collection is not None:
         existing = users_collection.find_one({'twitch_id': twitch_id})
@@ -1519,7 +1530,7 @@ def twitch_callback():
             # Check if derived username is taken by a non-twitch account
             taken = users_collection.find_one({'username': username, 'twitch_id': {'$exists': False}})
             if taken:
-                username = f'twitch_{twitch_login_name}_{twitch_id[-4:]}'
+                username = f'{twitch_login_name}_{twitch_id[-4:]}(twitch)'
             users_collection.update_one(
                 {'username': username},
                 {'$set': {
