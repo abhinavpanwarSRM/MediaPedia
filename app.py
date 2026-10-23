@@ -4063,6 +4063,15 @@ def bb_create_poll():
     poll.pop('_id', None)
     return jsonify(poll), 201
 
+@app.route('/api/bb/polls/<poll_id>', methods=['DELETE'])
+def bb_delete_poll(poll_id):
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_polls_collection.delete_one({'poll_id': poll_id})
+    return jsonify({'success': True})
+
 @app.route('/api/bb/polls/<poll_id>/close', methods=['POST'])
 def bb_close_poll(poll_id):
     if not _is_bb_admin():
@@ -4080,11 +4089,9 @@ def bb_close_poll(poll_id):
         return jsonify({'error': 'Poll not found'}), 404
     # Award points to users who predicted correctly
     if result and poll_before:
-        ptype = poll_before.get('poll_type', 'general')
-        bonus = 10 if ptype in ('eviction', 'winner') else 5
         for voter, choice in poll_before.get('votes', {}).items():
             if choice == result:
-                _bb_award_points(voter, bonus, f'correct prediction poll {poll_id}')
+                _bb_award_points(voter, 10, f'correct prediction poll {poll_id}')
     return jsonify(updated)
 
 @app.route('/api/bb/polls/<poll_id>/vote', methods=['POST'])
@@ -4106,7 +4113,7 @@ def bb_vote_poll(poll_id):
     bb_polls_collection.update_one({'poll_id': poll_id}, {'$set': {f'votes.{username}': option}})
     updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
     if not already_voted:
-        _bb_award_points(username, 2, f'voted on poll {poll_id}')
+        _bb_award_points(username, 1, f'voted on poll {poll_id}')
     return jsonify({'votes': updated.get('votes', {})})
 
 @app.route('/api/bb/reels', methods=['GET'])
@@ -4139,7 +4146,7 @@ def bb_add_reel():
     }
     bb_reels_collection.insert_one(reel)
     reel.pop('_id', None)
-    _bb_award_points(username, 3, 'posted a reel')
+    _bb_award_points(username, 1, 'posted a reel')
     return jsonify(reel), 201
 
 # ===== BB Reel Comments =====
@@ -4177,7 +4184,7 @@ def bb_add_reel_comment(reel_id):
     }
     bb_reel_comments_collection.insert_one(doc)
     doc.pop('_id', None)
-    _bb_award_points(username, 2, f'commented on reel {reel_id}')
+    _bb_award_points(username, 1, f'commented on reel {reel_id}')
     return jsonify(doc), 201
 
 @app.route('/api/bb/reels/<reel_id>/comments/<comment_id>', methods=['DELETE'])
@@ -4228,7 +4235,7 @@ def bb_upload_reel_image():
     }
     bb_reels_collection.insert_one(reel)
     reel.pop('_id', None)
-    _bb_award_points(username, 3, 'uploaded a reel image')
+    _bb_award_points(username, 1, 'uploaded a reel image')
     return jsonify(reel), 201
 
 @app.route('/api/bb/reels/<reel_id>/like', methods=['POST'])
@@ -4290,7 +4297,7 @@ def bb_rate_contestant(contestant):
         upsert=True
     )
     if is_new_rating:
-        _bb_award_points(username, 2, f'rated contestant {contestant}')
+        _bb_award_points(username, 1, f'rated contestant {contestant}')
     agg = list(bb_ratings_collection.aggregate([
         {'$match': {'contestant': contestant}},
         {'$group': {'_id': None,
@@ -4384,7 +4391,7 @@ def bb_add_contestant_comment(contestant):
     }
     bb_contestant_comments_collection.insert_one(doc)
     doc.pop('_id', None)
-    _bb_award_points(username, 2, f'commented on contestant {contestant}')
+    _bb_award_points(username, 1, f'commented on contestant {contestant}')
     return jsonify(doc), 201
 
 @app.route('/api/bb/contestants/<contestant>/comments/<comment_id>', methods=['DELETE'])
@@ -4518,39 +4525,38 @@ def bb_backfill_points():
     tally = {}  # {username: points}
     def add(u, pts):
         if u: tally[u] = tally.get(u, 0) + pts
-    # Reels posted (+3 each)
+    # Reels posted (+1 each)
     if bb_reels_collection is not None:
         for r in bb_reels_collection.find({}, {'_id': 0, 'username': 1}):
-            add(r.get('username'), 3)
+            add(r.get('username'), 1)
     # Reel likes (+1 per like given)
     if bb_reels_collection is not None:
         for r in bb_reels_collection.find({}, {'_id': 0, 'likes': 1}):
             for u in r.get('likes', []):
                 add(u, 1)
-    # Reel comments (+2 each)
+    # Reel comments (+1 each)
     if bb_reel_comments_collection is not None:
         for c in bb_reel_comments_collection.find({}, {'_id': 0, 'username': 1}):
-            add(c.get('username'), 2)
-    # Contestant comments (+2 each)
+            add(c.get('username'), 1)
+    # Contestant comments (+1 each)
     if bb_contestant_comments_collection is not None:
         for c in bb_contestant_comments_collection.find({}, {'_id': 0, 'username': 1}):
-            add(c.get('username'), 2)
-    # Contestant ratings (+2 per unique rating)
+            add(c.get('username'), 1)
+    # Contestant ratings (+1 per unique rating)
     if bb_ratings_collection is not None:
         for r in bb_ratings_collection.find({}, {'_id': 0, 'username': 1}):
-            add(r.get('username'), 2)
-    # Poll votes (+2 per vote)
+            add(r.get('username'), 1)
+    # Poll votes (+1 per vote)
     if bb_polls_collection is not None:
         for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
             for u in p.get('votes', {}).keys():
-                add(u, 2)
-    # Correct predictions on closed polls (+10 eviction/winner, +5 general)
+                add(u, 1)
+    # Correct predictions on closed polls (+10 all types)
     if bb_polls_collection is not None:
-        for p in bb_polls_collection.find({'closed': True, 'result': {'$exists': True, '$ne': ''}}, {'_id': 0, 'votes': 1, 'poll_type': 1, 'result': 1}):
-            bonus = 10 if p.get('poll_type') in ('eviction', 'winner') else 5
+        for p in bb_polls_collection.find({'closed': True, 'result': {'$exists': True, '$ne': ''}}, {'_id': 0, 'votes': 1, 'result': 1}):
             for u, choice in p.get('votes', {}).items():
                 if choice == p.get('result'):
-                    add(u, bonus)
+                    add(u, 10)
     # Write to DB — upsert each user's total, replacing any existing points
     for username, pts in tally.items():
         bb_points_collection.update_one(
