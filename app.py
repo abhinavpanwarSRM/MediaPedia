@@ -4298,9 +4298,10 @@ def bb_add_insta():
         return jsonify({'error': 'followers must be a number'}), 400
     doc = {'snap_id': str(uuid.uuid4())[:8], 'contestant': contestant,
            'date': date, 'followers': followers, 'note': note,
+           'type': data.get('type', '').strip(),
            'created_at': datetime.now(timezone.utc).isoformat()}
     bb_insta_collection.update_one(
-        {'contestant': contestant, 'date': date},
+        {'contestant': contestant, 'date': date, 'type': data.get('type', '')},
         {'$set': doc}, upsert=True
     )
     return jsonify({'success': True}), 201
@@ -4343,6 +4344,8 @@ def bb_add_nomination():
         'season_id': data.get('season_id', ''),
         'nominated': data.get('nominated', []),
         'evicted': data.get('evicted', ''),
+        'captain': data.get('captain', ''),
+        'ejected': data.get('ejected', ''),
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     bb_nominations_collection.insert_one(doc)

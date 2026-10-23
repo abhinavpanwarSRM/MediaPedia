@@ -111,6 +111,8 @@
     .nom-chip{padding:.3rem .8rem;border-radius:20px;font-size:.78rem;font-weight:600;
       background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.3);color:#ff6b35;}
     .nom-chip.evicted{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
+    .nom-chip.captain{background:rgba(255,215,0,.12);border-color:rgba(255,215,0,.4);color:var(--gold);}
+    .nom-chip.ejected{background:rgba(255,71,87,.18);border-color:rgba(255,71,87,.5);color:#ff4757;font-style:italic;}
 
     /* REELS */
     .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
@@ -298,22 +300,32 @@
       </div>
 
       <div class="admin-section">
-        <div class="admin-label">Log Instagram Followers</div>
-        <div class="form-row">
+        <div class="admin-label">Instagram Followers</div>
+        <div class="form-row" style="align-items:flex-end;">
           <select class="inp" id="a-insta-name" style="max-width:180px;"><option value="">Select contestant</option></select>
-          <input type="date" class="inp" id="a-insta-date" style="max-width:160px;" />
-          <input class="inp" id="a-insta-count" placeholder="Followers e.g. 1200000" type="number" style="max-width:160px;" />
-          <input class="inp" id="a-insta-note" placeholder="Note (optional)" style="max-width:160px;" />
-          <button class="btn btn-red" onclick="addInstaSnap()">Log</button>
+          <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:130px;">
+            <span style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">BB Entry Followers</span>
+            <input class="inp" id="a-insta-entry" placeholder="e.g. 850000" type="number" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:130px;">
+            <span style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Current Followers</span>
+            <input class="inp" id="a-insta-current" placeholder="e.g. 2400000" type="number" />
+          </div>
+          <button class="btn btn-red" onclick="saveInstaFollowers()">Save</button>
         </div>
       </div>
 
       <div class="admin-section">
         <div class="admin-label">Add Nomination Week</div>
-        <div class="form-row">
+        <div class="form-row" style="align-items:flex-start;">
           <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" />
-          <input class="inp" id="a-nom-nominated" placeholder="Nominated (comma-separated)" />
-          <input class="inp" id="a-nom-evicted" placeholder="Evicted (if known)" />
+          <div style="flex:1;">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem;">Nominated</div>
+            <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"><span style="font-size:.78rem;color:var(--muted);">Load contestants first</span></div>
+          </div>
+          <select class="inp" id="a-nom-evicted" style="max-width:160px;"><option value="">Evicted (if known)</option></select>
+          <select class="inp" id="a-nom-captain" style="max-width:160px;"><option value="">Captain (if known)</option></select>
+          <select class="inp" id="a-nom-ejected" style="max-width:160px;"><option value="">Ejected (if known)</option></select>
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
@@ -376,27 +388,8 @@
 
     <!-- INSTAGRAM TAB -->
     <div id="tab-insta" style="display:none;">
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Follower count snapshots logged by admin. Compare any two dates to see growth.</p>
-
-      <!-- Date range picker -->
-      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;">
-        <div style="display:flex;flex-direction:column;gap:.3rem;">
-          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">From date</label>
-          <input type="date" id="insta-from" class="inp" style="max-width:160px;" />
-        </div>
-        <div style="display:flex;flex-direction:column;gap:.3rem;">
-          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">To date</label>
-          <input type="date" id="insta-to" class="inp" style="max-width:160px;" />
-        </div>
-        <button class="btn btn-red" onclick="renderInsta()">Compare</button>
-        <button class="btn btn-muted" onclick="instaSetLatest()">Latest vs First</button>
-      </div>
-
-      <!-- Gain leaderboard -->
-      <div id="insta-leaderboard" style="margin-bottom:1.5rem;"></div>
-
-      <!-- Per-contestant timeline -->
-      <div id="insta-timelines"></div>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.5rem;">Follower count before entering Bigg Boss vs now. See who gained the most fame.</p>
+      <div id="insta-chart-wrap"></div>
     </div>
 
     <div id="tab-reels" style="display:none;">
@@ -510,7 +503,7 @@
     }
 
     function switchTab(name, btn) {
-      ['contestants','leaderboard','polls','nominations','reels'].forEach(t => {
+      ['contestants','leaderboard','polls','nominations','reels','insta'].forEach(t => {
         document.getElementById('tab-'+t).style.display = t === name ? '' : 'none';
       });
       document.querySelectorAll('.tabs > .tab-btn').forEach(b => b.classList.remove('active'));
@@ -602,6 +595,7 @@
         renderContestants();
         renderAdminContestantList();
         renderFanLeaderboard();
+        renderNomAdminContestants();
         // refresh insta admin dropdown if already loaded
         const sel = document.getElementById('a-insta-name');
         if (sel) sel.innerHTML = '<option value="">Select contestant</option>' +
@@ -1046,26 +1040,50 @@
               ${IS_ADMIN?`<button class="btn btn-muted" style="font-size:.72rem;padding:.25rem .6rem;" onclick="deleteNomination('${n.nomination_id}')">Delete</button>`:''}
             </div>
           </div>
+          <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem;">
+            ${n.captain?`<span style="font-size:.7rem;color:var(--gold);font-weight:600;">👑 Captain: ${n.captain}</span>`:''}
+            ${n.ejected?`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">⚡ Ejected: ${n.ejected}</span>`:''}
+          </div>
           <div class="nom-chips">
-            ${(n.nominated||[]).map(name=>`<span class="nom-chip${name===n.evicted?' evicted':''}">${name}</span>`).join('')}
+            ${(n.nominated||[]).map(name=>`<span class="nom-chip${name===n.evicted?' evicted':name===n.captain?' captain':name===n.ejected?' ejected':''}">${name}${name===n.captain?' 👑':name===n.ejected?' ⚡':name===n.evicted?' 🚪':''}</span>`).join('')}
           </div>
         </div>`).join('');
     }
 
+    function renderNomAdminContestants() {
+      const wrap = document.getElementById('a-nom-chips');
+      const sel = document.getElementById('a-nom-evicted');
+      if (!wrap || !sel) return;
+      wrap.innerHTML = _contestants.map(c =>
+        `<label style="display:flex;align-items:center;gap:.3rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:.3rem .6rem;cursor:pointer;font-size:.8rem;">
+          <input type="checkbox" value="${c.name}" style="accent-color:var(--bb);" />${c.name}
+        </label>`
+      ).join('');
+      const makeOpts = (placeholder) => `<option value="">${placeholder}</option>` +
+        _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+      sel.innerHTML = makeOpts('Evicted (if known)');
+      const capSel = document.getElementById('a-nom-captain');
+      const ejSel = document.getElementById('a-nom-ejected');
+      if (capSel) capSel.innerHTML = makeOpts('Captain (if known)');
+      if (ejSel) ejSel.innerHTML = makeOpts('Ejected (if known)');
+    }
+
     function addNomination() {
       const week = parseInt(document.getElementById('a-nom-week').value)||1;
-      const nominated = document.getElementById('a-nom-nominated').value.split(',').map(s=>s.trim()).filter(Boolean);
-      const evicted = document.getElementById('a-nom-evicted').value.trim();
+      const nominated = [...document.querySelectorAll('#a-nom-chips input[type=checkbox]:checked')].map(cb=>cb.value);
+      const evicted = document.getElementById('a-nom-evicted').value;
+      const captain = document.getElementById('a-nom-captain').value;
+      const ejected = document.getElementById('a-nom-ejected').value;
       if (!nominated.length) { showToast('Add at least one nominated contestant'); return; }
       fetch('/api/bb/nominations', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({week, nominated, evicted})
+        body:JSON.stringify({week, nominated, evicted, captain, ejected})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         showToast('Nomination week added!');
         document.getElementById('a-nom-week').value='';
-        document.getElementById('a-nom-nominated').value='';
-        document.getElementById('a-nom-evicted').value='';
+        document.querySelectorAll('#a-nom-chips input[type=checkbox]').forEach(cb=>cb.checked=false);
+        ['a-nom-evicted','a-nom-captain','a-nom-ejected'].forEach(id => document.getElementById(id).value='');
         loadNominations();
       });
     }
@@ -1171,7 +1189,7 @@
 
     // ===== INSTAGRAM =====
     function fmtFollowers(n) {
-      if (n >= 1e7) return (n/1e7).toFixed(1)+'Cr';
+      if (n >= 1e7) return (n/1e7).toFixed(2)+'Cr';
       if (n >= 1e5) return (n/1e5).toFixed(1)+'L';
       if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
       return n.toString();
@@ -1180,129 +1198,131 @@
     function loadInsta() {
       fetch('/api/bb/insta').then(r=>r.json()).then(snaps => {
         _allInsta = snaps;
-        instaSetLatest();
-        // populate admin dropdown
+        renderInstaChart();
         const sel = document.getElementById('a-insta-name');
-        if (sel) {
-          sel.innerHTML = '<option value="">Select contestant</option>' +
-            _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-        }
+        if (sel) sel.innerHTML = '<option value="">Select contestant</option>' +
+          _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
       }).catch(() => {
-        document.getElementById('insta-leaderboard').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
+        document.getElementById('insta-chart-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
     }
 
-    function instaSetLatest() {
-      if (!_allInsta.length) { renderInsta(); return; }
-      const dates = [...new Set(_allInsta.map(s=>s.date))].sort();
-      const fromEl = document.getElementById('insta-from');
-      const toEl = document.getElementById('insta-to');
-      if (fromEl) fromEl.value = dates[0] || '';
-      if (toEl) toEl.value = dates[dates.length-1] || '';
-      renderInsta();
-    }
-
-    function renderInsta() {
-      const fromDate = document.getElementById('insta-from')?.value || '';
-      const toDate = document.getElementById('insta-to')?.value || '';
-      const lbWrap = document.getElementById('insta-leaderboard');
-      const tlWrap = document.getElementById('insta-timelines');
-      if (!_allInsta.length) {
-        lbWrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No follower data logged yet.</p>';
-        tlWrap.innerHTML = '';
-        return;
-      }
-      // Group by contestant
+    function renderInstaChart() {
+      const wrap = document.getElementById('insta-chart-wrap');
+      // Build per-contestant entry/current from snaps
       const byC = {};
       _allInsta.forEach(s => {
-        if (!byC[s.contestant]) byC[s.contestant] = [];
-        byC[s.contestant].push(s);
+        if (!byC[s.contestant]) byC[s.contestant] = {};
+        if (s.type === 'entry') byC[s.contestant].entry = s.followers;
+        else if (s.type === 'current') byC[s.contestant].current = s.followers;
+        // legacy: if no type, use date order — first = entry, last = current
+        else {
+          if (!byC[s.contestant]._snaps) byC[s.contestant]._snaps = [];
+          byC[s.contestant]._snaps.push(s);
+        }
       });
-      // For each contestant get from/to values
-      const gains = [];
-      Object.entries(byC).forEach(([name, snaps]) => {
-        const sorted = snaps.slice().sort((a,b)=>a.date.localeCompare(b.date));
-        const fromSnap = fromDate ? sorted.filter(s=>s.date<=fromDate).pop() || sorted[0] : sorted[0];
-        const toSnap = toDate ? sorted.filter(s=>s.date<=toDate).pop() || sorted[sorted.length-1] : sorted[sorted.length-1];
-        const gain = toSnap.followers - fromSnap.followers;
-        const pct = fromSnap.followers ? ((gain/fromSnap.followers)*100).toFixed(1) : '—';
-        const c = _contestants.find(x=>x.name===name);
-        gains.push({name, fromSnap, toSnap, gain, pct, img: c?.img||'', sorted});
+      // resolve legacy snaps
+      Object.values(byC).forEach(d => {
+        if (d._snaps && d._snaps.length) {
+          const sorted = d._snaps.sort((a,b)=>a.date?.localeCompare(b.date||''));
+          if (!d.entry) d.entry = sorted[0].followers;
+          if (!d.current) d.current = sorted[sorted.length-1].followers;
+        }
       });
-      gains.sort((a,b)=>b.gain-a.gain);
-      const maxGain = Math.max(...gains.map(g=>Math.abs(g.gain)), 1);
 
-      // Leaderboard
-      lbWrap.innerHTML = `
-        <div class="section-title" style="font-size:1rem;margin-bottom:1rem;">📊 Follower Gain Leaderboard</div>
-        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.8rem;">
-          ${fromDate||'earliest'} → ${toDate||'latest'}
-        </div>
-        ${gains.map((g,i) => {
-          const isGain = g.gain >= 0;
-          const color = isGain ? '#2ed573' : '#ff4757';
-          const barW = Math.round(Math.abs(g.gain)/maxGain*100);
-          const av = g.img
-            ? `<img src="${g.img}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
-            : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(229,9,20,.2);border:1px solid var(--bb);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">${(g.name||'?')[0].toUpperCase()}</div>`;
-          return `<div style="display:grid;grid-template-columns:28px 36px 1fr 90px 70px 70px;align-items:center;gap:.5rem;padding:.6rem .8rem;border-bottom:1px solid rgba(255,255,255,.05);">
-            <div style="font-size:.8rem;color:var(--muted);text-align:center;">${i+1}</div>
+      const rows = Object.entries(byC)
+        .filter(([,d]) => d.entry || d.current)
+        .map(([name, d]) => {
+          const entry = d.entry || 0;
+          const current = d.current || d.entry || 0;
+          const gain = current - entry;
+          const pct = entry ? ((gain/entry)*100) : 0;
+          const c = _contestants.find(x=>x.name===name);
+          return {name, entry, current, gain, pct, img: c?.img||''};
+        })
+        .sort((a,b) => b.gain - a.gain);
+
+      if (!rows.length) {
+        wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No follower data yet. Admin can add entry &amp; current counts above.</p>';
+        return;
+      }
+
+      const maxCurrent = Math.max(...rows.map(r=>r.current), 1);
+
+      wrap.innerHTML = rows.map((r, i) => {
+        const entryW = Math.round(r.entry / maxCurrent * 100);
+        const currentW = Math.round(r.current / maxCurrent * 100);
+        const gainColor = r.gain >= 0 ? '#2ed573' : '#ff4757';
+        const gainSign = r.gain >= 0 ? '+' : '';
+        const av = r.img
+          ? `<img src="${r.img}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
+          : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(229,9,20,.2);border:2px solid var(--bb);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;flex-shrink:0;color:var(--bb);">${(r.name||'?')[0].toUpperCase()}</div>`;
+        return `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.8rem;">
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;">
+            <div style="font-size:1rem;font-weight:700;color:var(--muted);min-width:22px;text-align:center;">${i+1}</div>
             ${av}
-            <div>
-              <div style="font-size:.85rem;font-weight:700;">${g.name}</div>
-              <div style="background:rgba(255,255,255,.06);border-radius:3px;height:4px;margin-top:4px;">
-                <div style="width:${barW}%;height:100%;background:${color};border-radius:3px;transition:width .5s;"></div>
-              </div>
+            <div style="flex:1;">
+              <div style="font-size:.95rem;font-weight:700;">${r.name}</div>
+              <div style="font-size:.75rem;color:${gainColor};font-weight:600;margin-top:.1rem;">${gainSign}${fmtFollowers(r.gain)} (${gainSign}${r.pct.toFixed(1)}%)</div>
             </div>
-            <div style="text-align:right;font-size:.8rem;color:#aaa;">${fmtFollowers(g.fromSnap.followers)}</div>
-            <div style="text-align:right;font-size:.8rem;color:#aaa;">${fmtFollowers(g.toSnap.followers)}</div>
-            <div style="text-align:right;font-size:.9rem;font-weight:700;color:${color};">${isGain?'+':''}${fmtFollowers(g.gain)}<div style="font-size:.65rem;font-weight:400;color:${color};">${isGain?'+':''}${g.pct}%</div></div>
-          </div>`;
-        }).join('')}
-        <div style="display:grid;grid-template-columns:28px 36px 1fr 90px 70px 70px;gap:.5rem;padding:.4rem .8rem;font-size:.65rem;color:#ff6b35;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">
-          <div></div><div></div><div>Contestant</div><div style="text-align:right;">From</div><div style="text-align:right;">To</div><div style="text-align:right;">Gain</div>
+            <div style="text-align:right;">
+              <div style="font-size:1.1rem;font-weight:900;color:#fff;">${fmtFollowers(r.current)}</div>
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Current</div>
+            </div>
+          </div>
+          <!-- Bar chart -->
+          <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <span style="font-size:.68rem;color:var(--muted);width:52px;text-align:right;flex-shrink:0;">BB Entry</span>
+              <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:10px;">
+                <div style="width:${entryW}%;height:100%;background:rgba(255,107,53,.5);border-radius:4px;transition:width .6s;"></div>
+              </div>
+              <span style="font-size:.72rem;color:#aaa;min-width:52px;">${fmtFollowers(r.entry)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <span style="font-size:.68rem;color:var(--muted);width:52px;text-align:right;flex-shrink:0;">Now</span>
+              <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:10px;">
+                <div style="width:${currentW}%;height:100%;background:linear-gradient(90deg,var(--bb),#ff6b35);border-radius:4px;transition:width .6s;"></div>
+              </div>
+              <span style="font-size:.72rem;color:#aaa;min-width:52px;">${fmtFollowers(r.current)}</span>
+            </div>
+          </div>
+          ${IS_ADMIN ? `<button onclick="clearInstaEntry('${r.name.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;margin-top:.5rem;">🗑 Remove</button>` : ''}
         </div>`;
-
-      // Per-contestant timelines
-      tlWrap.innerHTML = `<div class="section-title" style="font-size:1rem;margin:1.5rem 0 1rem;">📅 Follower Timeline</div>` +
-        gains.map(g => {
-          const rows = g.sorted.map(s => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.82rem;">
-              <span style="color:var(--muted);">${s.date}</span>
-              <span style="font-weight:600;">${fmtFollowers(s.followers)}</span>
-              ${s.note?`<span style="font-size:.72rem;color:var(--muted);">${s.note}</span>`:''}
-              ${IS_ADMIN?`<button onclick="deleteInstaSnap('${s.snap_id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;">🗑</button>`:''}
-            </div>`).join('');
-          return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.8rem;">
-            <div style="font-weight:700;margin-bottom:.6rem;">${g.name}</div>
-            ${rows}
-          </div>`;
-        }).join('');
+      }).join('');
     }
 
-    function addInstaSnap() {
+    function saveInstaFollowers() {
       const contestant = document.getElementById('a-insta-name').value;
-      const date = document.getElementById('a-insta-date').value;
-      const followers = document.getElementById('a-insta-count').value;
-      const note = document.getElementById('a-insta-note').value.trim();
-      if (!contestant || !date || !followers) { showToast('Contestant, date and count required'); return; }
-      fetch('/api/bb/insta', {
+      const entry = document.getElementById('a-insta-entry').value;
+      const current = document.getElementById('a-insta-current').value;
+      if (!contestant) { showToast('Select a contestant'); return; }
+      if (!entry && !current) { showToast('Enter at least one count'); return; }
+      const today = new Date().toISOString().slice(0,10);
+      const saves = [];
+      if (entry) saves.push(fetch('/api/bb/insta', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({contestant, date, followers: parseInt(followers), note})
-      }).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast('Snapshot logged!');
-        document.getElementById('a-insta-count').value='';
-        document.getElementById('a-insta-note').value='';
+        body: JSON.stringify({contestant, date: '2000-01-01', followers: parseInt(entry), note:'BB Entry', type:'entry'})
+      }));
+      if (current) saves.push(fetch('/api/bb/insta', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({contestant, date: today, followers: parseInt(current), note:'Current', type:'current'})
+      }));
+      Promise.all(saves).then(() => {
+        showToast('Saved!');
+        document.getElementById('a-insta-entry').value='';
+        document.getElementById('a-insta-current').value='';
         _allInsta = []; loadInsta();
-      });
+      }).catch(() => showToast('Save failed'));
     }
 
-    function deleteInstaSnap(snapId) {
-      if (!confirm('Delete this snapshot?')) return;
-      fetch('/api/bb/insta/'+snapId, {method:'DELETE'}).then(r=>r.json()).then(() => {
-        _allInsta = []; loadInsta(); showToast('Deleted');
-      });
+    function clearInstaEntry(name) {
+      if (!confirm('Remove Instagram data for '+name+'?')) return;
+      const toDelete = _allInsta.filter(s=>s.contestant===name);
+      Promise.all(toDelete.map(s => fetch('/api/bb/insta/'+s.snap_id, {method:'DELETE'})))
+        .then(() => { _allInsta=[]; loadInsta(); showToast('Removed'); });
     }
 
     // ===== INIT =====
