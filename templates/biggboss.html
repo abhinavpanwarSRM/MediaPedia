@@ -319,7 +319,7 @@
       <div class="admin-section">
         <div class="admin-label">Add Nomination Week</div>
         <div class="form-row" style="align-items:flex-start;">
-          <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" />
+          <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" title="Auto-filled from existing data" />
           <div style="flex:1;">
             <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem;">Nominated</div>
             <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"><span style="font-size:.78rem;color:var(--muted);">Load contestants first</span></div>
@@ -1024,6 +1024,14 @@
       fetch('/api/bb/nominations').then(r=>r.json()).then(noms => {
         _allNominations = noms;
         renderNominations();
+        // Auto-fill next week number for admin
+        if (IS_ADMIN) {
+          const weekInput = document.getElementById('a-nom-week');
+          if (weekInput && !weekInput.value) {
+            const maxWeek = noms.reduce((m, n) => Math.max(m, n.week||0), 0);
+            weekInput.value = maxWeek + 1;
+          }
+        }
       }).catch(() => { document.getElementById('nominations-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
     }
 
@@ -1085,7 +1093,7 @@
         document.getElementById('a-nom-week').value='';
         document.querySelectorAll('#a-nom-chips input[type=checkbox]').forEach(cb=>cb.checked=false);
         ['a-nom-evicted','a-nom-captain','a-nom-ejected'].forEach(id => document.getElementById(id).value='');
-        loadNominations();
+        loadNominations(); // will auto-fill next week
       });
     }
 
