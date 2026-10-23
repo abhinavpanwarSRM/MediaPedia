@@ -320,10 +320,7 @@
         <div class="admin-label">Add Nomination Week</div>
         <div class="form-row" style="align-items:flex-start;">
           <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" title="Auto-filled from existing data" />
-          <div style="flex:1;">
-            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem;">Nominated</div>
-            <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"><span style="font-size:.78rem;color:var(--muted);">Load contestants first</span></div>
-          </div>
+          <select class="inp" id="a-nom-chips" multiple style="min-width:180px;max-width:220px;height:140px;"><option disabled>Load contestants first</option></select>
           <select class="inp" id="a-nom-evicted" style="max-width:160px;"><option value="">Evicted (if known)</option></select>
           <select class="inp" id="a-nom-captain" style="max-width:160px;"><option value="">Captain (if known)</option></select>
           <select class="inp" id="a-nom-ejected" style="max-width:160px;"><option value="">Ejected (if known)</option></select>
@@ -1060,17 +1057,13 @@
     }
 
     function renderNomAdminContestants() {
-      const wrap = document.getElementById('a-nom-chips');
-      const sel = document.getElementById('a-nom-evicted');
-      if (!wrap || !sel) return;
-      wrap.innerHTML = _contestants.map(c =>
-        `<label style="display:flex;align-items:center;gap:.3rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:.3rem .6rem;cursor:pointer;font-size:.8rem;">
-          <input type="checkbox" value="${c.name}" style="accent-color:var(--bb);" />${c.name}
-        </label>`
-      ).join('');
-      const makeOpts = (placeholder) => `<option value="">${placeholder}</option>` +
-        _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-      sel.innerHTML = makeOpts('Evicted (if known)');
+      const sel = document.getElementById('a-nom-chips');
+      const evSel = document.getElementById('a-nom-evicted');
+      if (!sel || !evSel) return;
+      const opts = _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+      sel.innerHTML = opts;
+      const makeOpts = (placeholder) => `<option value="">${placeholder}</option>` + opts;
+      evSel.innerHTML = makeOpts('Evicted (if known)');
       const capSel = document.getElementById('a-nom-captain');
       const ejSel = document.getElementById('a-nom-ejected');
       if (capSel) capSel.innerHTML = makeOpts('Captain (if known)');
@@ -1079,7 +1072,7 @@
 
     function addNomination() {
       const week = parseInt(document.getElementById('a-nom-week').value)||1;
-      const nominated = [...document.querySelectorAll('#a-nom-chips input[type=checkbox]:checked')].map(cb=>cb.value);
+      const nominated = [...document.querySelectorAll('#a-nom-chips option:checked')].map(o=>o.value);
       const evicted = document.getElementById('a-nom-evicted').value;
       const captain = document.getElementById('a-nom-captain').value;
       const ejected = document.getElementById('a-nom-ejected').value;
@@ -1091,7 +1084,7 @@
         if (d.error) { showToast(d.error); return; }
         showToast('Nomination week added!');
         document.getElementById('a-nom-week').value='';
-        document.querySelectorAll('#a-nom-chips input[type=checkbox]').forEach(cb=>cb.checked=false);
+        document.querySelectorAll('#a-nom-chips option').forEach(o=>o.selected=false);
         ['a-nom-evicted','a-nom-captain','a-nom-ejected'].forEach(id => document.getElementById(id).value='');
         loadNominations(); // will auto-fill next week
       });
