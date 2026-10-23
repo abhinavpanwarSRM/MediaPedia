@@ -67,6 +67,7 @@
     .contestant-name{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:.3rem;}
     .contestant-status{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;}
     .status-active{color:#2ed573;}.status-nominated{color:var(--gold);}.status-eliminated{color:#ff4757;}
+    .nom-chip.eliminated{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
     .star-row{display:flex;justify-content:center;gap:1px;margin-top:.4rem;font-size:.75rem;}
     .star-filled{color:var(--gold);}.star-empty{color:#444;}
 
@@ -111,9 +112,7 @@
     .nom-chips{display:flex;flex-wrap:wrap;gap:.5rem;}
     .nom-chip{padding:.3rem .8rem;border-radius:20px;font-size:.78rem;font-weight:600;
       background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.3);color:#ff6b35;}
-    .nom-chip.evicted{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
     .nom-chip.captain{background:rgba(255,215,0,.12);border-color:rgba(255,215,0,.4);color:var(--gold);}
-    .nom-chip.ejected{background:rgba(255,71,87,.18);border-color:rgba(255,71,87,.5);color:#ff4757;font-style:italic;}
 
     /* REELS */
     .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
@@ -223,7 +222,7 @@
     <div class="hero-stats" id="hero-stats" style="display:none;">
       <div class="hero-stat"><div class="hero-stat-val" id="hs-active" style="color:#2ed573;">—</div><div class="hero-stat-lbl">Active</div></div>
       <div class="hero-stat"><div class="hero-stat-val" id="hs-nominated" style="color:var(--gold);">—</div><div class="hero-stat-lbl">Nominated</div></div>
-      <div class="hero-stat"><div class="hero-stat-val" id="hs-eliminated" style="color:#ff4757;">—</div><div class="hero-stat-lbl">Evicted</div></div>
+      <div class="hero-stat"><div class="hero-stat-val" id="hs-eliminated" style="color:#ff4757;">—</div><div class="hero-stat-lbl">Eliminated</div></div>
       <div class="hero-stat"><div class="hero-stat-val" id="hs-total">—</div><div class="hero-stat-lbl">Total</div></div>
     </div>
   </div>
@@ -326,15 +325,12 @@
             <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:.4rem;">
-            <select class="inp" id="a-nom-evicted-add" style="max-width:180px;" onchange="addNomTag('evicted',this)"><option value="">+ Evicted</option></select>
+            <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <select class="inp" id="a-nom-evicted-add" style="max-width:180px;" onchange="addNomTag('evicted',this)"><option value="">+ Eliminated</option></select>
             <div id="a-nom-evicted-chips" style="display:flex;flex-wrap:wrap;gap:.3rem;"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:.4rem;">
             <select class="inp" id="a-nom-captain" style="max-width:180px;"><option value="">Captain (if known)</option></select>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;">
-            <select class="inp" id="a-nom-ejected-add" style="max-width:180px;" onchange="addNomTag('ejected',this)"><option value="">+ Ejected</option></select>
-            <div id="a-nom-ejected-chips" style="display:flex;flex-wrap:wrap;gap:.3rem;"></div>
           </div>
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
@@ -358,7 +354,7 @@
         <button class="tab-btn active" onclick="filterContestants('all',this)">All</button>
         <button class="tab-btn" onclick="filterContestants('active',this)">🟢 Active</button>
         <button class="tab-btn" onclick="filterContestants('nominated',this)">⚠️ Nominated</button>
-        <button class="tab-btn" onclick="filterContestants('eliminated',this)">🚪 Evicted</button>
+        <button class="tab-btn" onclick="filterContestants('eliminated',this)">❌ Eliminated</button>
       </div>
       <div class="contestants-grid" id="contestants-wrap">
         <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
@@ -572,7 +568,7 @@
         const i = _contestants.indexOf(c);
         const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
         const sc = c.status==='eliminated'?'status-eliminated':c.status==='nominated'?'status-nominated':'status-active';
-        const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active';
+        const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active'; // unified
         const r = _allRatings[c.name];
         const overall = r ? r.overall : 0;
         const av = c.img
@@ -599,7 +595,7 @@
         const nominated = list.filter(c=>c.status==='nominated').length;
         const eliminated = list.filter(c=>c.status==='eliminated').length;
         if (list.length) {
-          document.getElementById('hs-active').textContent = active;
+          document.getElementById('hs-active').textContent = active + nominated;
           document.getElementById('hs-nominated').textContent = nominated;
           document.getElementById('hs-eliminated').textContent = eliminated;
           document.getElementById('hs-total').textContent = list.length;
@@ -775,7 +771,7 @@
       else { av.textContent = (name||'?')[0].toUpperCase(); }
       document.getElementById('cm-name').textContent = name;
       const sc = c.status==='eliminated'?'color:#ff4757':c.status==='nominated'?'color:var(--gold)':'color:#2ed573';
-      const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated ⚠️':'Active ✅';
+      const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active';
       document.getElementById('cm-status').innerHTML = `<span style="${sc}">${sl}</span>`;
       // Bio
       const bioEl = document.getElementById('cm-bio');
@@ -1057,21 +1053,19 @@
           <div class="nom-week-hdr">
             <span class="nom-week-label">Week ${n.week}</span>
             <div style="display:flex;align-items:center;gap:.8rem;">
-              ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).filter(Boolean).map(e=>`<span class="nom-evicted">🚪 ${e}</span>`).join('')}
+              ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean).map(e=>`<span class="nom-evicted">❌ ${e}</span>`).join('')}
               ${IS_ADMIN?`<button class="btn btn-muted" style="font-size:.72rem;padding:.25rem .6rem;" onclick="deleteNomination('${n.nomination_id}')">Delete</button>`:''}
             </div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem;">
             ${n.captain?`<span style="font-size:.7rem;color:var(--gold);font-weight:600;">👑 Captain: ${n.captain}</span>`:''}
-            ${(Array.isArray(n.ejected)?n.ejected:[n.ejected]).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff9f43;font-weight:600;">⚡ Ejected: ${e}</span>`).join('')}
-            ${(Array.isArray(n.evicted)?n.evicted:[n.evicted]).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">🚪 Evicted: ${e}</span>`).join('')}
+            ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">❌ Eliminated: ${e}</span>`).join('')}
           </div>
           <div class="nom-chips">
             ${(n.nominated||[]).map(name=>{
-              const evArr = Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[]);
-              const ejArr = Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[]);
-              const cls = evArr.includes(name)?' evicted':ejArr.includes(name)?' ejected':name===n.captain?' captain':'';
-              const icon = evArr.includes(name)?' 🚪':ejArr.includes(name)?' ⚡':name===n.captain?' 👑':'';
+              const elArr = (Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean);
+              const cls = elArr.includes(name)?' eliminated':name===n.captain?' captain':'';
+              const icon = elArr.includes(name)?' ❌':name===n.captain?' 👑':'';
               return `<span class="nom-chip${cls}">${name}${icon}</span>`;
             }).join('')}
           </div>
@@ -1083,9 +1077,9 @@
       if (!addSel) return;
       const opts = _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
       addSel.innerHTML = '<option value="">+ Add Nominated</option>' + opts;
-      ['a-nom-evicted-add','a-nom-ejected-add'].forEach((id, i) => {
+      ['a-nom-evicted-add'].forEach((id) => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = `<option value="">${i===0?'+ Evicted':'+ Ejected'}</option>` + opts;
+        if (el) el.innerHTML = `<option value="">+ Eliminated</option>` + opts;
       });
       const capSel = document.getElementById('a-nom-captain');
       if (capSel) capSel.innerHTML = '<option value="">Captain (if known)</option>' + opts;
@@ -1126,18 +1120,16 @@
       const nominated = [...document.querySelectorAll('#a-nom-chips [data-name]')].map(el=>el.dataset.name);
       const evicted = [...document.querySelectorAll('#a-nom-evicted-chips [data-name]')].map(el=>el.dataset.name);
       const captain = document.getElementById('a-nom-captain').value;
-      const ejected = [...document.querySelectorAll('#a-nom-ejected-chips [data-name]')].map(el=>el.dataset.name);
       if (!nominated.length) { showToast('Add at least one nominated contestant'); return; }
       fetch('/api/bb/nominations', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({week, nominated, evicted, captain, ejected})
+        body:JSON.stringify({week, nominated, evicted, captain})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         showToast('Nomination week added!');
         document.getElementById('a-nom-week').value='';
         document.getElementById('a-nom-chips').innerHTML = '';
         document.getElementById('a-nom-evicted-chips').innerHTML = '';
-        document.getElementById('a-nom-ejected-chips').innerHTML = '';
         document.getElementById('a-nom-captain').value = '';
         loadNominations(); // will auto-fill next week
       });
