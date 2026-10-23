@@ -374,6 +374,12 @@
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
+      <div class="admin-section">
+        <div class="admin-label">Reset Points (New Season)</div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;">Wipes all user points. Use at the start of a new season. This cannot be undone.</p>
+        <button class="btn btn-red" onclick="resetBBPoints()">🗑 Reset All Points</button>
+      </div>
+
       <div class="admin-section" id="admin-manage-section">
         <div class="admin-label">Manage BB Admins</div>
         <div class="form-row">
@@ -1633,6 +1639,17 @@
       }).catch(() => {
         document.getElementById('pts-lb-rows').innerHTML = '<p style="padding:1rem;color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
+    }
+
+    function resetBBPoints() {
+      if (!confirm('Reset ALL user points? This cannot be undone.')) return;
+      fetch('/api/bb/points/reset', {method:'POST'})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          showToast('All points reset!');
+          loadMyPoints();
+          loadPointsLeaderboard();
+        });
     }
 
     // ===== INIT =====

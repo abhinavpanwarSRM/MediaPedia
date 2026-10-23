@@ -4483,6 +4483,15 @@ def bb_points_me():
     doc = bb_points_collection.find_one({'username': username}, {'_id': 0, 'points': 1})
     return jsonify({'points': doc['points'] if doc else 0})
 
+@app.route('/api/bb/points/reset', methods=['POST'])
+def bb_reset_points():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_points_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_points_collection.delete_many({})
+    return jsonify({'success': True})
+
 # ===== BB Nominations =====
 bb_nominations_collection = None
 bb_admins_collection = None
