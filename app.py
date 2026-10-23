@@ -1455,6 +1455,7 @@ def twitch_login():
 
 @app.route('/auth/twitch/callback')
 def twitch_callback():
+    import secrets as _s
     error = request.args.get('error')
     if error:
         return redirect(f'/login?error=Twitch+denied:+{error}')
