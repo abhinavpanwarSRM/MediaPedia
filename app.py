@@ -4303,10 +4303,13 @@ def bb_delete_reel_comment(reel_id, comment_id):
     username = current_user()
     if not username or bb_reel_comments_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
+    comment = bb_reel_comments_collection.find_one({'comment_id': comment_id}, {'_id': 0, 'username': 1})
     query = {'comment_id': comment_id, 'reel_id': reel_id}
     if not _is_bb_admin():
         query['username'] = username
     bb_reel_comments_collection.delete_one(query)
+    if comment and _is_bb_admin() and comment.get('username') != username:
+        _bb_award_points(comment['username'], -1, f'reel comment {comment_id} deleted by admin')
     return jsonify({'success': True})
 
 @app.route('/api/bb/reels/upload', methods=['POST'])
@@ -4372,10 +4375,13 @@ def bb_delete_reel(reel_id):
     username = current_user()
     if not username or bb_reels_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
+    reel = bb_reels_collection.find_one({'reel_id': reel_id}, {'_id': 0, 'username': 1})
     query = {'reel_id': reel_id}
-    if username != 'abhinav':
+    if not _is_bb_admin():
         query['username'] = username
     bb_reels_collection.delete_one(query)
+    if reel:
+        _bb_award_points(reel['username'], -1, f'reel {reel_id} deleted by admin')
     return jsonify({'success': True})
 
 # ===== BB Ratings =====
@@ -4510,10 +4516,13 @@ def bb_delete_contestant_comment(contestant, comment_id):
     username = current_user()
     if not username or bb_contestant_comments_collection is None:
         return jsonify({'error': 'Unauthorized'}), 401
+    comment = bb_contestant_comments_collection.find_one({'comment_id': comment_id}, {'_id': 0, 'username': 1})
     query = {'comment_id': comment_id, 'contestant': contestant}
-    if username != 'abhinav':
+    if not _is_bb_admin():
         query['username'] = username
     bb_contestant_comments_collection.delete_one(query)
+    if comment and _is_bb_admin() and comment.get('username') != username:
+        _bb_award_points(comment['username'], -1, f'contestant comment {comment_id} deleted by admin')
     return jsonify({'success': True})
 
 # ===== BB Instagram Followers =====
@@ -4698,7 +4707,7 @@ def _is_bb_admin():
 
 @app.route('/api/bb/admins', methods=['GET'])
 def bb_get_admins():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_admins_collection is None:
         return jsonify([])
