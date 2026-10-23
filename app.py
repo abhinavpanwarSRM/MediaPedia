@@ -1420,13 +1420,121 @@ def login():
         session['username'] = username
         session.permanent = True
         return redirect('/')
-    return render_template('login.html', error=None)
+    error = request.args.get('error') or None
+    return render_template('login.html', error=error)
 
 # ===== Logout =====
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     return redirect('/')
+
+# ===== Twitch OAuth =====
+TWITCH_CLIENT_ID     = os.getenv('TWITCH_CLIENT_ID', '')
+TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET', '')
+TWITCH_REDIRECT_URI  = os.getenv('TWITCH_REDIRECT_URI', 'http://localhost:5000/auth/twitch/callback')
+
+@app.route('/auth/twitch')
+def twitch_login():
+    if not TWITCH_CLIENT_ID:
+        return 'Twitch OAuth not configured', 500
+    import urllib.parse, secrets as _s
+    state = _s.token_urlsafe(16)
+    session['twitch_state'] = state
+    # store where to redirect after login
+    session['twitch_next'] = request.args.get('next', '/')
+    params = urllib.parse.urlencode({
+        'client_id':     TWITCH_CLIENT_ID,
+        'redirect_uri':  TWITCH_REDIRECT_URI,
+        'response_type': 'code',
+        'scope':         'user:read:email',
+        'state':         state,
+        'force_verify':  'false',
+    })
+    return redirect(f'https://id.twitch.tv/oauth2/authorize?{params}')
+
+@app.route('/auth/twitch/callback')
+def twitch_callback():
+    error = request.args.get('error')
+    if error:
+        return redirect(f'/login?error=Twitch+denied:+{error}')
+
+    state = request.args.get('state', '')
+    if state != session.pop('twitch_state', None):
+        return redirect('/login?error=Invalid+OAuth+state')
+
+    code = request.args.get('code', '')
+    if not code:
+        return redirect('/login?error=No+code+from+Twitch')
+
+    # Exchange code for access token
+    try:
+        tok_resp = http_requests.post('https://id.twitch.tv/oauth2/token', data={
+            'client_id':     TWITCH_CLIENT_ID,
+            'client_secret': TWITCH_CLIENT_SECRET,
+            'code':          code,
+            'grant_type':    'authorization_code',
+            'redirect_uri':  TWITCH_REDIRECT_URI,
+        }, timeout=8)
+        tok_resp.raise_for_status()
+        token_data = tok_resp.json()
+        access_token = token_data.get('access_token', '')
+        if not access_token:
+            return redirect('/login?error=No+access+token+from+Twitch')
+    except Exception as e:
+        log.error('Twitch token exchange error: %s', e)
+        return redirect('/login?error=Twitch+token+exchange+failed')
+
+    # Fetch Twitch user info
+    try:
+        user_resp = http_requests.get('https://api.twitch.tv/helix/users', headers={
+            'Authorization': f'Bearer {access_token}',
+            'Client-Id':     TWITCH_CLIENT_ID,
+        }, timeout=8)
+        user_resp.raise_for_status()
+        twitch_user = user_resp.json().get('data', [{}])[0]
+    except Exception as e:
+        log.error('Twitch user fetch error: %s', e)
+        return redirect('/login?error=Could+not+fetch+Twitch+profile')
+
+    twitch_id       = twitch_user.get('id', '')
+    twitch_login_name = twitch_user.get('login', '')       # lowercase, unique
+    display_name    = twitch_user.get('display_name', twitch_login_name)
+    avatar_url      = twitch_user.get('profile_image_url', '')
+
+    if not twitch_id:
+        return redirect('/login?error=Could+not+get+Twitch+ID')
+
+    # Derive a stable MediaPedia username: twitch_<login>
+    username = f'twitch_{twitch_login_name}'
+
+    if users_collection is not None:
+        existing = users_collection.find_one({'twitch_id': twitch_id})
+        if existing:
+            username = existing['username']
+        else:
+            # Check if derived username is taken by a non-twitch account
+            taken = users_collection.find_one({'username': username, 'twitch_id': {'$exists': False}})
+            if taken:
+                username = f'twitch_{twitch_login_name}_{twitch_id[-4:]}'
+            users_collection.update_one(
+                {'username': username},
+                {'$set': {
+                    'username':     username,
+                    'twitch_id':    twitch_id,
+                    'display_name': display_name,
+                    'avatar_url':   avatar_url,
+                    'bio':          '',
+                    'password':     bcrypt.generate_password_hash(_s.token_hex(32)).decode('utf-8'),
+                    'created_at':   datetime.now(timezone.utc),
+                }},
+                upsert=True
+            )
+
+    session['username'] = username
+    session.permanent = True
+    next_url = session.pop('twitch_next', '/')
+    return redirect(next_url)
 
 # ===== Activity Feed =====
 @app.route('/feed')
