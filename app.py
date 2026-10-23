@@ -4632,6 +4632,28 @@ def _bb_award_points(username, pts, reason):
 def bb_points_leaderboard():
     if bb_points_collection is None:
         return jsonify([])
+    # Collect all users with any BB activity
+    users = set()
+    if bb_reels_collection is not None:
+        for r in bb_reels_collection.find({}, {'_id': 0, 'username': 1, 'likes': 1}):
+            if r.get('username'): users.add(r['username'])
+            for u in r.get('likes', []): users.add(u)
+    if bb_reel_comments_collection is not None:
+        for c in bb_reel_comments_collection.find({}, {'_id': 0, 'username': 1}):
+            if c.get('username'): users.add(c['username'])
+    if bb_contestant_comments_collection is not None:
+        for c in bb_contestant_comments_collection.find({}, {'_id': 0, 'username': 1}):
+            if c.get('username'): users.add(c['username'])
+    if bb_ratings_collection is not None:
+        for r in bb_ratings_collection.find({}, {'_id': 0, 'username': 1}):
+            if r.get('username'): users.add(r['username'])
+    if bb_polls_collection is not None:
+        for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
+            for u in p.get('votes', {}).keys(): users.add(u)
+    # Recalc and return sorted
+    result = []
+    for username in users:
+        _bb_recalc_points(username)
     docs = list(bb_points_collection.find({}, {'_id': 0, 'username': 1, 'points': 1}).sort('points', -1).limit(50))
     return jsonify(docs)
 
@@ -4640,6 +4662,7 @@ def bb_points_me():
     username = current_user()
     if not username or bb_points_collection is None:
         return jsonify({'points': 0})
+    _bb_recalc_points(username)
     doc = bb_points_collection.find_one({'username': username}, {'_id': 0, 'points': 1})
     return jsonify({'points': doc['points'] if doc else 0})
 
