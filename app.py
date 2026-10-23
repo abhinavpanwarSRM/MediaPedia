@@ -4101,6 +4101,93 @@ def bb_add_reel():
     reel.pop('_id', None)
     return jsonify(reel), 201
 
+# ===== BB Reel Comments =====
+bb_reel_comments_collection = None
+try:
+    if db is not None:
+        bb_reel_comments_collection = db.bb_reel_comments
+        bb_reel_comments_collection.create_index([('reel_id', 1), ('created_at', -1)])
+except Exception as e:
+    log.error('Failed to init bb_reel_comments: %s', e)
+
+@app.route('/api/bb/reels/<reel_id>/comments', methods=['GET'])
+def bb_get_reel_comments(reel_id):
+    if bb_reel_comments_collection is None:
+        return jsonify([])
+    docs = list(bb_reel_comments_collection.find({'reel_id': reel_id}, {'_id': 0}).sort('created_at', 1).limit(100))
+    return jsonify(docs)
+
+@app.route('/api/bb/reels/<reel_id>/comments', methods=['POST'])
+def bb_add_reel_comment(reel_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_reel_comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:300]
+    if not text:
+        return jsonify({'error': 'Text required'}), 400
+    doc = {
+        'comment_id': str(uuid.uuid4())[:10],
+        'reel_id': reel_id,
+        'username': username,
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_reel_comments_collection.insert_one(doc)
+    doc.pop('_id', None)
+    return jsonify(doc), 201
+
+@app.route('/api/bb/reels/<reel_id>/comments/<comment_id>', methods=['DELETE'])
+def bb_delete_reel_comment(reel_id, comment_id):
+    username = current_user()
+    if not username or bb_reel_comments_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    query = {'comment_id': comment_id, 'reel_id': reel_id}
+    if not _is_bb_admin():
+        query['username'] = username
+    bb_reel_comments_collection.delete_one(query)
+    return jsonify({'success': True})
+
+@app.route('/api/bb/reels/upload', methods=['POST'])
+def bb_upload_reel_image():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_reels_collection is None or images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No file'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id, 'data': data, 'mime': mime,
+        'uploaded_by': username, 'created_at': datetime.now(timezone.utc)
+    })
+    img_url = f'/api/img/{image_id}'
+    caption = request.form.get('caption', '').strip()[:200]
+    category = request.form.get('category', '').strip()[:30]
+    reel = {
+        'reel_id': str(uuid.uuid4())[:8],
+        'url': img_url,
+        'caption': caption,
+        'platform': 'image',
+        'category': category,
+        'username': username,
+        'likes': [],
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_reels_collection.insert_one(reel)
+    reel.pop('_id', None)
+    return jsonify(reel), 201
+
 @app.route('/api/bb/reels/<reel_id>/like', methods=['POST'])
 def bb_like_reel(reel_id):
     username = current_user()

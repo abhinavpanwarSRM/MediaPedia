@@ -115,11 +115,12 @@
     .nom-chip.captain{background:rgba(255,215,0,.12);border-color:rgba(255,215,0,.4);color:var(--gold);}
 
     /* REELS */
-    .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
+    .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.2rem;}
     .reel-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;}
     .reel-card:hover{border-color:rgba(229,9,20,.4);}
     .reel-embed{width:100%;aspect-ratio:16/9;border:none;}
     .reel-embed-ig{aspect-ratio:9/16;max-height:480px;}
+    .reel-img{width:100%;max-height:400px;object-fit:cover;display:block;}
     .reel-body{padding:.8rem 1rem;}
     .reel-caption{font-size:.85rem;color:#ccc;margin-bottom:.5rem;}
     .reel-meta{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);}
@@ -130,6 +131,19 @@
     .reel-del-btn:hover{color:#ff4757;}
     .reel-cat-badge{font-size:.62rem;padding:.15rem .5rem;border-radius:10px;background:rgba(255,255,255,.07);
       border:1px solid var(--border);color:#aaa;text-transform:uppercase;letter-spacing:.5px;}
+    /* REEL COMMENTS */
+    .reel-comments{border-top:1px solid var(--border);padding:.7rem 1rem;}
+    .reel-comments-toggle{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.78rem;padding:0;font-family:inherit;}
+    .reel-comments-toggle:hover{color:#fff;}
+    .reel-comments-list{margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem;max-height:200px;overflow-y:auto;}
+    .reel-comment{font-size:.82rem;color:#ddd;line-height:1.4;}
+    .reel-comment-user{font-weight:700;color:#fff;margin-right:.3rem;}
+    .reel-comment-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;margin-left:.3rem;}
+    .reel-comment-del:hover{color:#ff4757;}
+    .reel-comment-inp-row{display:flex;gap:.4rem;margin-top:.6rem;}
+    .reel-comment-inp{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
+      color:#fff;font-size:.82rem;padding:.4rem .7rem;flex:1;font-family:inherit;}
+    .reel-comment-inp:focus{outline:none;border-color:var(--bb);}
 
     /* ADMIN */
     .admin-section{background:rgba(229,9,20,.05);border:1px solid rgba(229,9,20,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
@@ -412,10 +426,10 @@
     <div id="tab-reels" style="display:none;">
       {% if username %}
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
-        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:1px;">Share a Clip</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:1px;">Share a Clip or Post</div>
         <div class="form-row">
-          <input class="inp" id="reel-url" placeholder="YouTube or Instagram Reel URL" />
-          <input class="inp" id="reel-caption" placeholder="Caption (optional)" />
+          <input class="inp" id="reel-url" placeholder="YouTube or Instagram Reel URL (optional)" />
+          <input class="inp" id="reel-caption" placeholder="Caption / what's happening?" />
           <select class="inp" id="reel-cat" style="max-width:130px;">
             <option value="">Category</option>
             <option value="funny">Funny</option>
@@ -424,6 +438,13 @@
             <option value="task">Task</option>
             <option value="highlight">Highlight</option>
           </select>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--muted);cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:.4rem .8rem;">
+            📷 Upload Photo
+            <input type="file" id="reel-img-file" accept="image/*" capture="environment" style="display:none;" onchange="previewReelImg(this)" />
+          </label>
+          <img id="reel-img-preview" style="width:36px;height:36px;border-radius:6px;object-fit:cover;display:none;border:1px solid var(--border);" />
           <button class="btn btn-red" onclick="addReel()">Post</button>
         </div>
       </div>
@@ -1193,9 +1214,14 @@
       if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips in this category.</p>'; return; }
       wrap.innerHTML = reels.map(r => {
         const embed = getEmbedInfo(r.url);
-        const media = embed
-          ? `<iframe class="reel-embed${embed.type==='instagram'?' reel-embed-ig':''}" src="${embed.src}" allowfullscreen loading="lazy" scrolling="no"></iframe>`
-          : `<a href="${r.url}" target="_blank" rel="noopener" style="display:block;padding:1rem;font-size:.85rem;color:var(--bb);">▶ Open Clip</a>`;
+        let media;
+        if (r.platform === 'image' || (r.url && r.url.startsWith('/api/img/'))) {
+          media = `<img class="reel-img" src="${r.url}" alt="${r.caption||''}" loading="lazy" />`;
+        } else if (embed) {
+          media = `<iframe class="reel-embed${embed.type==='instagram'?' reel-embed-ig':''}" src="${embed.src}" allowfullscreen loading="lazy" scrolling="no"></iframe>`;
+        } else {
+          media = `<a href="${r.url}" target="_blank" rel="noopener" style="display:block;padding:1rem;font-size:.85rem;color:var(--bb);">▶ Open Clip</a>`;
+        }
         const likes = (r.likes||[]).length;
         const liked = (r.likes||[]).includes(VIEWER);
         const canDel = VIEWER && (VIEWER===r.username||IS_ADMIN);
@@ -1205,7 +1231,7 @@
           <div class="reel-body">
             ${r.caption?`<div class="reel-caption">${r.caption}</div>`:''}
             <div class="reel-meta">
-              <div style="display:flex;align-items:center;gap:.5rem;"><span>@${r.username}</span>${catLabel}</div>
+              <div style="display:flex;align-items:center;gap:.5rem;"><span style="color:var(--bb);font-weight:600;">@${r.username}</span>${catLabel}</div>
               <div style="display:flex;gap:.6rem;align-items:center;">
                 <button class="reel-like-btn${liked?' liked':''}" onclick="likeReel('${r.reel_id}',this)">❤️ <span>${likes}</span></button>
                 <button class="reel-del-btn" onclick="navigator.clipboard.writeText('${r.url}').then(()=>showToast('Link copied!'))" title="Copy link">🔗</button>
@@ -1213,15 +1239,51 @@
               </div>
             </div>
           </div>
+          <div class="reel-comments" id="rc-${r.reel_id}">
+            <button class="reel-comments-toggle" onclick="toggleReelComments('${r.reel_id}',this)">💬 Comments</button>
+            <div class="reel-comments-list" id="rcl-${r.reel_id}" style="display:none;"></div>
+            ${VIEWER ? `<div class="reel-comment-inp-row" id="rci-${r.reel_id}" style="display:none;">
+              <input class="reel-comment-inp" placeholder="Add a comment..." maxlength="300"
+                onkeydown="if(event.key==='Enter')postReelComment('${r.reel_id}',this)" />
+              <button class="btn btn-red" style="padding:.35rem .8rem;font-size:.8rem;" onclick="postReelComment('${r.reel_id}',this.previousElementSibling)">Post</button>
+            </div>` : ''}
+          </div>
         </div>`;
       }).join('');
+    }
+
+    function previewReelImg(input) {
+      const prev = document.getElementById('reel-img-preview');
+      if (input.files[0]) { prev.src = URL.createObjectURL(input.files[0]); prev.style.display = 'inline-block'; }
+      else { prev.style.display = 'none'; }
     }
 
     function addReel() {
       const url = document.getElementById('reel-url').value.trim();
       const caption = document.getElementById('reel-caption').value.trim();
       const category = document.getElementById('reel-cat').value;
-      if (!url) { showToast('URL required'); return; }
+      const fileInput = document.getElementById('reel-img-file');
+      const file = fileInput && fileInput.files[0];
+
+      if (!url && !file) { showToast('Add a URL or upload a photo'); return; }
+
+      if (file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('caption', caption);
+        fd.append('category', category);
+        fetch('/api/bb/reels/upload', {method:'POST', body:fd})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            document.getElementById('reel-url').value='';
+            document.getElementById('reel-caption').value='';
+            document.getElementById('reel-cat').value='';
+            fileInput.value=''; document.getElementById('reel-img-preview').style.display='none';
+            showToast('Posted!'); loadReels();
+          });
+        return;
+      }
+
       const platform = url.includes('youtube') ? 'youtube' : url.includes('instagram') ? 'instagram' : 'other';
       fetch('/api/bb/reels', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -1233,6 +1295,53 @@
         document.getElementById('reel-cat').value='';
         showToast('Clip posted!'); loadReels();
       });
+    }
+
+    function toggleReelComments(reelId, btn) {
+      const list = document.getElementById('rcl-'+reelId);
+      const inp = document.getElementById('rci-'+reelId);
+      const open = list.style.display === 'none';
+      list.style.display = open ? '' : 'none';
+      if (inp) inp.style.display = open ? '' : 'none';
+      btn.textContent = open ? '💬 Hide Comments' : '💬 Comments';
+      if (open && !list.dataset.loaded) { loadReelComments(reelId); list.dataset.loaded = '1'; }
+    }
+
+    function loadReelComments(reelId) {
+      const list = document.getElementById('rcl-'+reelId);
+      fetch('/api/bb/reels/'+reelId+'/comments').then(r=>r.json()).then(comments => {
+        if (!comments.length) { list.innerHTML = '<p style="color:var(--muted);font-size:.78rem;">No comments yet.</p>'; return; }
+        list.innerHTML = comments.map(c => `
+          <div class="reel-comment">
+            <span class="reel-comment-user">@${c.username}</span>${c.text}
+            ${(VIEWER===c.username||IS_ADMIN)?`<button class="reel-comment-del" onclick="deleteReelComment('${reelId}','${c.comment_id}',this.closest('.reel-comment'))">✕</button>`:''}
+          </div>`).join('');
+      });
+    }
+
+    function postReelComment(reelId, inp) {
+      const text = inp.value.trim();
+      if (!text) return;
+      fetch('/api/bb/reels/'+reelId+'/comments', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        inp.value = '';
+        const list = document.getElementById('rcl-'+reelId);
+        const noMsg = list.querySelector('p');
+        if (noMsg) noMsg.remove();
+        const el = document.createElement('div');
+        el.className = 'reel-comment';
+        el.innerHTML = `<span class="reel-comment-user">@${VIEWER}</span>${d.text}
+          <button class="reel-comment-del" onclick="deleteReelComment('${reelId}','${d.comment_id}',this.closest('.reel-comment'))">✕</button>`;
+        list.appendChild(el);
+        list.scrollTop = list.scrollHeight;
+      });
+    }
+
+    function deleteReelComment(reelId, commentId, el) {
+      fetch('/api/bb/reels/'+reelId+'/comments/'+commentId, {method:'DELETE'})
+        .then(r=>r.json()).then(() => el && el.remove());
     }
 
     function likeReel(reelId, btn) {
