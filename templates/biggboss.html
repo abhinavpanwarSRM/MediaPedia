@@ -318,20 +318,21 @@
 
       <div class="admin-section">
         <div class="admin-label">Add Nomination Week</div>
-        <div class="form-row" style="align-items:flex-start;">
+        <div class="form-row">
           <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" title="Auto-filled from existing data" />
-          <div style="display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:160px;">
-            <select class="inp" id="a-nom-add" style="max-width:200px;" onchange="addNomChip(this)"><option value="">+ Add Nominated</option></select>
-            <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;">
-            <div style="display:flex;flex-direction:column;gap:.4rem;">
-            <select class="inp" id="a-nom-evicted-add" style="max-width:180px;" onchange="addNomTag('evicted',this)"><option value="">+ Eliminated</option></select>
-            <div id="a-nom-evicted-chips" style="display:flex;flex-wrap:wrap;gap:.3rem;"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:.4rem;">
-            <select class="inp" id="a-nom-captain" style="max-width:180px;"><option value="">Captain (if known)</option></select>
-          </div>
+        </div>
+        <div class="form-row">
+          <select class="inp" id="a-nom-add" onchange="addNomChip(this)"><option value="">+ Add Nominated</option></select>
+        </div>
+        <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;"></div>
+        <div class="form-row">
+          <select class="inp" id="a-nom-evicted-add" onchange="addNomTag('evicted',this)"><option value="">+ Eliminated</option></select>
+        </div>
+        <div id="a-nom-evicted-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;"></div>
+        <div class="form-row">
+          <select class="inp" id="a-nom-captain"><option value="">Captain (if known)</option></select>
+        </div>
+        <div class="form-row">
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
