@@ -154,7 +154,7 @@
         if (sub) {
           _subscription = sub;
           sendSubscriptionToServer(sub);
-          return;
+          return null;
         }
         
         return fetch('/api/push/vapid_public_key')
@@ -195,6 +195,7 @@
       body: JSON.stringify(sub.toJSON())
     })
     .then(function(res) {
+      if (res.status === 401) return null;  // not logged in, skip silently
       if (res.ok) return res.json();
       throw new Error('Server returned ' + res.status);
     })
@@ -294,9 +295,10 @@
   // ── Check pending invites on page load ──
   function checkPendingInvites() {
     fetch('/api/party/pending_invites')
-      .then(function(r) { 
+      .then(function(r) {
+        if (r.status === 401) return null;  // not logged in, skip silently
         if (!r.ok) throw new Error('Failed to fetch invites');
-        return r.json(); 
+        return r.json();
       })
       .then(function(invites) {
         if (!Array.isArray(invites)) return;
