@@ -1003,6 +1003,7 @@
         loadContestantRating(_currentContestant);
         renderFanLeaderboard();
         if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
       });
     }
 
@@ -1129,6 +1130,7 @@
         const idx = _allPolls.findIndex(p=>p.poll_id===pollId);
         if (idx>=0) _allPolls[idx].votes = votes;
         if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
       }).catch(() => showToast('Vote failed'));
     }
 
@@ -1767,6 +1769,7 @@
     loadPolls();
     loadNominations();
     if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
   </script>
   <script src="/static/pwa.js"></script>
 </body>
