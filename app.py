@@ -4182,7 +4182,11 @@ def bb_delete_poll(poll_id):
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_polls_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
+    poll = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0, 'votes': 1})
     bb_polls_collection.delete_one({'poll_id': poll_id})
+    if poll:
+        for voter in poll.get('votes', {}):
+            _bb_recalc_points(voter)
     return jsonify({'success': True})
 
 @app.route('/api/bb/polls/<poll_id>/close', methods=['POST'])
