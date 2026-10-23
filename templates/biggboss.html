@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bigg Boss Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bb:#e50914;--bb2:#ff6b35;--gold:#ffd700;
+      --bg:#0d0d0d;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.1);
+      --text:#fff;--muted:#888;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;}
+    .topnav{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.5rem;
+      border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,13,13,.97);
+      backdrop-filter:blur(8px);z-index:100;min-height:57px;}
+    .topnav a{color:var(--muted);text-decoration:none;font-size:.85rem;}
+    .topnav a:hover{color:#fff;}
+    .brand{color:var(--bb);font-weight:700;font-size:1rem;}
+    .nav-right{display:flex;gap:1rem;align-items:center;}
+    .nav-burger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:4px;}
+    .nav-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
+    .nav-drawer{display:none;flex-direction:column;background:rgba(13,13,13,.98);
+      border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99;}
+    .nav-drawer.open{display:flex;}
+    .nav-drawer a{padding:.75rem 1.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;border-bottom:1px solid var(--border);}
+    @media(max-width:600px){.nav-right{display:none;}.nav-burger{display:flex;}}
+
+    .hero{min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:4rem 2rem 3rem;
+      background:radial-gradient(ellipse at center top,rgba(229,9,20,.15) 0%,transparent 70%),
+                 linear-gradient(180deg,#1a0000 0%,#0d0d0d 100%);
+      border-bottom:1px solid var(--border);}
+    .hero h1{font-size:clamp(2.5rem,9vw,5rem);font-weight:900;letter-spacing:3px;
+      background:linear-gradient(135deg,#ff6b35,#e50914,#ff6b35);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .hero-sub{color:#aaa;font-size:.85rem;letter-spacing:4px;text-transform:uppercase;margin-top:.5rem;}
+    .season-pill{margin-top:1.2rem;background:rgba(229,9,20,.15);border:1px solid rgba(229,9,20,.4);
+      border-radius:20px;padding:.4rem 1.2rem;font-size:.85rem;color:#ff6b35;font-weight:600;}
+    .hero-stats{display:flex;gap:1.5rem;margin-top:1.4rem;flex-wrap:wrap;justify-content:center;}
+    .hero-stat{text-align:center;}
+    .hero-stat-val{font-size:1.6rem;font-weight:900;color:#fff;line-height:1;}
+    .hero-stat-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:.2rem;}
+
+    .content{max-width:1100px;margin:0 auto;padding:3rem 1.5rem;}
+    .section-title{font-size:clamp(1.2rem,3vw,1.6rem);font-weight:800;color:var(--bb);
+      border-bottom:1px solid var(--border);padding-bottom:.6rem;margin-bottom:1.5rem;letter-spacing:1px;}
+
+    /* TABS */
+    .tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem;}
+    .tab-btn{padding:.45rem 1rem;border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;
+      border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .2s;font-family:inherit;}
+    .tab-btn.active{background:rgba(229,9,20,.15);border-color:var(--bb);color:var(--bb);}
+    .tab-btn:hover:not(.active){color:#fff;border-color:rgba(255,255,255,.3);}
+
+    /* CONTESTANTS */
+    .contestants-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;}
+    .contestant-card{background:var(--card);border:1px solid var(--border);border-radius:14px;
+      padding:1.2rem .8rem;text-align:center;transition:border-color .2s,transform .2s;cursor:pointer;}
+    .contestant-card:hover{border-color:rgba(229,9,20,.5);transform:translateY(-3px);}
+    .contestant-card.eliminated{opacity:.45;}
+    .contestant-avatar{width:60px;height:60px;border-radius:50%;margin:0 auto .6rem;
+      display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;border:2px solid var(--bb);}
+    .contestant-img{width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--bb);margin:0 auto .6rem;display:block;}
+    .contestant-name{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:.3rem;}
+    .contestant-status{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;}
+    .status-active{color:#2ed573;}.status-nominated{color:var(--gold);}.status-eliminated{color:#ff4757;}
+    .star-row{display:flex;justify-content:center;gap:1px;margin-top:.4rem;font-size:.75rem;}
+    .star-filled{color:var(--gold);}.star-empty{color:#444;}
+
+    /* FAN LEADERBOARD */
+    .fan-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+    .fan-lb-row{display:grid;grid-template-columns:32px 1fr 60px 60px 60px 70px;
+      align-items:center;padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.4rem;}
+    .fan-lb-row:last-child{border-bottom:none;}
+    .fan-lb-row.hdr{background:rgba(229,9,20,.07);font-size:.68rem;letter-spacing:1px;
+      text-transform:uppercase;color:#ff6b35;font-weight:600;}
+    .fan-lb-bar-wrap{background:rgba(255,255,255,.06);border-radius:4px;height:5px;margin-top:3px;}
+    .fan-lb-bar{background:linear-gradient(90deg,var(--bb),#ff6b35);height:100%;border-radius:4px;transition:width .5s;}
+
+    /* POLLS */
+    .poll-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
+    .poll-card.closed{border-color:rgba(255,215,0,.25);}
+    .poll-question{font-size:1rem;font-weight:700;margin-bottom:1rem;color:#fff;}
+    .poll-week{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;}
+    .poll-type-badge{display:inline-block;font-size:.62rem;padding:.15rem .5rem;border-radius:10px;
+      font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:.5rem;}
+    .badge-eviction{background:rgba(229,9,20,.2);color:#ff4757;border:1px solid rgba(229,9,20,.3);}
+    .badge-winner{background:rgba(255,215,0,.15);color:var(--gold);border:1px solid rgba(255,215,0,.3);}
+    .badge-general{background:rgba(255,255,255,.07);color:#aaa;border:1px solid var(--border);}
+    .badge-closed{background:rgba(255,215,0,.12);color:var(--gold);border:1px solid rgba(255,215,0,.3);}
+    .poll-options{display:flex;flex-direction:column;gap:.6rem;}
+    .poll-option{position:relative;background:rgba(255,255,255,.05);border:1px solid var(--border);
+      border-radius:8px;padding:.6rem 1rem;cursor:pointer;transition:border-color .2s;
+      display:flex;align-items:center;justify-content:space-between;overflow:hidden;}
+    .poll-option:hover{border-color:rgba(229,9,20,.5);}
+    .poll-option.voted{border-color:var(--bb);}
+    .poll-option.winner-opt{border-color:var(--gold);background:rgba(255,215,0,.07);}
+    .poll-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(229,9,20,.15);border-radius:8px;transition:width .5s;pointer-events:none;}
+    .poll-opt-label{position:relative;font-size:.88rem;font-weight:500;}
+    .poll-opt-pct{position:relative;font-size:.78rem;color:var(--muted);}
+
+    /* NOMINATIONS */
+    .nom-week{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1rem;}
+    .nom-week-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;}
+    .nom-week-label{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#ff6b35;font-weight:700;}
+    .nom-evicted{font-size:.78rem;color:#ff4757;font-weight:600;}
+    .nom-chips{display:flex;flex-wrap:wrap;gap:.5rem;}
+    .nom-chip{padding:.3rem .8rem;border-radius:20px;font-size:.78rem;font-weight:600;
+      background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.3);color:#ff6b35;}
+    .nom-chip.evicted{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
+
+    /* REELS */
+    .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.2rem;}
+    .reel-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;}
+    .reel-card:hover{border-color:rgba(229,9,20,.4);}
+    .reel-embed{width:100%;aspect-ratio:16/9;border:none;}
+    .reel-body{padding:.8rem 1rem;}
+    .reel-caption{font-size:.85rem;color:#ccc;margin-bottom:.5rem;}
+    .reel-meta{display:flex;align-items:center;justify-content:space-between;font-size:.75rem;color:var(--muted);}
+    .reel-like-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.82rem;
+      display:flex;align-items:center;gap:.3rem;transition:color .2s;}
+    .reel-like-btn:hover,.reel-like-btn.liked{color:var(--bb);}
+    .reel-del-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.75rem;transition:color .2s;}
+    .reel-del-btn:hover{color:#ff4757;}
+    .reel-cat-badge{font-size:.62rem;padding:.15rem .5rem;border-radius:10px;background:rgba(255,255,255,.07);
+      border:1px solid var(--border);color:#aaa;text-transform:uppercase;letter-spacing:.5px;}
+
+    /* ADMIN */
+    .admin-section{background:rgba(229,9,20,.05);border:1px solid rgba(229,9,20,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
+    .admin-label{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--bb);margin-bottom:.8rem;font-weight:700;}
+
+    /* FORMS */
+    .form-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem;}
+    .inp{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
+      color:#fff;font-size:.88rem;padding:.5rem .85rem;flex:1;min-width:120px;font-family:inherit;}
+    .inp:focus{outline:none;border-color:var(--bb);}
+    select.inp option{background:#111;}
+    textarea.inp{resize:vertical;min-height:70px;}
+    .btn{padding:.5rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;
+      cursor:pointer;border:1px solid;transition:all .2s;font-family:inherit;}
+    .btn-red{background:rgba(229,9,20,.15);border-color:var(--bb);color:var(--bb);}
+    .btn-red:hover{background:rgba(229,9,20,.3);}
+    .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);}
+    .btn-muted:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+
+    /* MODAL */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
+      z-index:500;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:#111;border:1px solid var(--border);border-radius:16px;
+      width:100%;max-width:540px;padding:1.5rem;margin:auto;}
+    .modal h2{color:var(--bb);font-size:1.3rem;margin-bottom:1.2rem;}
+    .modal-footer{display:flex;gap:.8rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap;
+      padding-top:.8rem;border-top:1px solid var(--border);}
+
+    /* RATING STARS */
+    .rating-group{margin-bottom:.8rem;}
+    .rating-label{font-size:.75rem;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.5px;}
+    .star-input{display:flex;gap:4px;}
+    .star-input span{font-size:1.4rem;cursor:pointer;transition:transform .1s;}
+    .star-input span:hover{transform:scale(1.2);}
+
+    /* COMMENTS */
+    .comment-item{padding:.7rem 0;border-bottom:1px solid rgba(255,255,255,.05);}
+    .comment-item:last-child{border-bottom:none;}
+    .comment-meta{font-size:.72rem;color:var(--muted);margin-bottom:.3rem;display:flex;justify-content:space-between;}
+    .comment-text{font-size:.88rem;color:#ddd;line-height:1.5;}
+    .comment-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;}
+    .comment-del:hover{color:#ff4757;}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
+      background:#222;color:#fff;border:1px solid var(--border);
+      padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;
+      z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+    .toast.show{opacity:1;}
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <a href="/" class="brand">MediaPedia</a>
+    <div class="nav-right">
+      <a href="/">Home</a>
+      <a href="/biggboss" style="color:var(--bb);font-weight:700;">Bigg Boss</a>
+      {% if username %}
+        <a href="/u/{{ username }}" style="color:var(--bb);font-weight:600;">{{ username }}</a>
+        <a href="/feed">Feed</a>
+        <a href="/logout">Logout</a>
+      {% else %}
+        <a href="/login">Login</a>
+        <a href="/register" style="color:var(--bb);font-weight:600;">Register</a>
+      {% endif %}
+    </div>
+    <button class="nav-burger" onclick="document.getElementById('nd').classList.toggle('open')" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+  <div class="nav-drawer" id="nd">
+    <a href="/">Home</a>
+    <a href="/biggboss" style="color:var(--bb);font-weight:700;">Bigg Boss</a>
+    {% if username %}
+      <a href="/u/{{ username }}" style="color:var(--bb);font-weight:600;">{{ username }}</a>
+      <a href="/feed">Feed</a>
+      <a href="/logout">Logout</a>
+    {% else %}
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    {% endif %}
+  </div>
+
+  <div class="hero">
+    <h1>BIGG BOSS</h1>
+    <div class="hero-sub">India's Biggest Reality Show</div>
+    <div class="season-pill" id="season-pill">Loading season...</div>
+    <div class="hero-stats" id="hero-stats" style="display:none;">
+      <div class="hero-stat"><div class="hero-stat-val" id="hs-active" style="color:#2ed573;">—</div><div class="hero-stat-lbl">Active</div></div>
+      <div class="hero-stat"><div class="hero-stat-val" id="hs-nominated" style="color:var(--gold);">—</div><div class="hero-stat-lbl">Nominated</div></div>
+      <div class="hero-stat"><div class="hero-stat-val" id="hs-eliminated" style="color:#ff4757;">—</div><div class="hero-stat-lbl">Evicted</div></div>
+      <div class="hero-stat"><div class="hero-stat-val" id="hs-total">—</div><div class="hero-stat-lbl">Total</div></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ADMIN PANEL -->
+    {% if username == 'abhinav' %}
+    <section style="margin-bottom:2.5rem;">
+      <div class="section-title" style="font-size:1rem;">⚙️ Admin Controls</div>
+
+      <div class="admin-section">
+        <div class="admin-label">Season Info</div>
+        <div class="form-row">
+          <input class="inp" id="a-season-name" placeholder="Season name e.g. Bigg Boss 18" />
+          <input class="inp" id="a-season-host" placeholder="Host name" />
+          <input class="inp" id="a-season-year" placeholder="Year" style="max-width:90px;" />
+          <button class="btn btn-red" onclick="saveSeason()">Save</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-label">Contestants JSON</div>
+        <textarea class="inp" id="a-contestants" rows="4" style="width:100%;margin-bottom:.6rem;"
+          placeholder='[{"name":"Name","status":"active","bio":"Short bio...","img":"https://..."}]'></textarea>
+        <button class="btn btn-red" onclick="saveContestants()">Save Contestants</button>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-label">Create Poll</div>
+        <div class="form-row">
+          <input class="inp" id="a-poll-q" placeholder="Poll question" />
+          <input class="inp" id="a-poll-week" placeholder="Week #" style="max-width:80px;" type="number" />
+          <select class="inp" id="a-poll-type" style="max-width:140px;">
+            <option value="general">General</option>
+            <option value="eviction">Eviction Vote</option>
+            <option value="winner">Winner Prediction</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <input class="inp" id="a-poll-opts" placeholder="Options comma-separated e.g. Alice,Bob,Charlie" />
+          <button class="btn btn-red" onclick="createPoll()">Create Poll</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-label">Close Poll / Reveal Result</div>
+        <div class="form-row">
+          <input class="inp" id="a-close-poll-id" placeholder="Poll ID" />
+          <input class="inp" id="a-close-poll-result" placeholder="Actual result (e.g. evicted name)" />
+          <button class="btn btn-red" onclick="closePoll()">Close Poll</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <div class="admin-label">Add Nomination Week</div>
+        <div class="form-row">
+          <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" />
+          <input class="inp" id="a-nom-nominated" placeholder="Nominated (comma-separated)" />
+          <input class="inp" id="a-nom-evicted" placeholder="Evicted (if known)" />
+          <button class="btn btn-red" onclick="addNomination()">Add</button>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('contestants',this)">🏠 Contestants</button>
+      <button class="tab-btn" onclick="switchTab('leaderboard',this)">🏆 Fan Favourite</button>
+      <button class="tab-btn" onclick="switchTab('polls',this)">🗳️ Polls</button>
+      <button class="tab-btn" onclick="switchTab('nominations',this)">📋 Nominations</button>
+      <button class="tab-btn" onclick="switchTab('reels',this)">🎬 Clips</button>
+    </div>
+
+    <!-- CONTESTANTS TAB -->
+    <div id="tab-contestants">
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab-btn active" onclick="filterContestants('all',this)">All</button>
+        <button class="tab-btn" onclick="filterContestants('active',this)">🟢 Active</button>
+        <button class="tab-btn" onclick="filterContestants('nominated',this)">⚠️ Nominated</button>
+        <button class="tab-btn" onclick="filterContestants('eliminated',this)">🚪 Evicted</button>
+      </div>
+      <div class="contestants-grid" id="contestants-wrap">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </div>
+
+    <!-- FAN LEADERBOARD TAB -->
+    <div id="tab-leaderboard" style="display:none;">
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Community ratings across Likability, Gameplay &amp; Entertainment.</p>
+      <div class="fan-lb" id="fan-lb-wrap">
+        <div class="fan-lb-row hdr">
+          <div>#</div><div>Contestant</div>
+          <div style="text-align:center;">Like</div>
+          <div style="text-align:center;">Game</div>
+          <div style="text-align:center;">Entmt</div>
+          <div style="text-align:center;">Overall</div>
+        </div>
+        <div id="fan-lb-rows"><p style="padding:1rem;color:var(--muted);font-size:.85rem;">Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- POLLS TAB -->
+    <div id="tab-polls" style="display:none;">
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab-btn active" onclick="filterPolls('all',this)">All</button>
+        <button class="tab-btn" onclick="filterPolls('eviction',this)">Eviction</button>
+        <button class="tab-btn" onclick="filterPolls('winner',this)">Winner Prediction</button>
+        <button class="tab-btn" onclick="filterPolls('general',this)">General</button>
+      </div>
+      <div id="polls-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+    </div>
+
+    <!-- NOMINATIONS TAB -->
+    <div id="tab-nominations" style="display:none;">
+      <div id="nominations-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+    </div>
+
+    <!-- REELS TAB -->
+    <div id="tab-reels" style="display:none;">
+      {% if username %}
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;text-transform:uppercase;letter-spacing:1px;">Share a Clip</div>
+        <div class="form-row">
+          <input class="inp" id="reel-url" placeholder="YouTube URL" />
+          <input class="inp" id="reel-caption" placeholder="Caption (optional)" />
+          <select class="inp" id="reel-cat" style="max-width:130px;">
+            <option value="">Category</option>
+            <option value="funny">Funny</option>
+            <option value="fight">Fight</option>
+            <option value="emotional">Emotional</option>
+            <option value="task">Task</option>
+            <option value="highlight">Highlight</option>
+          </select>
+          <button class="btn btn-red" onclick="addReel()">Post</button>
+        </div>
+      </div>
+      {% endif %}
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab-btn active" onclick="filterReels('',this)">All</button>
+        <button class="tab-btn" onclick="filterReels('funny',this)">Funny</button>
+        <button class="tab-btn" onclick="filterReels('fight',this)">Fight</button>
+        <button class="tab-btn" onclick="filterReels('emotional',this)">Emotional</button>
+        <button class="tab-btn" onclick="filterReels('task',this)">Task</button>
+        <button class="tab-btn" onclick="filterReels('highlight',this)">Highlight</button>
+      </div>
+      <div class="reels-grid" id="reels-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+    </div>
+
+  </div>
+
+  <!-- CONTESTANT DETAIL MODAL -->
+  <div class="modal-overlay" id="contestant-modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:580px;">
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;">
+        <div id="cm-avatar" style="width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;flex-shrink:0;border:2px solid var(--bb);"></div>
+        <div>
+          <div id="cm-name" style="font-size:1.2rem;font-weight:800;"></div>
+          <div id="cm-status" style="font-size:.75rem;margin-top:.2rem;"></div>
+          <div id="cm-bio" style="font-size:.8rem;color:var(--muted);margin-top:.3rem;line-height:1.4;"></div>
+        </div>
+        <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;">✕</button>
+      </div>
+
+      <!-- Nomination History -->
+      <div id="cm-nom-history" style="margin-bottom:1.2rem;display:none;">
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Nomination History</div>
+        <div id="cm-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+      </div>
+
+      <!-- Community Ratings -->
+      <div style="margin-bottom:1.2rem;">
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Community Rating</div>
+        <div id="cm-avg-ratings" style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
+        {% if username %}
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem;">Your Rating</div>
+        <div class="rating-group">
+          <div class="rating-label">Likability</div>
+          <div class="star-input" id="r-likability" data-val="3"></div>
+        </div>
+        <div class="rating-group">
+          <div class="rating-label">Gameplay</div>
+          <div class="star-input" id="r-gameplay" data-val="3"></div>
+        </div>
+        <div class="rating-group">
+          <div class="rating-label">Entertainment</div>
+          <div class="star-input" id="r-entertainment" data-val="3"></div>
+        </div>
+        <button class="btn btn-red" style="margin-top:.6rem;" onclick="submitRating()">Submit Rating</button>
+        {% else %}
+        <p style="font-size:.82rem;color:var(--muted);"><a href="/login" style="color:var(--bb);">Login</a> to rate this contestant.</p>
+        {% endif %}
+      </div>
+
+      <!-- Comments -->
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Community Comments</div>
+        <div id="cm-comments" style="max-height:200px;overflow-y:auto;margin-bottom:.8rem;"></div>
+        {% if username %}
+        <div class="form-row">
+          <input class="inp" id="cm-comment-inp" placeholder="Say something about this contestant..." maxlength="300" onkeydown="if(event.key==='Enter')submitComment()" />
+          <button class="btn btn-red" onclick="submitComment()">Post</button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const VIEWER = '{{ username or "" }}';
+    const IS_ADMIN = VIEWER === 'abhinav';
+    const AVATAR_COLORS = ['#e50914','#ff6b35','#ffd700','#2ed573','#5799ef','#a29bfe','#ff9f43','#ff6b6b'];
+    let _contestants = [];
+    let _allRatings = {};
+    let _allPolls = [];
+    let _allReels = [];
+    let _allNominations = [];
+    let _currentContestant = null;
+    let _contestantFilter = 'all';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    function switchTab(name, btn) {
+      ['contestants','leaderboard','polls','nominations','reels'].forEach(t => {
+        document.getElementById('tab-'+t).style.display = t === name ? '' : 'none';
+      });
+      document.querySelectorAll('.tabs > .tab-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      if (name === 'leaderboard') renderFanLeaderboard();
+      if (name === 'polls' && !_allPolls.length) loadPolls();
+      if (name === 'nominations') loadNominations();
+      if (name === 'reels' && !_allReels.length) loadReels();
+    }
+
+    // ===== SEASON =====
+    function loadSeason() {
+      fetch('/api/bb/season').then(r => r.json()).then(d => {
+        const pill = document.getElementById('season-pill');
+        pill.textContent = d.name ? d.name + (d.year ? ' ('+d.year+')' : '') + (d.host ? ' • Host: '+d.host : '') : 'Season info coming soon';
+        if (IS_ADMIN) {
+          document.getElementById('a-season-name').value = d.name || '';
+          document.getElementById('a-season-host').value = d.host || '';
+          document.getElementById('a-season-year').value = d.year || '';
+        }
+      }).catch(() => { document.getElementById('season-pill').textContent = 'Season info unavailable'; });
+    }
+
+    function saveSeason() {
+      const name = document.getElementById('a-season-name').value.trim();
+      const host = document.getElementById('a-season-host').value.trim();
+      const year = document.getElementById('a-season-year').value.trim();
+      fetch('/api/bb/season', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,host,year}) })
+        .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} showToast('Season saved!'); loadSeason(); });
+    }
+
+    // ===== CONTESTANTS =====
+    function starsHtml(val, max=5) {
+      let s = '';
+      for (let i=1;i<=max;i++) s += `<span class="${i<=Math.round(val)?'star-filled':'star-empty'}">★</span>`;
+      return s;
+    }
+
+    function filterContestants(status, btn) {
+      _contestantFilter = status;
+      document.querySelectorAll('#tab-contestants .tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderContestants();
+    }
+
+    function renderContestants() {
+      const wrap = document.getElementById('contestants-wrap');
+      let list = _contestants;
+      if (_contestantFilter !== 'all') list = list.filter(c => c.status === _contestantFilter);
+      if (!list.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No contestants in this category.</p>'; return; }
+      wrap.innerHTML = list.map((c) => {
+        const i = _contestants.indexOf(c);
+        const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const sc = c.status==='eliminated'?'status-eliminated':c.status==='nominated'?'status-nominated':'status-active';
+        const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active';
+        const r = _allRatings[c.name];
+        const overall = r ? r.overall : 0;
+        const av = c.img
+          ? `<img class="contestant-img" src="${c.img}" alt="${c.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="contestant-avatar" style="background:${color}22;border-color:${color};color:${color};display:none;">${(c.name||'?')[0].toUpperCase()}</div>`
+          : `<div class="contestant-avatar" style="background:${color}22;border-color:${color};color:${color};">${(c.name||'?')[0].toUpperCase()}</div>`;
+        return `<div class="contestant-card${c.status==='eliminated'?' eliminated':''}" onclick="openContestantModal('${c.name.replace(/'/g,"\\'")}')">
+          ${av}
+          <div class="contestant-name">${c.name}</div>
+          <div class="contestant-status ${sc}">${sl}</div>
+          ${overall ? `<div class="star-row">${starsHtml(overall)}</div><div style="font-size:.65rem;color:var(--muted);margin-top:2px;">${overall.toFixed(1)} avg</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function loadContestants() {
+      Promise.all([
+        fetch('/api/bb/contestants').then(r=>r.json()),
+        fetch('/api/bb/ratings').then(r=>r.json())
+      ]).then(([list, ratings]) => {
+        _contestants = list;
+        _allRatings = ratings;
+        // Hero stats
+        const active = list.filter(c=>c.status==='active').length;
+        const nominated = list.filter(c=>c.status==='nominated').length;
+        const eliminated = list.filter(c=>c.status==='eliminated').length;
+        if (list.length) {
+          document.getElementById('hs-active').textContent = active;
+          document.getElementById('hs-nominated').textContent = nominated;
+          document.getElementById('hs-eliminated').textContent = eliminated;
+          document.getElementById('hs-total').textContent = list.length;
+          document.getElementById('hero-stats').style.display = 'flex';
+        }
+        renderContestants();
+        if (IS_ADMIN) document.getElementById('a-contestants').value = JSON.stringify(list, null, 2);
+        renderFanLeaderboard();
+      }).catch(() => {
+        document.getElementById('contestants-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
+      });
+    }
+
+    function saveContestants() {
+      let list; try { list = JSON.parse(document.getElementById('a-contestants').value); } catch(e) { showToast('Invalid JSON'); return; }
+      fetch('/api/bb/contestants', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list}) })
+        .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} showToast('Contestants saved!'); loadContestants(); });
+    }
+
+    // ===== FAN LEADERBOARD =====
+    function renderFanLeaderboard() {
+      const wrap = document.getElementById('fan-lb-rows');
+      if (!_contestants.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No contestants yet.</p>'; return; }
+      const rows = _contestants
+        .filter(c => c.status !== 'eliminated')
+        .map(c => {
+          const r = _allRatings[c.name] || {likability:0,gameplay:0,entertainment:0,overall:0,count:0};
+          return {...c, ...r};
+        })
+        .sort((a,b) => b.overall - a.overall);
+      const maxOverall = Math.max(...rows.map(r=>r.overall), 1);
+      wrap.innerHTML = rows.map((c,i) => `
+        <div class="fan-lb-row" style="cursor:pointer;" onclick="openContestantModal('${c.name.replace(/'/g,"\\'")}')">
+          <div style="font-size:.85rem;color:var(--muted);text-align:center;">${i+1}</div>
+          <div style="font-size:.85rem;font-weight:600;">${c.name}
+            <div class="fan-lb-bar-wrap"><div class="fan-lb-bar" style="width:${maxOverall?Math.round(c.overall/maxOverall*100):0}%"></div></div>
+          </div>
+          <div style="text-align:center;font-size:.82rem;color:#ccc;">${c.likability?c.likability.toFixed(1):'—'}</div>
+          <div style="text-align:center;font-size:.82rem;color:#ccc;">${c.gameplay?c.gameplay.toFixed(1):'—'}</div>
+          <div style="text-align:center;font-size:.82rem;color:#ccc;">${c.entertainment?c.entertainment.toFixed(1):'—'}</div>
+          <div style="text-align:center;font-size:.9rem;font-weight:700;color:var(--bb);">${c.overall?c.overall.toFixed(1):'—'}</div>
+        </div>`).join('');
+    }
+
+    // ===== CONTESTANT MODAL =====
+    function openContestantModal(name) {
+      _currentContestant = name;
+      const c = _contestants.find(x=>x.name===name) || {name};
+      const i = _contestants.indexOf(c);
+      const color = AVATAR_COLORS[i >= 0 ? i % AVATAR_COLORS.length : 0];
+      const av = document.getElementById('cm-avatar');
+      av.style.background = color+'22'; av.style.borderColor = color; av.style.color = color;
+      if (c.img) { av.innerHTML = `<img src="${c.img}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.parentElement.textContent='${(name||'?')[0].toUpperCase()}'" />`; }
+      else { av.textContent = (name||'?')[0].toUpperCase(); }
+      document.getElementById('cm-name').textContent = name;
+      const sc = c.status==='eliminated'?'color:#ff4757':c.status==='nominated'?'color:var(--gold)':'color:#2ed573';
+      const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated ⚠️':'Active ✅';
+      document.getElementById('cm-status').innerHTML = `<span style="${sc}">${sl}</span>`;
+      // Bio
+      const bioEl = document.getElementById('cm-bio');
+      bioEl.textContent = c.bio || '';
+      bioEl.style.display = c.bio ? '' : 'none';
+      // Nomination history
+      const nomWeeks = _allNominations.filter(n => (n.nominated||[]).includes(name));
+      const nomDiv = document.getElementById('cm-nom-history');
+      const nomChips = document.getElementById('cm-nom-chips');
+      if (nomWeeks.length) {
+        nomChips.innerHTML = nomWeeks.sort((a,b)=>a.week-b.week).map(n => {
+          const wasEvicted = n.evicted === name;
+          return `<span style="padding:.25rem .65rem;border-radius:20px;font-size:.72rem;font-weight:600;${
+            wasEvicted ? 'background:rgba(255,71,87,.15);border:1px solid rgba(255,71,87,.4);color:#ff4757;' :
+            'background:rgba(229,9,20,.1);border:1px solid rgba(229,9,20,.25);color:#ff6b35;'
+          }">Wk ${n.week}${wasEvicted?' 🚪':''}</span>`;
+        }).join('');
+        nomDiv.style.display = '';
+      } else {
+        nomDiv.style.display = 'none';
+      }
+      document.getElementById('contestant-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      loadContestantRating(name);
+      loadContestantComments(name);
+    }
+
+    function closeModal() {
+      document.getElementById('contestant-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+    function loadContestantRating(name) {
+      fetch('/api/bb/ratings/'+encodeURIComponent(name)).then(r=>r.json()).then(d => {
+        const avgWrap = document.getElementById('cm-avg-ratings');
+        avgWrap.innerHTML = ['likability','gameplay','entertainment'].map(k => `
+          <div style="text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:.5rem .8rem;min-width:80px;">
+            <div style="font-size:1.1rem;font-weight:800;color:var(--bb);">${d[k]?d[k].toFixed(1):'—'}</div>
+            <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${k}</div>
+          </div>`).join('') +
+          `<div style="text-align:center;background:rgba(229,9,20,.1);border:1px solid rgba(229,9,20,.3);border-radius:10px;padding:.5rem .8rem;min-width:80px;">
+            <div style="font-size:1.1rem;font-weight:800;color:var(--bb);">${d.overall?d.overall.toFixed(1):'—'}</div>
+            <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${d.count||0} ratings</div>
+          </div>`;
+        if (VIEWER) {
+          ['likability','gameplay','entertainment'].forEach(k => {
+            const val = d.mine ? d.mine[k] : 3;
+            buildStarInput(k, val);
+          });
+        }
+      });
+    }
+
+    function buildStarInput(key, val) {
+      const wrap = document.getElementById('r-'+key);
+      if (!wrap) return;
+      wrap.dataset.val = val;
+      wrap.innerHTML = '';
+      for (let i=1;i<=5;i++) {
+        const s = document.createElement('span');
+        s.textContent = '★';
+        s.style.color = i <= val ? 'var(--gold)' : '#444';
+        s.style.fontSize = '1.4rem'; s.style.cursor = 'pointer';
+        s.onmouseover = () => highlightStars(wrap, i);
+        s.onmouseout = () => highlightStars(wrap, parseInt(wrap.dataset.val));
+        s.onclick = () => { wrap.dataset.val = i; highlightStars(wrap, i); };
+        wrap.appendChild(s);
+      }
+    }
+
+    function highlightStars(wrap, val) {
+      Array.from(wrap.children).forEach((s,i) => { s.style.color = i < val ? 'var(--gold)' : '#444'; });
+    }
+
+    function submitRating() {
+      if (!VIEWER) { showToast('Login required'); return; }
+      const likability = parseInt(document.getElementById('r-likability').dataset.val) || 3;
+      const gameplay = parseInt(document.getElementById('r-gameplay').dataset.val) || 3;
+      const entertainment = parseInt(document.getElementById('r-entertainment').dataset.val) || 3;
+      fetch('/api/bb/ratings/'+encodeURIComponent(_currentContestant), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({likability, gameplay, entertainment})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Rating saved!');
+        _allRatings[_currentContestant] = d.stats;
+        loadContestantRating(_currentContestant);
+        renderFanLeaderboard();
+      });
+    }
+
+    // ===== CONTESTANT COMMENTS =====
+    function loadContestantComments(name) {
+      fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/comments').then(r=>r.json()).then(comments => {
+        const wrap = document.getElementById('cm-comments');
+        if (!comments.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.82rem;padding:.4rem 0;">No comments yet. Be first!</p>'; return; }
+        wrap.innerHTML = comments.map(c => `
+          <div class="comment-item">
+            <div class="comment-meta">
+              <span style="color:#ccc;font-weight:600;">@${c.username}</span>
+              <div style="display:flex;gap:.5rem;align-items:center;">
+                <span>${c.created_at ? c.created_at.slice(0,10) : ''}</span>
+                ${(VIEWER===c.username||IS_ADMIN)?`<button class="comment-del" onclick="deleteContestantComment('${name}','${c.comment_id}')">🗑</button>`:''}
+              </div>
+            </div>
+            <div class="comment-text">${c.text}</div>
+          </div>`).join('');
+        wrap.scrollTop = wrap.scrollHeight;
+      });
+    }
+
+    function submitComment() {
+      if (!VIEWER) { showToast('Login required'); return; }
+      const inp = document.getElementById('cm-comment-inp');
+      const text = inp.value.trim();
+      if (!text) return;
+      fetch('/api/bb/contestants/'+encodeURIComponent(_currentContestant)+'/comments', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        inp.value = '';
+        loadContestantComments(_currentContestant);
+      });
+    }
+
+    function deleteContestantComment(name, commentId) {
+      fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/comments/'+commentId, {method:'DELETE'})
+        .then(r=>r.json()).then(() => loadContestantComments(name));
+    }
+  </script>
+
+  <script>
+    // ===== POLLS =====
+    let _pollFilter = 'all';
+
+    function loadPolls() {
+      fetch('/api/bb/polls').then(r=>r.json()).then(polls => {
+        _allPolls = polls;
+        renderPolls();
+      }).catch(() => { document.getElementById('polls-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load polls.</p>'; });
+    }
+
+    function filterPolls(type, btn) {
+      _pollFilter = type;
+      document.querySelectorAll('#tab-polls .tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      renderPolls();
+    }
+
+    function renderPolls() {
+      const wrap = document.getElementById('polls-wrap');
+      let polls = _allPolls;
+      if (_pollFilter !== 'all') polls = polls.filter(p => (p.poll_type||'general') === _pollFilter);
+      if (!polls.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No polls in this category.</p>'; return; }
+      wrap.innerHTML = polls.map(p => renderPoll(p)).join('');
+    }
+
+    function renderPoll(p) {
+      const votes = p.votes || {};
+      const total = Object.keys(votes).length;
+      const myVote = votes[VIEWER];
+      const ptype = p.poll_type || 'general';
+      const isClosed = !!p.closed;
+      const badgeClass = isClosed ? 'badge-closed' : (ptype==='eviction'?'badge-eviction':ptype==='winner'?'badge-winner':'badge-general');
+      const badgeLabel = isClosed ? '🔒 Closed' : (ptype==='eviction'?'Eviction':ptype==='winner'?'Winner Prediction':'General');
+      const showBars = myVote || isClosed;
+      const optHtml = (p.options||[]).map(opt => {
+        const count = Object.values(votes).filter(v=>v===opt).length;
+        const pct = total ? Math.round(count/total*100) : 0;
+        const isVoted = myVote === opt;
+        const isWinner = isClosed && p.result === opt;
+        return `<div class="poll-option${isVoted?' voted':''}${isWinner?' winner-opt':''}" onclick="votePoll('${p.poll_id}','${opt.replace(/'/g,"\\'")}')">
+          <div class="poll-bar" style="width:${showBars?pct:0}%"></div>
+          <span class="poll-opt-label">${opt}${isWinner?' 🏆':''}</span>
+          <span class="poll-opt-pct">${showBars?pct+'%':''}</span>
+        </div>`;
+      }).join('');
+      const resultNote = isClosed && p.result ? `<div style="font-size:.75rem;color:var(--gold);margin-top:.5rem;">Result: ${p.result}</div>` : '';
+      const adminClose = IS_ADMIN && !isClosed ? `<button class="btn btn-muted" style="font-size:.7rem;padding:.2rem .6rem;margin-left:.5rem;" onclick="prefillClosePoll('${p.poll_id}')">Close</button>` : '';
+      return `<div class="poll-card${isClosed?' closed':''}" id="poll-${p.poll_id}">
+        <div class="poll-week">Week ${p.week} <span class="poll-type-badge ${badgeClass}">${badgeLabel}</span>${adminClose}</div>
+        <div class="poll-question">${p.question}</div>
+        <div class="poll-options">${optHtml}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.6rem;" id="poll-count-${p.poll_id}">${total} vote${total!==1?'s':''}</div>
+        ${resultNote}
+      </div>`;
+    }
+
+    function votePoll(pollId, option) {
+      if (!VIEWER) { showToast('Login to vote'); return; }
+      const poll = _allPolls.find(p=>p.poll_id===pollId);
+      if (poll && poll.closed) { showToast('This poll is closed'); return; }
+      fetch('/api/bb/polls/'+pollId+'/vote', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({option})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        const votes = d.votes || {};
+        const total = Object.keys(votes).length;
+        const card = document.getElementById('poll-'+pollId);
+        if (!card) return;
+        card.querySelectorAll('.poll-option').forEach(el => {
+          const label = el.querySelector('.poll-opt-label').textContent;
+          const count = Object.values(votes).filter(v=>v===label).length;
+          const pct = total ? Math.round(count/total*100) : 0;
+          el.querySelector('.poll-bar').style.width = pct+'%';
+          el.querySelector('.poll-opt-pct').textContent = pct+'%';
+          el.classList.toggle('voted', label===option);
+        });
+        const countEl = document.getElementById('poll-count-'+pollId);
+        if (countEl) countEl.textContent = total+' vote'+(total!==1?'s':'');
+        const idx = _allPolls.findIndex(p=>p.poll_id===pollId);
+        if (idx>=0) _allPolls[idx].votes = votes;
+      }).catch(() => showToast('Vote failed'));
+    }
+
+    function createPoll() {
+      const question = document.getElementById('a-poll-q').value.trim();
+      const week = parseInt(document.getElementById('a-poll-week').value)||1;
+      const poll_type = document.getElementById('a-poll-type').value;
+      const opts = document.getElementById('a-poll-opts').value.split(',').map(s=>s.trim()).filter(Boolean);
+      if (!question||opts.length<2) { showToast('Question and at least 2 options required'); return; }
+      fetch('/api/bb/polls', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({question, week, options:opts, poll_type})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Poll created!');
+        document.getElementById('a-poll-q').value='';
+        document.getElementById('a-poll-opts').value='';
+        loadPolls();
+      });
+    }
+
+    function prefillClosePoll(pollId) {
+      document.getElementById('a-close-poll-id').value = pollId;
+      document.getElementById('a-close-poll-result').focus();
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function closePoll() {
+      const poll_id = document.getElementById('a-close-poll-id').value.trim();
+      const result = document.getElementById('a-close-poll-result').value.trim();
+      if (!poll_id) { showToast('Poll ID required'); return; }
+      fetch('/api/bb/polls/'+poll_id+'/close', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({result})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Poll closed!');
+        document.getElementById('a-close-poll-id').value='';
+        document.getElementById('a-close-poll-result').value='';
+        loadPolls();
+      });
+    }
+
+    // ===== NOMINATIONS =====
+    function loadNominations() {
+      fetch('/api/bb/nominations').then(r=>r.json()).then(noms => {
+        _allNominations = noms;
+        renderNominations();
+      }).catch(() => { document.getElementById('nominations-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    function renderNominations() {
+      const wrap = document.getElementById('nominations-wrap');
+      const noms = _allNominations;
+      if (!noms.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No nomination data yet.</p>'; return; }
+      const sorted = [...noms].sort((a,b)=>b.week-a.week);
+      wrap.innerHTML = sorted.map(n => `
+        <div class="nom-week" id="nom-${n.nomination_id}">
+          <div class="nom-week-hdr">
+            <span class="nom-week-label">Week ${n.week}</span>
+            <div style="display:flex;align-items:center;gap:.8rem;">
+              ${n.evicted?`<span class="nom-evicted">🚪 Evicted: ${n.evicted}</span>`:''}
+              ${IS_ADMIN?`<button class="btn btn-muted" style="font-size:.72rem;padding:.25rem .6rem;" onclick="deleteNomination('${n.nomination_id}')">Delete</button>`:''}
+            </div>
+          </div>
+          <div class="nom-chips">
+            ${(n.nominated||[]).map(name=>`<span class="nom-chip${name===n.evicted?' evicted':''}">${name}</span>`).join('')}
+          </div>
+        </div>`).join('');
+    }
+
+    function addNomination() {
+      const week = parseInt(document.getElementById('a-nom-week').value)||1;
+      const nominated = document.getElementById('a-nom-nominated').value.split(',').map(s=>s.trim()).filter(Boolean);
+      const evicted = document.getElementById('a-nom-evicted').value.trim();
+      if (!nominated.length) { showToast('Add at least one nominated contestant'); return; }
+      fetch('/api/bb/nominations', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({week, nominated, evicted})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Nomination week added!');
+        document.getElementById('a-nom-week').value='';
+        document.getElementById('a-nom-nominated').value='';
+        document.getElementById('a-nom-evicted').value='';
+        loadNominations();
+      });
+    }
+
+    function deleteNomination(id) {
+      if (!confirm('Delete this nomination week?')) return;
+      fetch('/api/bb/nominations/'+id, {method:'DELETE'}).then(r=>r.json()).then(() => {
+        document.getElementById('nom-'+id)?.remove();
+        showToast('Deleted');
+      });
+    }
+
+    // ===== REELS =====
+    let _reelFilter = '';
+
+    function ytEmbedUrl(url) {
+      const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/);
+      return m ? 'https://www.youtube.com/embed/'+m[1] : null;
+    }
+
+    function loadReels() {
+      fetch('/api/bb/reels').then(r=>r.json()).then(reels => {
+        _allReels = reels;
+        renderReels();
+      }).catch(() => { document.getElementById('reels-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    function filterReels(cat, btn) {
+      _reelFilter = cat;
+      document.querySelectorAll('#tab-reels .tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      renderReels();
+    }
+
+    function renderReels() {
+      const wrap = document.getElementById('reels-wrap');
+      let reels = _allReels;
+      if (_reelFilter) reels = reels.filter(r=>(r.category||'')=== _reelFilter);
+      if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips in this category.</p>'; return; }
+      wrap.innerHTML = reels.map(r => {
+        const embedUrl = ytEmbedUrl(r.url);
+        const media = embedUrl
+          ? `<iframe class="reel-embed" src="${embedUrl}" allowfullscreen loading="lazy"></iframe>`
+          : `<a href="${r.url}" target="_blank" rel="noopener" style="display:block;padding:1rem;font-size:.85rem;color:var(--bb);">▶ Open Clip</a>`;
+        const likes = (r.likes||[]).length;
+        const liked = (r.likes||[]).includes(VIEWER);
+        const canDel = VIEWER && (VIEWER===r.username||IS_ADMIN);
+        const catLabel = r.category ? `<span class="reel-cat-badge">${r.category}</span>` : '';
+        return `<div class="reel-card" id="reel-${r.reel_id}">
+          ${media}
+          <div class="reel-body">
+            ${r.caption?`<div class="reel-caption">${r.caption}</div>`:''}
+            <div class="reel-meta">
+              <div style="display:flex;align-items:center;gap:.5rem;"><span>@${r.username}</span>${catLabel}</div>
+              <div style="display:flex;gap:.6rem;align-items:center;">
+                <button class="reel-like-btn${liked?' liked':''}" onclick="likeReel('${r.reel_id}',this)">❤️ <span>${likes}</span></button>
+                <button class="reel-del-btn" onclick="navigator.clipboard.writeText('${r.url}').then(()=>showToast('Link copied!'))" title="Copy link">🔗</button>
+                ${canDel?`<button class="reel-del-btn" onclick="deleteReel('${r.reel_id}')">🗑</button>`:''}
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function addReel() {
+      const url = document.getElementById('reel-url').value.trim();
+      const caption = document.getElementById('reel-caption').value.trim();
+      const category = document.getElementById('reel-cat').value;
+      if (!url) { showToast('URL required'); return; }
+      fetch('/api/bb/reels', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url, caption, category, platform: url.includes('youtube')?'youtube':'other'})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        document.getElementById('reel-url').value='';
+        document.getElementById('reel-caption').value='';
+        document.getElementById('reel-cat').value='';
+        showToast('Clip posted!'); loadReels();
+      });
+    }
+
+    function likeReel(reelId, btn) {
+      if (!VIEWER) { showToast('Login to like'); return; }
+      fetch('/api/bb/reels/'+reelId+'/like', {method:'POST'}).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        btn.classList.toggle('liked', d.liked);
+        btn.querySelector('span').textContent = d.count;
+        const r = _allReels.find(x=>x.reel_id===reelId);
+        if (r) { r.likes = d.liked ? [...(r.likes||[]), VIEWER] : (r.likes||[]).filter(u=>u!==VIEWER); }
+      });
+    }
+
+    function deleteReel(reelId) {
+      if (!confirm('Delete this clip?')) return;
+      fetch('/api/bb/reels/'+reelId, {method:'DELETE'}).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        _allReels = _allReels.filter(r=>r.reel_id!==reelId);
+        renderReels();
+        showToast('Deleted');
+      });
+    }
+
+    // ===== INIT =====
+    loadSeason();
+    loadContestants();
+    loadPolls();
+    loadNominations();
+  </script>
+</body>
+</html>

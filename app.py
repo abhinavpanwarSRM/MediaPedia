@@ -3909,6 +3909,366 @@ def on_request_sync(data):
     emit('party_state', party)  # emit only to requesting socket (no room broadcast)
 
 
+# ===== Bigg Boss =====
+bb_collection = None
+bb_polls_collection = None
+bb_reels_collection = None
+try:
+    if db is not None:
+        bb_collection = db.biggboss
+        bb_polls_collection = db.bb_polls
+        bb_reels_collection = db.bb_reels
+        bb_collection.create_index('key', unique=True)
+        bb_polls_collection.create_index([('week', 1), ('season_id', 1)])
+        bb_reels_collection.create_index([('created_at', -1)])
+except Exception as e:
+    log.error('Failed to init biggboss collections: %s', e)
+
+@app.route('/biggboss')
+def biggboss():
+    return render_template('biggboss.html', username=current_user())
+
+@app.route('/api/bb/season', methods=['GET'])
+def bb_get_season():
+    if bb_collection is None:
+        return jsonify({})
+    doc = bb_collection.find_one({'key': 'current_season'}, {'_id': 0})
+    return jsonify(doc or {})
+
+@app.route('/api/bb/season', methods=['POST'])
+def bb_set_season():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    data['key'] = 'current_season'
+    data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    bb_collection.update_one({'key': 'current_season'}, {'$set': data}, upsert=True)
+    return jsonify({'success': True})
+
+@app.route('/api/bb/contestants', methods=['GET'])
+def bb_get_contestants():
+    if bb_collection is None:
+        return jsonify([])
+    doc = bb_collection.find_one({'key': 'contestants'}, {'_id': 0})
+    return jsonify(doc.get('list', []) if doc else [])
+
+@app.route('/api/bb/contestants', methods=['POST'])
+def bb_set_contestants():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    bb_collection.update_one(
+        {'key': 'contestants'},
+        {'$set': {'key': 'contestants', 'list': data.get('list', []), 'updated_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    return jsonify({'success': True})
+
+@app.route('/api/bb/polls', methods=['GET'])
+def bb_get_polls():
+    if bb_polls_collection is None:
+        return jsonify([])
+    polls = list(bb_polls_collection.find({}, {'_id': 0}).sort('week', -1).limit(10))
+    return jsonify(polls)
+
+@app.route('/api/bb/polls', methods=['POST'])
+def bb_create_poll():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    poll = {
+        'poll_id': str(uuid.uuid4())[:8],
+        'season_id': data.get('season_id', ''),
+        'week': data.get('week', 1),
+        'question': data.get('question', '').strip()[:200],
+        'options': data.get('options', []),
+        'poll_type': data.get('poll_type', 'general'),
+        'votes': {},
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_polls_collection.insert_one(poll)
+    poll.pop('_id', None)
+    return jsonify(poll), 201
+
+@app.route('/api/bb/polls/<poll_id>/close', methods=['POST'])
+def bb_close_poll(poll_id):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    result = (request.json or {}).get('result', '').strip()[:200]
+    bb_polls_collection.update_one(
+        {'poll_id': poll_id},
+        {'$set': {'closed': True, 'result': result, 'closed_at': datetime.now(timezone.utc).isoformat()}}
+    )
+    updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    if not updated:
+        return jsonify({'error': 'Poll not found'}), 404
+    return jsonify(updated)
+
+@app.route('/api/bb/polls/<poll_id>/vote', methods=['POST'])
+def bb_vote_poll(poll_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    option = (request.json or {}).get('option', '').strip()
+    poll = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    if not poll:
+        return jsonify({'error': 'Poll not found'}), 404
+    if poll.get('closed'):
+        return jsonify({'error': 'Poll is closed'}), 400
+    if option not in poll.get('options', []):
+        return jsonify({'error': 'Invalid option'}), 400
+    bb_polls_collection.update_one({'poll_id': poll_id}, {'$set': {f'votes.{username}': option}})
+    updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    return jsonify({'votes': updated.get('votes', {})})
+
+@app.route('/api/bb/reels', methods=['GET'])
+def bb_get_reels():
+    if bb_reels_collection is None:
+        return jsonify([])
+    reels = list(bb_reels_collection.find({}, {'_id': 0}).sort('created_at', -1).limit(30))
+    return jsonify(reels)
+
+@app.route('/api/bb/reels', methods=['POST'])
+def bb_add_reel():
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_reels_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    url = data.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'URL required'}), 400
+    reel = {
+        'reel_id': str(uuid.uuid4())[:8],
+        'url': url,
+        'caption': data.get('caption', '').strip()[:200],
+        'platform': data.get('platform', 'youtube'),
+        'category': data.get('category', '').strip()[:30],
+        'username': username,
+        'likes': [],
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_reels_collection.insert_one(reel)
+    reel.pop('_id', None)
+    return jsonify(reel), 201
+
+@app.route('/api/bb/reels/<reel_id>/like', methods=['POST'])
+def bb_like_reel(reel_id):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_reels_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    reel = bb_reels_collection.find_one({'reel_id': reel_id}, {'_id': 0, 'likes': 1})
+    if not reel:
+        return jsonify({'error': 'Not found'}), 404
+    likes = reel.get('likes', [])
+    if username in likes:
+        bb_reels_collection.update_one({'reel_id': reel_id}, {'$pull': {'likes': username}})
+        return jsonify({'liked': False, 'count': len(likes) - 1})
+    bb_reels_collection.update_one({'reel_id': reel_id}, {'$addToSet': {'likes': username}})
+    return jsonify({'liked': True, 'count': len(likes) + 1})
+
+@app.route('/api/bb/reels/<reel_id>', methods=['DELETE'])
+def bb_delete_reel(reel_id):
+    username = current_user()
+    if not username or bb_reels_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    query = {'reel_id': reel_id}
+    if username != 'abhinav':
+        query['username'] = username
+    bb_reels_collection.delete_one(query)
+    return jsonify({'success': True})
+
+# ===== BB Ratings =====
+bb_ratings_collection = None
+try:
+    if db is not None:
+        bb_ratings_collection = db.bb_ratings
+        bb_ratings_collection.create_index([('contestant', 1), ('username', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init bb_ratings: %s', e)
+
+@app.route('/api/bb/ratings/<contestant>', methods=['POST'])
+def bb_rate_contestant(contestant):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_ratings_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    likability = max(1, min(5, int(data.get('likability', 3))))
+    gameplay  = max(1, min(5, int(data.get('gameplay', 3))))
+    entertainment = max(1, min(5, int(data.get('entertainment', 3))))
+    bb_ratings_collection.update_one(
+        {'contestant': contestant, 'username': username},
+        {'$set': {'contestant': contestant, 'username': username,
+                  'likability': likability, 'gameplay': gameplay,
+                  'entertainment': entertainment,
+                  'updated_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    agg = list(bb_ratings_collection.aggregate([
+        {'$match': {'contestant': contestant}},
+        {'$group': {'_id': None,
+                    'likability': {'$avg': '$likability'},
+                    'gameplay': {'$avg': '$gameplay'},
+                    'entertainment': {'$avg': '$entertainment'},
+                    'count': {'$sum': 1}}}
+    ]))
+    stats = agg[0] if agg else {'likability': 0, 'gameplay': 0, 'entertainment': 0, 'count': 0}
+    stats.pop('_id', None)
+    return jsonify({'success': True, 'stats': stats})
+
+@app.route('/api/bb/ratings', methods=['GET'])
+def bb_get_all_ratings():
+    if bb_ratings_collection is None:
+        return jsonify({})
+    agg = list(bb_ratings_collection.aggregate([
+        {'$group': {'_id': '$contestant',
+                    'likability': {'$avg': '$likability'},
+                    'gameplay': {'$avg': '$gameplay'},
+                    'entertainment': {'$avg': '$entertainment'},
+                    'count': {'$sum': 1}}}
+    ]))
+    result = {}
+    for a in agg:
+        result[a['_id']] = {
+            'likability': round(a['likability'], 2),
+            'gameplay': round(a['gameplay'], 2),
+            'entertainment': round(a['entertainment'], 2),
+            'count': a['count'],
+            'overall': round((a['likability'] + a['gameplay'] + a['entertainment']) / 3, 2)
+        }
+    return jsonify(result)
+
+@app.route('/api/bb/ratings/<contestant>', methods=['GET'])
+def bb_get_contestant_rating(contestant):
+    if bb_ratings_collection is None:
+        return jsonify({'likability': 0, 'gameplay': 0, 'entertainment': 0, 'count': 0, 'mine': None})
+    username = current_user()
+    agg = list(bb_ratings_collection.aggregate([
+        {'$match': {'contestant': contestant}},
+        {'$group': {'_id': None,
+                    'likability': {'$avg': '$likability'},
+                    'gameplay': {'$avg': '$gameplay'},
+                    'entertainment': {'$avg': '$entertainment'},
+                    'count': {'$sum': 1}}}
+    ]))
+    stats = agg[0] if agg else {'likability': 0, 'gameplay': 0, 'entertainment': 0, 'count': 0}
+    stats.pop('_id', None)
+    mine = None
+    if username:
+        doc = bb_ratings_collection.find_one({'contestant': contestant, 'username': username}, {'_id': 0})
+        if doc:
+            mine = {'likability': doc['likability'], 'gameplay': doc['gameplay'], 'entertainment': doc['entertainment']}
+    return jsonify({**stats, 'mine': mine})
+
+# ===== BB Contestant Comments =====
+bb_contestant_comments_collection = None
+try:
+    if db is not None:
+        bb_contestant_comments_collection = db.bb_contestant_comments
+        bb_contestant_comments_collection.create_index([('contestant', 1), ('created_at', -1)])
+except Exception as e:
+    log.error('Failed to init bb_contestant_comments: %s', e)
+
+@app.route('/api/bb/contestants/<contestant>/comments', methods=['GET'])
+def bb_get_contestant_comments(contestant):
+    if bb_contestant_comments_collection is None:
+        return jsonify([])
+    docs = list(bb_contestant_comments_collection.find(
+        {'contestant': contestant}, {'_id': 0}
+    ).sort('created_at', -1).limit(50))
+    return jsonify(docs)
+
+@app.route('/api/bb/contestants/<contestant>/comments', methods=['POST'])
+def bb_add_contestant_comment(contestant):
+    username = current_user()
+    if not username:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_contestant_comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:300]
+    if not text:
+        return jsonify({'error': 'Text required'}), 400
+    doc = {
+        'comment_id': str(uuid.uuid4())[:10],
+        'contestant': contestant,
+        'username': username,
+        'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_contestant_comments_collection.insert_one(doc)
+    doc.pop('_id', None)
+    return jsonify(doc), 201
+
+@app.route('/api/bb/contestants/<contestant>/comments/<comment_id>', methods=['DELETE'])
+def bb_delete_contestant_comment(contestant, comment_id):
+    username = current_user()
+    if not username or bb_contestant_comments_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    query = {'comment_id': comment_id, 'contestant': contestant}
+    if username != 'abhinav':
+        query['username'] = username
+    bb_contestant_comments_collection.delete_one(query)
+    return jsonify({'success': True})
+
+# ===== BB Nominations =====
+bb_nominations_collection = None
+try:
+    if db is not None:
+        bb_nominations_collection = db.bb_nominations
+        bb_nominations_collection.create_index([('week', 1), ('season_id', 1)])
+except Exception as e:
+    log.error('Failed to init bb_nominations: %s', e)
+
+@app.route('/api/bb/nominations', methods=['GET'])
+def bb_get_nominations():
+    if bb_nominations_collection is None:
+        return jsonify([])
+    docs = list(bb_nominations_collection.find({}, {'_id': 0}).sort('week', -1).limit(20))
+    return jsonify(docs)
+
+@app.route('/api/bb/nominations', methods=['POST'])
+def bb_add_nomination():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_nominations_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    doc = {
+        'nomination_id': str(uuid.uuid4())[:8],
+        'week': data.get('week', 1),
+        'season_id': data.get('season_id', ''),
+        'nominated': data.get('nominated', []),
+        'evicted': data.get('evicted', ''),
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_nominations_collection.insert_one(doc)
+    doc.pop('_id', None)
+    return jsonify(doc), 201
+
+@app.route('/api/bb/nominations/<nomination_id>', methods=['DELETE'])
+def bb_delete_nomination(nomination_id):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_nominations_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_nominations_collection.delete_one({'nomination_id': nomination_id})
+    return jsonify({'success': True})
+
 # ===== PWA Routes =====
 @app.route('/sw.js')
 def service_worker():
