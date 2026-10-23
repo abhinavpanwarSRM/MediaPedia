@@ -320,10 +320,21 @@
         <div class="admin-label">Add Nomination Week</div>
         <div class="form-row" style="align-items:flex-start;">
           <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" title="Auto-filled from existing data" />
-          <select class="inp" id="a-nom-chips" multiple style="min-width:180px;max-width:220px;height:140px;"><option disabled>Load contestants first</option></select>
-          <select class="inp" id="a-nom-evicted" style="max-width:160px;"><option value="">Evicted (if known)</option></select>
-          <select class="inp" id="a-nom-captain" style="max-width:160px;"><option value="">Captain (if known)</option></select>
-          <select class="inp" id="a-nom-ejected" style="max-width:160px;"><option value="">Ejected (if known)</option></select>
+          <div style="display:flex;flex-direction:column;gap:.4rem;flex:1;min-width:160px;">
+            <select class="inp" id="a-nom-add" style="max-width:200px;" onchange="addNomChip(this)"><option value="">+ Add Nominated</option></select>
+            <div id="a-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <select class="inp" id="a-nom-evicted-add" style="max-width:180px;" onchange="addNomTag('evicted',this)"><option value="">+ Evicted</option></select>
+            <div id="a-nom-evicted-chips" style="display:flex;flex-wrap:wrap;gap:.3rem;"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <select class="inp" id="a-nom-captain" style="max-width:180px;"><option value="">Captain (if known)</option></select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;">
+            <select class="inp" id="a-nom-ejected-add" style="max-width:180px;" onchange="addNomTag('ejected',this)"><option value="">+ Ejected</option></select>
+            <div id="a-nom-ejected-chips" style="display:flex;flex-wrap:wrap;gap:.3rem;"></div>
+          </div>
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
@@ -1042,40 +1053,76 @@
           <div class="nom-week-hdr">
             <span class="nom-week-label">Week ${n.week}</span>
             <div style="display:flex;align-items:center;gap:.8rem;">
-              ${n.evicted?`<span class="nom-evicted">🚪 Evicted: ${n.evicted}</span>`:''}
+              ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).filter(Boolean).map(e=>`<span class="nom-evicted">🚪 ${e}</span>`).join('')}
               ${IS_ADMIN?`<button class="btn btn-muted" style="font-size:.72rem;padding:.25rem .6rem;" onclick="deleteNomination('${n.nomination_id}')">Delete</button>`:''}
             </div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem;">
             ${n.captain?`<span style="font-size:.7rem;color:var(--gold);font-weight:600;">👑 Captain: ${n.captain}</span>`:''}
-            ${n.ejected?`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">⚡ Ejected: ${n.ejected}</span>`:''}
+            ${(Array.isArray(n.ejected)?n.ejected:[n.ejected]).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff9f43;font-weight:600;">⚡ Ejected: ${e}</span>`).join('')}
+            ${(Array.isArray(n.evicted)?n.evicted:[n.evicted]).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">🚪 Evicted: ${e}</span>`).join('')}
           </div>
           <div class="nom-chips">
-            ${(n.nominated||[]).map(name=>`<span class="nom-chip${name===n.evicted?' evicted':name===n.captain?' captain':name===n.ejected?' ejected':''}">${name}${name===n.captain?' 👑':name===n.ejected?' ⚡':name===n.evicted?' 🚪':''}</span>`).join('')}
+            ${(n.nominated||[]).map(name=>{
+              const evArr = Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[]);
+              const ejArr = Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[]);
+              const cls = evArr.includes(name)?' evicted':ejArr.includes(name)?' ejected':name===n.captain?' captain':'';
+              const icon = evArr.includes(name)?' 🚪':ejArr.includes(name)?' ⚡':name===n.captain?' 👑':'';
+              return `<span class="nom-chip${cls}">${name}${icon}</span>`;
+            }).join('')}
           </div>
         </div>`).join('');
     }
 
     function renderNomAdminContestants() {
-      const sel = document.getElementById('a-nom-chips');
-      const evSel = document.getElementById('a-nom-evicted');
-      if (!sel || !evSel) return;
+      const addSel = document.getElementById('a-nom-add');
+      if (!addSel) return;
       const opts = _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-      sel.innerHTML = opts;
-      const makeOpts = (placeholder) => `<option value="">${placeholder}</option>` + opts;
-      evSel.innerHTML = makeOpts('Evicted (if known)');
+      addSel.innerHTML = '<option value="">+ Add Nominated</option>' + opts;
+      ['a-nom-evicted-add','a-nom-ejected-add'].forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<option value="">${i===0?'+ Evicted':'+ Ejected'}</option>` + opts;
+      });
       const capSel = document.getElementById('a-nom-captain');
-      const ejSel = document.getElementById('a-nom-ejected');
-      if (capSel) capSel.innerHTML = makeOpts('Captain (if known)');
-      if (ejSel) ejSel.innerHTML = makeOpts('Ejected (if known)');
+      if (capSel) capSel.innerHTML = '<option value="">Captain (if known)</option>' + opts;
+    }
+
+    function addNomChip(sel) {
+      const name = sel.value;
+      if (!name) return;
+      sel.value = '';
+      const wrap = document.getElementById('a-nom-chips');
+      if (wrap.querySelector(`[data-name="${name}"]`)) return;
+      wrap.appendChild(_makeNomChip(name, 'a-nom-chips', '#ff6b35', 'rgba(229,9,20,.12)', 'rgba(229,9,20,.3)'));
+    }
+
+    function addNomTag(type, sel) {
+      const name = sel.value;
+      if (!name) return;
+      sel.value = '';
+      const wrapId = type === 'evicted' ? 'a-nom-evicted-chips' : 'a-nom-ejected-chips';
+      const wrap = document.getElementById(wrapId);
+      if (wrap.querySelector(`[data-name="${name}"]`)) return;
+      const color = type === 'evicted' ? '#ff4757' : '#ff9f43';
+      const bg = type === 'evicted' ? 'rgba(255,71,87,.12)' : 'rgba(255,159,67,.12)';
+      const border = type === 'evicted' ? 'rgba(255,71,87,.3)' : 'rgba(255,159,67,.3)';
+      wrap.appendChild(_makeNomChip(name, wrapId, color, bg, border));
+    }
+
+    function _makeNomChip(name, wrapId, color, bg, border) {
+      const chip = document.createElement('span');
+      chip.dataset.name = name;
+      chip.style.cssText = `display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .65rem;border-radius:20px;font-size:.78rem;font-weight:600;background:${bg};border:1px solid ${border};color:${color};`;
+      chip.innerHTML = `${name} <span onclick="this.parentElement.remove()" style="cursor:pointer;font-size:.85rem;color:var(--muted);line-height:1;">✕</span>`;
+      return chip;
     }
 
     function addNomination() {
       const week = parseInt(document.getElementById('a-nom-week').value)||1;
-      const nominated = [...document.querySelectorAll('#a-nom-chips option:checked')].map(o=>o.value);
-      const evicted = document.getElementById('a-nom-evicted').value;
+      const nominated = [...document.querySelectorAll('#a-nom-chips [data-name]')].map(el=>el.dataset.name);
+      const evicted = [...document.querySelectorAll('#a-nom-evicted-chips [data-name]')].map(el=>el.dataset.name);
       const captain = document.getElementById('a-nom-captain').value;
-      const ejected = document.getElementById('a-nom-ejected').value;
+      const ejected = [...document.querySelectorAll('#a-nom-ejected-chips [data-name]')].map(el=>el.dataset.name);
       if (!nominated.length) { showToast('Add at least one nominated contestant'); return; }
       fetch('/api/bb/nominations', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -1084,8 +1131,10 @@
         if (d.error) { showToast(d.error); return; }
         showToast('Nomination week added!');
         document.getElementById('a-nom-week').value='';
-        document.querySelectorAll('#a-nom-chips option').forEach(o=>o.selected=false);
-        ['a-nom-evicted','a-nom-captain','a-nom-ejected'].forEach(id => document.getElementById(id).value='');
+        document.getElementById('a-nom-chips').innerHTML = '';
+        document.getElementById('a-nom-evicted-chips').innerHTML = '';
+        document.getElementById('a-nom-ejected-chips').innerHTML = '';
+        document.getElementById('a-nom-captain').value = '';
         loadNominations(); // will auto-fill next week
       });
     }
