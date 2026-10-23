@@ -240,10 +240,33 @@
       </div>
 
       <div class="admin-section">
-        <div class="admin-label">Contestants JSON</div>
-        <textarea class="inp" id="a-contestants" rows="4" style="width:100%;margin-bottom:.6rem;"
-          placeholder='[{"name":"Name","status":"active","bio":"Short bio...","img":"https://..."}]'></textarea>
-        <button class="btn btn-red" onclick="saveContestants()">Save Contestants</button>
+        <div class="admin-label">Add / Edit Contestant</div>
+        <div class="form-row">
+          <input class="inp" id="a-c-name" placeholder="Name" />
+          <select class="inp" id="a-c-status" style="max-width:140px;">
+            <option value="active">Active</option>
+            <option value="nominated">Nominated</option>
+            <option value="eliminated">Eliminated</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:160px;">
+            <span style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Photo (tap to upload)</span>
+            <input type="file" id="a-c-file" accept="image/*" capture="environment"
+              style="font-size:.82rem;color:#ccc;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;padding:.4rem .7rem;cursor:pointer;" />
+          </label>
+          <input class="inp" id="a-c-bio" placeholder="Short bio" />
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-red" onclick="upsertContestant()">Save Contestant</button>
+          <button class="btn btn-muted" onclick="clearContestantForm()">Clear</button>
+          <img id="a-c-img-preview" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--bb);display:none;" />
+          <span id="a-c-preview" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
+        <div style="margin-top:1rem;">
+          <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Current Contestants <span id="a-c-count"></span></div>
+          <div id="a-c-list" style="display:flex;flex-wrap:wrap;gap:.5rem;"></div>
+        </div>
       </div>
 
       <div class="admin-section">
@@ -537,17 +560,131 @@
           document.getElementById('hero-stats').style.display = 'flex';
         }
         renderContestants();
-        if (IS_ADMIN) document.getElementById('a-contestants').value = JSON.stringify(list, null, 2);
+        renderAdminContestantList();
         renderFanLeaderboard();
       }).catch(() => {
         document.getElementById('contestants-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
     }
 
-    function saveContestants() {
-      let list; try { list = JSON.parse(document.getElementById('a-contestants').value); } catch(e) { showToast('Invalid JSON'); return; }
-      fetch('/api/bb/contestants', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list}) })
-        .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} showToast('Contestants saved!'); loadContestants(); });
+    function upsertContestant() {
+      const name = document.getElementById('a-c-name').value.trim();
+      if (!name) { showToast('Name required'); return; }
+      const status = document.getElementById('a-c-status').value;
+      const bio = document.getElementById('a-c-bio').value.trim();
+      const fileInput = document.getElementById('a-c-file');
+      const file = fileInput.files[0];
+
+      function _save(imgUrl) {
+        const existing = _contestants.find(c => c.name.toLowerCase() === name.toLowerCase());
+        let list;
+        if (existing) {
+          list = _contestants.map(c => c.name.toLowerCase() === name.toLowerCase()
+            ? {name: c.name, status, bio, img: imgUrl !== null ? imgUrl : (c.img || '')}
+            : c);
+        } else {
+          list = [..._contestants, {name, status, bio, img: imgUrl || ''}];
+        }
+        fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            showToast(existing ? name+' updated!' : name+' added!');
+            clearContestantForm();
+            loadContestants();
+          });
+      }
+
+      if (file) {
+        // First save contestant (without img), then upload photo
+        const existing = _contestants.find(c => c.name.toLowerCase() === name.toLowerCase());
+        let list;
+        if (existing) {
+          list = _contestants.map(c => c.name.toLowerCase() === name.toLowerCase()
+            ? {name: c.name, status, bio, img: c.img || ''} : c);
+        } else {
+          list = [..._contestants, {name, status, bio, img: ''}];
+        }
+        fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            const fd = new FormData();
+            fd.append('file', file);
+            document.getElementById('a-c-preview').textContent = 'Uploading photo...';
+            fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/upload', {method:'POST', body:fd})
+              .then(r=>r.json()).then(ud => {
+                if (ud.error) { showToast('Saved but photo failed: '+ud.error); }
+                else { showToast(existing ? name+' updated!' : name+' added!'); }
+                clearContestantForm();
+                loadContestants();
+              });
+          });
+      } else {
+        _save(null); // keep existing img
+      }
+    }
+
+    function clearContestantForm() {
+      ['a-c-name','a-c-bio'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('a-c-status').value = 'active';
+      document.getElementById('a-c-file').value = '';
+      document.getElementById('a-c-img-preview').style.display = 'none';
+      document.getElementById('a-c-preview').textContent = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const fi = document.getElementById('a-c-file');
+      if (fi) fi.addEventListener('change', () => {
+        const f = fi.files[0];
+        const prev = document.getElementById('a-c-img-preview');
+        if (f) { prev.src = URL.createObjectURL(f); prev.style.display = 'inline-block'; }
+        else { prev.style.display = 'none'; }
+      });
+    });
+
+    function editContestantAdmin(name) {
+      const c = _contestants.find(x => x.name === name);
+      if (!c) return;
+      document.getElementById('a-c-name').value = c.name;
+      document.getElementById('a-c-status').value = c.status || 'active';
+      document.getElementById('a-c-bio').value = c.bio || '';
+      document.getElementById('a-c-file').value = '';
+      const prev = document.getElementById('a-c-img-preview');
+      if (c.img) { prev.src = c.img; prev.style.display = 'inline-block'; }
+      else { prev.style.display = 'none'; }
+      document.getElementById('a-c-preview').textContent = 'Editing: '+c.name;
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function removeContestantAdmin(name) {
+      if (!confirm('Remove '+name+'?')) return;
+      const list = _contestants.filter(c => c.name !== name);
+      fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          showToast(name+' removed'); loadContestants();
+        });
+    }
+
+    function renderAdminContestantList() {
+      if (!IS_ADMIN) return;
+      const wrap = document.getElementById('a-c-list');
+      const count = document.getElementById('a-c-count');
+      if (!wrap) return;
+      count.textContent = '('+_contestants.length+')';
+      wrap.innerHTML = _contestants.map(c => {
+        const imgHtml = c.img
+          ? `<img src="${c.img}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
+          : `<span style="width:28px;height:28px;border-radius:50%;background:rgba(229,9,20,.2);border:1px solid var(--bb);display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;">${(c.name||'?')[0].toUpperCase()}</span>`;
+        const sc = c.status==='eliminated'?'#ff4757':c.status==='nominated'?'var(--gold)':'#2ed573';
+        return `<div style="display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:.3rem .6rem;">
+          ${imgHtml}
+          <span style="font-size:.78rem;font-weight:600;color:${sc};">${c.name}</span>
+          <button onclick="editContestantAdmin('${c.name.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">✏️</button>
+          <button onclick="removeContestantAdmin('${c.name.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">🗑</button>
+        </div>`;
+      }).join('');
     }
 
     // ===== FAN LEADERBOARD =====

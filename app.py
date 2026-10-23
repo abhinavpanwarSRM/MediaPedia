@@ -3968,6 +3968,44 @@ def bb_set_contestants():
     )
     return jsonify({'success': True})
 
+@app.route('/api/bb/contestants/<contestant>/upload', methods=['POST'])
+def bb_upload_contestant_photo(contestant):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_collection is None or images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No file'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id, 'data': data, 'mime': mime,
+        'uploaded_by': 'abhinav', 'created_at': datetime.now(timezone.utc)
+    })
+    img_url = f'/api/img/{image_id}'
+    # Update the contestant's img field in the list
+    doc = bb_collection.find_one({'key': 'contestants'}, {'_id': 0})
+    lst = doc.get('list', []) if doc else []
+    updated = False
+    for c in lst:
+        if c.get('name', '').lower() == contestant.lower():
+            c['img'] = img_url
+            updated = True
+            break
+    if updated:
+        bb_collection.update_one(
+            {'key': 'contestants'},
+            {'$set': {'list': lst, 'updated_at': datetime.now(timezone.utc).isoformat()}}
+        )
+    return jsonify({'url': img_url, 'updated': updated})
+
 @app.route('/api/bb/polls', methods=['GET'])
 def bb_get_polls():
     if bb_polls_collection is None:
