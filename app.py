@@ -4380,7 +4380,7 @@ def bb_delete_reel(reel_id):
     if not _is_bb_admin():
         query['username'] = username
     bb_reels_collection.delete_one(query)
-    if reel:
+    if reel and _is_bb_admin() and reel.get('username') != username:
         _bb_award_points(reel['username'], -1, f'reel {reel_id} deleted by admin')
     return jsonify({'success': True})
 
