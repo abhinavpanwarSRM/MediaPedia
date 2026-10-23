@@ -3937,7 +3937,7 @@ def bb_get_season():
 
 @app.route('/api/bb/season', methods=['POST'])
 def bb_set_season():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -3956,7 +3956,7 @@ def bb_get_contestants():
 
 @app.route('/api/bb/contestants', methods=['POST'])
 def bb_set_contestants():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -3970,7 +3970,7 @@ def bb_set_contestants():
 
 @app.route('/api/bb/contestants/<contestant>/upload', methods=['POST'])
 def bb_upload_contestant_photo(contestant):
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_collection is None or images_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4015,7 +4015,7 @@ def bb_get_polls():
 
 @app.route('/api/bb/polls', methods=['POST'])
 def bb_create_poll():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_polls_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4036,7 +4036,7 @@ def bb_create_poll():
 
 @app.route('/api/bb/polls/<poll_id>/close', methods=['POST'])
 def bb_close_poll(poll_id):
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_polls_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4281,7 +4281,7 @@ def bb_get_insta():
 
 @app.route('/api/bb/insta', methods=['POST'])
 def bb_add_insta():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_insta_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4308,7 +4308,7 @@ def bb_add_insta():
 
 @app.route('/api/bb/insta/<snap_id>', methods=['DELETE'])
 def bb_delete_insta(snap_id):
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_insta_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4317,12 +4317,53 @@ def bb_delete_insta(snap_id):
 
 # ===== BB Nominations =====
 bb_nominations_collection = None
+bb_admins_collection = None
 try:
     if db is not None:
         bb_nominations_collection = db.bb_nominations
         bb_nominations_collection.create_index([('week', 1), ('season_id', 1)])
+        bb_admins_collection = db.bb_admins
+        bb_admins_collection.create_index('username', unique=True)
 except Exception as e:
     log.error('Failed to init bb_nominations: %s', e)
+
+def _is_bb_admin():
+    u = current_user()
+    if not u: return False
+    if u == 'abhinav': return True
+    if bb_admins_collection is None: return False
+    return bb_admins_collection.find_one({'username': u}) is not None
+
+@app.route('/api/bb/admins', methods=['GET'])
+def bb_get_admins():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_admins_collection is None:
+        return jsonify([])
+    return jsonify([d['username'] for d in bb_admins_collection.find({}, {'_id': 0, 'username': 1})])
+
+@app.route('/api/bb/admins', methods=['POST'])
+def bb_add_admin():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_admins_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    username = (request.json or {}).get('username', '').strip()
+    if not username or username == 'abhinav':
+        return jsonify({'error': 'Invalid username'}), 400
+    if users_collection is not None and not users_collection.find_one({'username': username}):
+        return jsonify({'error': 'User not found'}), 404
+    bb_admins_collection.update_one({'username': username}, {'$set': {'username': username}}, upsert=True)
+    return jsonify({'success': True})
+
+@app.route('/api/bb/admins/<target>', methods=['DELETE'])
+def bb_remove_admin(target):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_admins_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_admins_collection.delete_one({'username': target})
+    return jsonify({'success': True})
 
 @app.route('/api/bb/nominations', methods=['GET'])
 def bb_get_nominations():
@@ -4333,7 +4374,7 @@ def bb_get_nominations():
 
 @app.route('/api/bb/nominations', methods=['POST'])
 def bb_add_nomination():
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_nominations_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
@@ -4354,7 +4395,7 @@ def bb_add_nomination():
 
 @app.route('/api/bb/nominations/<nomination_id>', methods=['DELETE'])
 def bb_delete_nomination(nomination_id):
-    if current_user() != 'abhinav':
+    if not _is_bb_admin():
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_nominations_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500

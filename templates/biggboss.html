@@ -335,6 +335,14 @@
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
+      <div class="admin-section" id="admin-manage-section">
+        <div class="admin-label">Manage BB Admins</div>
+        <div class="form-row">
+          <input class="inp" id="a-admin-username" placeholder="Username to grant access" />
+          <button class="btn btn-red" onclick="addBBAdmin()">Grant Access</button>
+        </div>
+        <div id="a-admin-list" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem;"></div>
+      </div>
     </section>
     {% endif %}
 
@@ -493,7 +501,15 @@
 
   <script>
     const VIEWER = '{{ username or "" }}';
-    const IS_ADMIN = VIEWER === 'abhinav';
+    let IS_ADMIN = VIEWER === 'abhinav';
+
+    // Load granted admins and upgrade IS_ADMIN if viewer is in the list
+    if (VIEWER && !IS_ADMIN) {
+      fetch('/api/bb/admins').then(r=>r.ok?r.json():Promise.reject()).then(list => {
+        if (Array.isArray(list) && list.includes(VIEWER)) { IS_ADMIN = true; loadSeason(); loadContestants(); loadPolls(); loadNominations(); }
+      }).catch(()=>{});
+    }
+    let _bbAdmins = [];
     const AVATAR_COLORS = ['#e50914','#ff6b35','#ffd700','#2ed573','#5799ef','#a29bfe','#ff9f43','#ff6b6b'];
     let _contestants = [];
     let _allRatings = {};
@@ -1172,7 +1188,7 @@
 
     function renderReels() {
       const wrap = document.getElementById('reels-wrap');
-      let reels = _allReels;
+      let reels = [..._allReels].sort((a,b) => (b.likes||[]).length - (a.likes||[]).length || new Date(b.created_at||0) - new Date(a.created_at||0));
       if (_reelFilter) reels = reels.filter(r=>(r.category||'')=== _reelFilter);
       if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips in this category.</p>'; return; }
       wrap.innerHTML = reels.map(r => {
@@ -1376,6 +1392,28 @@
       const toDelete = _allInsta.filter(s=>s.contestant===name);
       Promise.all(toDelete.map(s => fetch('/api/bb/insta/'+s.snap_id, {method:'DELETE'})))
         .then(() => { _allInsta=[]; loadInsta(); showToast('Removed'); });
+    }
+
+    // ===== BB ADMINS (abhinav only) =====
+    function loadBBAdmins() {
+      fetch('/api/bb/admins').then(r=>r.json()).then(list => {
+        const wrap = document.getElementById('a-admin-list');
+        if (!wrap) return;
+        wrap.innerHTML = list.length ? list.map(u =>
+          `<span style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:20px;font-size:.78rem;font-weight:600;background:rgba(229,9,20,.1);border:1px solid rgba(229,9,20,.3);color:#ff6b35;">
+            ${u} <span onclick="removeBBAdmin('${u}')" style="cursor:pointer;color:var(--muted);">✕</span>
+          </span>`).join('') : '<span style="font-size:.78rem;color:var(--muted);">No additional admins</span>';
+      });
+    }
+    function addBBAdmin() {
+      const username = document.getElementById('a-admin-username').value.trim();
+      if (!username) { showToast('Enter a username'); return; }
+      fetch('/api/bb/admins', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username})})
+        .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} document.getElementById('a-admin-username').value=''; showToast(username+' granted BB admin access'); loadBBAdmins(); });
+    }
+    function removeBBAdmin(username) {
+      fetch('/api/bb/admins/'+encodeURIComponent(username), {method:'DELETE'})
+        .then(r=>r.json()).then(() => { showToast(username+' removed'); loadBBAdmins(); });
     }
 
     // ===== INIT =====
