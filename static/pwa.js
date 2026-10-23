@@ -336,7 +336,7 @@
 
   // ── Visibility change handler ──
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') {
+    if (document.visibilityState === 'visible' && document.cookie.includes('session=')) {
       checkPendingInvites();
       if (_swReg && 'PushManager' in window) {
         _swReg.pushManager.getSubscription()
@@ -355,11 +355,13 @@
     if (_swReg && 'sync' in _swReg) {
       _swReg.sync.register('sync-pending-actions').catch(function() {});
     }
-    checkPendingInvites();
+    if (document.cookie.includes('session=')) checkPendingInvites();
   });
 
   // ── Initial setup ──
-  checkPendingInvites();
+  if (document.cookie.includes('session=')) {
+    checkPendingInvites();
+  }
 
   if ('Notification' in window && Notification.permission === 'granted' && _swReg) {
     initPushNotifications(_swReg);
