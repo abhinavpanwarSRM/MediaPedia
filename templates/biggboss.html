@@ -1162,6 +1162,7 @@
           _allPolls = _allPolls.filter(p=>p.poll_id!==pollId);
           document.getElementById('poll-'+pollId)?.remove();
           showToast('Poll deleted');
+          loadMyPoints();
         });
     }
 
