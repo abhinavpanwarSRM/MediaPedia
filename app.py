@@ -28,12 +28,6 @@ app.permanent_session_lifetime = timedelta(days=30)
 bcrypt = Bcrypt(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-@app.context_processor
-def inject_display_user():
-    from flask import session
-    u = session.get('username')
-    return {'display_username': u}
-
 MONGO_URI = os.getenv("MONGO_URI", "")
 DB_NAME = "mediapedia"
 
@@ -1381,11 +1375,6 @@ def _to_ist_str(ts):
 # ===== Auth helper =====
 def current_user():
     return session.get('username')
-
-def display_user(username=None):
-    """Returns display name: john(twitch) -> john(twitch), others unchanged."""
-    u = username or session.get('username')
-    return u
 
 # ===== Register =====
 @app.route('/register', methods=['GET', 'POST'])
