@@ -4485,12 +4485,80 @@ def bb_points_me():
 
 @app.route('/api/bb/points/reset', methods=['POST'])
 def bb_reset_points():
+    """Full season reset — wipes ALL BB data across every collection."""
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    counts = {}
+    for name, col in [
+        ('points',       bb_points_collection),
+        ('polls',        bb_polls_collection),
+        ('reels',        bb_reels_collection),
+        ('reel_comments', bb_reel_comments_collection),
+        ('ratings',      bb_ratings_collection),
+        ('contestant_comments', bb_contestant_comments_collection),
+        ('nominations',  bb_nominations_collection),
+        ('insta',        bb_insta_collection),
+    ]:
+        if col is not None:
+            r = col.delete_many({})
+            counts[name] = r.deleted_count
+    # Reset season info and contestants stored in bb_collection
+    if bb_collection is not None:
+        r = bb_collection.delete_many({})
+        counts['season_contestants'] = r.deleted_count
+    return jsonify({'success': True, 'deleted': counts})
+
+@app.route('/api/bb/points/backfill', methods=['POST'])
+def bb_backfill_points():
+    """Retroactively award points for all existing BB activity in the DB."""
     if current_user() != 'abhinav':
         return jsonify({'error': 'Unauthorized'}), 403
     if bb_points_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
-    bb_points_collection.delete_many({})
-    return jsonify({'success': True})
+    tally = {}  # {username: points}
+    def add(u, pts):
+        if u: tally[u] = tally.get(u, 0) + pts
+    # Reels posted (+3 each)
+    if bb_reels_collection is not None:
+        for r in bb_reels_collection.find({}, {'_id': 0, 'username': 1}):
+            add(r.get('username'), 3)
+    # Reel likes (+1 per like given)
+    if bb_reels_collection is not None:
+        for r in bb_reels_collection.find({}, {'_id': 0, 'likes': 1}):
+            for u in r.get('likes', []):
+                add(u, 1)
+    # Reel comments (+2 each)
+    if bb_reel_comments_collection is not None:
+        for c in bb_reel_comments_collection.find({}, {'_id': 0, 'username': 1}):
+            add(c.get('username'), 2)
+    # Contestant comments (+2 each)
+    if bb_contestant_comments_collection is not None:
+        for c in bb_contestant_comments_collection.find({}, {'_id': 0, 'username': 1}):
+            add(c.get('username'), 2)
+    # Contestant ratings (+2 per unique rating)
+    if bb_ratings_collection is not None:
+        for r in bb_ratings_collection.find({}, {'_id': 0, 'username': 1}):
+            add(r.get('username'), 2)
+    # Poll votes (+2 per vote)
+    if bb_polls_collection is not None:
+        for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
+            for u in p.get('votes', {}).keys():
+                add(u, 2)
+    # Correct predictions on closed polls (+10 eviction/winner, +5 general)
+    if bb_polls_collection is not None:
+        for p in bb_polls_collection.find({'closed': True, 'result': {'$exists': True, '$ne': ''}}, {'_id': 0, 'votes': 1, 'poll_type': 1, 'result': 1}):
+            bonus = 10 if p.get('poll_type') in ('eviction', 'winner') else 5
+            for u, choice in p.get('votes', {}).items():
+                if choice == p.get('result'):
+                    add(u, bonus)
+    # Write to DB — upsert each user's total, replacing any existing points
+    for username, pts in tally.items():
+        bb_points_collection.update_one(
+            {'username': username},
+            {'$set': {'points': pts, 'log': [{'pts': pts, 'reason': 'backfill', 'ts': datetime.now(timezone.utc).isoformat()}]}},
+            upsert=True
+        )
+    return jsonify({'success': True, 'users_updated': len(tally), 'breakdown': tally})
 
 # ===== BB Nominations =====
 bb_nominations_collection = None

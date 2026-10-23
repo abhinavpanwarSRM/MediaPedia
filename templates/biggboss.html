@@ -375,9 +375,13 @@
         </div>
       </div>
       <div class="admin-section">
-        <div class="admin-label">Reset Points (New Season)</div>
-        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;">Wipes all user points. Use at the start of a new season. This cannot be undone.</p>
-        <button class="btn btn-red" onclick="resetBBPoints()">🗑 Reset All Points</button>
+        <div class="admin-label">Points Management</div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;">Backfill scans all existing reels, comments, ratings, votes and awards retroactive points. Run once after enabling the points system.</p>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+          <button class="btn btn-red" onclick="backfillBBPoints()">⚡ Backfill Points from DB</button>
+          <button class="btn btn-muted" onclick="resetBBPoints()" style="border-color:#ff4757;color:#ff4757;">🗑 Full Season Reset</button>
+        </div>
+        <div id="backfill-result" style="font-size:.78rem;color:#2ed573;margin-top:.6rem;"></div>
       </div>
 
       <div class="admin-section" id="admin-manage-section">
@@ -1642,14 +1646,31 @@
     }
 
     function resetBBPoints() {
-      if (!confirm('Reset ALL user points? This cannot be undone.')) return;
+      if (!confirm('FULL SEASON RESET\n\nThis will permanently delete ALL BB data:\n• Contestants & season info\n• All polls & votes\n• All nominations\n• All clips & comments\n• All ratings\n• Instagram follower data\n• All points\n\nThis cannot be undone. Continue?')) return;
+      if (!confirm('Are you absolutely sure?\n\nType-check: this will erase the ENTIRE season. There is no recovery.\n\nPress OK only if you are 100% certain.')) return;
       fetch('/api/bb/points/reset', {method:'POST'})
         .then(r=>r.json()).then(d => {
           if (d.error) { showToast(d.error); return; }
-          showToast('All points reset!');
+          showToast('Season reset complete! All BB data cleared.');
+          _contestants=[]; _allPolls=[]; _allReels=[]; _allNominations=[]; _allInsta=[]; _allRatings={};
+          loadSeason(); loadContestants(); loadPolls(); loadNominations();
+          loadMyPoints(); loadPointsLeaderboard();
+          const res = document.getElementById('backfill-result');
+          if (res) res.textContent = '';
+        }).catch(() => showToast('Reset failed'));
+    }
+
+    function backfillBBPoints() {
+      if (!confirm('Scan DB and award retroactive points to all users? Existing points will be replaced.')) return;
+      fetch('/api/bb/points/backfill', {method:'POST'})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          const res = document.getElementById('backfill-result');
+          if (res) res.textContent = `✓ Done! ${d.users_updated} users updated.`;
+          showToast(`Backfill complete — ${d.users_updated} users updated!`);
           loadMyPoints();
           loadPointsLeaderboard();
-        });
+        }).catch(() => showToast('Backfill failed'));
     }
 
     // ===== INIT =====
