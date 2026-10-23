@@ -3,6 +3,8 @@
 <head>
   <title>Bigg Boss Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/x-icon" />
+  <link rel="manifest" href="/static/manifest.json" />
   <style>
     :root {
       --bb:#e50914;--bb2:#ff6b35;--gold:#ffd700;
@@ -296,6 +298,17 @@
       </div>
 
       <div class="admin-section">
+        <div class="admin-label">Log Instagram Followers</div>
+        <div class="form-row">
+          <select class="inp" id="a-insta-name" style="max-width:180px;"><option value="">Select contestant</option></select>
+          <input type="date" class="inp" id="a-insta-date" style="max-width:160px;" />
+          <input class="inp" id="a-insta-count" placeholder="Followers e.g. 1200000" type="number" style="max-width:160px;" />
+          <input class="inp" id="a-insta-note" placeholder="Note (optional)" style="max-width:160px;" />
+          <button class="btn btn-red" onclick="addInstaSnap()">Log</button>
+        </div>
+      </div>
+
+      <div class="admin-section">
         <div class="admin-label">Add Nomination Week</div>
         <div class="form-row">
           <input class="inp" id="a-nom-week" placeholder="Week #" type="number" style="max-width:80px;" />
@@ -314,6 +327,7 @@
       <button class="tab-btn" onclick="switchTab('polls',this)">🗳️ Polls</button>
       <button class="tab-btn" onclick="switchTab('nominations',this)">📋 Nominations</button>
       <button class="tab-btn" onclick="switchTab('reels',this)">🎬 Clips</button>
+      <button class="tab-btn" onclick="switchTab('insta',this)">📈 Instagram</button>
     </div>
 
     <!-- CONTESTANTS TAB -->
@@ -360,7 +374,31 @@
       <div id="nominations-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
     </div>
 
-    <!-- REELS TAB -->
+    <!-- INSTAGRAM TAB -->
+    <div id="tab-insta" style="display:none;">
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Follower count snapshots logged by admin. Compare any two dates to see growth.</p>
+
+      <!-- Date range picker -->
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.5rem;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;">
+        <div style="display:flex;flex-direction:column;gap:.3rem;">
+          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">From date</label>
+          <input type="date" id="insta-from" class="inp" style="max-width:160px;" />
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;">
+          <label style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">To date</label>
+          <input type="date" id="insta-to" class="inp" style="max-width:160px;" />
+        </div>
+        <button class="btn btn-red" onclick="renderInsta()">Compare</button>
+        <button class="btn btn-muted" onclick="instaSetLatest()">Latest vs First</button>
+      </div>
+
+      <!-- Gain leaderboard -->
+      <div id="insta-leaderboard" style="margin-bottom:1.5rem;"></div>
+
+      <!-- Per-contestant timeline -->
+      <div id="insta-timelines"></div>
+    </div>
+
     <div id="tab-reels" style="display:none;">
       {% if username %}
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
@@ -461,6 +499,7 @@
     let _allPolls = [];
     let _allReels = [];
     let _allNominations = [];
+    let _allInsta = [];
     let _currentContestant = null;
     let _contestantFilter = 'all';
 
@@ -480,6 +519,7 @@
       if (name === 'polls' && !_allPolls.length) loadPolls();
       if (name === 'nominations') loadNominations();
       if (name === 'reels' && !_allReels.length) loadReels();
+      if (name === 'insta' && !_allInsta.length) loadInsta();
     }
 
     // ===== SEASON =====
@@ -562,6 +602,10 @@
         renderContestants();
         renderAdminContestantList();
         renderFanLeaderboard();
+        // refresh insta admin dropdown if already loaded
+        const sel = document.getElementById('a-insta-name');
+        if (sel) sel.innerHTML = '<option value="">Select contestant</option>' +
+          list.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
       }).catch(() => {
         document.getElementById('contestants-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
@@ -1125,11 +1169,148 @@
       });
     }
 
+    // ===== INSTAGRAM =====
+    function fmtFollowers(n) {
+      if (n >= 1e7) return (n/1e7).toFixed(1)+'Cr';
+      if (n >= 1e5) return (n/1e5).toFixed(1)+'L';
+      if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+      return n.toString();
+    }
+
+    function loadInsta() {
+      fetch('/api/bb/insta').then(r=>r.json()).then(snaps => {
+        _allInsta = snaps;
+        instaSetLatest();
+        // populate admin dropdown
+        const sel = document.getElementById('a-insta-name');
+        if (sel) {
+          sel.innerHTML = '<option value="">Select contestant</option>' +
+            _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+        }
+      }).catch(() => {
+        document.getElementById('insta-leaderboard').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
+      });
+    }
+
+    function instaSetLatest() {
+      if (!_allInsta.length) { renderInsta(); return; }
+      const dates = [...new Set(_allInsta.map(s=>s.date))].sort();
+      const fromEl = document.getElementById('insta-from');
+      const toEl = document.getElementById('insta-to');
+      if (fromEl) fromEl.value = dates[0] || '';
+      if (toEl) toEl.value = dates[dates.length-1] || '';
+      renderInsta();
+    }
+
+    function renderInsta() {
+      const fromDate = document.getElementById('insta-from')?.value || '';
+      const toDate = document.getElementById('insta-to')?.value || '';
+      const lbWrap = document.getElementById('insta-leaderboard');
+      const tlWrap = document.getElementById('insta-timelines');
+      if (!_allInsta.length) {
+        lbWrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No follower data logged yet.</p>';
+        tlWrap.innerHTML = '';
+        return;
+      }
+      // Group by contestant
+      const byC = {};
+      _allInsta.forEach(s => {
+        if (!byC[s.contestant]) byC[s.contestant] = [];
+        byC[s.contestant].push(s);
+      });
+      // For each contestant get from/to values
+      const gains = [];
+      Object.entries(byC).forEach(([name, snaps]) => {
+        const sorted = snaps.slice().sort((a,b)=>a.date.localeCompare(b.date));
+        const fromSnap = fromDate ? sorted.filter(s=>s.date<=fromDate).pop() || sorted[0] : sorted[0];
+        const toSnap = toDate ? sorted.filter(s=>s.date<=toDate).pop() || sorted[sorted.length-1] : sorted[sorted.length-1];
+        const gain = toSnap.followers - fromSnap.followers;
+        const pct = fromSnap.followers ? ((gain/fromSnap.followers)*100).toFixed(1) : '—';
+        const c = _contestants.find(x=>x.name===name);
+        gains.push({name, fromSnap, toSnap, gain, pct, img: c?.img||'', sorted});
+      });
+      gains.sort((a,b)=>b.gain-a.gain);
+      const maxGain = Math.max(...gains.map(g=>Math.abs(g.gain)), 1);
+
+      // Leaderboard
+      lbWrap.innerHTML = `
+        <div class="section-title" style="font-size:1rem;margin-bottom:1rem;">📊 Follower Gain Leaderboard</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.8rem;">
+          ${fromDate||'earliest'} → ${toDate||'latest'}
+        </div>
+        ${gains.map((g,i) => {
+          const isGain = g.gain >= 0;
+          const color = isGain ? '#2ed573' : '#ff4757';
+          const barW = Math.round(Math.abs(g.gain)/maxGain*100);
+          const av = g.img
+            ? `<img src="${g.img}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
+            : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(229,9,20,.2);border:1px solid var(--bb);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;">${(g.name||'?')[0].toUpperCase()}</div>`;
+          return `<div style="display:grid;grid-template-columns:28px 36px 1fr 90px 70px 70px;align-items:center;gap:.5rem;padding:.6rem .8rem;border-bottom:1px solid rgba(255,255,255,.05);">
+            <div style="font-size:.8rem;color:var(--muted);text-align:center;">${i+1}</div>
+            ${av}
+            <div>
+              <div style="font-size:.85rem;font-weight:700;">${g.name}</div>
+              <div style="background:rgba(255,255,255,.06);border-radius:3px;height:4px;margin-top:4px;">
+                <div style="width:${barW}%;height:100%;background:${color};border-radius:3px;transition:width .5s;"></div>
+              </div>
+            </div>
+            <div style="text-align:right;font-size:.8rem;color:#aaa;">${fmtFollowers(g.fromSnap.followers)}</div>
+            <div style="text-align:right;font-size:.8rem;color:#aaa;">${fmtFollowers(g.toSnap.followers)}</div>
+            <div style="text-align:right;font-size:.9rem;font-weight:700;color:${color};">${isGain?'+':''}${fmtFollowers(g.gain)}<div style="font-size:.65rem;font-weight:400;color:${color};">${isGain?'+':''}${g.pct}%</div></div>
+          </div>`;
+        }).join('')}
+        <div style="display:grid;grid-template-columns:28px 36px 1fr 90px 70px 70px;gap:.5rem;padding:.4rem .8rem;font-size:.65rem;color:#ff6b35;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);">
+          <div></div><div></div><div>Contestant</div><div style="text-align:right;">From</div><div style="text-align:right;">To</div><div style="text-align:right;">Gain</div>
+        </div>`;
+
+      // Per-contestant timelines
+      tlWrap.innerHTML = `<div class="section-title" style="font-size:1rem;margin:1.5rem 0 1rem;">📅 Follower Timeline</div>` +
+        gains.map(g => {
+          const rows = g.sorted.map(s => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.82rem;">
+              <span style="color:var(--muted);">${s.date}</span>
+              <span style="font-weight:600;">${fmtFollowers(s.followers)}</span>
+              ${s.note?`<span style="font-size:.72rem;color:var(--muted);">${s.note}</span>`:''}
+              ${IS_ADMIN?`<button onclick="deleteInstaSnap('${s.snap_id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;">🗑</button>`:''}
+            </div>`).join('');
+          return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.8rem;">
+            <div style="font-weight:700;margin-bottom:.6rem;">${g.name}</div>
+            ${rows}
+          </div>`;
+        }).join('');
+    }
+
+    function addInstaSnap() {
+      const contestant = document.getElementById('a-insta-name').value;
+      const date = document.getElementById('a-insta-date').value;
+      const followers = document.getElementById('a-insta-count').value;
+      const note = document.getElementById('a-insta-note').value.trim();
+      if (!contestant || !date || !followers) { showToast('Contestant, date and count required'); return; }
+      fetch('/api/bb/insta', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({contestant, date, followers: parseInt(followers), note})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast('Snapshot logged!');
+        document.getElementById('a-insta-count').value='';
+        document.getElementById('a-insta-note').value='';
+        _allInsta = []; loadInsta();
+      });
+    }
+
+    function deleteInstaSnap(snapId) {
+      if (!confirm('Delete this snapshot?')) return;
+      fetch('/api/bb/insta/'+snapId, {method:'DELETE'}).then(r=>r.json()).then(() => {
+        _allInsta = []; loadInsta(); showToast('Deleted');
+      });
+    }
+
     // ===== INIT =====
     loadSeason();
     loadContestants();
     loadPolls();
     loadNominations();
   </script>
+  <script src="/static/pwa.js"></script>
 </body>
 </html>

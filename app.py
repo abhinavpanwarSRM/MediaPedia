@@ -4263,6 +4263,57 @@ def bb_delete_contestant_comment(contestant, comment_id):
     bb_contestant_comments_collection.delete_one(query)
     return jsonify({'success': True})
 
+# ===== BB Instagram Followers =====
+bb_insta_collection = None
+try:
+    if db is not None:
+        bb_insta_collection = db.bb_insta
+        bb_insta_collection.create_index([('contestant', 1), ('date', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init bb_insta: %s', e)
+
+@app.route('/api/bb/insta', methods=['GET'])
+def bb_get_insta():
+    if bb_insta_collection is None:
+        return jsonify([])
+    docs = list(bb_insta_collection.find({}, {'_id': 0}).sort('date', 1))
+    return jsonify(docs)
+
+@app.route('/api/bb/insta', methods=['POST'])
+def bb_add_insta():
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_insta_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    contestant = data.get('contestant', '').strip()
+    date = data.get('date', '').strip()  # YYYY-MM-DD
+    followers = data.get('followers')
+    note = data.get('note', '').strip()[:100]
+    if not contestant or not date or followers is None:
+        return jsonify({'error': 'contestant, date and followers required'}), 400
+    try:
+        followers = int(followers)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'followers must be a number'}), 400
+    doc = {'snap_id': str(uuid.uuid4())[:8], 'contestant': contestant,
+           'date': date, 'followers': followers, 'note': note,
+           'created_at': datetime.now(timezone.utc).isoformat()}
+    bb_insta_collection.update_one(
+        {'contestant': contestant, 'date': date},
+        {'$set': doc}, upsert=True
+    )
+    return jsonify({'success': True}), 201
+
+@app.route('/api/bb/insta/<snap_id>', methods=['DELETE'])
+def bb_delete_insta(snap_id):
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_insta_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_insta_collection.delete_one({'snap_id': snap_id})
+    return jsonify({'success': True})
+
 # ===== BB Nominations =====
 bb_nominations_collection = None
 try:
