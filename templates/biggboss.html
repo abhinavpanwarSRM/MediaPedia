@@ -72,8 +72,8 @@
     .star-filled{color:var(--gold);}.star-empty{color:#444;}
 
     /* FAN LEADERBOARD */
-    .fan-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
-    .fan-lb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .fan-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;min-width:480px;}
+    .fan-lb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;}
     .fan-lb-row{display:grid;grid-template-columns:32px minmax(120px,1fr) 60px 60px 60px 70px;
       align-items:center;padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.4rem;}
     .fan-lb-row:last-child{border-bottom:none;}
@@ -756,7 +756,6 @@
       const wrap = document.getElementById('fan-lb-rows');
       if (!_contestants.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No contestants yet.</p>'; return; }
       const rows = _contestants
-        .filter(c => c.status !== 'eliminated')
         .map(c => {
           const r = _allRatings[c.name] || {likability:0,gameplay:0,entertainment:0,overall:0,count:0};
           return {...c, ...r};
