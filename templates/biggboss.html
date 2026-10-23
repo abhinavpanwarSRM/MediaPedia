@@ -196,6 +196,18 @@
       padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;
       z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
     .toast.show{opacity:1;}
+    /* POINTS BADGE */
+    .pts-badge{background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);color:var(--gold);
+      border-radius:20px;padding:.2rem .65rem;font-size:.78rem;font-weight:700;cursor:default;
+      display:flex;align-items:center;gap:.3rem;white-space:nowrap;}
+    /* POINTS LEADERBOARD */
+    .pts-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+    .pts-lb-row{display:grid;grid-template-columns:32px 1fr 80px;align-items:center;
+      padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.5rem;}
+    .pts-lb-row:last-child{border-bottom:none;}
+    .pts-lb-row.hdr{background:rgba(255,215,0,.07);font-size:.68rem;letter-spacing:1px;
+      text-transform:uppercase;color:var(--gold);font-weight:600;}
+    .pts-lb-row.me{background:rgba(255,215,0,.06);}
   </style>
 </head>
 <body>
@@ -206,6 +218,7 @@
       <a href="/">Home</a>
       <a href="/biggboss" style="color:var(--bb);font-weight:700;">Bigg Boss</a>
       {% if username %}
+        <div class="pts-badge" id="nav-pts-badge" title="Your BB Points">🏅 <span id="nav-pts">—</span></div>
         <a href="/u/{{ username }}" style="color:var(--bb);font-weight:600;">{{ username }}</a>
         <a href="/feed">Feed</a>
         <a href="/logout">Logout</a>
@@ -380,6 +393,7 @@
       <button class="tab-btn" onclick="switchTab('nominations',this)">📋 Nominations</button>
       <button class="tab-btn" onclick="switchTab('reels',this)">🎬 Clips</button>
       <button class="tab-btn" onclick="switchTab('insta',this)">📈 Instagram</button>
+      <button class="tab-btn" onclick="switchTab('points',this)">🏅 Points</button>
     </div>
 
     <!-- CONTESTANTS TAB -->
@@ -432,6 +446,19 @@
     <div id="tab-insta" style="display:none;">
       <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.5rem;">Follower count before entering Bigg Boss vs now. See who gained the most fame.</p>
       <div id="insta-chart-wrap"></div>
+    </div>
+
+    <!-- POINTS LEADERBOARD TAB -->
+    <div id="tab-points" style="display:none;">
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Earn points by voting, predicting correctly, commenting, liking and posting clips.</p>
+      <div style="background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:.8rem 1.2rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+        <span style="font-size:.8rem;color:var(--muted);">How to earn:</span>
+        <span style="font-size:.75rem;color:#ccc;">🗳️ Vote +2 &nbsp;|&nbsp; ✅ Correct prediction +10 &nbsp;|&nbsp; 💬 Comment +2 &nbsp;|&nbsp; ❤️ Like +1 &nbsp;|&nbsp; 🎬 Post clip +3 &nbsp;|&nbsp; ⭐ Rate contestant +2</span>
+      </div>
+      <div class="pts-lb" id="pts-lb-wrap">
+        <div class="pts-lb-row hdr"><div>#</div><div>User</div><div style="text-align:right;">Points</div></div>
+        <div id="pts-lb-rows"><p style="padding:1rem;color:var(--muted);font-size:.85rem;">Loading...</p></div>
+      </div>
     </div>
 
     <div id="tab-reels" style="display:none;">
@@ -560,7 +587,7 @@
     }
 
     function switchTab(name, btn) {
-      ['contestants','leaderboard','polls','nominations','reels','insta'].forEach(t => {
+      ['contestants','leaderboard','polls','nominations','reels','insta','points'].forEach(t => {
         document.getElementById('tab-'+t).style.display = t === name ? '' : 'none';
       });
       document.querySelectorAll('.tabs > .tab-btn').forEach(b => b.classList.remove('active'));
@@ -570,6 +597,7 @@
       if (name === 'nominations') loadNominations();
       if (name === 'reels' && !_allReels.length) loadReels();
       if (name === 'insta' && !_allInsta.length) loadInsta();
+      if (name === 'points') loadPointsLeaderboard();
     }
 
     // ===== SEASON =====
@@ -951,6 +979,7 @@
         _allRatings[_currentContestant] = d.stats;
         loadContestantRating(_currentContestant);
         renderFanLeaderboard();
+        if (VIEWER) loadMyPoints();
       });
     }
 
@@ -1075,6 +1104,7 @@
         if (countEl) countEl.textContent = total+' vote'+(total!==1?'s':'');
         const idx = _allPolls.findIndex(p=>p.poll_id===pollId);
         if (idx>=0) _allPolls[idx].votes = votes;
+        if (VIEWER) loadMyPoints();
       }).catch(() => showToast('Vote failed'));
     }
 
@@ -1405,6 +1435,7 @@
         btn.querySelector('span').textContent = d.count;
         const r = _allReels.find(x=>x.reel_id===reelId);
         if (r) { r.likes = d.liked ? [...(r.likes||[]), VIEWER] : (r.likes||[]).filter(u=>u!==VIEWER); }
+        if (d.liked && VIEWER) loadMyPoints();
       });
     }
 
@@ -1578,11 +1609,38 @@
         .then(r=>r.json()).then(() => { showToast(username+' removed'); loadBBAdmins(); });
     }
 
+    // ===== POINTS =====
+    function loadMyPoints() {
+      fetch('/api/bb/points/me').then(r=>r.json()).then(d => {
+        const el = document.getElementById('nav-pts');
+        if (el) el.textContent = d.points || 0;
+      });
+    }
+
+    function loadPointsLeaderboard() {
+      fetch('/api/bb/points/leaderboard').then(r=>r.json()).then(rows => {
+        const wrap = document.getElementById('pts-lb-rows');
+        if (!rows.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No activity yet. Be the first!</p>'; return; }
+        const medals = ['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49'];
+        wrap.innerHTML = rows.map((r,i) => `
+          <div class="pts-lb-row${r.username===VIEWER?' me':''}">
+            <div style="font-size:.85rem;color:var(--muted);text-align:center;">${medals[i]||i+1}</div>
+            <div style="font-size:.88rem;font-weight:${r.username===VIEWER?'800':'600'};color:${r.username===VIEWER?'var(--gold)':'#fff'};">
+              ${r.username}${r.username===VIEWER?' (you)':''}
+            </div>
+            <div style="text-align:right;font-size:.95rem;font-weight:700;color:var(--gold);">${r.points}</div>
+          </div>`).join('');
+      }).catch(() => {
+        document.getElementById('pts-lb-rows').innerHTML = '<p style="padding:1rem;color:#ff4757;font-size:.85rem;">Failed to load.</p>';
+      });
+    }
+
     // ===== INIT =====
     loadSeason();
     loadContestants();
     loadPolls();
     loadNominations();
+    if (VIEWER) loadMyPoints();
   </script>
   <script src="/static/pwa.js"></script>
 </body>

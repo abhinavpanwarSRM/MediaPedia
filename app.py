@@ -4070,6 +4070,7 @@ def bb_close_poll(poll_id):
     if bb_polls_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     result = (request.json or {}).get('result', '').strip()[:200]
+    poll_before = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
     bb_polls_collection.update_one(
         {'poll_id': poll_id},
         {'$set': {'closed': True, 'result': result, 'closed_at': datetime.now(timezone.utc).isoformat()}}
@@ -4077,6 +4078,13 @@ def bb_close_poll(poll_id):
     updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
     if not updated:
         return jsonify({'error': 'Poll not found'}), 404
+    # Award points to users who predicted correctly
+    if result and poll_before:
+        ptype = poll_before.get('poll_type', 'general')
+        bonus = 10 if ptype in ('eviction', 'winner') else 5
+        for voter, choice in poll_before.get('votes', {}).items():
+            if choice == result:
+                _bb_award_points(voter, bonus, f'correct prediction poll {poll_id}')
     return jsonify(updated)
 
 @app.route('/api/bb/polls/<poll_id>/vote', methods=['POST'])
@@ -4094,8 +4102,11 @@ def bb_vote_poll(poll_id):
         return jsonify({'error': 'Poll is closed'}), 400
     if option not in poll.get('options', []):
         return jsonify({'error': 'Invalid option'}), 400
+    already_voted = poll.get('votes', {}).get(username)
     bb_polls_collection.update_one({'poll_id': poll_id}, {'$set': {f'votes.{username}': option}})
     updated = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    if not already_voted:
+        _bb_award_points(username, 2, f'voted on poll {poll_id}')
     return jsonify({'votes': updated.get('votes', {})})
 
 @app.route('/api/bb/reels', methods=['GET'])
@@ -4128,6 +4139,7 @@ def bb_add_reel():
     }
     bb_reels_collection.insert_one(reel)
     reel.pop('_id', None)
+    _bb_award_points(username, 3, 'posted a reel')
     return jsonify(reel), 201
 
 # ===== BB Reel Comments =====
@@ -4165,6 +4177,7 @@ def bb_add_reel_comment(reel_id):
     }
     bb_reel_comments_collection.insert_one(doc)
     doc.pop('_id', None)
+    _bb_award_points(username, 2, f'commented on reel {reel_id}')
     return jsonify(doc), 201
 
 @app.route('/api/bb/reels/<reel_id>/comments/<comment_id>', methods=['DELETE'])
@@ -4215,6 +4228,7 @@ def bb_upload_reel_image():
     }
     bb_reels_collection.insert_one(reel)
     reel.pop('_id', None)
+    _bb_award_points(username, 3, 'uploaded a reel image')
     return jsonify(reel), 201
 
 @app.route('/api/bb/reels/<reel_id>/like', methods=['POST'])
@@ -4232,6 +4246,7 @@ def bb_like_reel(reel_id):
         bb_reels_collection.update_one({'reel_id': reel_id}, {'$pull': {'likes': username}})
         return jsonify({'liked': False, 'count': len(likes) - 1})
     bb_reels_collection.update_one({'reel_id': reel_id}, {'$addToSet': {'likes': username}})
+    _bb_award_points(username, 1, f'liked reel {reel_id}')
     return jsonify({'liked': True, 'count': len(likes) + 1})
 
 @app.route('/api/bb/reels/<reel_id>', methods=['DELETE'])
@@ -4265,6 +4280,7 @@ def bb_rate_contestant(contestant):
     likability = max(1, min(5, int(data.get('likability', 3))))
     gameplay  = max(1, min(5, int(data.get('gameplay', 3))))
     entertainment = max(1, min(5, int(data.get('entertainment', 3))))
+    is_new_rating = bb_ratings_collection.find_one({'contestant': contestant, 'username': username}) is None
     bb_ratings_collection.update_one(
         {'contestant': contestant, 'username': username},
         {'$set': {'contestant': contestant, 'username': username,
@@ -4273,6 +4289,8 @@ def bb_rate_contestant(contestant):
                   'updated_at': datetime.now(timezone.utc).isoformat()}},
         upsert=True
     )
+    if is_new_rating:
+        _bb_award_points(username, 2, f'rated contestant {contestant}')
     agg = list(bb_ratings_collection.aggregate([
         {'$match': {'contestant': contestant}},
         {'$group': {'_id': None,
@@ -4366,6 +4384,7 @@ def bb_add_contestant_comment(contestant):
     }
     bb_contestant_comments_collection.insert_one(doc)
     doc.pop('_id', None)
+    _bb_award_points(username, 2, f'commented on contestant {contestant}')
     return jsonify(doc), 201
 
 @app.route('/api/bb/contestants/<contestant>/comments/<comment_id>', methods=['DELETE'])
@@ -4430,6 +4449,39 @@ def bb_delete_insta(snap_id):
         return jsonify({'error': 'DB unavailable'}), 500
     bb_insta_collection.delete_one({'snap_id': snap_id})
     return jsonify({'success': True})
+
+# ===== BB User Points =====
+bb_points_collection = None
+try:
+    if db is not None:
+        bb_points_collection = db.bb_user_points
+        bb_points_collection.create_index('username', unique=True)
+except Exception as e:
+    log.error('Failed to init bb_user_points: %s', e)
+
+def _bb_award_points(username, pts, reason):
+    if not username or bb_points_collection is None:
+        return
+    bb_points_collection.update_one(
+        {'username': username},
+        {'$inc': {'points': pts}, '$push': {'log': {'pts': pts, 'reason': reason, 'ts': datetime.now(timezone.utc).isoformat()}}},
+        upsert=True
+    )
+
+@app.route('/api/bb/points/leaderboard', methods=['GET'])
+def bb_points_leaderboard():
+    if bb_points_collection is None:
+        return jsonify([])
+    docs = list(bb_points_collection.find({}, {'_id': 0, 'username': 1, 'points': 1}).sort('points', -1).limit(50))
+    return jsonify(docs)
+
+@app.route('/api/bb/points/me', methods=['GET'])
+def bb_points_me():
+    username = current_user()
+    if not username or bb_points_collection is None:
+        return jsonify({'points': 0})
+    doc = bb_points_collection.find_one({'username': username}, {'_id': 0, 'points': 1})
+    return jsonify({'points': doc['points'] if doc else 0})
 
 # ===== BB Nominations =====
 bb_nominations_collection = None
