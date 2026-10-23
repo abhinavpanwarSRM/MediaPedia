@@ -1513,6 +1513,8 @@ def twitch_callback():
         existing = users_collection.find_one({'twitch_id': twitch_id})
         if existing:
             username = existing['username']
+            # Refresh avatar in case it changed on Twitch
+            users_collection.update_one({'username': username}, {'$set': {'avatar_url': avatar_url}})
         else:
             # Check if derived username is taken by a non-twitch account
             taken = users_collection.find_one({'username': username, 'twitch_id': {'$exists': False}})
