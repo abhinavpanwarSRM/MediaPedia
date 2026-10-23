@@ -562,7 +562,8 @@
     function renderContestants() {
       const wrap = document.getElementById('contestants-wrap');
       let list = _contestants;
-      if (_contestantFilter !== 'all') list = list.filter(c => c.status === _contestantFilter);
+      if (_contestantFilter === 'active') list = list.filter(c => c.status === 'active' || c.status === 'nominated');
+      else if (_contestantFilter !== 'all') list = list.filter(c => c.status === _contestantFilter);
       if (!list.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No contestants in this category.</p>'; return; }
       wrap.innerHTML = list.map((c) => {
         const i = _contestants.indexOf(c);
