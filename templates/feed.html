@@ -49,11 +49,9 @@
       font-size: 15px;
       line-height: 1.5;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      animation: pageFadeIn 0.35s ease-out;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      animation: pageFadeIn 0.35s ease-out;
     }
 
     @keyframes pageFadeIn {
@@ -63,14 +61,10 @@
 
     /* ---------- APP SHELL ---------- */
     .app {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
       width: 100%;
     }
 
     .page {
-      flex: 1;
       display: grid;
       grid-template-columns: 1fr 300px;
       gap: 1.75rem;
@@ -79,22 +73,6 @@
       margin: 0 auto;
       padding: 1.5rem 1.25rem 2.5rem;
       align-items: start;
-    }
-
-    /* Desktop: lock viewport, scroll feed only */
-    @media (min-width: 881px) {
-      html, body { height: 100%; overflow: hidden; }
-      body { display: flex; flex-direction: column; }
-      .app { flex: 1; min-height: 0; overflow: hidden; }
-      .page { flex: 1; min-height: 0; overflow: hidden; }
-      .container { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-      .feed-scroll-area { flex: 1; overflow-y: auto; min-height: 0; padding-right: 4px; }
-      .feed-scroll-area::-webkit-scrollbar { width: 5px; }
-      .feed-scroll-area::-webkit-scrollbar-track { background: transparent; }
-      .feed-scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 5px; }
-      .sidebar { overflow-y: auto; max-height: 100%; }
-      .sidebar::-webkit-scrollbar { width: 4px; }
-      .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
     }
 
     @media (max-width: 880px) {
@@ -110,7 +88,6 @@
       .sidebar-card { flex: 1 1 100%; }
     }
 
-    /* ---------- MAIN COLUMN ---------- */
     .container {
       display: flex;
       flex-direction: column;
@@ -308,10 +285,6 @@
     .tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3); }
 
     /* ---------- FEED ITEMS ---------- */
-    .feed-scroll-area {
-      min-height: 0;
-    }
-
     .feed-item {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -951,11 +924,7 @@
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
-    /* mobile feed scroll */
-    @media (max-width: 880px) {
-      .feed-scroll-area { overflow: visible; }
-      html, body { height: auto; overflow: auto; }
-    }
+
 
     /* nice focus rings */
     button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
