@@ -110,9 +110,23 @@
     /* Repost btn */
     .repost-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0; transition: color 0.15s; }
     .repost-btn:hover { color: #ffc107; }
-    /* Delete post btn */
-    .delete-post-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.82rem; padding: 0.2rem 0; margin-left: auto; transition: color 0.15s; }
+    /* Delete / Edit post btns */
+    .delete-post-btn, .edit-post-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.82rem; padding: 0.2rem 0; transition: color 0.15s; }
+    .delete-post-btn { margin-left: auto; }
     .delete-post-btn:hover { color: #e50914; }
+    .edit-post-btn:hover { color: var(--blue); }
+    /* Image upload preview */
+    .img-preview-wrap { position: relative; display: inline-block; margin: 0.4rem 0; }
+    .img-preview-wrap img { max-height: 160px; max-width: 100%; border-radius: 8px; display: block; }
+    .img-preview-wrap button { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); border: none; color: #fff; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.8rem; line-height: 1; }
+    .img-upload-btn { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 0.82rem; padding: 0.3rem 0.7rem; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+    .img-upload-btn:hover { border-color: var(--blue); color: var(--blue); }
+    /* Edit inline */
+    .edit-area { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: 6px; color: #fff; font-size: 0.88rem; font-family: inherit; padding: 0.5rem 0.7rem; resize: none; outline: none; margin-top: 0.4rem; }
+    .edit-area:focus { border-color: var(--blue); }
+    /* Load more */
+    .load-more-btn { display: block; width: 100%; padding: 0.6rem; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 0.85rem; cursor: pointer; text-align: center; margin-top: 0.5rem; transition: background 0.15s; }
+    .load-more-btn:hover { background: rgba(255,255,255,0.08); color: #fff; }
     /* Ticker */
     .ticker-item { font-size: 0.78rem; color: #bbb; padding: 0.35rem 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
     .ticker-item:last-child { border-bottom: none; }
@@ -185,7 +199,10 @@
       <div id="hash-dropdown" class="hash-dropdown" style="display:none;"></div>
       <div id="tagged-chip-area"></div>
       <div id="embed-preview-area"></div>
+      <div id="img-preview-area"></div>
       <div class="composer-actions">
+        <button class="img-upload-btn" onclick="document.getElementById('img-file-input').click()">📷 Photo</button>
+        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgSelect(this)">
         <button class="composer-submit" onclick="submitPost()">Post</button>
       </div>
     </div>
@@ -346,7 +363,7 @@
       <div class="feed-item" id="post-${esc(p.post_id)}">
         <div class="feed-meta">
           <a href="/u/${esc(p.username)}" class="feed-user">${esc(p.username)}</a>
-          <span class="feed-time">${timeAgo(p.created_at)}</span>
+          <span class="feed-time" data-iso="${esc(p.created_at)}">${timeAgo(p.created_at)}</span>
         </div>
         ${p.text ? `<div class="feed-text">${highlightMentions(p.text)}</div>` : ''}
         ${taggedHtml}
@@ -363,16 +380,18 @@
           <button class="comment-toggle" onclick="toggleComments('${esc(p.post_id)}', this)">
             💬 <span>${commentCount}</span>
           </button>
-          ${FEED_VIEWER === p.username ? `<button class="delete-post-btn" onclick="deletePost('${esc(p.post_id)}', this)" title="Delete post">🗑️</button>` : ''}
+          ${FEED_VIEWER === p.username ? `<button class="edit-post-btn" onclick="startEditPost('${esc(p.post_id)}', this)" title="Edit post">✏️</button><button class="delete-post-btn" onclick="deletePost('${esc(p.post_id)}', this)" title="Delete post">🗑️</button>` : ''}
         </div>
         <div class="comments-section" id="comments-${esc(p.post_id)}">
           <div class="comments-list" id="clist-${esc(p.post_id)}">
             ${(p.post_comments || []).map(renderComment).join('')}
           </div>
           ${FEED_VIEWER ? `
-          <div class="comment-form">
+          <div class="comment-form" style="position:relative;">
             <input class="comment-input" placeholder="Add a comment… @mention someone" id="cinput-${esc(p.post_id)}"
-              onkeydown="if(event.key==='Enter')submitComment('${esc(p.post_id)}')" />
+              oninput="onCommentInput(this,'${esc(p.post_id)}')"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){submitComment('${esc(p.post_id)}');event.preventDefault();}" />
+            <div class="mention-dropdown" id="cmdrop-${esc(p.post_id)}" style="display:none;position:absolute;bottom:110%;left:0;"></div>
             <button class="comment-submit" onclick="submitComment('${esc(p.post_id)}')">Post</button>
           </div>` : ''}
         </div>
@@ -380,11 +399,11 @@
   }
 
   function renderComment(c) {
-    return `<div class="comment-item">
+    return `<div class="comment-item" id="cm-${esc(c.comment_id || '')}"> 
       <div class="comment-av">${esc(c.username[0].toUpperCase())}</div>
       <div class="comment-body">
         <span class="comment-author">${esc(c.username)}</span>
-        <div class="comment-text">${esc(c.text)}</div>
+        <div class="comment-text">${highlightMentions(c.text)}</div>
       </div>
     </div>`;
   }
@@ -423,6 +442,8 @@
     const input = document.getElementById('cinput-' + postId);
     const text = input.value.trim();
     if (!text) return;
+    const drop = document.getElementById('cmdrop-' + postId);
+    if (drop) drop.style.display = 'none';
     fetch(`/api/posts/${postId}/comments`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -432,22 +453,93 @@
       const list = document.getElementById('clist-' + postId);
       list.insertAdjacentHTML('beforeend', renderComment(c));
       input.value = '';
-      // update comment count
       const toggle = document.querySelector(`#post-${postId} .comment-toggle span`);
       if (toggle) toggle.textContent = parseInt(toggle.textContent || 0) + 1;
     }).catch(() => {});
+  }
+
+  // @ mention in comment inputs
+  let _cmMentionPostId = null, _cmMentionStart = -1;
+  function onCommentInput(input, postId) {
+    const val = input.value, pos = input.selectionStart;
+    const atIdx = val.lastIndexOf('@', pos - 1);
+    const spaceAfter = atIdx >= 0 ? val.indexOf(' ', atIdx) : -1;
+    const drop = document.getElementById('cmdrop-' + postId);
+    if (!drop) return;
+    if (atIdx >= 0 && (spaceAfter === -1 || spaceAfter >= pos)) {
+      const query = val.slice(atIdx + 1, pos).toLowerCase();
+      const matches = _mutualsList.filter(u => u.toLowerCase().startsWith(query)).slice(0, 5);
+      if (!matches.length) { drop.style.display = 'none'; return; }
+      _cmMentionPostId = postId; _cmMentionStart = atIdx;
+      drop.innerHTML = matches.map(u =>
+        '<div class="mention-option" onmousedown="insertCmMention(\'' + esc(u) + '\',\'' + postId + '\')">'
+        + '<div class="m-av">' + u[0].toUpperCase() + '</div>@' + esc(u) + '</div>'
+      ).join('');
+      drop.style.display = 'block';
+    } else {
+      drop.style.display = 'none';
+    }
+  }
+  function insertCmMention(username, postId) {
+    const input = document.getElementById('cinput-' + postId);
+    const val = input.value, pos = input.selectionStart;
+    input.value = val.slice(0, _cmMentionStart) + '@' + username + ' ' + val.slice(pos);
+    input.focus();
+    const drop = document.getElementById('cmdrop-' + postId);
+    if (drop) drop.style.display = 'none';
   }
 
   function deletePost(postId, btn) {
     if (!confirm('Delete this post?')) return;
     fetch(`/api/posts/${postId}`, { method: 'DELETE' })
       .then(r => r.json()).then(d => {
+        if (d.success) { const el = document.getElementById('post-' + postId); if (el) el.remove(); }
+      }).catch(() => {});
+  }
+
+  function startEditPost(postId, btn) {
+    const el = document.getElementById('post-' + postId);
+    const textEl = el.querySelector('.feed-text');
+    if (!textEl) return;
+    if (el.querySelector('.edit-area')) return; // already editing
+    const original = textEl.innerText;
+    textEl.style.display = 'none';
+    const area = document.createElement('textarea');
+    area.className = 'edit-area';
+    area.value = original;
+    area.rows = 3;
+    textEl.after(area);
+    area.focus();
+    // swap edit btn to save/cancel
+    btn.textContent = '💾';
+    btn.title = 'Save';
+    btn.onclick = () => saveEditPost(postId, area, textEl, btn, original);
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'edit-post-btn';
+    cancelBtn.textContent = '✕';
+    cancelBtn.title = 'Cancel';
+    cancelBtn.onclick = () => { area.remove(); cancelBtn.remove(); textEl.style.display = ''; btn.textContent = '✏️'; btn.title = 'Edit post'; btn.onclick = () => startEditPost(postId, btn); };
+    btn.after(cancelBtn);
+  }
+  function saveEditPost(postId, area, textEl, btn, original) {
+    const text = area.value.trim();
+    if (!text) return;
+    fetch(`/api/posts/${postId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({text}) })
+      .then(r => r.json()).then(d => {
         if (d.success) {
-          const el = document.getElementById('post-' + postId);
-          if (el) el.remove();
+          textEl.innerHTML = highlightMentions(text);
+          textEl.style.display = '';
+          area.nextSibling?.remove(); // cancel btn
+          area.remove();
+          btn.textContent = '✏️'; btn.title = 'Edit post';
+          btn.onclick = () => startEditPost(postId, btn);
         }
       }).catch(() => {});
   }
+
+  let _feedPage = 0;
+  const _feedPageSize = 10;
+  let _allFeedPosts = [];
 
   function loadMutualsFeed() {
     if (!FEED_VIEWER) {
@@ -462,11 +554,28 @@
           el.innerHTML = '<p class="empty">No posts yet. Follow people and ask them to follow back to see their posts here.</p>';
           return;
         }
-        el.innerHTML = posts.map(renderPost).join('');
+        _allFeedPosts = posts;
+        _feedPage = 0;
+        renderFeedPage(el);
       })
       .catch(() => {
         document.getElementById('mutuals-feed').innerHTML = '<p class="empty">Could not load feed.</p>';
       });
+  }
+
+  function renderFeedPage(el) {
+    const start = _feedPage * _feedPageSize;
+    const slice = _allFeedPosts.slice(start, start + _feedPageSize);
+    if (_feedPage === 0) el.innerHTML = '';
+    else el.querySelector('.load-more-btn')?.remove();
+    el.insertAdjacentHTML('beforeend', slice.map(renderPost).join(''));
+    _feedPage++;
+    if (_feedPage * _feedPageSize < _allFeedPosts.length) {
+      el.insertAdjacentHTML('beforeend', '<button class="load-more-btn" onclick="loadMoreFeed()">Load more</button>');
+    }
+  }
+  function loadMoreFeed() {
+    renderFeedPage(document.getElementById('mutuals-feed'));
   }
 
   loadMutualsFeed();
@@ -502,6 +611,7 @@
   // ===== Post Composer =====
   let _taggedMedia = null;
   let _embedUrl = null;
+  let _uploadedImgUrl = null;
   let _hashTimer = null;
   let _mentionStart = -1;
   let _hashStart = -1;
@@ -632,21 +742,42 @@
     document.getElementById('tagged-chip-area').innerHTML = '';
   }
 
+  function handleImgSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const btn = document.querySelector('.composer-submit');
+    if (btn) btn.disabled = true;
+    const fd = new FormData();
+    fd.append('file', file);
+    fetch('/api/upload', { method: 'POST', body: fd })
+      .then(r => r.json()).then(d => {
+        if (btn) btn.disabled = false;
+        if (d.error) { alert(d.error); return; }
+        _uploadedImgUrl = d.url;
+        document.getElementById('img-preview-area').innerHTML =
+          `<div class="img-preview-wrap"><img src="${esc(d.url)}"><button onclick="clearImg()" title="Remove">✕</button></div>`;
+      }).catch(() => { if (btn) btn.disabled = false; });
+    input.value = '';
+  }
+  function clearImg() {
+    _uploadedImgUrl = null;
+    document.getElementById('img-preview-area').innerHTML = '';
+  }
+
   function submitPost() {
     if (!FEED_VIEWER) { window.location.href = '/login'; return; }
     const text = (document.getElementById('compose-text').value || '').trim();
-    if (!text && !_taggedMedia && !_embedUrl) return;
+    if (!text && !_taggedMedia && !_embedUrl && !_uploadedImgUrl) return;
     const btn = document.querySelector('.composer-submit');
     if (btn) btn.disabled = true;
     fetch('/api/posts', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ text, tagged_media: _taggedMedia || null, embed_url: _embedUrl || '' })
+      body: JSON.stringify({ text, tagged_media: _taggedMedia || null, embed_url: _embedUrl || '', media_url: _uploadedImgUrl || '' })
     }).then(r => r.json()).then(p => {
       if (btn) btn.disabled = false;
       if (p.error) { alert(p.error); return; }
       document.getElementById('compose-text').value = '';
-      clearTag();
-      clearEmbed();
+      clearTag(); clearEmbed(); clearImg();
       document.getElementById('mention-dropdown').style.display = 'none';
       document.getElementById('hash-dropdown').style.display = 'none';
       const el = document.getElementById('mutuals-feed');
@@ -719,6 +850,14 @@
       if (el) el.insertAdjacentHTML('afterbegin', renderPost(p));
     }).catch(() => {});
   }
+
+  // ===== Live timestamp refresh =====
+  function refreshTimestamps() {
+    document.querySelectorAll('.feed-time[data-iso]').forEach(el => {
+      el.textContent = timeAgo(el.dataset.iso);
+    });
+  }
+  setInterval(refreshTimestamps, 60000);
 
   // ===== Activity Ticker =====
   function loadTicker() {
