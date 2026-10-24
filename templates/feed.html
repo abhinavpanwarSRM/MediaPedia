@@ -36,19 +36,15 @@
       --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
 
-    html {
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-      scroll-behavior: smooth;
-    }
-
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: var(--bg);
       color: var(--text-primary);
       font-family: var(--font);
       font-size: 15px;
       line-height: 1.5;
-      min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       animation: pageFadeIn 0.35s ease-out;
@@ -61,37 +57,34 @@
 
     /* ---------- APP SHELL ---------- */
     .app {
-      width: 100%;
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
     }
 
     .page {
+      flex: 1;
       display: grid;
       grid-template-columns: 1fr 300px;
       gap: 1.75rem;
       max-width: 1040px;
       width: 100%;
       margin: 0 auto;
-      padding: 1.5rem 1.25rem 2.5rem;
-      align-items: start;
+      padding: 1.5rem 1.25rem 1.5rem;
+      min-height: 0;
+      overflow: hidden;
+      align-items: stretch;
     }
 
-    @media (max-width: 880px) {
-      .page { grid-template-columns: 1fr; gap: 1.25rem; padding: 1rem 1rem 2rem; }
-      .sidebar { display: flex; flex-direction: row; flex-wrap: wrap; gap: 0.75rem; }
-      .sidebar-card { flex: 1 1 calc(50% - 0.4rem); min-width: 150px; }
-      .sidebar-card:last-child { flex: 1 1 100%; }
-    }
-
-    @media (max-width: 520px) {
-      .page { padding: 0.75rem 0.75rem 1.5rem; gap: 1rem; }
-      .sidebar { flex-direction: column; }
-      .sidebar-card { flex: 1 1 100%; }
-    }
-
+    /* ---------- MAIN COLUMN ---------- */
     .container {
       display: flex;
       flex-direction: column;
       min-width: 0;
+      min-height: 0;
+      overflow: hidden;
     }
 
     /* ---------- TOP BAR ---------- */
@@ -101,7 +94,7 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 0.6rem;
-      margin-bottom: 1.1rem;
+      margin-bottom: 1rem;
       flex-shrink: 0;
     }
 
@@ -168,7 +161,7 @@
       padding: 0.75rem 1rem;
       border-radius: var(--radius-md);
       font-size: 0.85rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.9rem;
       flex-shrink: 0;
       line-height: 1.45;
     }
@@ -181,7 +174,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 1rem 1.1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.9rem;
       position: relative;
       flex-shrink: 0;
       box-shadow: var(--shadow-sm);
@@ -198,7 +191,7 @@
       font-family: inherit;
       resize: none;
       outline: none;
-      min-height: 64px;
+      min-height: 60px;
       line-height: 1.5;
     }
     .composer textarea::placeholder { color: var(--muted); }
@@ -207,7 +200,7 @@
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      margin-top: 0.75rem;
+      margin-top: 0.7rem;
       flex-wrap: wrap;
     }
 
@@ -284,6 +277,22 @@
     .tab:hover { color: var(--text-secondary); }
     .tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3); }
 
+    /* ---------- FEED SCROLL AREA ---------- */
+    .feed-scroll-area {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .feed-scroll-area::-webkit-scrollbar { width: 5px; }
+    .feed-scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .feed-scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 5px; }
+    .feed-scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
     /* ---------- FEED ITEMS ---------- */
     .feed-item {
       background: var(--surface);
@@ -296,6 +305,7 @@
       word-break: break-word;
       overflow-wrap: anywhere;
       position: relative;
+      flex-shrink: 0;
     }
     .feed-item:hover { border-color: rgba(255, 255, 255, 0.12); box-shadow: var(--shadow-sm); }
 
@@ -690,12 +700,27 @@
       cursor: pointer;
       text-align: center;
       margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
       transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
     }
     .load-more-btn:hover { background: var(--surface-elevated); color: #fff; }
 
     /* ---------- SIDEBAR ---------- */
-    .sidebar { min-width: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+    .sidebar {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
 
     .sidebar-card {
       background: var(--surface);
@@ -704,6 +729,7 @@
       padding: 1rem;
       overflow: hidden;
       word-break: break-word;
+      flex-shrink: 0;
     }
 
     .sidebar-title {
@@ -892,6 +918,7 @@
       padding: 2.5rem 1rem;
       font-style: italic;
       font-size: 0.88rem;
+      flex-shrink: 0;
     }
 
     .loading-placeholder {
@@ -902,34 +929,46 @@
 
     .mention { color: var(--blue); font-weight: 600; }
 
-    /* toast for quick feedback */
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      color: var(--text-primary);
-      font-size: 0.82rem;
-      padding: 0.6rem 1.2rem;
-      border-radius: var(--radius-full);
-      box-shadow: var(--shadow-md);
-      z-index: 500;
-      opacity: 0;
-      animation: toastIn 0.3s forwards;
-    }
-    @keyframes toastIn {
-      from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-      to { opacity: 1; transform: translateX(-50%) translateY(0); }
-    }
-
-
-
     /* nice focus rings */
     button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
       outline: 2px solid var(--blue);
       outline-offset: 2px;
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 880px) {
+      .page {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1rem 1rem 0.5rem;
+      }
+      .sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        overflow-y: visible;
+        max-height: none;
+      }
+      .sidebar-card {
+        flex: 1 1 calc(50% - 0.4rem);
+        min-width: 150px;
+      }
+      .sidebar-card:last-child { flex: 1 1 100%; }
+    }
+
+    @media (max-width: 520px) {
+      .page { padding: 0.75rem 0.75rem 0.5rem; gap: 0.8rem; }
+      .sidebar { flex-direction: column; }
+      .sidebar-card { flex: 1 1 100%; }
+      .feed-item { padding: 0.85rem 0.95rem; }
+    }
+
+    /* Mobile: allow body scroll? No — app shell fixed. But sidebar needs its own scroll if tall. */
+    @media (max-width: 880px) {
+      .app { overflow: hidden; }
+      .page { overflow-y: auto; } /* page scrolls if sidebar+feed exceed viewport */
+      .feed-scroll-area { overflow-y: visible; }
+      .container { overflow: visible; }
     }
   </style>
 </head>
@@ -994,15 +1033,16 @@
         </div>
         {% endif %}
 
-        <!-- Mutuals feed (scrollable on desktop) -->
+        <!-- Mutuals feed (scrollable) -->
         <div id="tab-mutuals" class="feed-scroll-area">
-          <div id="mutuals-feed">
+          <div id="mutuals-feed" style="display:flex; flex-direction:column; width:100%;">
             <p class="empty-state">Loading…</p>
           </div>
         </div>
 
         <!-- Reviews feed (hidden initially) -->
         <div id="tab-reviews" class="feed-scroll-area" style="display:none;">
+          <div id="reviews-feed-inner" style="display:flex; flex-direction:column; width:100%;">
           {% if comments %}
             {% for c in comments %}
             <div class="feed-item" style="display:flex; gap:.9rem; align-items:flex-start;">
@@ -1043,6 +1083,7 @@
           {% else %}
             <p class="empty-state">No activity yet. Be the first to review something!</p>
           {% endif %}
+          </div>
         </div>
       </div>
 
