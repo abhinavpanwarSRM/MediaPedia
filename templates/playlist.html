@@ -1642,7 +1642,18 @@
         }
         if (repeatMode === 2) {          // repeat one
           playQueueIndex(queueIndex);
-        } else if (queueIndex < songQueue.length - 1) {
+          return;
+        }
+        // Sync queue with current DOM rows so newly added songs are included
+        if (!shuffleOn && currentRow) {
+          const allRows = Array.from(document.querySelectorAll('.song-row'));
+          const curDomIdx = allRows.indexOf(currentRow);
+          if (curDomIdx !== -1) {
+            songQueue = [...allRows.slice(curDomIdx), ...allRows.slice(0, curDomIdx)];
+            queueIndex = 0;
+          }
+        }
+        if (queueIndex < songQueue.length - 1) {
           playQueueIndex(queueIndex + 1);
         } else if (repeatMode === 1) {   // repeat all — wrap around
           playQueueIndex(0);
