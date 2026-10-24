@@ -38,8 +38,8 @@
 
     html, body {
       width: 100%;
-      height: 100%;
-      overflow: hidden;
+      min-height: 100%;
+      overflow-x: hidden;
       background: var(--bg);
       color: var(--text-primary);
       font-family: var(--font);
@@ -59,23 +59,19 @@
     .app {
       display: flex;
       flex-direction: column;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+      width: 100%;
+      min-height: 100vh;
     }
 
     .page {
-      flex: 1;
       display: grid;
       grid-template-columns: 1fr 300px;
       gap: 1.75rem;
       max-width: 1040px;
       width: 100%;
       margin: 0 auto;
-      padding: 1.5rem 1.25rem 1.5rem;
-      min-height: 0;
-      overflow: hidden;
-      align-items: stretch;
+      padding: 1.5rem 1.25rem 2rem;
+      align-items: start;
     }
 
     /* ---------- MAIN COLUMN ---------- */
@@ -83,8 +79,6 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
-      min-height: 0;
-      overflow: hidden;
     }
 
     /* ---------- TOP BAR ---------- */
@@ -95,7 +89,6 @@
       flex-wrap: wrap;
       gap: 0.6rem;
       margin-bottom: 1rem;
-      flex-shrink: 0;
     }
 
     .top-bar h1 {
@@ -103,10 +96,9 @@
       font-weight: 700;
       letter-spacing: -0.02em;
       color: #fff;
-      order: 2;
       flex: 1;
       text-align: center;
-      min-width: 120px;
+      min-width: 100px;
     }
 
     .back-link {
@@ -119,7 +111,6 @@
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border);
       transition: background 0.15s, color 0.15s;
-      order: 1;
       white-space: nowrap;
     }
     .back-link:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
@@ -129,7 +120,6 @@
       flex-wrap: wrap;
       gap: 0.35rem;
       align-items: center;
-      order: 3;
     }
 
     .auth-links a {
@@ -145,12 +135,9 @@
       position: relative;
     }
     .auth-links a:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
-    .auth-links a[href="/party"] { color: var(--green); font-weight: 600; }
-    .auth-links a[href="/logout"] { color: var(--muted); }
 
     @media (max-width: 640px) {
       .top-bar h1 { font-size: 1.15rem; }
-      .auth-links a { font-size: 0.72rem; padding: 0.25rem 0.5rem; }
     }
 
     /* ---------- HINT BANNER ---------- */
@@ -162,7 +149,6 @@
       border-radius: var(--radius-md);
       font-size: 0.85rem;
       margin-bottom: 0.9rem;
-      flex-shrink: 0;
       line-height: 1.45;
     }
     .hint-banner a { color: var(--blue); font-weight: 600; text-decoration: none; }
@@ -176,7 +162,6 @@
       padding: 1rem 1.1rem;
       margin-bottom: 0.9rem;
       position: relative;
-      flex-shrink: 0;
       box-shadow: var(--shadow-sm);
       transition: border-color 0.2s;
     }
@@ -251,7 +236,6 @@
       display: flex;
       gap: 0.4rem;
       margin-bottom: 0.85rem;
-      flex-shrink: 0;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-full);
@@ -279,19 +263,17 @@
 
     /* ---------- FEED SCROLL AREA ---------- */
     .feed-scroll-area {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 4px;
       display: flex;
       flex-direction: column;
+      width: 100%;
     }
 
-    .feed-scroll-area::-webkit-scrollbar { width: 5px; }
-    .feed-scroll-area::-webkit-scrollbar-track { background: transparent; }
-    .feed-scroll-area::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 5px; }
-    .feed-scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+    #mutuals-feed,
+    #reviews-feed-inner {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
 
     /* ---------- FEED ITEMS ---------- */
     .feed-item {
@@ -301,11 +283,9 @@
       padding: 1rem 1.15rem;
       margin-bottom: 0.75rem;
       transition: border-color 0.18s, box-shadow 0.18s;
-      overflow: hidden;
       word-break: break-word;
       overflow-wrap: anywhere;
       position: relative;
-      flex-shrink: 0;
     }
     .feed-item:hover { border-color: rgba(255, 255, 255, 0.12); box-shadow: var(--shadow-sm); }
 
@@ -402,13 +382,14 @@
       overflow: hidden;
     }
     .feed-embed-insta:hover { background: rgba(255, 255, 255, 0.08); }
-    .feed-embed-insta .insta-text { min-width: 0; overflow: hidden; }
+    .feed-embed-insta .insta-text { min-width: 0; overflow: hidden; flex: 1; }
     .feed-embed-insta .insta-text div:last-child {
-      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
       font-size: 0.75rem;
       color: var(--muted);
+      max-width: 100%;
     }
 
     /* Tagged media chip */
@@ -544,6 +525,7 @@
       margin-top: 0.65rem;
       position: relative;
       align-items: center;
+      overflow: visible;
     }
     .comment-input {
       flex: 1;
@@ -700,36 +682,27 @@
       cursor: pointer;
       text-align: center;
       margin-top: 0.5rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
       transition: background 0.15s, color 0.15s;
-      flex-shrink: 0;
     }
     .load-more-btn:hover { background: var(--surface-elevated); color: #fff; }
 
     /* ---------- SIDEBAR ---------- */
     .sidebar {
       min-width: 0;
-      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 0.9rem;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 2px;
+      position: sticky;
+      top: 1.5rem;
     }
-
-    .sidebar::-webkit-scrollbar { width: 4px; }
-    .sidebar::-webkit-scrollbar-track { background: transparent; }
-    .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
 
     .sidebar-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 1rem;
-      overflow: hidden;
       word-break: break-word;
-      flex-shrink: 0;
     }
 
     .sidebar-title {
@@ -806,9 +779,8 @@
       padding: 0.4rem 0;
       border-bottom: 1px solid var(--border-light);
       line-height: 1.45;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     .ticker-item:last-child { border-bottom: none; }
     .ticker-item a { color: var(--blue); text-decoration: none; }
@@ -816,12 +788,15 @@
     .ticker-user { font-weight: 600; color: var(--text-primary); }
 
     /* Nudge banner */
+    #nudge-area {
+      margin-bottom: 0.5rem;
+    }
     .nudge-banner {
       background: rgba(29, 185, 84, 0.08);
       border: 1px solid rgba(29, 185, 84, 0.25);
       border-radius: var(--radius-md);
       padding: 0.7rem 1rem;
-      margin-bottom: 0.7rem;
+      margin-bottom: 0.5rem;
       font-size: 0.82rem;
       color: var(--green);
       display: flex;
@@ -829,7 +804,7 @@
       justify-content: space-between;
       gap: 0.6rem;
       flex-wrap: wrap;
-      overflow: hidden;
+      word-break: break-word;
     }
     .nudge-banner a { color: var(--green); font-weight: 600; text-decoration: none; }
     .nudge-banner a:hover { text-decoration: underline; }
@@ -869,6 +844,8 @@
       padding: 1.5rem;
       width: 100%;
       max-width: 420px;
+      max-height: 90vh;
+      overflow-y: auto;
       box-shadow: var(--shadow-md);
     }
     .modal-box h3 { font-size: 1rem; margin-bottom: 0.9rem; font-weight: 600; }
@@ -918,7 +895,6 @@
       padding: 2.5rem 1rem;
       font-style: italic;
       font-size: 0.88rem;
-      flex-shrink: 0;
     }
 
     .loading-placeholder {
@@ -940,35 +916,27 @@
       .page {
         grid-template-columns: 1fr;
         gap: 1rem;
-        padding: 1rem 1rem 0.5rem;
+        padding: 1rem 1rem 2rem;
       }
       .sidebar {
+        position: static;
         flex-direction: row;
         flex-wrap: wrap;
         gap: 0.75rem;
-        overflow-y: visible;
-        max-height: none;
       }
       .sidebar-card {
         flex: 1 1 calc(50% - 0.4rem);
-        min-width: 150px;
+        min-width: 200px;
       }
-      .sidebar-card:last-child { flex: 1 1 100%; }
     }
 
     @media (max-width: 520px) {
-      .page { padding: 0.75rem 0.75rem 0.5rem; gap: 0.8rem; }
+      .page { padding: 0.75rem 0.75rem 2rem; gap: 0.8rem; }
       .sidebar { flex-direction: column; }
       .sidebar-card { flex: 1 1 100%; }
       .feed-item { padding: 0.85rem 0.95rem; }
-    }
-
-    /* Mobile: allow body scroll? No — app shell fixed. But sidebar needs its own scroll if tall. */
-    @media (max-width: 880px) {
-      .app { overflow: hidden; }
-      .page { overflow-y: auto; } /* page scrolls if sidebar+feed exceed viewport */
-      .feed-scroll-area { overflow-y: visible; }
-      .container { overflow: visible; }
+      .top-bar h1 { font-size: 1.1rem; }
+      .auth-links a { font-size: 0.72rem; padding: 0.25rem 0.5rem; }
     }
   </style>
 </head>
@@ -985,8 +953,8 @@
             {% if username %}
               <a href="/u/{{ username }}">Profile</a>
               <a href="/party" style="color:#1db954;font-weight:600;">Party</a>
-              <a href="/messages" style="position:relative;">
-                Messages<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-14px;background:#e50914;color:#fff;font-size:0.58rem;font-weight:700;border-radius:10px;padding:0.1rem 0.35rem;line-height:1.2;"></span>
+              <a href="/messages" style="position:relative; overflow:visible;">
+                Messages<span id="msg-badge" style="display:none;position:absolute;top:-6px;right:-10px;background:#e50914;color:#fff;font-size:0.58rem;font-weight:700;border-radius:10px;padding:0.1rem 0.35rem;line-height:1.2;white-space:nowrap;"></span>
               </a>
               <a href="/logout" style="color:var(--muted);">Logout</a>
             {% else %}
@@ -1035,21 +1003,21 @@
 
         <!-- Mutuals feed (scrollable) -->
         <div id="tab-mutuals" class="feed-scroll-area">
-          <div id="mutuals-feed" style="display:flex; flex-direction:column; width:100%;">
+          <div id="mutuals-feed">
             <p class="empty-state">Loading…</p>
           </div>
         </div>
 
         <!-- Reviews feed (hidden initially) -->
         <div id="tab-reviews" class="feed-scroll-area" style="display:none;">
-          <div id="reviews-feed-inner" style="display:flex; flex-direction:column; width:100%;">
+          <div id="reviews-feed-inner">
           {% if comments %}
             {% for c in comments %}
             <div class="feed-item" style="display:flex; gap:.9rem; align-items:flex-start;">
               <img id="fp_{{ loop.index }}" src="" alt="" loading="lazy"
                 style="display:none; width:44px; height:64px; object-fit:cover; border-radius:5px; flex-shrink:0; margin-top:.1rem;"
                 onerror="this.style.display='none'" />
-              <div style="flex:1; min-width:0; overflow:hidden;">
+              <div style="flex:1; min-width:0;">
                 <div class="feed-meta">
                   <a href="/u/{{ c.username }}" class="feed-user">
                     <span class="feed-avatar-sm">{{ c.username[0]|upper }}</span>
@@ -1115,7 +1083,7 @@
     <div class="modal-box">
       <h3>↩️ Repost with your take</h3>
       <textarea id="repost-take" placeholder="Add your take (optional)…" rows="3"></textarea>
-      <div id="repost-preview" style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+      <div id="repost-preview" style="font-size:0.8rem; color:var(--muted); margin-bottom:0.8rem; word-break:break-word; overflow-wrap:anywhere;"></div>
       <div class="modal-actions">
         <button class="modal-cancel" onclick="closeRepost()">Cancel</button>
         <button class="modal-confirm" onclick="submitRepost()">Repost</button>
