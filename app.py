@@ -2098,7 +2098,8 @@ def create_post():
         text = data.get('text', '').strip()[:500]
         media_url = data.get('media_url', '').strip()[:500]
         tagged_media = data.get('tagged_media')  # {title, url, poster, kind}
-        if not text and not media_url and not tagged_media:
+        embed_url = data.get('embed_url', '').strip()[:500]  # YT/Insta reel URL
+        if not text and not media_url and not tagged_media and not embed_url:
             return jsonify({'error': 'Post needs text or media'}), 400
         if media_url and not media_url.startswith(('http://', 'https://', '/api/img/')):
             return jsonify({'error': 'Invalid URL'}), 400
@@ -2107,6 +2108,7 @@ def create_post():
             'username': username,
             'text': text,
             'media_url': media_url,
+            'embed_url': embed_url,
             'tagged_media': tagged_media,
             'created_at': datetime.now(timezone.utc),
             'likes': []
