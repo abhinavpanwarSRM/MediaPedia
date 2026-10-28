@@ -11,24 +11,19 @@
       --bg:#0d0d0d;--card:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.1);
       --text:#fff;--muted:#888;
     }
-    body.light-theme{
-      --bg:#f5f5f5;--card:rgba(0,0,0,0.03);--border:rgba(0,0,0,0.1);--text:#111;--muted:#666;
-    }
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;transition:background .3s,color .3s;}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh;}
     .topnav{display:flex;justify-content:space-between;align-items:center;padding:.9rem 1.5rem;
       border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,13,13,.97);
       backdrop-filter:blur(8px);z-index:100;min-height:57px;}
-    body.light-theme .topnav{background:rgba(245,245,245,.97);}
     .topnav a{color:var(--muted);text-decoration:none;font-size:.85rem;}
-    .topnav a:hover{color:var(--text);}
+    .topnav a:hover{color:#fff;}
     .brand{color:var(--bb);font-weight:700;font-size:1rem;}
     .nav-right{display:flex;gap:1rem;align-items:center;}
     .nav-burger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:4px;}
-    .nav-burger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;}
+    .nav-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
     .nav-drawer{display:none;flex-direction:column;background:rgba(13,13,13,.98);
       border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99;}
-    body.light-theme .nav-drawer{background:rgba(245,245,245,.98);}
     .nav-drawer.open{display:flex;}
     .nav-drawer a{padding:.75rem 1.5rem;color:var(--muted);text-decoration:none;font-size:.9rem;border-bottom:1px solid var(--border);}
     @media(max-width:600px){.nav-right{display:none;}.nav-burger{display:flex;}}
@@ -38,7 +33,6 @@
       background:radial-gradient(ellipse at center top,rgba(229,9,20,.25) 0%,transparent 70%),
                  linear-gradient(180deg,#1a0000 0%,#0d0d0d 100%);
       border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
-    body.light-theme .hero{background:radial-gradient(ellipse at center top,rgba(229,9,20,.15) 0%,transparent 70%),linear-gradient(180deg,#fde8e8 0%,#f5f5f5 100%);}
     .hero-bg{position:absolute;top:0;left:0;width:100%;height:100%;min-height:50vh;background-size:cover;background-position:center;opacity:.55;z-index:0;}
     .hero-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(13,13,13,.7) 100%);}
     .hero>*{position:relative;z-index:1;}
@@ -50,19 +44,21 @@
       border-radius:20px;padding:.4rem 1.2rem;font-size:.85rem;color:#ff6b35;font-weight:600;}
     .hero-stats{display:flex;gap:1.5rem;margin-top:1.4rem;flex-wrap:wrap;justify-content:center;}
     .hero-stat{text-align:center;}
-    .hero-stat-val{font-size:1.6rem;font-weight:900;color:var(--text);line-height:1;}
+    .hero-stat-val{font-size:1.6rem;font-weight:900;color:#fff;line-height:1;}
     .hero-stat-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:.2rem;}
 
     .content{max-width:1100px;margin:0 auto;padding:3rem 1.5rem;}
     .section-title{font-size:clamp(1.2rem,3vw,1.6rem);font-weight:800;color:var(--bb);
       border-bottom:1px solid var(--border);padding-bottom:.6rem;margin-bottom:1.5rem;letter-spacing:1px;}
 
+    /* TABS */
     .tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1.5rem;}
     .tab-btn{padding:.45rem 1rem;border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;
       border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .2s;font-family:inherit;}
     .tab-btn.active{background:rgba(229,9,20,.15);border-color:var(--bb);color:var(--bb);}
-    .tab-btn:hover:not(.active){color:var(--text);border-color:rgba(255,255,255,.3);}
+    .tab-btn:hover:not(.active){color:#fff;border-color:rgba(255,255,255,.3);}
 
+    /* CONTESTANTS */
     .contestants-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;}
     .contestant-card{background:var(--card);border:1px solid var(--border);border-radius:14px;
       padding:1.2rem .8rem;text-align:center;transition:border-color .2s,transform .2s;cursor:pointer;}
@@ -71,12 +67,14 @@
     .contestant-avatar{width:60px;height:60px;border-radius:50%;margin:0 auto .6rem;
       display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;border:2px solid var(--bb);}
     .contestant-img{width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--bb);margin:0 auto .6rem;display:block;}
-    .contestant-name{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.3rem;}
+    .contestant-name{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:.3rem;}
     .contestant-status{font-size:.68rem;text-transform:uppercase;letter-spacing:1px;}
     .status-active{color:#2ed573;}.status-nominated{color:var(--gold);}.status-eliminated{color:#ff4757;}
+    .nom-chip.eliminated{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
     .star-row{display:flex;justify-content:center;gap:1px;margin-top:.4rem;font-size:.75rem;}
     .star-filled{color:var(--gold);}.star-empty{color:#444;}
 
+    /* FAN LEADERBOARD */
     .fan-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;min-width:480px;}
     .fan-lb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;}
     .fan-lb-row{display:grid;grid-template-columns:32px minmax(120px,1fr) 60px 60px 60px 70px;
@@ -87,9 +85,10 @@
     .fan-lb-bar-wrap{background:rgba(255,255,255,.06);border-radius:4px;height:5px;margin-top:3px;}
     .fan-lb-bar{background:linear-gradient(90deg,var(--bb),#ff6b35);height:100%;border-radius:4px;transition:width .5s;}
 
+    /* POLLS */
     .poll-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
     .poll-card.closed{border-color:rgba(255,215,0,.25);}
-    .poll-question{font-size:1rem;font-weight:700;margin-bottom:1rem;color:var(--text);}
+    .poll-question{font-size:1rem;font-weight:700;margin-bottom:1rem;color:#fff;}
     .poll-week{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;}
     .poll-type-badge{display:inline-block;font-size:.62rem;padding:.15rem .5rem;border-radius:10px;
       font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-left:.5rem;}
@@ -97,7 +96,6 @@
     .badge-winner{background:rgba(255,215,0,.15);color:var(--gold);border:1px solid rgba(255,215,0,.3);}
     .badge-general{background:rgba(255,255,255,.07);color:#aaa;border:1px solid var(--border);}
     .badge-closed{background:rgba(255,215,0,.12);color:var(--gold);border:1px solid rgba(255,215,0,.3);}
-    .badge-live{background:rgba(46,213,115,.15);color:#2ed573;border:1px solid rgba(46,213,115,.4);}
     .poll-options{display:flex;flex-direction:column;gap:.6rem;}
     .poll-option{position:relative;background:rgba(255,255,255,.05);border:1px solid var(--border);
       border-radius:8px;padding:.6rem 1rem;cursor:pointer;transition:border-color .2s;
@@ -109,6 +107,7 @@
     .poll-opt-label{position:relative;font-size:.88rem;font-weight:500;}
     .poll-opt-pct{position:relative;font-size:.78rem;color:var(--muted);}
 
+    /* NOMINATIONS */
     .nom-week{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1rem;}
     .nom-week-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;}
     .nom-week-label{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#ff6b35;font-weight:700;}
@@ -117,8 +116,8 @@
     .nom-chip{padding:.3rem .8rem;border-radius:20px;font-size:.78rem;font-weight:600;
       background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.3);color:#ff6b35;}
     .nom-chip.captain{background:rgba(255,215,0,.12);border-color:rgba(255,215,0,.4);color:var(--gold);}
-    .nom-chip.eliminated{background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.4);color:#ff4757;text-decoration:line-through;}
 
+    /* REELS */
     .reels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.2rem;}
     .reel-card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;}
     .reel-card:hover{border-color:rgba(229,9,20,.4);}
@@ -135,49 +134,56 @@
     .reel-del-btn:hover{color:#ff4757;}
     .reel-cat-badge{font-size:.62rem;padding:.15rem .5rem;border-radius:10px;background:rgba(255,255,255,.07);
       border:1px solid var(--border);color:#aaa;text-transform:uppercase;letter-spacing:.5px;}
+    /* REEL COMMENTS */
     .reel-comments{border-top:1px solid var(--border);padding:.7rem 1rem;}
     .reel-comments-toggle{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.78rem;padding:0;font-family:inherit;}
-    .reel-comments-toggle:hover{color:var(--text);}
+    .reel-comments-toggle:hover{color:#fff;}
     .reel-comments-list{margin-top:.6rem;display:flex;flex-direction:column;gap:.5rem;max-height:200px;overflow-y:auto;}
     .reel-comment{font-size:.82rem;color:#ddd;line-height:1.4;}
-    .reel-comment-user{font-weight:700;color:var(--text);margin-right:.3rem;}
+    .reel-comment-user{font-weight:700;color:#fff;margin-right:.3rem;}
     .reel-comment-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;margin-left:.3rem;}
     .reel-comment-del:hover{color:#ff4757;}
     .reel-comment-inp-row{display:flex;gap:.4rem;margin-top:.6rem;}
     .reel-comment-inp{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
-      color:var(--text);font-size:.82rem;padding:.4rem .7rem;flex:1;font-family:inherit;}
+      color:#fff;font-size:.82rem;padding:.4rem .7rem;flex:1;font-family:inherit;}
     .reel-comment-inp:focus{outline:none;border-color:var(--bb);}
 
+    /* ADMIN */
     .admin-section{background:rgba(229,9,20,.05);border:1px solid rgba(229,9,20,.2);border-radius:14px;padding:1.4rem;margin-bottom:1.2rem;}
     .admin-label{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:var(--bb);margin-bottom:.8rem;font-weight:700;}
 
+    /* FORMS */
     .form-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem;}
     .inp{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;
-      color:var(--text);font-size:.88rem;padding:.5rem .85rem;flex:1;min-width:120px;font-family:inherit;}
+      color:#fff;font-size:.88rem;padding:.5rem .85rem;flex:1;min-width:120px;font-family:inherit;}
     .inp:focus{outline:none;border-color:var(--bb);}
-    select.inp option{background:#111;color:#fff;}
+    select.inp option{background:#111;}
     textarea.inp{resize:vertical;min-height:70px;}
     .btn{padding:.5rem 1.1rem;border-radius:8px;font-size:.85rem;font-weight:600;
       cursor:pointer;border:1px solid;transition:all .2s;font-family:inherit;}
     .btn-red{background:rgba(229,9,20,.15);border-color:var(--bb);color:var(--bb);}
     .btn-red:hover{background:rgba(229,9,20,.3);}
     .btn-muted{background:transparent;border-color:rgba(255,255,255,.15);color:var(--muted);}
-    .btn-muted:hover{color:var(--text);border-color:rgba(255,255,255,.3);}
+    .btn-muted:hover{color:#fff;border-color:rgba(255,255,255,.3);}
 
+    /* MODAL */
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);
       z-index:500;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;}
     .modal-overlay.open{display:flex;}
     .modal{background:#111;border:1px solid var(--border);border-radius:16px;
-      width:100%;max-width:540px;padding:1.5rem;margin:auto;color:#fff;}
-    body.light-theme .modal{background:#fff;color:#111;}
+      width:100%;max-width:540px;padding:1.5rem;margin:auto;}
     .modal h2{color:var(--bb);font-size:1.3rem;margin-bottom:1.2rem;}
+    .modal-footer{display:flex;gap:.8rem;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap;
+      padding-top:.8rem;border-top:1px solid var(--border);}
 
+    /* RATING STARS */
     .rating-group{margin-bottom:.8rem;}
     .rating-label{font-size:.75rem;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.5px;}
     .star-input{display:flex;gap:4px;}
     .star-input span{font-size:1.4rem;cursor:pointer;transition:transform .1s;}
     .star-input span:hover{transform:scale(1.2);}
 
+    /* COMMENTS */
     .comment-item{padding:.7rem 0;border-bottom:1px solid rgba(255,255,255,.05);}
     .comment-item:last-child{border-bottom:none;}
     .comment-meta{font-size:.72rem;color:var(--muted);margin-bottom:.3rem;display:flex;justify-content:space-between;}
@@ -185,16 +191,17 @@
     .comment-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;}
     .comment-del:hover{color:#ff4757;}
 
+    /* TOAST */
     .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);
       background:#222;color:#fff;border:1px solid var(--border);
       padding:.55rem 1.3rem;border-radius:20px;font-size:.85rem;
       z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
     .toast.show{opacity:1;}
-
+    /* POINTS BADGE */
     .pts-badge{background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.4);color:var(--gold);
       border-radius:20px;padding:.2rem .65rem;font-size:.78rem;font-weight:700;cursor:default;
       display:flex;align-items:center;gap:.3rem;white-space:nowrap;}
-
+    /* POINTS LEADERBOARD */
     .pts-lb{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
     .pts-lb-row{display:grid;grid-template-columns:32px 1fr 80px;align-items:center;
       padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.5rem;}
@@ -202,92 +209,6 @@
     .pts-lb-row.hdr{background:rgba(255,215,0,.07);font-size:.68rem;letter-spacing:1px;
       text-transform:uppercase;color:var(--gold);font-weight:600;}
     .pts-lb-row.me{background:rgba(255,215,0,.06);}
-
-    /* NEW FEATURE STYLES */
-    .live-dot{display:inline-block;width:8px;height:8px;background:#2ed573;border-radius:50%;
-      animation:pulse 1.2s infinite;margin-right:.4rem;vertical-align:middle;}
-    @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(1.3);}}
-
-    .notif-bell{position:relative;cursor:pointer;font-size:1.1rem;padding:0 .3rem;background:none;border:none;color:var(--text);}
-    .notif-bell .badge{position:absolute;top:-4px;right:-6px;background:var(--bb);color:#fff;
-      font-size:.6rem;font-weight:700;border-radius:10px;padding:1px 5px;min-width:14px;text-align:center;}
-    .notif-dropdown{position:absolute;top:100%;right:0;width:320px;max-height:400px;overflow-y:auto;
-      background:#181818;border:1px solid var(--border);border-radius:12px;margin-top:.5rem;
-      box-shadow:0 8px 30px rgba(0,0,0,.6);display:none;z-index:200;}
-    body.light-theme .notif-dropdown{background:#fff;color:#111;}
-    .notif-dropdown.open{display:block;}
-    .notif-item{padding:.7rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);font-size:.82rem;cursor:pointer;}
-    .notif-item:hover{background:rgba(255,255,255,.03);}
-    .notif-item.unread{background:rgba(229,9,20,.08);border-left:2px solid var(--bb);}
-    .notif-time{font-size:.65rem;color:var(--muted);margin-top:.2rem;}
-
-    .thread-replies{margin-left:1.5rem;padding-left:.6rem;border-left:2px solid rgba(229,9,20,.25);margin-top:.4rem;}
-    .reply-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;
-      padding:0;margin-left:.4rem;font-family:inherit;}
-    .reply-btn:hover{color:var(--bb);}
-    .reaction-bar{display:flex;gap:.3rem;margin-top:.3rem;flex-wrap:wrap;}
-    .reaction-pill{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:12px;
-      padding:.15rem .5rem;font-size:.72rem;cursor:pointer;display:flex;align-items:center;gap:.2rem;transition:.15s;}
-    .reaction-pill:hover{border-color:var(--bb);}
-    .reaction-pill.mine{background:rgba(229,9,20,.15);border-color:var(--bb);}
-
-    .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
-    @media(max-width:600px){.compare-grid{grid-template-columns:1fr;}}
-    .compare-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem;}
-    .compare-stat{display:flex;justify-content:space-between;padding:.4rem 0;
-      border-bottom:1px solid rgba(255,255,255,.05);font-size:.82rem;}
-    .compare-stat:last-child{border-bottom:none;}
-    .compare-bar{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;margin:.3rem 0;}
-    .compare-bar > div{height:100%;background:linear-gradient(90deg,var(--bb),#ff6b35);}
-
-    .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.8rem;}
-    .badge-card{background:var(--card);border:1px solid var(--border);border-radius:12px;
-      padding:1rem;text-align:center;transition:.2s;}
-    .badge-card.earned{border-color:rgba(255,215,0,.5);background:rgba(255,215,0,.05);}
-    .badge-card.locked{opacity:.4;filter:grayscale(1);}
-    .badge-icon{font-size:2rem;margin-bottom:.4rem;}
-    .badge-name{font-size:.82rem;font-weight:700;}
-    .badge-desc{font-size:.7rem;color:var(--muted);margin-top:.2rem;line-height:1.3;}
-
-    .streak-banner{background:linear-gradient(135deg,rgba(229,9,20,.15),rgba(255,107,53,.1));
-      border:1px solid rgba(229,9,20,.3);border-radius:12px;padding:.8rem 1.2rem;margin-bottom:1.2rem;
-      display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;font-size:.85rem;}
-    .streak-fire{font-size:1.5rem;}
-    .streak-count{font-size:1.2rem;font-weight:900;color:#ff6b35;}
-
-    .recap-card{background:linear-gradient(135deg,#1a0000,#0d0d0d);border:1px solid rgba(229,9,20,.3);
-      border-radius:16px;padding:1.5rem;margin-bottom:1.2rem;position:relative;overflow:hidden;color:#fff;}
-    .recap-card::before{content:'';position:absolute;top:-50%;right:-20%;width:200px;height:200px;
-      background:radial-gradient(circle,rgba(229,9,20,.25),transparent 70%);pointer-events:none;}
-    .recap-week{font-size:.72rem;letter-spacing:2px;text-transform:uppercase;color:#ff6b35;font-weight:700;}
-    .recap-title{font-size:1.2rem;font-weight:800;margin:.3rem 0 1rem;}
-    .recap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;}
-    .recap-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:.7rem;}
-    .recap-item-lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem;}
-    .recap-item-val{font-size:.9rem;font-weight:700;color:#fff;}
-
-    .champion-card{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,107,53,.1));
-      border:1px solid rgba(255,215,0,.4);border-radius:14px;padding:1.2rem;text-align:center;margin-bottom:1.2rem;}
-    .champion-name{font-size:1.3rem;font-weight:900;color:var(--gold);}
-
-    .mention-autocomplete{position:absolute;background:#181818;border:1px solid var(--border);
-      border-radius:8px;max-height:160px;overflow-y:auto;z-index:1000;display:none;min-width:140px;}
-    .mention-autocomplete.open{display:block;}
-    .mention-item{padding:.4rem .7rem;font-size:.8rem;cursor:pointer;}
-    .mention-item:hover{background:rgba(229,9,20,.15);}
-
-    .theme-toggle{background:none;border:none;color:var(--text);cursor:pointer;font-size:1rem;padding:0 .3rem;}
-    .live-updated{font-size:.68rem;color:#2ed573;display:inline-flex;align-items:center;gap:.3rem;margin-left:.6rem;}
-    .stake-pill{background:rgba(255,215,0,.15);border:1px solid var(--gold);color:var(--gold);
-      padding:.15rem .5rem;border-radius:10px;font-size:.7rem;font-weight:700;margin-left:.3rem;}
-    .follow-btn{background:rgba(229,9,20,.15);border:1px solid var(--bb);color:var(--bb);
-      border-radius:16px;padding:.25rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;}
-    .follow-btn.following{background:transparent;border-color:var(--border);color:var(--muted);}
-    .follow-btn:hover{opacity:.8;}
-    .weekly-lb-row{display:grid;grid-template-columns:32px 1fr 80px;align-items:center;
-      padding:.6rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);gap:.5rem;font-size:.85rem;}
-    .weekly-lb-row.hdr{background:rgba(255,215,0,.07);font-size:.68rem;letter-spacing:1px;
-      text-transform:uppercase;color:var(--gold);font-weight:600;}
   </style>
 </head>
 <body>
@@ -299,13 +220,6 @@
       <a href="/biggboss" style="color:var(--bb);font-weight:700;">Bigg Boss</a>
       {% if username %}
         <div class="pts-badge" id="nav-pts-badge" title="Your BB Points">🏅 <span id="nav-pts">—</span></div>
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌓</button>
-        <div style="position:relative;">
-          <button class="notif-bell" onclick="toggleNotifs(event)" title="Notifications">
-            🔔<span class="badge" id="notif-count" style="display:none;">0</span>
-          </button>
-          <div class="notif-dropdown" id="notif-dropdown"></div>
-        </div>
         <a href="/u/{{ username }}" style="color:var(--bb);font-weight:600;">{{ username }}</a>
         <a href="/feed">Feed</a>
         <a href="/logout">Logout</a>
@@ -397,11 +311,6 @@
           <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Current Contestants <span id="a-c-count"></span></div>
           <div id="a-c-list" style="display:flex;flex-wrap:wrap;gap:.5rem;"></div>
         </div>
-        <div style="margin-top:1rem;">
-          <div class="admin-label" style="margin-bottom:.4rem;">Bulk Import (CSV: name,status,bio)</div>
-          <textarea class="inp" id="a-bulk-csv" placeholder="Name,active,Bio here&#10;Name2,nominated,Bio here" style="min-height:80px;width:100%;"></textarea>
-          <button class="btn btn-red" onclick="bulkImportContestants()" style="margin-top:.5rem;">Import</button>
-        </div>
       </div>
 
       <div class="admin-section">
@@ -418,10 +327,6 @@
         <div class="form-row">
           <input class="inp" id="a-poll-opts" placeholder="Options comma-separated e.g. Alice,Bob,Charlie" />
           <button class="btn btn-red" onclick="createPoll()">Create Poll</button>
-        </div>
-        <div class="form-row">
-          <button class="btn btn-muted" onclick="createPollTemplate('winner')">🏆 Auto Winner Poll</button>
-          <button class="btn btn-muted" onclick="createPollTemplate('eviction')">❌ Auto Eviction Poll</button>
         </div>
       </div>
 
@@ -470,16 +375,11 @@
           <button class="btn btn-red" onclick="addNomination()">Add</button>
         </div>
       </div>
-
       <div class="admin-section">
-        <div class="admin-label">Points & Snapshots</div>
-        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;">Backfill scans all existing reels, comments, ratings, votes and awards retroactive points.</p>
+        <div class="admin-label">Points Management</div>
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem;">Backfill scans all existing reels, comments, ratings, votes and awards retroactive points. Run once after enabling the points system.</p>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-          <button class="btn btn-red" onclick="backfillBBPoints()">⚡ Backfill Points</button>
-          <button class="btn btn-muted" onclick="recomputeBadges()">🏅 Recompute Badges</button>
-          <button class="btn btn-muted" onclick="snapshotWeekly()">📸 Snapshot Weekly Points</button>
-          <button class="btn btn-muted" onclick="snapshotRatings()">📈 Snapshot Ratings</button>
-          <button class="btn btn-muted" onclick="generateRecap()">📰 Generate Recap</button>
+          <button class="btn btn-red" onclick="backfillBBPoints()">⚡ Backfill Points from DB</button>
           <button class="btn btn-muted" onclick="resetBBPoints()" style="border-color:#ff4757;color:#ff4757;">🗑 Full Season Reset</button>
         </div>
         <div id="backfill-result" style="font-size:.78rem;color:#2ed573;margin-top:.6rem;"></div>
@@ -493,16 +393,10 @@
         </div>
         <div id="a-admin-list" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.5rem;"></div>
       </div>
-
-      <div class="admin-section">
-        <div class="admin-label">Audit Log</div>
-        <button class="btn btn-muted" onclick="loadAuditLog()">Load Recent Actions</button>
-        <div id="audit-log-wrap" style="margin-top:.7rem;font-size:.78rem;"></div>
-      </div>
     </section>
     {% endif %}
 
-    <!-- MAIN TABS -->
+    <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('contestants',this)">🏠 Contestants</button>
       <button class="tab-btn" onclick="switchTab('leaderboard',this)">🏆 Fan Favourite</button>
@@ -511,13 +405,9 @@
       <button class="tab-btn" onclick="switchTab('reels',this)">🎬 Clips</button>
       <button class="tab-btn" onclick="switchTab('insta',this)">📈 Instagram</button>
       <button class="tab-btn" onclick="switchTab('points',this)">🏅 Points</button>
-      <button class="tab-btn" onclick="switchTab('achievements',this)">🎖 Achievements</button>
-      <button class="tab-btn" onclick="switchTab('recaps',this)">📰 Recaps</button>
-      <button class="tab-btn" onclick="switchTab('compare',this)">⚔️ Compare</button>
-      <button class="tab-btn" onclick="switchTab('trends',this)">📈 Trends</button>
     </div>
 
-    <!-- CONTESTANTS -->
+    <!-- CONTESTANTS TAB -->
     <div id="tab-contestants">
       <div class="tabs" style="margin-bottom:1rem;">
         <button class="tab-btn active" onclick="filterContestants('all',this)">All</button>
@@ -530,7 +420,7 @@
       </div>
     </div>
 
-    <!-- FAN LEADERBOARD -->
+    <!-- FAN LEADERBOARD TAB -->
     <div id="tab-leaderboard" style="display:none;">
       <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Community ratings across Likability, Gameplay &amp; Entertainment.</p>
       <div class="fan-lb-scroll">
@@ -547,31 +437,25 @@
       </div>
     </div>
 
-    <!-- POLLS -->
+    <!-- POLLS TAB -->
     <div id="tab-polls" style="display:none;">
-      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
-        <div class="tabs" style="margin-bottom:0;">
-          <button class="tab-btn active" onclick="filterPolls('all',this)">All</button>
-          <button class="tab-btn" onclick="filterPolls('eviction',this)">Eviction</button>
-          <button class="tab-btn" onclick="filterPolls('winner',this)">Winner</button>
-          <button class="tab-btn" onclick="filterPolls('general',this)">General</button>
-        </div>
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
-          <input type="checkbox" id="live-toggle" onchange="toggleLiveMode()" /> Live updates
-        </label>
-        <span class="live-updated" id="live-updated" style="display:none;"><span class="live-dot"></span>Live</span>
+      <div class="tabs" style="margin-bottom:1rem;">
+        <button class="tab-btn active" onclick="filterPolls('all',this)">All</button>
+        <button class="tab-btn" onclick="filterPolls('eviction',this)">Eviction</button>
+        <button class="tab-btn" onclick="filterPolls('winner',this)">Winner Prediction</button>
+        <button class="tab-btn" onclick="filterPolls('general',this)">General</button>
       </div>
       <div id="polls-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
     </div>
 
-    <!-- NOMINATIONS -->
+    <!-- NOMINATIONS TAB -->
     <div id="tab-nominations" style="display:none;">
       <div id="nominations-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
     </div>
 
-    <!-- INSTAGRAM -->
+    <!-- INSTAGRAM TAB -->
     <div id="tab-insta" style="display:none;">
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1rem;">Follower count before entering Bigg Boss vs now.</p>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1rem;">Follower count before entering Bigg Boss vs now. See who gained the most fame.</p>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1.2rem;">
         <div style="display:flex;gap:.3rem;">
           <button class="tab-btn active" id="insta-sort-gain" onclick="setInstaSort('gain',this)">📈 By Gain</button>
@@ -588,16 +472,12 @@
       <div id="insta-chart-wrap"></div>
     </div>
 
-    <!-- POINTS -->
+    <!-- POINTS LEADERBOARD TAB -->
     <div id="tab-points" style="display:none;">
-      <div id="weekly-champion-wrap"></div>
-      <div class="tabs" style="margin-bottom:1rem;">
-        <button class="tab-btn active" id="pts-tab-all" onclick="switchPointsTab('all',this)">All Time</button>
-        <button class="tab-btn" id="pts-tab-weekly" onclick="switchPointsTab('weekly',this)">This Week</button>
-      </div>
+      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">Earn points by voting, predicting correctly, commenting, liking and posting clips.</p>
       <div style="background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:.8rem 1.2rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
         <span style="font-size:.8rem;color:var(--muted);">How to earn:</span>
-        <span style="font-size:.75rem;color:#ccc;">🗳️ Vote +1 | ✅ Correct prediction +10 | 💬 Comment +1 | ❤️ Like +1 | 🎬 Post clip +1 | ⭐ Rate +1 | 🔥 Daily visit +1-7</span>
+        <span style="font-size:.75rem;color:#ccc;">🗳️ Vote +1 &nbsp;|&nbsp; ✅ Correct prediction +10 &nbsp;|&nbsp; 💬 Comment +1 &nbsp;|&nbsp; ❤️ Like +1 &nbsp;|&nbsp; 🎬 Post clip +1 &nbsp;|&nbsp; ⭐ Rate contestant +1</span>
       </div>
       <div class="pts-lb" id="pts-lb-wrap">
         <div class="pts-lb-row hdr"><div>#</div><div>User</div><div style="text-align:right;">Points</div></div>
@@ -605,44 +485,6 @@
       </div>
     </div>
 
-    <!-- ACHIEVEMENTS -->
-    <div id="tab-achievements" style="display:none;">
-      <div class="streak-banner" id="streak-banner" style="display:none;">
-        <span class="streak-fire">🔥</span>
-        <span>Daily streak: <span class="streak-count" id="streak-count">0</span> days</span>
-        <span style="color:var(--muted);font-size:.78rem;" id="streak-best"></span>
-      </div>
-      <p style="color:var(--muted);font-size:.82rem;margin-bottom:1.2rem;">
-        Earn badges by participating in polls, rating contestants, commenting and staying active.
-        <span id="badge-progress" style="color:var(--gold);font-weight:700;"></span>
-      </p>
-      <div class="badge-grid" id="badge-grid"></div>
-    </div>
-
-    <!-- RECAPS -->
-    <div id="tab-recaps" style="display:none;">
-      <div id="recaps-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
-    </div>
-
-    <!-- COMPARE -->
-    <div id="tab-compare" style="display:none;">
-      <div class="form-row" style="margin-bottom:1.5rem;">
-        <select class="inp" id="cmp-a" onchange="runCompare()"><option value="">Contestant A</option></select>
-        <span style="align-self:center;font-weight:700;color:var(--bb);">vs</span>
-        <select class="inp" id="cmp-b" onchange="runCompare()"><option value="">Contestant B</option></select>
-      </div>
-      <div id="compare-wrap"></div>
-    </div>
-
-    <!-- TRENDS -->
-    <div id="tab-trends" style="display:none;">
-      <div class="form-row" style="margin-bottom:1.5rem;">
-        <select class="inp" id="trend-contestant" onchange="loadTrend()"><option value="">Select contestant</option></select>
-      </div>
-      <div id="trend-wrap"><p style="color:var(--muted);font-size:.85rem;">Select a contestant to view their rating trend.</p></div>
-    </div>
-
-    <!-- REELS -->
     <div id="tab-reels" style="display:none;">
       {% if username %}
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;">
@@ -687,19 +529,21 @@
     <div class="modal" style="max-width:580px;">
       <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;">
         <div id="cm-avatar" style="width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;flex-shrink:0;border:2px solid var(--bb);"></div>
-        <div style="flex:1;">
+        <div>
           <div id="cm-name" style="font-size:1.2rem;font-weight:800;"></div>
           <div id="cm-status" style="font-size:.75rem;margin-top:.2rem;"></div>
           <div id="cm-bio" style="font-size:.8rem;color:var(--muted);margin-top:.3rem;line-height:1.4;"></div>
         </div>
-        <button onclick="closeModal()" style="background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;">✕</button>
+        <button onclick="closeModal()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;">✕</button>
       </div>
 
+      <!-- Nomination History -->
       <div id="cm-nom-history" style="margin-bottom:1.2rem;display:none;">
         <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;">Nomination History</div>
         <div id="cm-nom-chips" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
       </div>
 
+      <!-- Community Ratings -->
       <div style="margin-bottom:1.2rem;">
         <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Community Rating</div>
         <div id="cm-avg-ratings" style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
@@ -723,15 +567,14 @@
         {% endif %}
       </div>
 
+      <!-- Comments -->
       <div>
         <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.8rem;">Community Comments</div>
-        <div id="cm-comments" style="max-height:250px;overflow-y:auto;margin-bottom:.8rem;"></div>
+        <div id="cm-comments" style="max-height:200px;overflow-y:auto;margin-bottom:.8rem;"></div>
         {% if username %}
-        <div class="form-row" style="position:relative;">
-          <input class="inp" id="cm-comment-inp" placeholder="Say something... (use @username to mention)" maxlength="300"
-            onkeydown="if(event.key==='Enter')submitComment()" oninput="handleMentionInput(event, 'cm-comment-inp')" />
+        <div class="form-row">
+          <input class="inp" id="cm-comment-inp" placeholder="Say something about this contestant..." maxlength="300" onkeydown="if(event.key==='Enter')submitComment()" />
           <button class="btn btn-red" onclick="submitComment()">Post</button>
-          <div class="mention-autocomplete" id="mention-cm-comment-inp"></div>
         </div>
         {% endif %}
       </div>
@@ -740,20 +583,17 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- ===== MAIN SCRIPT ===== -->
   <script>
     const VIEWER = '{{ username or "" }}';
     let IS_ADMIN = {{ 'true' if is_bb_admin else 'false' }};
 
+    // Load granted admins list for display (abhinav only manages them)
     if (VIEWER && !IS_ADMIN) {
       fetch('/api/bb/admins').then(r=>r.ok?r.json():Promise.reject()).then(list => {
-        if (Array.isArray(list) && list.includes(VIEWER)) {
-          IS_ADMIN = true;
-          loadSeason(); loadContestants(); loadPolls(); loadNominations();
-        }
+        if (Array.isArray(list) && list.includes(VIEWER)) { IS_ADMIN = true; loadSeason(); loadContestants(); loadPolls(); loadNominations(); }
       }).catch(()=>{});
     }
-
+    let _bbAdmins = [];
     const AVATAR_COLORS = ['#e50914','#ff6b35','#ffd700','#2ed573','#5799ef','#a29bfe','#ff9f43','#ff6b6b'];
     let _contestants = [];
     let _allRatings = {};
@@ -761,164 +601,72 @@
     let _allReels = [];
     let _allNominations = [];
     let _allInsta = [];
-    let _allBadges = [];
     let _currentContestant = null;
     let _contestantFilter = 'all';
-    let _liveTimer = null;
-    let _pointsTab = 'all';
 
-    // ===== THEME =====
-    function toggleTheme() {
-      document.body.classList.toggle('light-theme');
-      localStorage.setItem('bb-theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
-    }
-    if (localStorage.getItem('bb-theme') === 'light') document.body.classList.add('light-theme');
-
-    // ===== TOAST =====
     function showToast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg; t.classList.add('show');
-      clearTimeout(window._toastT);
-      window._toastT = setTimeout(() => t.classList.remove('show'), 2800);
+      setTimeout(() => t.classList.remove('show'), 2800);
     }
 
-    // ===== TAB SWITCH =====
     function switchTab(name, btn) {
-      ['contestants','leaderboard','polls','nominations','reels','insta','points',
-       'achievements','recaps','compare','trends'].forEach(t => {
-        const el = document.getElementById('tab-'+t);
-        if (el) el.style.display = t === name ? '' : 'none';
+      ['contestants','leaderboard','polls','nominations','reels','insta','points'].forEach(t => {
+        document.getElementById('tab-'+t).style.display = t === name ? '' : 'none';
       });
-      document.querySelectorAll('.content > .tabs > .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tabs > .tab-btn').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       if (name === 'leaderboard') renderFanLeaderboard();
       if (name === 'polls' && !_allPolls.length) loadPolls();
       if (name === 'nominations') loadNominations();
       if (name === 'reels' && !_allReels.length) loadReels();
       if (name === 'insta' && !_allInsta.length) loadInsta();
-      if (name === 'points') { loadPointsLeaderboard(); loadWeeklyChampion(); }
-      if (name === 'achievements') loadAchievements();
-      if (name === 'recaps') loadRecaps();
-      if (name === 'compare') populateCompareDropdowns();
-      if (name === 'trends') populateTrendDropdown();
-    }
-
-    // ===== NOTIFICATIONS =====
-    function toggleNotifs(e) {
-      e.stopPropagation();
-      const dd = document.getElementById('notif-dropdown');
-      dd.classList.toggle('open');
-      if (dd.classList.contains('open')) loadNotifs();
-    }
-    document.addEventListener('click', () => {
-      document.getElementById('notif-dropdown')?.classList.remove('open');
-    });
-
-    function loadNotifs() {
-      if (!VIEWER) return;
-      fetch('/api/bb/notifications').then(r=>r.json()).then(list => {
-        const dd = document.getElementById('notif-dropdown');
-        if (!list.length) {
-          dd.innerHTML = '<div style="padding:1rem;font-size:.82rem;color:var(--muted);">No notifications yet.</div>';
-          return;
-        }
-        dd.innerHTML = list.map(n => {
-          const dt = n.created_at ? timeAgo(n.created_at) : '';
-          return `<div class="notif-item${n.read?'':' unread'}" onclick="markNotifRead('${n.created_at}')">
-            ${escapeHtml(n.text)}
-            <div class="notif-time">${dt}</div>
-          </div>`;
-        }).join('');
-        markAllNotifsRead();
-      });
-    }
-
-    function refreshNotifCount() {
-      if (!VIEWER) return;
-      fetch('/api/bb/notifications/unread_count').then(r=>r.json()).then(d => {
-        const b = document.getElementById('notif-count');
-        if (!b) return;
-        if (d.count > 0) { b.textContent = d.count; b.style.display = ''; }
-        else b.style.display = 'none';
-      });
-    }
-
-    function markAllNotifsRead() {
-      if (!VIEWER) return;
-      fetch('/api/bb/notifications/read', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({all: true})
-      }).then(() => {
-        document.getElementById('notif-count').style.display = 'none';
-      });
-    }
-
-    function markNotifRead(id) {
-      if (!VIEWER || !id) return;
-      fetch('/api/bb/notifications/read', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ids: [id]})
-      });
-    }
-
-    function timeAgo(iso) {
-      try {
-        const d = new Date(iso);
-        const diff = (Date.now() - d.getTime()) / 1000;
-        if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-        return Math.floor(diff/86400) + 'd ago';
-      } catch(e) { return ''; }
-    }
-
-    // ===== DAILY VISIT =====
-    function recordDailyVisit() {
-      if (!VIEWER) return;
-      fetch('/api/bb/daily/visit', {method:'POST'})
-        .then(r=>r.json()).then(d => {
-          if (d.points_awarded > 0) showToast(`🔥 ${d.streak}-day streak! +${d.points_awarded} pts`);
-          loadMyPoints();
-        }).catch(()=>{});
+      if (name === 'points') loadPointsLeaderboard();
     }
 
     // ===== SEASON =====
     function loadSeason() {
-      fetch('/api/bb/season').then(r=>r.json()).then(d => {
+      fetch('/api/bb/season').then(r => r.json()).then(d => {
         const pill = document.getElementById('season-pill');
-        pill.textContent = d.name ? d.name + (d.year?' ('+d.year+')':'') + (d.host?' • Host: '+d.host:'') : 'Season info coming soon';
+        pill.textContent = d.name ? d.name + (d.year ? ' ('+d.year+')' : '') + (d.host ? ' • Host: '+d.host : '') : 'Season info coming soon';
+        // Apply hero background
         const bg = document.getElementById('hero-bg');
         if (d.bg_url) {
           bg.style.backgroundImage = `url('${d.bg_url}')`;
           const prev = document.getElementById('a-season-bg-preview');
           if (prev) { prev.src = d.bg_url; prev.style.display = 'inline-block'; }
-        } else bg.style.backgroundImage = '';
+        } else {
+          bg.style.backgroundImage = '';
+        }
         if (IS_ADMIN && document.getElementById('a-season-name')) {
           document.getElementById('a-season-name').value = d.name || '';
           document.getElementById('a-season-host').value = d.host || '';
           document.getElementById('a-season-year').value = d.year || '';
         }
-      }).catch(()=>{ document.getElementById('season-pill').textContent = 'Season info unavailable'; });
+      }).catch(() => { document.getElementById('season-pill').textContent = 'Season info unavailable'; });
     }
 
     function saveSeason() {
       const name = document.getElementById('a-season-name').value.trim();
       const host = document.getElementById('a-season-host').value.trim();
       const year = document.getElementById('a-season-year').value.trim();
-      fetch('/api/bb/season', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,host,year})})
+      fetch('/api/bb/season', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,host,year}) })
         .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} showToast('Season saved!'); loadSeason(); });
     }
 
     function uploadHeroBg(input) {
-      const file = input.files[0]; if (!file) return;
+      const file = input.files[0];
+      if (!file) return;
       const prev = document.getElementById('a-season-bg-preview');
       prev.src = URL.createObjectURL(file); prev.style.display = 'inline-block';
-      const fd = new FormData(); fd.append('file', file);
-      fetch('/api/bb/season/bg', {method:'POST', body:fd}).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        document.getElementById('hero-bg').style.backgroundImage = `url('${d.bg_url}')`;
-        showToast('Background updated!');
-      });
+      const fd = new FormData();
+      fd.append('file', file);
+      fetch('/api/bb/season/bg', {method:'POST', body:fd})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          document.getElementById('hero-bg').style.backgroundImage = `url('${d.bg_url}')`;
+          showToast('Background updated!');
+        });
     }
 
     function removeHeroBg() {
@@ -932,7 +680,8 @@
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         document.getElementById('hero-bg').style.backgroundImage = '';
-        document.getElementById('a-season-bg-preview').style.display = 'none';
+        const prev = document.getElementById('a-season-bg-preview');
+        prev.style.display = 'none'; prev.src = '';
         document.getElementById('a-season-bg').value = '';
         showToast('Background removed');
       });
@@ -957,16 +706,16 @@
       let list = _contestants;
       if (_contestantFilter === 'active') list = list.filter(c => c.status === 'active' || c.status === 'nominated');
       else if (_contestantFilter !== 'all') list = list.filter(c => c.status === _contestantFilter);
-      if (!list.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No contestants.</p>'; return; }
+      if (!list.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No contestants in this category.</p>'; return; }
       wrap.innerHTML = list.map((c) => {
         const i = _contestants.indexOf(c);
         const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
         const sc = c.status==='eliminated'?'status-eliminated':c.status==='nominated'?'status-nominated':'status-active';
-        const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active';
+        const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active'; // unified
         const r = _allRatings[c.name];
         const overall = r ? r.overall : 0;
         const av = c.img
-          ? `<img class="contestant-img" src="${c.img}" alt="${c.name}" onerror="this.style.display='none'" />`
+          ? `<img class="contestant-img" src="${c.img}" alt="${c.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="contestant-avatar" style="background:${color}22;border-color:${color};color:${color};display:none;">${(c.name||'?')[0].toUpperCase()}</div>`
           : `<div class="contestant-avatar" style="background:${color}22;border-color:${color};color:${color};">${(c.name||'?')[0].toUpperCase()}</div>`;
         return `<div class="contestant-card${c.status==='eliminated'?' eliminated':''}" onclick="openContestantModal('${c.name.replace(/'/g,"\\'")}')">
           ${av}
@@ -984,6 +733,7 @@
       ]).then(([list, ratings]) => {
         _contestants = list;
         _allRatings = ratings;
+        // Hero stats
         const active = list.filter(c=>c.status==='active').length;
         const nominated = list.filter(c=>c.status==='nominated').length;
         const eliminated = list.filter(c=>c.status==='eliminated').length;
@@ -998,8 +748,7 @@
         renderAdminContestantList();
         renderFanLeaderboard();
         renderNomAdminContestants();
-        populateCompareDropdowns();
-        populateTrendDropdown();
+        // refresh insta admin dropdown if already loaded
         const sel = document.getElementById('a-insta-name');
         if (sel) sel.innerHTML = '<option value="">Select contestant</option>' +
           list.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
@@ -1013,44 +762,55 @@
       if (!name) { showToast('Name required'); return; }
       const status = document.getElementById('a-c-status').value;
       const bio = document.getElementById('a-c-bio').value.trim();
-      const file = document.getElementById('a-c-file').files[0];
-      const existing = _contestants.find(c => c.name.toLowerCase() === name.toLowerCase());
-      let list;
-      if (existing) {
-        list = _contestants.map(c => c.name.toLowerCase() === name.toLowerCase()
-          ? {...c, status, bio} : c);
-      } else {
-        list = [..._contestants, {name, status, bio, img: ''}];
-      }
-      fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
-        .then(r=>r.json()).then(d => {
-          if (d.error) { showToast(d.error); return; }
-          if (file) {
-            const fd = new FormData(); fd.append('file', file);
-            fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/upload', {method:'POST', body:fd})
-              .then(r=>r.json()).then(() => {
-                showToast(existing ? name+' updated!' : name+' added!');
-                clearContestantForm(); loadContestants();
-              });
-          } else {
-            showToast(existing ? name+' updated!' : name+' added!');
-            clearContestantForm(); loadContestants();
-          }
-        });
-    }
+      const fileInput = document.getElementById('a-c-file');
+      const file = fileInput.files[0];
 
-    function bulkImportContestants() {
-      const csv = document.getElementById('a-bulk-csv').value;
-      if (!csv.trim()) { showToast('CSV empty'); return; }
-      fetch('/api/bb/contestants/bulk', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({csv})
-      }).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast(`${d.count} contestants imported!`);
-        document.getElementById('a-bulk-csv').value = '';
-        loadContestants();
-      });
+      function _save(imgUrl) {
+        const existing = _contestants.find(c => c.name.toLowerCase() === name.toLowerCase());
+        let list;
+        if (existing) {
+          list = _contestants.map(c => c.name.toLowerCase() === name.toLowerCase()
+            ? {name: c.name, status, bio, img: imgUrl !== null ? imgUrl : (c.img || '')}
+            : c);
+        } else {
+          list = [..._contestants, {name, status, bio, img: imgUrl || ''}];
+        }
+        fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            showToast(existing ? name+' updated!' : name+' added!');
+            clearContestantForm();
+            loadContestants();
+          });
+      }
+
+      if (file) {
+        // First save contestant (without img), then upload photo
+        const existing = _contestants.find(c => c.name.toLowerCase() === name.toLowerCase());
+        let list;
+        if (existing) {
+          list = _contestants.map(c => c.name.toLowerCase() === name.toLowerCase()
+            ? {name: c.name, status, bio, img: c.img || ''} : c);
+        } else {
+          list = [..._contestants, {name, status, bio, img: ''}];
+        }
+        fetch('/api/bb/contestants', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({list})})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            const fd = new FormData();
+            fd.append('file', file);
+            document.getElementById('a-c-preview').textContent = 'Uploading photo...';
+            fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/upload', {method:'POST', body:fd})
+              .then(r=>r.json()).then(ud => {
+                if (ud.error) { showToast('Saved but photo failed: '+ud.error); }
+                else { showToast(existing ? name+' updated!' : name+' added!'); }
+                clearContestantForm();
+                loadContestants();
+              });
+          });
+      } else {
+        _save(null); // keep existing img
+      }
     }
 
     function clearContestantForm() {
@@ -1067,19 +827,20 @@
         const f = fi.files[0];
         const prev = document.getElementById('a-c-img-preview');
         if (f) { prev.src = URL.createObjectURL(f); prev.style.display = 'inline-block'; }
-        else prev.style.display = 'none';
+        else { prev.style.display = 'none'; }
       });
     });
 
     function editContestantAdmin(name) {
-      const c = _contestants.find(x => x.name === name); if (!c) return;
+      const c = _contestants.find(x => x.name === name);
+      if (!c) return;
       document.getElementById('a-c-name').value = c.name;
       document.getElementById('a-c-status').value = c.status || 'active';
       document.getElementById('a-c-bio').value = c.bio || '';
       document.getElementById('a-c-file').value = '';
       const prev = document.getElementById('a-c-img-preview');
       if (c.img) { prev.src = c.img; prev.style.display = 'inline-block'; }
-      else prev.style.display = 'none';
+      else { prev.style.display = 'none'; }
       document.getElementById('a-c-preview').textContent = 'Editing: '+c.name;
       window.scrollTo({top:0, behavior:'smooth'});
     }
@@ -1096,8 +857,10 @@
 
     function renderAdminContestantList() {
       if (!IS_ADMIN) return;
-      const wrap = document.getElementById('a-c-list'); if (!wrap) return;
-      document.getElementById('a-c-count').textContent = '('+_contestants.length+')';
+      const wrap = document.getElementById('a-c-list');
+      const count = document.getElementById('a-c-count');
+      if (!wrap) return;
+      count.textContent = '('+_contestants.length+')';
       wrap.innerHTML = _contestants.map(c => {
         const imgHtml = c.img
           ? `<img src="${c.img}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
@@ -1106,20 +869,24 @@
         return `<div style="display:flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:.3rem .6rem;">
           ${imgHtml}
           <span style="font-size:.78rem;font-weight:600;color:${sc};">${c.name}</span>
-          <button onclick="editContestantAdmin('${c.name.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">✏️</button>
-          <button onclick="removeContestantAdmin('${c.name.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">🗑</button>
+          <button onclick="editContestantAdmin('${c.name.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">✏️</button>
+          <button onclick="removeContestantAdmin('${c.name.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.72rem;padding:0 .2rem;">🗑</button>
         </div>`;
       }).join('');
     }
 
     // ===== FAN LEADERBOARD =====
     function renderFanLeaderboard() {
-      const wrap = document.getElementById('fan-lb-rows'); if (!wrap) return;
+      const wrap = document.getElementById('fan-lb-rows');
       if (!_contestants.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No contestants yet.</p>'; return; }
-      const rows = _contestants.map(c => {
-        const r = _allRatings[c.name] || {likability:0,gameplay:0,entertainment:0,overall:0,count:0};
-        return {...c, ...r};
-      }).sort((a,b) => b.overall - a.overall);
+      const rows = _contestants
+        .map(c => {
+          const r = _allRatings[c.name] || {likability:0,gameplay:0,entertainment:0,overall:0,count:0};
+          return {...c, ...r};
+        })
+        .sort((a,b) => b.overall - a.overall);
       const maxOverall = Math.max(...rows.map(r=>r.overall), 1);
       wrap.innerHTML = rows.map((c,i) => `
         <div class="fan-lb-row" style="cursor:pointer;" onclick="openContestantModal('${c.name.replace(/'/g,"\\'")}')">
@@ -1142,15 +909,17 @@
       const color = AVATAR_COLORS[i >= 0 ? i % AVATAR_COLORS.length : 0];
       const av = document.getElementById('cm-avatar');
       av.style.background = color+'22'; av.style.borderColor = color; av.style.color = color;
-      if (c.img) av.innerHTML = `<img src="${c.img}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
-      else av.textContent = (name||'?')[0].toUpperCase();
+      if (c.img) { av.innerHTML = `<img src="${c.img}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.parentElement.textContent='${(name||'?')[0].toUpperCase()}'" />`; }
+      else { av.textContent = (name||'?')[0].toUpperCase(); }
       document.getElementById('cm-name').textContent = name;
       const sc = c.status==='eliminated'?'color:#ff4757':c.status==='nominated'?'color:var(--gold)':'color:#2ed573';
       const sl = c.status==='eliminated'?'Eliminated':c.status==='nominated'?'Nominated':'Active';
       document.getElementById('cm-status').innerHTML = `<span style="${sc}">${sl}</span>`;
+      // Bio
       const bioEl = document.getElementById('cm-bio');
       bioEl.textContent = c.bio || '';
       bioEl.style.display = c.bio ? '' : 'none';
+      // Nomination history
       const nomWeeks = _allNominations.filter(n => (n.nominated||[]).includes(name));
       const nomDiv = document.getElementById('cm-nom-history');
       const nomChips = document.getElementById('cm-nom-chips');
@@ -1163,7 +932,9 @@
           }">Wk ${n.week}${wasEvicted?' 🚪':''}</span>`;
         }).join('');
         nomDiv.style.display = '';
-      } else nomDiv.style.display = 'none';
+      } else {
+        nomDiv.style.display = 'none';
+      }
       document.getElementById('contestant-modal').classList.add('open');
       document.body.style.overflow = 'hidden';
       loadContestantRating(name);
@@ -1198,18 +969,22 @@
     }
 
     function buildStarInput(key, val) {
-      const wrap = document.getElementById('r-'+key); if (!wrap) return;
-      wrap.dataset.val = val; wrap.innerHTML = '';
+      const wrap = document.getElementById('r-'+key);
+      if (!wrap) return;
+      wrap.dataset.val = val;
+      wrap.innerHTML = '';
       for (let i=1;i<=5;i++) {
         const s = document.createElement('span');
         s.textContent = '★';
         s.style.color = i <= val ? 'var(--gold)' : '#444';
+        s.style.fontSize = '1.4rem'; s.style.cursor = 'pointer';
         s.onmouseover = () => highlightStars(wrap, i);
         s.onmouseout = () => highlightStars(wrap, parseInt(wrap.dataset.val));
         s.onclick = () => { wrap.dataset.val = i; highlightStars(wrap, i); };
         wrap.appendChild(s);
       }
     }
+
     function highlightStars(wrap, val) {
       Array.from(wrap.children).forEach((s,i) => { s.style.color = i < val ? 'var(--gold)' : '#444'; });
     }
@@ -1228,109 +1003,52 @@
         _allRatings[_currentContestant] = d.stats;
         loadContestantRating(_currentContestant);
         renderFanLeaderboard();
-        loadMyPoints();
+        if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
       });
     }
 
-    // ===== CONTESTANT COMMENTS (with replies & reactions) =====
+    // ===== CONTESTANT COMMENTS =====
     function loadContestantComments(name) {
       fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/comments').then(r=>r.json()).then(comments => {
         const wrap = document.getElementById('cm-comments');
         if (!comments.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.82rem;padding:.4rem 0;">No comments yet. Be first!</p>'; return; }
-        const roots = comments.filter(c => !c.parent_id);
-        wrap.innerHTML = roots.map(c => renderCommentTree(c, comments, 'contestant', name)).join('');
+        wrap.innerHTML = comments.map(c => `
+          <div class="comment-item">
+            <div class="comment-meta">
+              <span style="color:#ccc;font-weight:600;">@${c.username}</span>
+              <div style="display:flex;gap:.5rem;align-items:center;">
+                <span>${c.created_at ? c.created_at.slice(0,10) : ''}</span>
+                ${(VIEWER===c.username||IS_ADMIN)?`<button class="comment-del" onclick="deleteContestantComment('${name}','${c.comment_id}')">🗑</button>`:''}
+              </div>
+            </div>
+            <div class="comment-text">${c.text}</div>
+          </div>`).join('');
         wrap.scrollTop = wrap.scrollHeight;
       });
-    }
-
-    function renderCommentTree(root, all, type, ctx) {
-      const replies = all.filter(c => c.parent_id === root.comment_id);
-      const reactionsHtml = `<div class="reaction-bar" id="react-${root.comment_id}"></div>`;
-      setTimeout(() => loadReactions(root.comment_id), 50);
-      return `<div class="comment-item">
-        <div class="comment-meta">
-          <span style="color:#ccc;font-weight:600;">@${root.username}</span>
-          <div style="display:flex;gap:.5rem;align-items:center;">
-            <span>${root.created_at ? root.created_at.slice(0,10) : ''}</span>
-            ${VIEWER?`<button class="reply-btn" onclick="promptReply('${type}','${ctx}','${root.comment_id}','${root.username}')">↩ Reply</button>`:''}
-            ${(VIEWER===root.username||IS_ADMIN)?`<button class="comment-del" onclick="deleteComment('${type}','${ctx}','${root.comment_id}')">🗑</button>`:''}
-          </div>
-        </div>
-        <div class="comment-text">${linkifyMentions(root.text)}</div>
-        ${reactionsHtml}
-        ${replies.length ? `<div class="thread-replies">${replies.map(r => `
-          <div class="comment-item" style="padding:.5rem 0;">
-            <div class="comment-meta">
-              <span style="color:#ccc;font-weight:600;">@${r.username}</span>
-              <span>${r.created_at ? r.created_at.slice(0,10) : ''}</span>
-            </div>
-            <div class="comment-text">${linkifyMentions(r.text)}</div>
-          </div>`).join('')}</div>` : ''}
-      </div>`;
-    }
-
-    function loadReactions(commentId) {
-      const el = document.getElementById('react-'+commentId);
-      if (!el) return;
-      fetch('/api/bb/comments/'+commentId+'/reactions').then(r=>r.json()).then(d => {
-        const emojis = ['😂','❤️','🔥','😮','👍'];
-        el.innerHTML = emojis.map(e => {
-          const info = d[e] || {count:0, mine:false};
-          if (info.count === 0 && !info.mine && !VIEWER) return '';
-          return `<span class="reaction-pill${info.mine?' mine':''}" onclick="toggleReaction('${commentId}','${e}',this)">
-            ${e} ${info.count||''}
-          </span>`;
-        }).filter(Boolean).join('');
-      });
-    }
-
-    function toggleReaction(commentId, emoji, el) {
-      if (!VIEWER) { showToast('Login to react'); return; }
-      fetch('/api/bb/comments/'+commentId+'/react', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({emoji})
-      }).then(r=>r.json()).then(() => loadReactions(commentId));
-    }
-
-    function promptReply(type, ctx, commentId, username) {
-      const txt = prompt(`Reply to @${username}:`);
-      if (!txt || !txt.trim()) return;
-      const url = type === 'contestant'
-        ? `/api/bb/contestants/${encodeURIComponent(ctx)}/comments/${commentId}/reply`
-        : `/api/bb/reels/${ctx}/comments/${commentId}/reply`;
-      fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: txt.trim()})})
-        .then(r=>r.json()).then(d => {
-          if (d.error) { showToast(d.error); return; }
-          showToast('Reply posted!');
-          if (type === 'contestant') loadContestantComments(ctx);
-          else loadReelComments(ctx);
-        });
     }
 
     function submitComment() {
       if (!VIEWER) { showToast('Login required'); return; }
       const inp = document.getElementById('cm-comment-inp');
-      const text = inp.value.trim(); if (!text) return;
+      const text = inp.value.trim();
+      if (!text) return;
       fetch('/api/bb/contestants/'+encodeURIComponent(_currentContestant)+'/comments', {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         inp.value = '';
         loadContestantComments(_currentContestant);
-        loadMyPoints();
       });
     }
 
-    function deleteComment(type, ctx, commentId) {
-      const url = type === 'contestant'
-        ? `/api/bb/contestants/${encodeURIComponent(ctx)}/comments/${commentId}`
-        : `/api/bb/reels/${ctx}/comments/${commentId}`;
-      fetch(url, {method:'DELETE'}).then(r=>r.json()).then(() => {
-        if (type === 'contestant') loadContestantComments(ctx);
-        else loadReelComments(ctx);
-      });
+    function deleteContestantComment(name, commentId) {
+      fetch('/api/bb/contestants/'+encodeURIComponent(name)+'/comments/'+commentId, {method:'DELETE'})
+        .then(r=>r.json()).then(() => loadContestantComments(name));
     }
+  </script>
 
+  <script>
     // ===== POLLS =====
     let _pollFilter = 'all';
 
@@ -1338,7 +1056,7 @@
       fetch('/api/bb/polls').then(r=>r.json()).then(polls => {
         _allPolls = polls;
         renderPolls();
-      }).catch(() => { document.getElementById('polls-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+      }).catch(() => { document.getElementById('polls-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load polls.</p>'; });
     }
 
     function filterPolls(type, btn) {
@@ -1352,7 +1070,7 @@
       const wrap = document.getElementById('polls-wrap');
       let polls = _allPolls;
       if (_pollFilter !== 'all') polls = polls.filter(p => (p.poll_type||'general') === _pollFilter);
-      if (!polls.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No polls.</p>'; return; }
+      if (!polls.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No polls in this category.</p>'; return; }
       wrap.innerHTML = polls.map(p => renderPoll(p)).join('');
     }
 
@@ -1362,9 +1080,8 @@
       const myVote = votes[VIEWER];
       const ptype = p.poll_type || 'general';
       const isClosed = !!p.closed;
-      const isLive = !isClosed && p.closes_at;
-      const badgeClass = isClosed ? 'badge-closed' : isLive ? 'badge-live' : (ptype==='eviction'?'badge-eviction':ptype==='winner'?'badge-winner':'badge-general');
-      const badgeLabel = isClosed ? '🔒 Closed' : isLive ? '🔴 Live' : (ptype==='eviction'?'Eviction':ptype==='winner'?'Winner':'General');
+      const badgeClass = isClosed ? 'badge-closed' : (ptype==='eviction'?'badge-eviction':ptype==='winner'?'badge-winner':'badge-general');
+      const badgeLabel = isClosed ? '🔒 Closed' : (ptype==='eviction'?'Eviction':ptype==='winner'?'Winner Prediction':'General');
       const showBars = myVote || isClosed;
       const optHtml = (p.options||[]).map(opt => {
         const count = Object.values(votes).filter(v=>v===opt).length;
@@ -1378,21 +1095,13 @@
         </div>`;
       }).join('');
       const resultNote = isClosed && p.result ? `<div style="font-size:.75rem;color:var(--gold);margin-top:.5rem;">Result: ${p.result}</div>` : '';
-      const stakeInfo = VIEWER && !isClosed && myVote ? `<div style="font-size:.72rem;margin-top:.5rem;">
-        Stake: <select onchange="stakePoll('${p.poll_id}', this.value)" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:.1rem .4rem;font-size:.72rem;">
-          <option value="0">No stake</option>
-          <option value="1">1 pt</option>
-          <option value="5">5 pts</option>
-          <option value="10">10 pts</option>
-        </select></div>` : '';
       const adminClose = IS_ADMIN && !isClosed ? `<button class="btn btn-muted" style="font-size:.7rem;padding:.2rem .6rem;margin-left:.5rem;" onclick="prefillClosePoll('${p.poll_id}')">Close</button>` : '';
       const adminDel = IS_ADMIN ? `<button class="btn btn-muted" style="font-size:.7rem;padding:.2rem .6rem;margin-left:.3rem;color:#ff4757;border-color:#ff4757;" onclick="deletePoll('${p.poll_id}')">🗑</button>` : '';
-      return `<div class="poll-card${isClosed?' closed':''}" id="poll-${p.poll_id}" data-poll-id="${p.poll_id}">
+      return `<div class="poll-card${isClosed?' closed':''}" id="poll-${p.poll_id}">
         <div class="poll-week">Week ${p.week} <span class="poll-type-badge ${badgeClass}">${badgeLabel}</span>${adminClose}${adminDel}</div>
         <div class="poll-question">${p.question}</div>
         <div class="poll-options">${optHtml}</div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:.6rem;" id="poll-count-${p.poll_id}">${total} vote${total!==1?'s':''}</div>
-        ${stakeInfo}
         ${resultNote}
       </div>`;
     }
@@ -1400,8 +1109,8 @@
     function votePoll(pollId, option) {
       if (!VIEWER) { showToast('Login to vote'); return; }
       const poll = _allPolls.find(p=>p.poll_id===pollId);
-      if (poll && poll.closed) { showToast('Poll closed'); return; }
-      if (poll && poll.votes && poll.votes[VIEWER]) { showToast('Already voted'); return; }
+      if (poll && poll.closed) { showToast('This poll is closed'); return; }
+      if (poll && poll.votes && poll.votes[VIEWER]) { showToast('You have already voted'); return; }
       fetch('/api/bb/polls/'+pollId+'/vote', {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({option})
       }).then(r=>r.json()).then(d => {
@@ -1409,32 +1118,22 @@
         const votes = d.votes || {};
         const total = Object.keys(votes).length;
         const card = document.getElementById('poll-'+pollId);
-        if (card) {
-          card.querySelectorAll('.poll-option').forEach(el => {
-            const label = el.querySelector('.poll-opt-label').textContent.replace(/ 🏆$/,'');
-            const count = Object.values(votes).filter(v=>v===label).length;
-            const pct = total ? Math.round(count/total*100) : 0;
-            el.querySelector('.poll-bar').style.width = pct+'%';
-            el.querySelector('.poll-opt-pct').textContent = pct+'%';
-            el.classList.toggle('voted', label===option);
-          });
-          document.getElementById('poll-count-'+pollId).textContent = total+' vote'+(total!==1?'s':'');
-        }
+        if (!card) return;
+        card.querySelectorAll('.poll-option').forEach(el => {
+          const label = el.querySelector('.poll-opt-label').textContent;
+          const count = Object.values(votes).filter(v=>v===label).length;
+          const pct = total ? Math.round(count/total*100) : 0;
+          el.querySelector('.poll-bar').style.width = pct+'%';
+          el.querySelector('.poll-opt-pct').textContent = pct+'%';
+          el.classList.toggle('voted', label===option);
+        });
+        const countEl = document.getElementById('poll-count-'+pollId);
+        if (countEl) countEl.textContent = total+' vote'+(total!==1?'s':'');
         const idx = _allPolls.findIndex(p=>p.poll_id===pollId);
         if (idx>=0) _allPolls[idx].votes = votes;
-        loadMyPoints();
-      });
-    }
-
-    function stakePoll(pollId, val) {
-      if (!VIEWER) return;
-      fetch('/api/bb/polls/'+pollId+'/stake', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({stake: parseInt(val)})
-      }).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast('Stake saved: '+val+' pts');
-      });
+        if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
+      }).catch(() => showToast('Vote failed'));
     }
 
     function createPoll() {
@@ -1442,8 +1141,9 @@
       const week = parseInt(document.getElementById('a-poll-week').value)||1;
       const poll_type = document.getElementById('a-poll-type').value;
       const opts = document.getElementById('a-poll-opts').value.split(',').map(s=>s.trim()).filter(Boolean);
-      if (!question||opts.length<2) { showToast('Question & 2+ options required'); return; }
-      fetch('/api/bb/polls', {method:'POST', headers:{'Content-Type':'application/json'},
+      if (!question||opts.length<2) { showToast('Question and at least 2 options required'); return; }
+      fetch('/api/bb/polls', {
+        method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({question, week, options:opts, poll_type})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
@@ -1454,24 +1154,16 @@
       });
     }
 
-    function createPollTemplate(kind) {
-      const week = parseInt(document.getElementById('a-poll-week').value)||1;
-      fetch('/api/bb/polls/template', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({kind, week})
-      }).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast('Poll template created!'); loadPolls();
-      });
-    }
-
     function deletePoll(pollId) {
-      if (!confirm('Delete this poll?')) return;
-      fetch('/api/bb/polls/'+pollId, {method:'DELETE'}).then(r=>r.json()).then(() => {
-        _allPolls = _allPolls.filter(p=>p.poll_id!==pollId);
-        document.getElementById('poll-'+pollId)?.remove();
-        showToast('Deleted'); loadMyPoints();
-      });
+      if (!confirm('Delete this poll and all its votes?')) return;
+      fetch('/api/bb/polls/'+pollId, {method:'DELETE'})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          _allPolls = _allPolls.filter(p=>p.poll_id!==pollId);
+          document.getElementById('poll-'+pollId)?.remove();
+          showToast('Poll deleted');
+          loadMyPoints();
+        });
     }
 
     function prefillClosePoll(pollId) {
@@ -1495,76 +1187,43 @@
       });
     }
 
-    // ===== LIVE MODE =====
-    function toggleLiveMode() {
-      const on = document.getElementById('live-toggle').checked;
-      const ind = document.getElementById('live-updated');
-      if (on) {
-        ind.style.display = '';
-        _liveTimer = setInterval(refreshLivePolls, 5000);
-        refreshLivePolls();
-      } else {
-        ind.style.display = 'none';
-        if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
-      }
-    }
-
-    function refreshLivePolls() {
-      fetch('/api/bb/polls/live').then(r=>r.json()).then(livePolls => {
-        livePolls.forEach(lp => {
-          const idx = _allPolls.findIndex(p=>p.poll_id===lp.poll_id);
-          if (idx>=0) _allPolls[idx].votes = lp.votes;
-          const card = document.getElementById('poll-'+lp.poll_id);
-          if (!card) return;
-          const votes = lp.votes || {};
-          const total = Object.keys(votes).length;
-          card.querySelectorAll('.poll-option').forEach(el => {
-            const label = el.querySelector('.poll-opt-label').textContent.replace(/ 🏆$/,'');
-            const count = Object.values(votes).filter(v=>v===label).length;
-            const pct = total ? Math.round(count/total*100) : 0;
-            el.querySelector('.poll-bar').style.width = pct+'%';
-            el.querySelector('.poll-opt-pct').textContent = pct+'%';
-          });
-          const cntEl = document.getElementById('poll-count-'+lp.poll_id);
-          if (cntEl) cntEl.textContent = total+' vote'+(total!==1?'s':'');
-        });
-      });
-    }
-
     // ===== NOMINATIONS =====
     function loadNominations() {
       fetch('/api/bb/nominations').then(r=>r.json()).then(noms => {
         _allNominations = noms;
         renderNominations();
+        // Auto-fill next week number for admin
         if (IS_ADMIN) {
-          const wi = document.getElementById('a-nom-week');
-          if (wi && !wi.value) {
-            const mw = noms.reduce((m, n) => Math.max(m, n.week||0), 0);
-            wi.value = mw + 1;
+          const weekInput = document.getElementById('a-nom-week');
+          if (weekInput && !weekInput.value) {
+            const maxWeek = noms.reduce((m, n) => Math.max(m, n.week||0), 0);
+            weekInput.value = maxWeek + 1;
           }
         }
-      }).catch(() => { document.getElementById('nominations-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed.</p>'; });
+      }).catch(() => { document.getElementById('nominations-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
     }
 
     function renderNominations() {
       const wrap = document.getElementById('nominations-wrap');
-      if (!_allNominations.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No data.</p>'; return; }
-      const sorted = [..._allNominations].sort((a,b)=>b.week-a.week);
+      const noms = _allNominations;
+      if (!noms.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No nomination data yet.</p>'; return; }
+      const sorted = [...noms].sort((a,b)=>b.week-a.week);
       wrap.innerHTML = sorted.map(n => `
         <div class="nom-week" id="nom-${n.nomination_id}">
           <div class="nom-week-hdr">
             <span class="nom-week-label">Week ${n.week}</span>
             <div style="display:flex;align-items:center;gap:.8rem;">
-              ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).filter(Boolean).map(e=>`<span class="nom-evicted">❌ ${e}</span>`).join('')}
+              ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean).map(e=>`<span class="nom-evicted">❌ ${e}</span>`).join('')}
               ${IS_ADMIN?`<button class="btn btn-muted" style="font-size:.72rem;padding:.25rem .6rem;" onclick="deleteNomination('${n.nomination_id}')">Delete</button>`:''}
             </div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.4rem;">
             ${n.captain?`<span style="font-size:.7rem;color:var(--gold);font-weight:600;">👑 Captain: ${n.captain}</span>`:''}
+            ${(Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean).map(e=>`<span style="font-size:.7rem;color:#ff4757;font-weight:600;">❌ Eliminated: ${e}</span>`).join('')}
           </div>
           <div class="nom-chips">
             ${(n.nominated||[]).map(name=>{
-              const elArr = (Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).filter(Boolean);
+              const elArr = (Array.isArray(n.evicted)?n.evicted:(n.evicted?[n.evicted]:[])).concat(Array.isArray(n.ejected)?n.ejected:(n.ejected?[n.ejected]:[])).filter(Boolean);
               const cls = elArr.includes(name)?' eliminated':name===n.captain?' captain':'';
               const icon = elArr.includes(name)?' ❌':name===n.captain?' 👑':'';
               return `<span class="nom-chip${cls}">${name}${icon}</span>`;
@@ -1574,30 +1233,41 @@
     }
 
     function renderNomAdminContestants() {
-      const addSel = document.getElementById('a-nom-add'); if (!addSel) return;
+      const addSel = document.getElementById('a-nom-add');
+      if (!addSel) return;
       const opts = _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
       addSel.innerHTML = '<option value="">+ Add Nominated</option>' + opts;
-      const el = document.getElementById('a-nom-evicted-add');
-      if (el) el.innerHTML = `<option value="">+ Eliminated</option>` + opts;
+      ['a-nom-evicted-add'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<option value="">+ Eliminated</option>` + opts;
+      });
       const capSel = document.getElementById('a-nom-captain');
       if (capSel) capSel.innerHTML = '<option value="">Captain (if known)</option>' + opts;
     }
 
     function addNomChip(sel) {
-      const name = sel.value; if (!name) return; sel.value = '';
+      const name = sel.value;
+      if (!name) return;
+      sel.value = '';
       const wrap = document.getElementById('a-nom-chips');
       if (wrap.querySelector(`[data-name="${name}"]`)) return;
-      wrap.appendChild(_makeNomChip(name, '#ff6b35', 'rgba(229,9,20,.12)', 'rgba(229,9,20,.3)'));
+      wrap.appendChild(_makeNomChip(name, 'a-nom-chips', '#ff6b35', 'rgba(229,9,20,.12)', 'rgba(229,9,20,.3)'));
     }
 
     function addNomTag(type, sel) {
-      const name = sel.value; if (!name) return; sel.value = '';
-      const wrap = document.getElementById('a-nom-evicted-chips');
+      const name = sel.value;
+      if (!name) return;
+      sel.value = '';
+      const wrapId = type === 'evicted' ? 'a-nom-evicted-chips' : 'a-nom-ejected-chips';
+      const wrap = document.getElementById(wrapId);
       if (wrap.querySelector(`[data-name="${name}"]`)) return;
-      wrap.appendChild(_makeNomChip(name, '#ff4757', 'rgba(255,71,87,.12)', 'rgba(255,71,87,.3)'));
+      const color = type === 'evicted' ? '#ff4757' : '#ff9f43';
+      const bg = type === 'evicted' ? 'rgba(255,71,87,.12)' : 'rgba(255,159,67,.12)';
+      const border = type === 'evicted' ? 'rgba(255,71,87,.3)' : 'rgba(255,159,67,.3)';
+      wrap.appendChild(_makeNomChip(name, wrapId, color, bg, border));
     }
 
-    function _makeNomChip(name, color, bg, border) {
+    function _makeNomChip(name, wrapId, color, bg, border) {
       const chip = document.createElement('span');
       chip.dataset.name = name;
       chip.style.cssText = `display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .65rem;border-radius:20px;font-size:.78rem;font-weight:600;background:${bg};border:1px solid ${border};color:${color};`;
@@ -1610,24 +1280,24 @@
       const nominated = [...document.querySelectorAll('#a-nom-chips [data-name]')].map(el=>el.dataset.name);
       const evicted = [...document.querySelectorAll('#a-nom-evicted-chips [data-name]')].map(el=>el.dataset.name);
       const captain = document.getElementById('a-nom-captain').value;
-      if (!nominated.length) { showToast('Add at least one'); return; }
+      if (!nominated.length) { showToast('Add at least one nominated contestant'); return; }
       fetch('/api/bb/nominations', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({week, nominated, evicted, captain})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
-        showToast('Added!');
+        showToast('Nomination week added!');
         document.getElementById('a-nom-week').value='';
         document.getElementById('a-nom-chips').innerHTML = '';
         document.getElementById('a-nom-evicted-chips').innerHTML = '';
         document.getElementById('a-nom-captain').value = '';
-        loadNominations();
+        loadNominations(); // will auto-fill next week
       });
     }
 
     function deleteNomination(id) {
-      if (!confirm('Delete this week?')) return;
-      fetch('/api/bb/nominations/'+id, {method:'DELETE'}).then(() => {
+      if (!confirm('Delete this nomination week?')) return;
+      fetch('/api/bb/nominations/'+id, {method:'DELETE'}).then(r=>r.json()).then(() => {
         document.getElementById('nom-'+id)?.remove();
         showToast('Deleted');
       });
@@ -1637,8 +1307,10 @@
     let _reelFilter = '';
 
     function getEmbedInfo(url) {
+      // YouTube
       const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([A-Za-z0-9_-]{11})/);
       if (yt) return {type:'youtube', src:'https://www.youtube.com/embed/'+yt[1]};
+      // Instagram reel/post
       const ig = url.match(/instagram\.com\/(reel|p)\/([A-Za-z0-9_-]+)/);
       if (ig) return {type:'instagram', src:'https://www.instagram.com/'+ig[1]+'/'+ig[2]+'/embed/'};
       return null;
@@ -1646,8 +1318,9 @@
 
     function loadReels() {
       fetch('/api/bb/reels').then(r=>r.json()).then(reels => {
-        _allReels = reels; renderReels();
-      }).catch(() => { document.getElementById('reels-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed.</p>'; });
+        _allReels = reels;
+        renderReels();
+      }).catch(() => { document.getElementById('reels-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
     }
 
     function filterReels(cat, btn) {
@@ -1661,7 +1334,7 @@
       const wrap = document.getElementById('reels-wrap');
       let reels = [..._allReels].sort((a,b) => (b.likes||[]).length - (a.likes||[]).length || new Date(b.created_at||0) - new Date(a.created_at||0));
       if (_reelFilter) reels = reels.filter(r=>(r.category||'')=== _reelFilter);
-      if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips.</p>'; return; }
+      if (!reels.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No clips in this category.</p>'; return; }
       wrap.innerHTML = reels.map(r => {
         const embed = getEmbedInfo(r.url);
         let media;
@@ -1681,13 +1354,10 @@
           <div class="reel-body">
             ${r.caption?`<div class="reel-caption">${r.caption}</div>`:''}
             <div class="reel-meta">
-              <div style="display:flex;align-items:center;gap:.5rem;">
-                <span style="color:var(--bb);font-weight:600;cursor:pointer;" onclick="toggleFollow('${r.username}',this)">@${r.username}</span>
-                ${catLabel}
-              </div>
+              <div style="display:flex;align-items:center;gap:.5rem;"><span style="color:var(--bb);font-weight:600;">@${r.username}</span>${catLabel}</div>
               <div style="display:flex;gap:.6rem;align-items:center;">
                 <button class="reel-like-btn${liked?' liked':''}" onclick="likeReel('${r.reel_id}',this)">❤️ <span>${likes}</span></button>
-                <button class="reel-del-btn" onclick="navigator.clipboard.writeText(location.origin+'${r.url}').then(()=>showToast('Link copied!'))" title="Copy link">🔗</button>
+                <button class="reel-del-btn" onclick="navigator.clipboard.writeText('${r.url}').then(()=>showToast('Link copied!'))" title="Copy link">🔗</button>
                 ${canDel?`<button class="reel-del-btn" onclick="deleteReel('${r.reel_id}')">🗑</button>`:''}
               </div>
             </div>
@@ -1696,7 +1366,7 @@
             <button class="reel-comments-toggle" onclick="toggleReelComments('${r.reel_id}',this)">💬 Comments</button>
             <div class="reel-comments-list" id="rcl-${r.reel_id}" style="display:none;"></div>
             ${VIEWER ? `<div class="reel-comment-inp-row" id="rci-${r.reel_id}" style="display:none;">
-              <input class="reel-comment-inp" placeholder="Add a comment... (use @username)" maxlength="300"
+              <input class="reel-comment-inp" placeholder="Add a comment..." maxlength="300"
                 onkeydown="if(event.key==='Enter')postReelComment('${r.reel_id}',this)" />
               <button class="btn btn-red" style="padding:.35rem .8rem;font-size:.8rem;" onclick="postReelComment('${r.reel_id}',this.previousElementSibling)">Post</button>
             </div>` : ''}
@@ -1708,29 +1378,35 @@
     function previewReelImg(input) {
       const prev = document.getElementById('reel-img-preview');
       if (input.files[0]) { prev.src = URL.createObjectURL(input.files[0]); prev.style.display = 'inline-block'; }
-      else prev.style.display = 'none';
+      else { prev.style.display = 'none'; }
     }
 
     function addReel() {
       const url = document.getElementById('reel-url').value.trim();
       const caption = document.getElementById('reel-caption').value.trim();
       const category = document.getElementById('reel-cat').value;
-      const file = document.getElementById('reel-img-file').files[0];
-      if (!url && !file) { showToast('Add URL or image'); return; }
+      const fileInput = document.getElementById('reel-img-file');
+      const file = fileInput && fileInput.files[0];
+
+      if (!url && !file) { showToast('Add a URL or upload a photo'); return; }
+
       if (file) {
         const fd = new FormData();
-        fd.append('file', file); fd.append('caption', caption); fd.append('category', category);
-        fetch('/api/bb/reels/upload', {method:'POST', body:fd}).then(r=>r.json()).then(d => {
-          if (d.error) { showToast(d.error); return; }
-          document.getElementById('reel-url').value='';
-          document.getElementById('reel-caption').value='';
-          document.getElementById('reel-cat').value='';
-          document.getElementById('reel-img-file').value='';
-          document.getElementById('reel-img-preview').style.display='none';
-          showToast('Posted!'); loadReels();
-        });
+        fd.append('file', file);
+        fd.append('caption', caption);
+        fd.append('category', category);
+        fetch('/api/bb/reels/upload', {method:'POST', body:fd})
+          .then(r=>r.json()).then(d => {
+            if (d.error) { showToast(d.error); return; }
+            document.getElementById('reel-url').value='';
+            document.getElementById('reel-caption').value='';
+            document.getElementById('reel-cat').value='';
+            fileInput.value=''; document.getElementById('reel-img-preview').style.display='none';
+            showToast('Posted!'); loadReels();
+          });
         return;
       }
+
       const platform = url.includes('youtube') ? 'youtube' : url.includes('instagram') ? 'instagram' : 'other';
       fetch('/api/bb/reels', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -1740,7 +1416,7 @@
         document.getElementById('reel-url').value='';
         document.getElementById('reel-caption').value='';
         document.getElementById('reel-cat').value='';
-        showToast('Posted!'); loadReels();
+        showToast('Clip posted!'); loadReels();
       });
     }
 
@@ -1757,35 +1433,38 @@
     function loadReelComments(reelId) {
       const list = document.getElementById('rcl-'+reelId);
       fetch('/api/bb/reels/'+reelId+'/comments').then(r=>r.json()).then(comments => {
-        if (!comments.length) { list.innerHTML = '<p style="color:var(--muted);font-size:.78rem;">No comments.</p>'; return; }
-        const roots = comments.filter(c => !c.parent_id);
-        list.innerHTML = roots.map(c => {
-          const replies = comments.filter(r => r.parent_id === c.comment_id);
-          return `<div class="reel-comment">
-            <span class="reel-comment-user">@${c.username}</span>${linkifyMentions(c.text)}
-            ${VIEWER?`<button class="reply-btn" onclick="promptReply('reel','${reelId}','${c.comment_id}','${c.username}')">↩</button>`:''}
-            ${(VIEWER===c.username||IS_ADMIN)?`<button class="reel-comment-del" onclick="deleteComment('reel','${reelId}','${c.comment_id}')">✕</button>`:''}
-            ${replies.length ? `<div class="thread-replies">${replies.map(r=>`
-              <div class="reel-comment" style="padding:.3rem 0;">
-                <span class="reel-comment-user">@${r.username}</span>${linkifyMentions(r.text)}
-              </div>`).join('')}</div>` : ''}
-          </div>`;
-        }).join('');
+        if (!comments.length) { list.innerHTML = '<p style="color:var(--muted);font-size:.78rem;">No comments yet.</p>'; return; }
+        list.innerHTML = comments.map(c => `
+          <div class="reel-comment">
+            <span class="reel-comment-user">@${c.username}</span>${c.text}
+            ${(VIEWER===c.username||IS_ADMIN)?`<button class="reel-comment-del" onclick="deleteReelComment('${reelId}','${c.comment_id}',this.closest('.reel-comment'))">✕</button>`:''}
+          </div>`).join('');
       });
     }
 
     function postReelComment(reelId, inp) {
-      const text = inp.value.trim(); if (!text) return;
+      const text = inp.value.trim();
+      if (!text) return;
       fetch('/api/bb/reels/'+reelId+'/comments', {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
       }).then(r=>r.json()).then(d => {
         if (d.error) { showToast(d.error); return; }
         inp.value = '';
         const list = document.getElementById('rcl-'+reelId);
-        list.dataset.loaded = '';
-        loadReelComments(reelId);
-        loadMyPoints();
+        const noMsg = list.querySelector('p');
+        if (noMsg) noMsg.remove();
+        const el = document.createElement('div');
+        el.className = 'reel-comment';
+        el.innerHTML = `<span class="reel-comment-user">@${VIEWER}</span>${d.text}
+          <button class="reel-comment-del" onclick="deleteReelComment('${reelId}','${d.comment_id}',this.closest('.reel-comment'))">✕</button>`;
+        list.appendChild(el);
+        list.scrollTop = list.scrollHeight;
       });
+    }
+
+    function deleteReelComment(reelId, commentId, el) {
+      fetch('/api/bb/reels/'+reelId+'/comments/'+commentId, {method:'DELETE'})
+        .then(r=>r.json()).then(() => el && el.remove());
     }
 
     function likeReel(reelId, btn) {
@@ -1794,13 +1473,16 @@
         if (d.error) { showToast(d.error); return; }
         btn.classList.toggle('liked', d.liked);
         btn.querySelector('span').textContent = d.count;
-        if (d.liked) loadMyPoints();
+        const r = _allReels.find(x=>x.reel_id===reelId);
+        if (r) { r.likes = d.liked ? [...(r.likes||[]), VIEWER] : (r.likes||[]).filter(u=>u!==VIEWER); }
+        if (d.liked && VIEWER) loadMyPoints();
       });
     }
 
     function deleteReel(reelId) {
       if (!confirm('Delete this clip?')) return;
-      fetch('/api/bb/reels/'+reelId, {method:'DELETE'}).then(() => {
+      fetch('/api/bb/reels/'+reelId, {method:'DELETE'}).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
         _allReels = _allReels.filter(r=>r.reel_id!==reelId);
         renderReels();
         showToast('Deleted');
@@ -1808,7 +1490,9 @@
     }
 
     // ===== INSTAGRAM =====
-    let _instaSort = 'gain'; let _instaDir = 'desc'; let _instaUnit = 'L';
+    let _instaSort = 'gain';   // 'gain' | 'pct' | 'current'
+    let _instaDir  = 'desc';   // 'desc' | 'asc'
+    let _instaUnit = 'L';      // 'L' | 'M' | 'K'
 
     function fmtFollowers(n) {
       if (_instaUnit === 'M') {
@@ -1820,39 +1504,47 @@
         if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
         return n.toString();
       }
+      // default L/Cr (Indian)
       if (Math.abs(n) >= 1e7) return (n/1e7).toFixed(2)+'Cr';
       if (Math.abs(n) >= 1e5) return (n/1e5).toFixed(1)+'L';
       if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
       return n.toString();
     }
 
-    function setInstaSort(key) {
+    function setInstaSort(key, btn) {
       _instaSort = key;
-      ['gain','pct','current'].forEach(k => {
-        document.getElementById('insta-sort-'+k)?.classList.toggle('active', k === key);
+      ['insta-sort-gain','insta-sort-pct','insta-sort-current'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active', el.id === 'insta-sort-'+key);
       });
       renderInstaChart();
     }
+
     function toggleInstaDir() {
       _instaDir = _instaDir === 'desc' ? 'asc' : 'desc';
       const btn = document.getElementById('insta-dir-btn');
       if (btn) btn.textContent = _instaDir === 'desc' ? '⬇ Desc' : '⬆ Asc';
       renderInstaChart();
     }
-    function setInstaUnit(unit) {
+
+    function setInstaUnit(unit, btn) {
       _instaUnit = unit;
-      ['l','m','k'].forEach(u => {
-        document.getElementById('insta-unit-'+u)?.classList.toggle('active', u === unit.toLowerCase());
+      ['insta-unit-l','insta-unit-m','insta-unit-k'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('active', el.id === 'insta-unit-'+unit.toLowerCase());
       });
       renderInstaChart();
     }
 
     function loadInsta() {
       fetch('/api/bb/insta').then(r=>r.json()).then(snaps => {
-        _allInsta = snaps; renderInstaChart();
+        _allInsta = snaps;
+        renderInstaChart();
         const sel = document.getElementById('a-insta-name');
         if (sel) sel.innerHTML = '<option value="">Select contestant</option>' +
           _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+      }).catch(() => {
+        document.getElementById('insta-chart-wrap').innerHTML = '<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
     }
 
@@ -1863,7 +1555,19 @@
         if (!byC[s.contestant]) byC[s.contestant] = {};
         if (s.type === 'entry') byC[s.contestant].entry = s.followers;
         else if (s.type === 'current') byC[s.contestant].current = s.followers;
+        else {
+          if (!byC[s.contestant]._snaps) byC[s.contestant]._snaps = [];
+          byC[s.contestant]._snaps.push(s);
+        }
       });
+      Object.values(byC).forEach(d => {
+        if (d._snaps && d._snaps.length) {
+          const sorted = d._snaps.sort((a,b)=>a.date?.localeCompare(b.date||''));
+          if (!d.entry) d.entry = sorted[0].followers;
+          if (!d.current) d.current = sorted[sorted.length-1].followers;
+        }
+      });
+
       let rows = Object.entries(byC)
         .filter(([,d]) => d.entry || d.current)
         .map(([name, d]) => {
@@ -1874,21 +1578,35 @@
           const c = _contestants.find(x=>x.name===name);
           return {name, entry, current, gain, pct, img: c?.img||''};
         });
+
+      // Sort
       rows.sort((a,b) => {
         const v = _instaSort === 'pct' ? (b.pct - a.pct) : _instaSort === 'current' ? (b.current - a.current) : (b.gain - a.gain);
         return _instaDir === 'asc' ? -v : v;
       });
-      if (!rows.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No data.</p>'; return; }
+
+      if (!rows.length) {
+        wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No follower data yet. Admin can add entry &amp; current counts above.</p>';
+        return;
+      }
+
       const maxCurrent = Math.max(...rows.map(r=>r.current), 1);
+
       wrap.innerHTML = rows.map((r, i) => {
         const entryW = Math.round(r.entry / maxCurrent * 100);
         const currentW = Math.round(r.current / maxCurrent * 100);
         const gainColor = r.gain >= 0 ? '#2ed573' : '#ff4757';
         const gainSign = r.gain >= 0 ? '+' : '';
-        const av = r.img ? `<img src="${r.img}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;" />`
+        const av = r.img
+          ? `<img src="${r.img}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;" onerror="this.style.display='none'" />`
           : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(229,9,20,.2);border:2px solid var(--bb);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:800;flex-shrink:0;color:var(--bb);">${(r.name||'?')[0].toUpperCase()}</div>`;
-        const sortVal = _instaSort === 'pct' ? `${gainSign}${r.pct.toFixed(1)}%` : _instaSort === 'current' ? fmtFollowers(r.current) : `${gainSign}${fmtFollowers(r.gain)}`;
-        return `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.8rem;">
+        const sortVal = _instaSort === 'pct'
+          ? `${gainSign}${r.pct.toFixed(1)}%`
+          : _instaSort === 'current'
+          ? fmtFollowers(r.current)
+          : `${gainSign}${fmtFollowers(r.gain)}`;
+        return `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;margin-bottom:.8rem;">
           <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;">
             <div style="font-size:1rem;font-weight:700;color:var(--muted);min-width:22px;text-align:center;">${i+1}</div>
             ${av}
@@ -1898,24 +1616,32 @@
             </div>
             <div style="text-align:right;">
               <div style="font-size:1.1rem;font-weight:900;color:${gainColor};">${sortVal}</div>
+              <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_instaSort === 'pct' ? 'growth' : _instaSort === 'current' ? 'now' : 'gained'}</div>
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:.4rem;">
             <div style="display:flex;align-items:center;gap:.6rem;">
               <span style="font-size:.68rem;color:var(--muted);width:52px;text-align:right;flex-shrink:0;">BB Entry</span>
               <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:10px;">
-                <div style="width:${entryW}%;height:100%;background:rgba(255,107,53,.5);border-radius:4px;"></div>
+                <div style="width:${entryW}%;height:100%;background:rgba(255,107,53,.5);border-radius:4px;transition:width .6s;"></div>
               </div>
               <span style="font-size:.72rem;color:#aaa;min-width:52px;">${fmtFollowers(r.entry)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;">
               <span style="font-size:.68rem;color:var(--muted);width:52px;text-align:right;flex-shrink:0;">Now</span>
               <div style="flex:1;background:rgba(255,255,255,.06);border-radius:4px;height:10px;">
-                <div style="width:${currentW}%;height:100%;background:linear-gradient(90deg,var(--bb),#ff6b35);border-radius:4px;"></div>
+                <div style="width:${currentW}%;height:100%;background:linear-gradient(90deg,var(--bb),#ff6b35);border-radius:4px;transition:width .6s;"></div>
               </div>
               <span style="font-size:.72rem;color:#aaa;min-width:52px;">${fmtFollowers(r.current)}</span>
             </div>
           </div>
+          ${IS_ADMIN ? `
+            <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+              <button onclick="editInstaEntry('${r.name.replace(/'/g,"\\'")}')"
+                style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;">✏️ Edit</button>
+              <button onclick="clearInstaEntry('${r.name.replace(/'/g,"\\'")}')"
+                style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:.7rem;">🗑 Remove</button>
+            </div>` : ''}
         </div>`;
       }).join('');
     }
@@ -1924,13 +1650,13 @@
       const contestant = document.getElementById('a-insta-name').value;
       const entry = document.getElementById('a-insta-entry').value;
       const current = document.getElementById('a-insta-current').value;
-      if (!contestant) { showToast('Select contestant'); return; }
+      if (!contestant) { showToast('Select a contestant'); return; }
       if (!entry && !current) { showToast('Enter at least one count'); return; }
       const today = new Date().toISOString().slice(0,10);
       const saves = [];
       if (entry) saves.push(fetch('/api/bb/insta', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({contestant, date:'2000-01-01', followers: parseInt(entry), note:'BB Entry', type:'entry'})
+        body: JSON.stringify({contestant, date: '2000-01-01', followers: parseInt(entry), note:'BB Entry', type:'entry'})
       }));
       if (current) saves.push(fetch('/api/bb/insta', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -1941,13 +1667,34 @@
         document.getElementById('a-insta-entry').value='';
         document.getElementById('a-insta-current').value='';
         _allInsta = []; loadInsta();
-      });
+      }).catch(() => showToast('Save failed'));
     }
 
-    // ===== ADMIN: BB ADMINS =====
+    function editInstaEntry(name) {
+      const snaps = _allInsta.filter(s => s.contestant === name);
+      const entry = snaps.find(s => s.type === 'entry');
+      const current = snaps.find(s => s.type === 'current');
+      const sel = document.getElementById('a-insta-name');
+      if (sel) sel.value = name;
+      if (entry) document.getElementById('a-insta-entry').value = entry.followers;
+      if (current) document.getElementById('a-insta-current').value = current.followers;
+      // scroll to admin form
+      document.getElementById('a-insta-name').scrollIntoView({behavior:'smooth', block:'center'});
+      showToast('Edit counts for '+name+' then hit Save');
+    }
+
+    function clearInstaEntry(name) {
+      if (!confirm('Remove Instagram data for '+name+'?')) return;
+      const toDelete = _allInsta.filter(s=>s.contestant===name);
+      Promise.all(toDelete.map(s => fetch('/api/bb/insta/'+s.snap_id, {method:'DELETE'})))
+        .then(() => { _allInsta=[]; loadInsta(); showToast('Removed'); });
+    }
+
+    // ===== BB ADMINS (abhinav only) =====
     function loadBBAdmins() {
-      fetch('/api/bb/admins').then(r=>r.ok?r.json():[]).then(list => {
-        const wrap = document.getElementById('a-admin-list'); if (!wrap) return;
+      fetch('/api/bb/admins').then(r=>r.json()).then(list => {
+        const wrap = document.getElementById('a-admin-list');
+        if (!wrap) return;
         wrap.innerHTML = list.length ? list.map(u =>
           `<span style="display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .7rem;border-radius:20px;font-size:.78rem;font-weight:600;background:rgba(229,9,20,.1);border:1px solid rgba(229,9,20,.3);color:#ff6b35;">
             ${u} <span onclick="removeBBAdmin('${u}')" style="cursor:pointer;color:var(--muted);">✕</span>
@@ -1956,330 +1703,76 @@
     }
     function addBBAdmin() {
       const username = document.getElementById('a-admin-username').value.trim();
-      if (!username) { showToast('Enter username'); return; }
+      if (!username) { showToast('Enter a username'); return; }
       fetch('/api/bb/admins', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username})})
-        .then(r=>r.json()).then(d => {
-          if (d.error) { showToast(d.error); return; }
-          document.getElementById('a-admin-username').value='';
-          showToast(username+' granted admin'); loadBBAdmins();
-        });
+        .then(r=>r.json()).then(d => { if(d.error){showToast(d.error);return;} document.getElementById('a-admin-username').value=''; showToast(username+' granted BB admin access'); loadBBAdmins(); });
     }
     function removeBBAdmin(username) {
       fetch('/api/bb/admins/'+encodeURIComponent(username), {method:'DELETE'})
-        .then(() => { showToast('Removed'); loadBBAdmins(); });
+        .then(r=>r.json()).then(() => { showToast(username+' removed'); loadBBAdmins(); });
     }
 
     // ===== POINTS =====
     function loadMyPoints() {
-      if (!VIEWER) return;
       fetch('/api/bb/points/me').then(r=>r.json()).then(d => {
         const el = document.getElementById('nav-pts');
         if (el) el.textContent = d.points || 0;
       });
     }
 
-    function switchPointsTab(tab, btn) {
-      _pointsTab = tab;
-      document.querySelectorAll('#tab-points .tabs .tab-btn').forEach(b=>b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      loadPointsLeaderboard();
-    }
-
     function loadPointsLeaderboard() {
-      const url = _pointsTab === 'weekly' ? '/api/bb/points/weekly/current' : '/api/bb/points/leaderboard';
-      fetch(url).then(r=>r.json()).then(data => {
-        const wrap = document.getElementById('pts-lb-rows'); if (!wrap) return;
-        let rows = _pointsTab === 'weekly' ? (data.current || []) : data;
-        if (!rows.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No activity yet.</p>'; return; }
-        const medals = ['🥇','🥈','🥉'];
+      fetch('/api/bb/points/leaderboard').then(r=>r.json()).then(rows => {
+        const wrap = document.getElementById('pts-lb-rows');
+        if (!rows.length) { wrap.innerHTML = '<p style="padding:1rem;color:var(--muted);font-size:.85rem;">No activity yet. Be the first!</p>'; return; }
+        const medals = ['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49'];
         wrap.innerHTML = rows.map((r,i) => `
           <div class="pts-lb-row${r.username===VIEWER?' me':''}">
             <div style="font-size:.85rem;color:var(--muted);text-align:center;">${medals[i]||i+1}</div>
-            <div style="font-size:.88rem;font-weight:${r.username===VIEWER?'800':'600'};color:${r.username===VIEWER?'var(--gold)':'var(--text)'};">
+            <div style="font-size:.88rem;font-weight:${r.username===VIEWER?'800':'600'};color:${r.username===VIEWER?'var(--gold)':'#fff'};">
               ${r.username}${r.username===VIEWER?' (you)':''}
             </div>
             <div style="text-align:right;font-size:.95rem;font-weight:700;color:var(--gold);">${r.points}</div>
           </div>`).join('');
+      }).catch(() => {
+        document.getElementById('pts-lb-rows').innerHTML = '<p style="padding:1rem;color:#ff4757;font-size:.85rem;">Failed to load.</p>';
       });
-    }
-
-    function loadWeeklyChampion() {
-      fetch('/api/bb/points/weekly/current').then(r=>r.json()).then(d => {
-        const wrap = document.getElementById('weekly-champion-wrap'); if (!wrap) return;
-        if (d.champion) {
-          wrap.innerHTML = `<div class="champion-card">
-            <div style="font-size:.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:700;">👑 Last Week's Champion</div>
-            <div class="champion-name">${d.champion.username}</div>
-            <div style="font-size:.8rem;color:var(--muted);">${d.champion.points} points</div>
-          </div>`;
-        } else wrap.innerHTML = '';
-      }).catch(()=>{});
     }
 
     function resetBBPoints() {
-      if (!confirm('FULL SEASON RESET — this deletes ALL BB data. Continue?')) return;
-      if (!confirm('Absolutely sure? No recovery.')) return;
-      fetch('/api/bb/points/reset', {method:'POST'}).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast('Season reset complete!');
-        _contestants=[]; _allPolls=[]; _allReels=[]; _allNominations=[]; _allInsta=[]; _allRatings={};
-        loadSeason(); loadContestants(); loadPolls(); loadNominations();
-        loadMyPoints(); loadPointsLeaderboard();
-      });
+      if (!confirm('FULL SEASON RESET\n\nThis will permanently delete ALL BB data:\n• Contestants & season info\n• All polls & votes\n• All nominations\n• All clips & comments\n• All ratings\n• Instagram follower data\n• All points\n\nThis cannot be undone. Continue?')) return;
+      if (!confirm('Are you absolutely sure?\n\nType-check: this will erase the ENTIRE season. There is no recovery.\n\nPress OK only if you are 100% certain.')) return;
+      fetch('/api/bb/points/reset', {method:'POST'})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          showToast('Season reset complete! All BB data cleared.');
+          _contestants=[]; _allPolls=[]; _allReels=[]; _allNominations=[]; _allInsta=[]; _allRatings={};
+          loadSeason(); loadContestants(); loadPolls(); loadNominations();
+          loadMyPoints(); loadPointsLeaderboard();
+          const res = document.getElementById('backfill-result');
+          if (res) res.textContent = '';
+        }).catch(() => showToast('Reset failed'));
     }
 
     function backfillBBPoints() {
-      if (!confirm('Backfill all points?')) return;
-      fetch('/api/bb/points/backfill', {method:'POST'}).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        document.getElementById('backfill-result').textContent = `✓ ${d.users_updated} users updated.`;
-        showToast(`Backfill: ${d.users_updated} users`);
-        loadMyPoints(); loadPointsLeaderboard();
-      });
-    }
-
-    function recomputeBadges() {
-      fetch('/api/bb/badges/recompute', {method:'POST'}).then(r=>r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast(`Badges recomputed for ${d.users} users`);
-      });
-    }
-
-    function snapshotWeekly() {
-      const week = parseInt(prompt('Week number for snapshot:', '1')) || 1;
-      fetch('/api/bb/points/weekly/snapshot', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({week})
-      }).then(r=>r.json()).then(d => { showToast(`Snapshotted ${d.users} users for week ${d.week}`); });
-    }
-
-    function snapshotRatings() {
-      const week = parseInt(prompt('Week number for ratings snapshot:', '1')) || 1;
-      fetch('/api/bb/trends/snapshot', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({week})
-      }).then(r=>r.json()).then(d => { showToast(`Snapshotted ${d.contestants} contestants`); });
-    }
-
-    function generateRecap() {
-      const week = parseInt(prompt('Week number for recap:', '1')) || 1;
-      fetch('/api/bb/recaps/generate', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({week})
-      }).then(r=>r.json()).then(d => { showToast('Recap generated!'); loadRecaps(); });
-    }
-
-    function loadAuditLog() {
-      fetch('/api/bb/audit').then(r=>r.json()).then(list => {
-        const wrap = document.getElementById('audit-log-wrap');
-        wrap.innerHTML = list.map(l => `<div style="padding:.4rem 0;border-bottom:1px solid var(--border);">
-          <strong style="color:var(--bb);">${l.actor}</strong> · ${l.action} · <span style="color:var(--muted);">${l.created_at?.slice(0,19)}</span>
-        </div>`).join('');
-      });
-    }
-
-    // ===== ACHIEVEMENTS =====
-    function loadAchievements() {
-      if (!VIEWER) {
-        document.getElementById('badge-grid').innerHTML = '<p style="color:var(--muted);">Login to see badges.</p>';
-        return;
-      }
-      Promise.all([
-        fetch('/api/bb/achievements').then(r=>r.json()),
-        fetch('/api/bb/streaks/me').then(r=>r.json())
-      ]).then(([ach, streaks]) => {
-        document.getElementById('badge-progress').textContent = `(${ach.earned_count}/${ach.total})`;
-        document.getElementById('badge-grid').innerHTML = ach.badges.map(b => `
-          <div class="badge-card ${b.earned?'earned':'locked'}">
-            <div class="badge-icon">${b.icon}</div>
-            <div class="badge-name">${b.name}</div>
-            <div class="badge-desc">${b.desc}</div>
-          </div>`).join('');
-        const banner = document.getElementById('streak-banner');
-        if (streaks.daily_visit_streak > 0) {
-          banner.style.display = '';
-          document.getElementById('streak-count').textContent = streaks.daily_visit_streak;
-          document.getElementById('streak-best').textContent = `best: ${streaks.best_streak || 0}`;
-        }
-      });
-    }
-
-    // ===== RECAPS =====
-    function loadRecaps() {
-      fetch('/api/bb/recaps').then(r=>r.json()).then(recaps => {
-        const wrap = document.getElementById('recaps-wrap');
-        if (!recaps.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No recaps yet. Admin can generate one.</p>'; return; }
-        wrap.innerHTML = recaps.map(r => `
-          <div class="recap-card">
-            <div class="recap-week">Week ${r.week} Recap</div>
-            <div class="recap-title">Weekly Highlights</div>
-            <div class="recap-grid">
-              ${r.captain ? `<div class="recap-item"><div class="recap-item-lbl">👑 Captain</div><div class="recap-item-val">${r.captain}</div></div>` : ''}
-              ${r.evicted ? `<div class="recap-item"><div class="recap-item-lbl">🚪 Evicted</div><div class="recap-item-val">${Array.isArray(r.evicted)?r.evicted.join(', '):r.evicted}</div></div>` : ''}
-              ${r.top_fan ? `<div class="recap-item"><div class="recap-item-lbl">🏅 Top Fan</div><div class="recap-item-val">${r.top_fan.username} (${r.top_fan.points}pts)</div></div>` : ''}
-              ${r.ratings_winner ? `<div class="recap-item"><div class="recap-item-lbl">⭐ Top Rated</div><div class="recap-item-val">${r.ratings_winner.name} (${r.ratings_winner.avg})</div></div>` : ''}
-              ${r.top_poll ? `<div class="recap-item"><div class="recap-item-lbl">🗳️ Top Poll Result</div><div class="recap-item-val">${r.top_poll.top_choice || '—'}</div></div>` : ''}
-            </div>
-          </div>`).join('');
-      });
-    }
-
-    // ===== COMPARE =====
-    function populateCompareDropdowns() {
-      ['cmp-a','cmp-b'].forEach(id => {
-        const el = document.getElementById(id); if (!el) return;
-        el.innerHTML = '<option value="">Select contestant</option>' +
-          _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-      });
-    }
-
-    function runCompare() {
-      const a = document.getElementById('cmp-a').value;
-      const b = document.getElementById('cmp-b').value;
-      const wrap = document.getElementById('compare-wrap');
-      if (!a || !b) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Select both contestants.</p>'; return; }
-      if (a === b) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Pick two different contestants.</p>'; return; }
-      fetch(`/api/bb/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`).then(r=>r.json()).then(d => {
-        const renderStats = (c) => `
-          <div class="compare-card">
-            <div style="font-size:1.1rem;font-weight:800;color:var(--bb);margin-bottom:.8rem;">${c.name}</div>
-            ${['likability','gameplay','entertainment'].map(k => {
-              const v = c.ratings[k] || 0;
-              const pct = (v / 5) * 100;
-              return `<div class="compare-stat">
-                <span style="text-transform:capitalize;">${k}</span>
-                <strong>${v ? v.toFixed(2) : '—'}</strong>
-              </div>
-              <div class="compare-bar"><div style="width:${pct}%"></div></div>`;
-            }).join('')}
-            <div class="compare-stat">
-              <span>Overall</span>
-              <strong style="color:var(--gold);">${c.ratings.overall ? c.ratings.overall.toFixed(2) : '—'}</strong>
-            </div>
-            <div class="compare-stat">
-              <span>Nominations</span>
-              <strong>${c.nominations.length}</strong>
-            </div>
-            <div class="compare-stat">
-              <span>Insta Gain</span>
-              <strong>${(c.insta.current - c.insta.entry).toLocaleString()}</strong>
-            </div>
-          </div>`;
-        wrap.innerHTML = `<div class="compare-grid">${renderStats(d.a)}${renderStats(d.b)}</div>`;
-      });
-    }
-
-    // ===== TRENDS =====
-    function populateTrendDropdown() {
-      const el = document.getElementById('trend-contestant'); if (!el) return;
-      el.innerHTML = '<option value="">Select contestant</option>' +
-        _contestants.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-    }
-
-    function loadTrend() {
-      const name = document.getElementById('trend-contestant').value;
-      const wrap = document.getElementById('trend-wrap');
-      if (!name) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">Select contestant.</p>'; return; }
-      fetch('/api/bb/trends/'+encodeURIComponent(name)).then(r=>r.json()).then(snaps => {
-        if (!snaps.length) {
-          wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem;">No snapshot data yet. Admin can snapshot weekly.</p>';
-          return;
-        }
-        const maxY = Math.max(...snaps.map(s=>s.overall), 5);
-        const w = 600, h = 240, pad = 30;
-        const stepX = (w - 2*pad) / Math.max(snaps.length - 1, 1);
-        const points = snaps.map((s, i) => {
-          const x = pad + i * stepX;
-          const y = h - pad - ((s.overall / maxY) * (h - 2*pad));
-          return {x, y, wk: s.week, overall: s.overall};
-        });
-        const path = points.map((p, i) => `${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
-        wrap.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;overflow-x:auto;">
-          <div style="font-size:1rem;font-weight:700;margin-bottom:.8rem;">${name} — Rating Trend</div>
-          <svg viewBox="0 0 ${w} ${h}" style="width:100%;min-width:400px;height:auto;">
-            <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="rgba(255,255,255,.1)"/>
-            <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}" stroke="rgba(255,255,255,.1)"/>
-            <path d="${path}" fill="none" stroke="#e50914" stroke-width="2"/>
-            ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#e50914"/>
-              <text x="${p.x}" y="${h-pad+15}" fill="#888" font-size="10" text-anchor="middle">W${p.wk}</text>
-              <text x="${p.x}" y="${p.y-8}" fill="#fff" font-size="10" text-anchor="middle">${p.overall.toFixed(1)}</text>`).join('')}
-          </svg>
-        </div>`;
-      });
-    }
-
-    // ===== MENTIONS =====
-    function handleMentionInput(e, inpId) {
-      const inp = e.target;
-      const val = inp.value;
-      const cursorPos = inp.selectionStart;
-      const beforeCursor = val.slice(0, cursorPos);
-      const match = beforeCursor.match(/@([a-zA-Z0-9_]{1,30})$/);
-      const dd = document.getElementById('mention-'+inpId);
-      if (!dd) return;
-      if (!match) { dd.classList.remove('open'); return; }
-      const q = match[1];
-      fetch('/api/bb/users/search?q='+encodeURIComponent(q)).then(r=>r.json()).then(users => {
-        if (!users.length) { dd.classList.remove('open'); return; }
-        dd.innerHTML = users.map(u => `<div class="mention-item" onclick="insertMention('${inpId}','${u}')">@${u}</div>`).join('');
-        dd.classList.add('open');
-        const rect = inp.getBoundingClientRect();
-        dd.style.left = '0px';
-        dd.style.top = '100%';
-        dd.style.marginTop = '.2rem';
-        dd.style.width = rect.width+'px';
-      });
-    }
-
-    function insertMention(inpId, username) {
-      const inp = document.getElementById(inpId); if (!inp) return;
-      const val = inp.value;
-      const pos = inp.selectionStart;
-      const before = val.slice(0, pos).replace(/@[a-zA-Z0-9_]*$/, '@'+username+' ');
-      const after = val.slice(pos);
-      inp.value = before + after;
-      inp.focus();
-      const dd = document.getElementById('mention-'+inpId);
-      if (dd) dd.classList.remove('open');
-    }
-
-    function linkifyMentions(text) {
-      return escapeHtml(text).replace(/@([a-zA-Z0-9_]{2,30})/g,
-        '<a href="/u/$1" class="mention-link">@$1</a>');
-    }
-
-    function escapeHtml(s) {
-      return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-
-    // ===== FOLLOW =====
-    function toggleFollow(username, el) {
-      if (!VIEWER) { showToast('Login required'); return; }
-      if (username === VIEWER) return;
-      fetch('/api/bb/follows/'+encodeURIComponent(username)+'/check').then(r=>r.json()).then(d => {
-        const method = d.following ? 'DELETE' : 'POST';
-        fetch('/api/bb/follows/'+encodeURIComponent(username), {method})
-          .then(r=>r.json()).then(() => {
-            showToast(d.following ? 'Unfollowed' : 'Following '+username);
-          });
-      });
+      if (!confirm('Scan DB and award retroactive points to all users? Existing points will be replaced.')) return;
+      fetch('/api/bb/points/backfill', {method:'POST'})
+        .then(r=>r.json()).then(d => {
+          if (d.error) { showToast(d.error); return; }
+          const res = document.getElementById('backfill-result');
+          if (res) res.textContent = `✓ Done! ${d.users_updated} users updated.`;
+          showToast(`Backfill complete — ${d.users_updated} users updated!`);
+          loadMyPoints();
+          loadPointsLeaderboard();
+        }).catch(() => showToast('Backfill failed'));
     }
 
     // ===== INIT =====
-    function init() {
-      loadSeason();
-      loadContestants();
-      loadPolls();
-      loadNominations();
-      if (VIEWER) {
-        loadMyPoints();
-        recordDailyVisit();
-        refreshNotifCount();
-        setInterval(refreshNotifCount, 30000);
-      }
-      if (IS_ADMIN) loadBBAdmins();
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', init);
-    } else init();
+    loadSeason();
+    loadContestants();
+    loadPolls();
+    loadNominations();
+    if (VIEWER) loadMyPoints();
+    if (IS_ADMIN) loadBBAdmins();
   </script>
   <script src="/static/pwa.js"></script>
 </body>
