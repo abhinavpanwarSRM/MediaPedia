@@ -4905,6 +4905,1051 @@ def push_unsubscribe():
     push_subs_collection.delete_one({'username': username})
     return jsonify({'success': True})
 
+# ============================================================
+# ADDITIONS TO YOUR FLASK APP — paste near the other BB routes
+# ============================================================
+
+# ===== NEW COLLECTIONS =====
+bb_follows_collection = None
+bb_badges_collection = None
+bb_weekly_points_collection = None
+bb_recaps_collection = None
+bb_streaks_collection = None
+bb_notifications_collection = None
+bb_audit_log_collection = None
+bb_rating_snapshots_collection = None
+bb_comment_reactions_collection = None
+bb_poll_stakes_collection = None
+bb_daily_visits_collection = None
+bb_image_thumbs_collection = None
+try:
+    if db is not None:
+        bb_follows_collection = db.bb_follows
+        bb_badges_collection = db.bb_badges
+        bb_weekly_points_collection = db.bb_weekly_points
+        bb_recaps_collection = db.bb_recaps
+        bb_streaks_collection = db.bb_streaks
+        bb_notifications_collection = db.bb_notifications
+        bb_audit_log_collection = db.bb_audit_log
+        bb_rating_snapshots_collection = db.bb_rating_snapshots
+        bb_comment_reactions_collection = db.bb_comment_reactions
+        bb_poll_stakes_collection = db.bb_poll_stakes
+        bb_daily_visits_collection = db.bb_daily_visits
+        bb_image_thumbs_collection = db.bb_image_thumbs
+        bb_follows_collection.create_index([('follower', 1), ('following', 1)], unique=True)
+        bb_badges_collection.create_index([('username', 1), ('badge_id', 1)], unique=True)
+        bb_weekly_points_collection.create_index([('week', 1), ('points', -1)])
+        bb_recaps_collection.create_index('week', unique=True)
+        bb_streaks_collection.create_index([('username', 1), ('type', 1)], unique=True)
+        bb_notifications_collection.create_index([('username', 1), ('created_at', -1)])
+        bb_audit_log_collection.create_index([('created_at', -1)])
+        bb_rating_snapshots_collection.create_index([('contestant', 1), ('week', 1)], unique=True)
+        bb_comment_reactions_collection.create_index([('comment_id', 1), ('emoji', 1), ('username', 1)], unique=True)
+        bb_poll_stakes_collection.create_index([('poll_id', 1), ('username', 1)], unique=True)
+        bb_daily_visits_collection.create_index([('username', 1), ('date', 1)], unique=True)
+except Exception as e:
+    log.error('Failed to init extended BB collections: %s', e)
+
+
+# ===== HELPERS =====
+import re as _re
+
+BADGE_DEFS = [
+    {'id': 'first_vote',   'icon': '🗳️', 'name': 'First Vote',       'desc': 'Cast your first poll vote'},
+    {'id': 'first_reel',   'icon': '🎬', 'name': 'First Clip',       'desc': 'Post your first clip'},
+    {'id': 'first_comment','icon': '💬', 'name': 'First Comment',    'desc': 'Comment on a contestant or reel'},
+    {'id': 'first_rating', 'icon': '⭐', 'name': 'First Rating',     'desc': 'Rate a contestant'},
+    {'id': 'century',      'icon': '💯', 'name': 'Century',          'desc': 'Reach 100 points'},
+    {'id': 'five_hundred', 'icon': '🏅', 'name': '500 Club',         'desc': 'Reach 500 points'},
+    {'id': 'oracle',       'icon': '🏆', 'name': 'Oracle',           'desc': '5 correct predictions'},
+    {'id': 'sniper',       'icon': '🎯', 'name': 'Sniper',           'desc': '3 correct predictions in a row'},
+    {'id': 'analyst',      'icon': '📊', 'name': 'Analyst',          'desc': 'Vote on 10 polls'},
+    {'id': 'rate_all',     'icon': '🌟', 'name': 'Completionist',    'desc': 'Rate every contestant'},
+    {'id': 'night_owl',    'icon': '🦉', 'name': 'Night Owl',        'desc': 'Vote after midnight'},
+    {'id': 'social',       'icon': '🤝', 'name': 'Social Butterfly', 'desc': 'Follow 5 users'},
+    {'id': 'streak_7',     'icon': '🔥', 'name': '7-Day Streak',     'desc': 'Visit 7 days in a row'},
+    {'id': 'streak_30',    'icon': '⚡', 'name': '30-Day Streak',    'desc': 'Visit 30 days in a row'},
+]
+
+
+def _bb_notify(username, ntype, text, meta=None):
+    """Create an in-app notification."""
+    if not username or bb_notifications_collection is None:
+        return
+    bb_notifications_collection.insert_one({
+        'username': username, 'type': ntype, 'text': text,
+        'meta': meta or {}, 'read': False,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    })
+
+
+def _bb_audit(action, meta=None):
+    """Log admin action."""
+    if bb_audit_log_collection is None:
+        return
+    bb_audit_log_collection.insert_one({
+        'actor': current_user() or 'anon',
+        'action': action, 'meta': meta or {},
+        'created_at': datetime.now(timezone.utc).isoformat()
+    })
+
+
+def _bb_parse_mentions(text):
+    """Extract @usernames from text."""
+    return list(set(_re.findall(r'@([a-zA-Z0-9_]{2,30})', text or '')))
+
+
+def _bb_notify_mentions(text, author):
+    """Notify mentioned users."""
+    for u in _bb_parse_mentions(text):
+        if u != author:
+            _bb_notify(u, 'mention', f'@{author} mentioned you in a comment', {'by': author})
+
+
+def _bb_award_badge(username, badge_id):
+    """Award badge if not already owned. Returns True if newly awarded."""
+    if not username or bb_badges_collection is None:
+        return False
+    existing = bb_badges_collection.find_one({'username': username, 'badge_id': badge_id})
+    if existing:
+        return False
+    bb_badges_collection.insert_one({
+        'username': username, 'badge_id': badge_id,
+        'earned_at': datetime.now(timezone.utc).isoformat()
+    })
+    badge = next((b for b in BADGE_DEFS if b['id'] == badge_id), None)
+    if badge:
+        _bb_notify(username, 'badge', f'{badge["icon"]} Badge unlocked: {badge["name"]}', {'badge_id': badge_id})
+    return True
+
+
+def _bb_check_badges(username):
+    """Run all badge checks for a user."""
+    if not username or bb_badges_collection is None:
+        return
+    # first_vote
+    if bb_polls_collection is not None and bb_polls_collection.count_documents({f'votes.{username}': {'$exists': True}}) >= 1:
+        _bb_award_badge(username, 'first_vote')
+    # first_reel
+    if bb_reels_collection is not None and bb_reels_collection.count_documents({'username': username}) >= 1:
+        _bb_award_badge(username, 'first_reel')
+    # first_comment
+    rc = bb_reel_comments_collection.count_documents({'username': username}) if bb_reel_comments_collection is not None else 0
+    cc = bb_contestant_comments_collection.count_documents({'username': username}) if bb_contestant_comments_collection is not None else 0
+    if rc + cc >= 1:
+        _bb_award_badge(username, 'first_comment')
+    # first_rating
+    if bb_ratings_collection is not None and bb_ratings_collection.count_documents({'username': username}) >= 1:
+        _bb_award_badge(username, 'first_rating')
+    # century / 500
+    if bb_points_collection is not None:
+        p = bb_points_collection.find_one({'username': username}, {'_id': 0, 'points': 1})
+        pts = p.get('points', 0) if p else 0
+        if pts >= 100: _bb_award_badge(username, 'century')
+        if pts >= 500: _bb_award_badge(username, 'five_hundred')
+    # oracle (5 correct)
+    if bb_polls_collection is not None:
+        correct = 0
+        for p in bb_polls_collection.find({'closed': True, 'result': {'$exists': True, '$ne': ''}, f'votes.{username}': {'$exists': True}}, {'_id': 0, 'votes': 1, 'result': 1}):
+            if p.get('votes', {}).get(username) == p.get('result'):
+                correct += 1
+        if correct >= 5:
+            _bb_award_badge(username, 'oracle')
+    # analyst (10 votes)
+    if bb_polls_collection is not None and bb_polls_collection.count_documents({f'votes.{username}': {'$exists': True}}) >= 10:
+        _bb_award_badge(username, 'analyst')
+    # rate_all
+    if bb_ratings_collection is not None and bb_collection is not None:
+        cd = bb_collection.find_one({'key': 'contestants'}, {'_id': 0, 'list': 1})
+        total = len(cd.get('list', [])) if cd else 0
+        rated = bb_ratings_collection.count_documents({'username': username})
+        if total > 0 and rated >= total:
+            _bb_award_badge(username, 'rate_all')
+    # social (follow 5)
+    if bb_follows_collection is not None and bb_follows_collection.count_documents({'follower': username}) >= 5:
+        _bb_award_badge(username, 'social')
+    # streak_7 / streak_30
+    if bb_streaks_collection is not None:
+        s = bb_streaks_collection.find_one({'username': username, 'type': 'daily_visit'}, {'_id': 0, 'count': 1})
+        if s:
+            if s.get('count', 0) >= 7: _bb_award_badge(username, 'streak_7')
+            if s.get('count', 0) >= 30: _bb_award_badge(username, 'streak_30')
+
+
+# ===== 1. LIVE POLLS =====
+@app.route('/api/bb/polls/live', methods=['GET'])
+def bb_polls_live_list():
+    if bb_polls_collection is None:
+        return jsonify([])
+    docs = list(bb_polls_collection.find({'closed': {'$ne': True}}, {'_id': 0}).sort('created_at', -1).limit(10))
+    for d in docs:
+        d['total'] = len(d.get('votes', {}))
+    return jsonify(docs)
+
+
+@app.route('/api/bb/polls/<poll_id>/live', methods=['GET'])
+def bb_poll_live(poll_id):
+    if bb_polls_collection is None:
+        return jsonify({})
+    doc = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0, 'votes': 1, 'options': 1, 'closed': 1})
+    if not doc:
+        return jsonify({'error': 'Not found'}), 404
+    votes = doc.get('votes', {})
+    counts = {}
+    for v in votes.values():
+        counts[v] = counts.get(v, 0) + 1
+    return jsonify({
+        'votes': votes, 'counts': counts, 'total': len(votes),
+        'closed': doc.get('closed', False),
+        'last_vote_at': datetime.now(timezone.utc).isoformat()
+    })
+
+
+# ===== 2. BADGES & STREAKS =====
+@app.route('/api/bb/badges/definitions', methods=['GET'])
+def bb_badge_defs():
+    return jsonify(BADGE_DEFS)
+
+
+@app.route('/api/bb/badges/<username>', methods=['GET'])
+def bb_get_badges(username):
+    if bb_badges_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_badges_collection.find({'username': username}, {'_id': 0}).sort('earned_at', -1)))
+
+
+@app.route('/api/bb/badges/me', methods=['GET'])
+def bb_my_badges():
+    u = current_user()
+    if not u:
+        return jsonify([])
+    _bb_check_badges(u)
+    return jsonify(list(bb_badges_collection.find({'username': u}, {'_id': 0})))
+
+
+@app.route('/api/bb/badges/recompute', methods=['POST'])
+def bb_recompute_badges():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    users = set()
+    for col in [bb_reels_collection, bb_reel_comments_collection, bb_contestant_comments_collection,
+                bb_ratings_collection, bb_points_collection]:
+        if col is not None:
+            for d in col.find({}, {'_id': 0, 'username': 1}):
+                if d.get('username'): users.add(d['username'])
+    if bb_polls_collection is not None:
+        for p in bb_polls_collection.find({}, {'_id': 0, 'votes': 1}):
+            users.update(p.get('votes', {}).keys())
+    for u in users:
+        _bb_check_badges(u)
+    _bb_audit('badges_recompute', {'users': len(users)})
+    return jsonify({'success': True, 'users': len(users)})
+
+
+@app.route('/api/bb/streaks/me', methods=['GET'])
+def bb_my_streaks():
+    u = current_user()
+    if not u or bb_streaks_collection is None:
+        return jsonify({'prediction_streak': 0, 'best_streak': 0, 'daily_visit_streak': 0})
+    pred = bb_streaks_collection.find_one({'username': u, 'type': 'prediction'}, {'_id': 0})
+    daily = bb_streaks_collection.find_one({'username': u, 'type': 'daily_visit'}, {'_id': 0})
+    return jsonify({
+        'prediction_streak': (pred or {}).get('count', 0),
+        'best_streak': (pred or {}).get('best', 0),
+        'daily_visit_streak': (daily or {}).get('count', 0),
+    })
+
+
+# ===== 3. WEEKLY RECAPS =====
+@app.route('/api/bb/recaps', methods=['GET'])
+def bb_get_recaps():
+    if bb_recaps_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_recaps_collection.find({}, {'_id': 0}).sort('week', -1).limit(20)))
+
+
+@app.route('/api/bb/recaps/<int:week>', methods=['GET'])
+def bb_get_recap(week):
+    if bb_recaps_collection is None:
+        return jsonify({})
+    doc = bb_recaps_collection.find_one({'week': week}, {'_id': 0})
+    return jsonify(doc or {})
+
+
+@app.route('/api/bb/recaps/generate', methods=['POST'])
+def bb_generate_recap():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    week = (request.json or {}).get('week', 1)
+    # Gather data
+    contestants = []
+    if bb_collection is not None:
+        cd = bb_collection.find_one({'key': 'contestants'}, {'_id': 0, 'list': 1})
+        contestants = cd.get('list', []) if cd else []
+    nom = None
+    if bb_nominations_collection is not None:
+        nom = bb_nominations_collection.find_one({'week': week}, {'_id': 0})
+    # Top poll
+    top_poll = None
+    if bb_polls_collection is not None:
+        p = bb_polls_collection.find_one({'week': week, 'closed': True}, {'_id': 0}, sort=[('created_at', -1)])
+        if p:
+            votes = p.get('votes', {})
+            counts = {}
+            for v in votes.values(): counts[v] = counts.get(v, 0) + 1
+            top_choice = max(counts, key=counts.get) if counts else None
+            top_poll = {'question': p.get('question'), 'result': p.get('result'), 'top_choice': top_choice, 'total': len(votes)}
+    # Top fan of week
+    top_fan = None
+    if bb_weekly_points_collection is not None:
+        tf = bb_weekly_points_collection.find_one({'week': week}, {'_id': 0}, sort=[('points', -1)])
+        top_fan = tf
+    # Ratings winner
+    ratings_winner = None
+    if bb_ratings_collection is not None:
+        agg = list(bb_ratings_collection.aggregate([
+            {'$group': {'_id': '$contestant',
+                        'avg': {'$avg': {'$add': ['$likability', '$gameplay', '$entertainment']}},
+                        'count': {'$sum': 1}}},
+            {'$sort': {'avg': -1}}, {'$limit': 1}
+        ]))
+        if agg:
+            ratings_winner = {'name': agg[0]['_id'], 'avg': round(agg[0]['avg']/3, 2), 'count': agg[0]['count']}
+    recap = {
+        'week': week,
+        'nominated': (nom or {}).get('nominated', []),
+        'evicted': (nom or {}).get('evicted', ''),
+        'captain': (nom or {}).get('captain', ''),
+        'top_poll': top_poll,
+        'top_fan': top_fan,
+        'ratings_winner': ratings_winner,
+        'generated_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_recaps_collection.update_one({'week': week}, {'$set': recap}, upsert=True)
+    _bb_audit('generate_recap', {'week': week})
+    return jsonify(recap), 201
+
+
+# ===== 4. CONTESTANT COMPARISON =====
+@app.route('/api/bb/compare', methods=['GET'])
+def bb_compare():
+    a = request.args.get('a', '').strip()
+    b = request.args.get('b', '').strip()
+    if not a or not b:
+        return jsonify({'error': 'a and b required'}), 400
+
+    def _stats(name):
+        out = {'name': name, 'ratings': {}, 'nominations': [], 'insta': {}}
+        if bb_ratings_collection is not None:
+            agg = list(bb_ratings_collection.aggregate([
+                {'$match': {'contestant': name}},
+                {'$group': {'_id': None,
+                            'likability': {'$avg': '$likability'},
+                            'gameplay': {'$avg': '$gameplay'},
+                            'entertainment': {'$avg': '$entertainment'},
+                            'count': {'$sum': 1}}}
+            ]))
+            if agg:
+                s = agg[0]; s.pop('_id', None)
+                s['overall'] = round((s['likability'] + s['gameplay'] + s['entertainment'])/3, 2)
+                out['ratings'] = s
+        if bb_nominations_collection is not None:
+            out['nominations'] = list(bb_nominations_collection.find(
+                {'nominated': name}, {'_id': 0, 'week': 1, 'evicted': 1}
+            ).sort('week', 1))
+        if bb_insta_collection is not None:
+            entry = bb_insta_collection.find_one({'contestant': name, 'type': 'entry'}, {'_id': 0, 'followers': 1})
+            current = bb_insta_collection.find_one({'contestant': name, 'type': 'current'}, {'_id': 0, 'followers': 1})
+            out['insta'] = {'entry': (entry or {}).get('followers', 0), 'current': (current or {}).get('followers', 0)}
+        return out
+
+    return jsonify({'a': _stats(a), 'b': _stats(b)})
+
+
+# ===== 5. NOTIFICATIONS =====
+@app.route('/api/bb/notifications', methods=['GET'])
+def bb_get_notifs():
+    u = current_user()
+    if not u or bb_notifications_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_notifications_collection.find(
+        {'username': u}, {'_id': 0}).sort('created_at', -1).limit(50)))
+
+
+@app.route('/api/bb/notifications/read', methods=['POST'])
+def bb_mark_notifs_read():
+    u = current_user()
+    if not u or bb_notifications_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    body = request.json or {}
+    if body.get('all'):
+        bb_notifications_collection.update_many({'username': u}, {'$set': {'read': True}})
+    elif body.get('ids'):
+        bb_notifications_collection.update_many(
+            {'username': u, 'created_at': {'$in': body['ids']}}, {'$set': {'read': True}})
+    return jsonify({'success': True})
+
+
+@app.route('/api/bb/notifications/unread_count', methods=['GET'])
+def bb_unread_notifs():
+    u = current_user()
+    if not u or bb_notifications_collection is None:
+        return jsonify({'count': 0})
+    return jsonify({'count': bb_notifications_collection.count_documents({'username': u, 'read': False})})
+
+
+# ===== 6. THREADED REPLIES =====
+@app.route('/api/bb/reels/<reel_id>/comments/<comment_id>/reply', methods=['POST'])
+def bb_reply_reel_comment(reel_id, comment_id):
+    u = current_user()
+    if not u:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_reel_comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:300]
+    if not text:
+        return jsonify({'error': 'Text required'}), 400
+    parent = bb_reel_comments_collection.find_one({'comment_id': comment_id}, {'_id': 0, 'username': 1})
+    if not parent:
+        return jsonify({'error': 'Parent not found'}), 404
+    doc = {
+        'comment_id': str(uuid.uuid4())[:10],
+        'reel_id': reel_id, 'parent_id': comment_id,
+        'username': u, 'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_reel_comments_collection.insert_one(doc)
+    doc.pop('_id', None)
+    _bb_award_points(u, 1, f'replied on reel {reel_id}')
+    if parent.get('username') and parent['username'] != u:
+        _bb_notify(parent['username'], 'reply', f'@{u} replied to your comment', {'reel_id': reel_id})
+    _bb_notify_mentions(text, u)
+    _bb_check_badges(u)
+    return jsonify(doc), 201
+
+
+@app.route('/api/bb/reels/<reel_id>/comments/<comment_id>/replies', methods=['GET'])
+def bb_get_reel_replies(reel_id, comment_id):
+    if bb_reel_comments_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_reel_comments_collection.find(
+        {'reel_id': reel_id, 'parent_id': comment_id}, {'_id': 0}).sort('created_at', 1).limit(50)))
+
+
+@app.route('/api/bb/contestants/<contestant>/comments/<comment_id>/reply', methods=['POST'])
+def bb_reply_contestant_comment(contestant, comment_id):
+    u = current_user()
+    if not u:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_contestant_comments_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    text = (request.json or {}).get('text', '').strip()[:300]
+    if not text:
+        return jsonify({'error': 'Text required'}), 400
+    parent = bb_contestant_comments_collection.find_one({'comment_id': comment_id}, {'_id': 0, 'username': 1})
+    if not parent:
+        return jsonify({'error': 'Parent not found'}), 404
+    doc = {
+        'comment_id': str(uuid.uuid4())[:10],
+        'contestant': contestant, 'parent_id': comment_id,
+        'username': u, 'text': text,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_contestant_comments_collection.insert_one(doc)
+    doc.pop('_id', None)
+    _bb_award_points(u, 1, f'replied on contestant {contestant}')
+    if parent.get('username') and parent['username'] != u:
+        _bb_notify(parent['username'], 'reply', f'@{u} replied to your comment', {'contestant': contestant})
+    _bb_notify_mentions(text, u)
+    _bb_check_badges(u)
+    return jsonify(doc), 201
+
+
+@app.route('/api/bb/contestants/<contestant>/comments/<comment_id>/replies', methods=['GET'])
+def bb_get_contestant_replies(contestant, comment_id):
+    if bb_contestant_comments_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_contestant_comments_collection.find(
+        {'contestant': contestant, 'parent_id': comment_id}, {'_id': 0}).sort('created_at', 1).limit(50)))
+
+
+# ===== 7. USER SEARCH (for @mentions) =====
+@app.route('/api/bb/users/search', methods=['GET'])
+def bb_search_users():
+    q = request.args.get('q', '').strip().lower()
+    if not q or len(q) < 2 or users_collection is None:
+        return jsonify([])
+    docs = list(users_collection.find(
+        {'username': {'$regex': '^' + q, '$options': 'i'}},
+        {'_id': 0, 'username': 1}).limit(10))
+    return jsonify([d['username'] for d in docs])
+
+
+# ===== 8. COMMENT REACTIONS =====
+@app.route('/api/bb/comments/<comment_id>/react', methods=['POST'])
+def bb_react_comment(comment_id):
+    u = current_user()
+    if not u:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_comment_reactions_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    emoji = (request.json or {}).get('emoji', '').strip()
+    if emoji not in ['😂', '❤️', '🔥', '😮', '😢', '👍']:
+        return jsonify({'error': 'Invalid emoji'}), 400
+    existing = bb_comment_reactions_collection.find_one(
+        {'comment_id': comment_id, 'emoji': emoji, 'username': u})
+    if existing:
+        bb_comment_reactions_collection.delete_one(
+            {'comment_id': comment_id, 'emoji': emoji, 'username': u})
+        return jsonify({'reacted': False})
+    bb_comment_reactions_collection.insert_one(
+        {'comment_id': comment_id, 'emoji': emoji, 'username': u,
+         'created_at': datetime.now(timezone.utc).isoformat()})
+    return jsonify({'reacted': True})
+
+
+@app.route('/api/bb/comments/<comment_id>/reactions', methods=['GET'])
+def bb_get_comment_reactions(comment_id):
+    if bb_comment_reactions_collection is None:
+        return jsonify({})
+    docs = list(bb_comment_reactions_collection.find({'comment_id': comment_id}, {'_id': 0}))
+    out = {}
+    u = current_user()
+    for d in docs:
+        e = d['emoji']
+        if e not in out:
+            out[e] = {'count': 0, 'mine': False}
+        out[e]['count'] += 1
+        if d['username'] == u:
+            out[e]['mine'] = True
+    return jsonify(out)
+
+
+# ===== 9. USER BB STATS & JOURNEY =====
+@app.route('/api/bb/users/<username>/stats', methods=['GET'])
+def bb_user_stats(username):
+    out = {
+        'username': username, 'points': 0, 'votes': 0, 'correct_predictions': 0,
+        'reels': 0, 'comments': 0, 'ratings': 0, 'badges': 0,
+        'followers': 0, 'following': 0
+    }
+    if bb_points_collection is not None:
+        p = bb_points_collection.find_one({'username': username}, {'_id': 0, 'points': 1})
+        out['points'] = p.get('points', 0) if p else 0
+    if bb_polls_collection is not None:
+        out['votes'] = bb_polls_collection.count_documents({f'votes.{username}': {'$exists': True}})
+        for p in bb_polls_collection.find(
+            {'closed': True, 'result': {'$exists': True, '$ne': ''}, f'votes.{username}': {'$exists': True}},
+            {'_id': 0, 'votes': 1, 'result': 1}
+        ):
+            if p.get('votes', {}).get(username) == p.get('result'):
+                out['correct_predictions'] += 1
+    if bb_reels_collection is not None:
+        out['reels'] = bb_reels_collection.count_documents({'username': username})
+    rc = bb_reel_comments_collection.count_documents({'username': username}) if bb_reel_comments_collection is not None else 0
+    cc = bb_contestant_comments_collection.count_documents({'username': username}) if bb_contestant_comments_collection is not None else 0
+    out['comments'] = rc + cc
+    if bb_ratings_collection is not None:
+        out['ratings'] = bb_ratings_collection.count_documents({'username': username})
+    if bb_badges_collection is not None:
+        out['badges'] = bb_badges_collection.count_documents({'username': username})
+    if bb_follows_collection is not None:
+        out['followers'] = bb_follows_collection.count_documents({'following': username})
+        out['following'] = bb_follows_collection.count_documents({'follower': username})
+    return jsonify(out)
+
+
+@app.route('/api/bb/users/<username>/journey', methods=['GET'])
+def bb_user_journey(username):
+    events = []
+    if bb_reels_collection is not None:
+        for r in bb_reels_collection.find({'username': username}, {'_id': 0, 'caption': 1, 'created_at': 1}).sort('created_at', -1).limit(20):
+            events.append({'type': 'reel', 'text': r.get('caption', '') or 'Posted a clip', 'created_at': r.get('created_at')})
+    if bb_reel_comments_collection is not None:
+        for c in bb_reel_comments_collection.find({'username': username}, {'_id': 0, 'text': 1, 'created_at': 1}).sort('created_at', -1).limit(20):
+            events.append({'type': 'comment', 'text': c.get('text', ''), 'created_at': c.get('created_at')})
+    if bb_badges_collection is not None:
+        for b in bb_badges_collection.find({'username': username}, {'_id': 0, 'badge_id': 1, 'earned_at': 1}).sort('earned_at', -1).limit(20):
+            bd = next((x for x in BADGE_DEFS if x['id'] == b['badge_id']), {})
+            events.append({'type': 'badge', 'text': f'Earned {bd.get("icon","")} {bd.get("name","")}', 'created_at': b.get('earned_at')})
+    events.sort(key=lambda e: e.get('created_at') or '', reverse=True)
+    return jsonify(events[:50])
+
+
+# ===== 10. FOLLOWS =====
+@app.route('/api/bb/follows', methods=['GET'])
+def bb_get_follows():
+    u = current_user()
+    if not u or bb_follows_collection is None:
+        return jsonify({'following': [], 'followers': []})
+    following = [d['following'] for d in bb_follows_collection.find({'follower': u}, {'_id': 0, 'following': 1})]
+    followers = [d['follower'] for d in bb_follows_collection.find({'following': u}, {'_id': 0, 'follower': 1})]
+    return jsonify({'following': following, 'followers': followers})
+
+
+@app.route('/api/bb/follows/<username>', methods=['POST'])
+def bb_follow(username):
+    u = current_user()
+    if not u:
+        return jsonify({'error': 'Login required'}), 401
+    if u == username:
+        return jsonify({'error': 'Cannot follow yourself'}), 400
+    if bb_follows_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_follows_collection.update_one(
+        {'follower': u, 'following': username},
+        {'$set': {'follower': u, 'following': username,
+                  'created_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True)
+    _bb_notify(username, 'follow', f'@{u} started following you', {'by': u})
+    _bb_check_badges(u)
+    return jsonify({'success': True})
+
+
+@app.route('/api/bb/follows/<username>', methods=['DELETE'])
+def bb_unfollow(username):
+    u = current_user()
+    if not u or bb_follows_collection is None:
+        return jsonify({'error': 'Unauthorized'}), 401
+    bb_follows_collection.delete_one({'follower': u, 'following': username})
+    return jsonify({'success': True})
+
+
+@app.route('/api/bb/follows/<username>/check', methods=['GET'])
+def bb_check_follow(username):
+    u = current_user()
+    if not u or bb_follows_collection is None:
+        return jsonify({'following': False})
+    doc = bb_follows_collection.find_one({'follower': u, 'following': username})
+    return jsonify({'following': doc is not None})
+
+
+# ===== 11. WEEKLY POINTS SNAPSHOTS =====
+@app.route('/api/bb/points/weekly/snapshot', methods=['POST'])
+def bb_snapshot_weekly():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_points_collection is None or bb_weekly_points_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    week = (request.json or {}).get('week')
+    if not week:
+        # Infer week from nominations max
+        max_w = 0
+        if bb_nominations_collection is not None:
+            for n in bb_nominations_collection.find({}, {'_id': 0, 'week': 1}):
+                max_w = max(max_w, n.get('week', 0))
+        week = max_w or 1
+    docs = list(bb_points_collection.find({}, {'_id': 0, 'username': 1, 'points': 1}))
+    for d in docs:
+        bb_weekly_points_collection.update_one(
+            {'week': week, 'username': d['username']},
+            {'$set': {'week': week, 'username': d['username'], 'points': d.get('points', 0),
+                      'snapshotted_at': datetime.now(timezone.utc).isoformat()}},
+            upsert=True)
+    _bb_audit('weekly_snapshot', {'week': week, 'users': len(docs)})
+    return jsonify({'success': True, 'week': week, 'users': len(docs)})
+
+
+@app.route('/api/bb/points/weekly', methods=['GET'])
+def bb_points_weekly_by_week():
+    week = request.args.get('week', type=int)
+    if week is None or bb_weekly_points_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_weekly_points_collection.find(
+        {'week': week}, {'_id': 0}).sort('points', -1).limit(50)))
+
+
+@app.route('/api/bb/points/weekly/current', methods=['GET'])
+def bb_points_weekly_current():
+    if bb_weekly_points_collection is None:
+        return jsonify({'current': [], 'previous': [], 'champion': None})
+    weeks = bb_weekly_points_collection.distinct('week')
+    weeks.sort(reverse=True)
+    if not weeks:
+        return jsonify({'current': [], 'previous': [], 'champion': None})
+    cur_week = weeks[0]
+    current = list(bb_weekly_points_collection.find(
+        {'week': cur_week}, {'_id': 0}).sort('points', -1).limit(10))
+    prev_week = weeks[1] if len(weeks) > 1 else None
+    previous = list(bb_weekly_points_collection.find(
+        {'week': prev_week}, {'_id': 0}).sort('points', -1).limit(10)) if prev_week else []
+    champion = previous[0] if previous else None
+    return jsonify({'current_week': cur_week, 'current': current,
+                    'previous_week': prev_week, 'previous': previous,
+                    'champion': champion})
+
+
+# ===== 12. PREDICTION STAKES =====
+@app.route('/api/bb/polls/<poll_id>/stake', methods=['POST'])
+def bb_stake_prediction(poll_id):
+    u = current_user()
+    if not u:
+        return jsonify({'error': 'Login required'}), 401
+    if bb_poll_stakes_collection is None or bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    stake = (request.json or {}).get('stake', 1)
+    if stake not in (1, 5, 10):
+        return jsonify({'error': 'Stake must be 1, 5, or 10'}), 400
+    poll = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    if not poll or poll.get('closed'):
+        return jsonify({'error': 'Poll not found or closed'}), 400
+    if u not in (poll.get('votes') or {}):
+        return jsonify({'error': 'Vote first, then stake'}), 400
+    bb_poll_stakes_collection.update_one(
+        {'poll_id': poll_id, 'username': u},
+        {'$set': {'poll_id': poll_id, 'username': u, 'stake': stake,
+                  'created_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True)
+    return jsonify({'success': True, 'stake': stake})
+
+
+@app.route('/api/bb/polls/<poll_id>/stake', methods=['GET'])
+def bb_get_my_stake(poll_id):
+    u = current_user()
+    if not u or bb_poll_stakes_collection is None:
+        return jsonify({'stake': 0})
+    doc = bb_poll_stakes_collection.find_one({'poll_id': poll_id, 'username': u}, {'_id': 0})
+    return jsonify({'stake': doc.get('stake', 0) if doc else 0})
+
+
+# ===== 13. DAILY STREAK LOGIN BONUS =====
+@app.route('/api/bb/daily/visit', methods=['POST'])
+def bb_record_daily_visit():
+    u = current_user()
+    if not u or bb_daily_visits_collection is None:
+        return jsonify({'error': 'Login required'}), 401
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    existed = bb_daily_visits_collection.find_one({'username': u, 'date': today})
+    if existed:
+        doc = bb_streaks_collection.find_one({'username': u, 'type': 'daily_visit'}, {'_id': 0}) if bb_streaks_collection else None
+        return jsonify({'streak': (doc or {}).get('count', 0), 'points_awarded': 0, 'already': True})
+    bb_daily_visits_collection.insert_one({'username': u, 'date': today,
+                                            'created_at': datetime.now(timezone.utc).isoformat()})
+    # Streak logic
+    prev = bb_streaks_collection.find_one({'username': u, 'type': 'daily_visit'}, {'_id': 0}) if bb_streaks_collection else None
+    count = 1
+    if prev:
+        last = prev.get('last_date', '')
+        yest = (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%d')
+        if last == yest:
+            count = prev.get('count', 0) + 1
+    bb_streaks_collection.update_one(
+        {'username': u, 'type': 'daily_visit'},
+        {'$set': {'username': u, 'type': 'daily_visit', 'count': count,
+                  'last_date': today,
+                  'best': max(count, (prev or {}).get('best', 0))}},
+        upsert=True)
+    bonus = min(count, 7)  # cap at 7 pts/day
+    _bb_award_points(u, bonus, f'daily visit streak {count}')
+    _bb_check_badges(u)
+    return jsonify({'streak': count, 'points_awarded': bonus, 'already': False})
+
+
+@app.route('/api/bb/daily/status', methods=['GET'])
+def bb_daily_status():
+    u = current_user()
+    if not u or bb_daily_visits_collection is None:
+        return jsonify({'visited_today': False, 'streak': 0})
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    visited = bb_daily_visits_collection.find_one({'username': u, 'date': today})
+    doc = bb_streaks_collection.find_one({'username': u, 'type': 'daily_visit'}, {'_id': 0}) if bb_streaks_collection else None
+    return jsonify({'visited_today': visited is not None,
+                    'streak': (doc or {}).get('count', 0),
+                    'best': (doc or {}).get('best', 0)})
+
+
+# ===== 14. ACHIEVEMENTS (badges + earned status) =====
+@app.route('/api/bb/achievements', methods=['GET'])
+def bb_achievements():
+    u = current_user()
+    earned_ids = set()
+    if u and bb_badges_collection is not None:
+        earned_ids = set(b['badge_id'] for b in bb_badges_collection.find({'username': u}, {'_id': 0, 'badge_id': 1}))
+    out = []
+    for b in BADGE_DEFS:
+        out.append({**b, 'earned': b['id'] in earned_ids})
+    return jsonify({'badges': out, 'earned_count': len(earned_ids), 'total': len(BADGE_DEFS)})
+
+
+# ===== 15. CONTESTANT TREND (rating snapshots) =====
+@app.route('/api/bb/trends/<contestant>', methods=['GET'])
+def bb_contestant_trend(contestant):
+    if bb_rating_snapshots_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_rating_snapshots_collection.find(
+        {'contestant': contestant}, {'_id': 0}).sort('week', 1)))
+
+
+@app.route('/api/bb/trends/snapshot', methods=['POST'])
+def bb_snapshot_ratings():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_rating_snapshots_collection is None or bb_ratings_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    week = (request.json or {}).get('week', 1)
+    agg = list(bb_ratings_collection.aggregate([
+        {'$group': {'_id': '$contestant',
+                    'likability': {'$avg': '$likability'},
+                    'gameplay': {'$avg': '$gameplay'},
+                    'entertainment': {'$avg': '$entertainment'},
+                    'count': {'$sum': 1}}}
+    ]))
+    for a in agg:
+        bb_rating_snapshots_collection.update_one(
+            {'contestant': a['_id'], 'week': week},
+            {'$set': {'contestant': a['_id'], 'week': week,
+                      'likability': round(a['likability'], 2),
+                      'gameplay': round(a['gameplay'], 2),
+                      'entertainment': round(a['entertainment'], 2),
+                      'count': a['count'],
+                      'overall': round((a['likability']+a['gameplay']+a['entertainment'])/3, 2),
+                      'snapshotted_at': datetime.now(timezone.utc).isoformat()}},
+            upsert=True)
+    _bb_audit('rating_snapshot', {'week': week, 'contestants': len(agg)})
+    return jsonify({'success': True, 'week': week, 'contestants': len(agg)})
+
+
+# ===== 16. ADMIN AUDIT LOG =====
+@app.route('/api/bb/audit', methods=['GET'])
+def bb_get_audit():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_audit_log_collection is None:
+        return jsonify([])
+    return jsonify(list(bb_audit_log_collection.find({}, {'_id': 0}).sort('created_at', -1).limit(100)))
+
+
+# ===== 17. BULK CONTESTANT IMPORT =====
+@app.route('/api/bb/contestants/bulk', methods=['POST'])
+def bb_bulk_contestants():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    csv = (request.json or {}).get('csv', '')
+    rows = [r.strip() for r in csv.split('\n') if r.strip()]
+    new_list = []
+    for row in rows:
+        parts = [p.strip() for p in row.split(',')]
+        if not parts or not parts[0]: continue
+        new_list.append({
+            'name': parts[0],
+            'status': parts[1] if len(parts) > 1 else 'active',
+            'bio': parts[2] if len(parts) > 2 else '',
+            'img': ''
+        })
+    bb_collection.update_one(
+        {'key': 'contestants'},
+        {'$set': {'key': 'contestants', 'list': new_list,
+                  'updated_at': datetime.now(timezone.utc).isoformat()}},
+        upsert=True)
+    _bb_audit('bulk_contestants', {'count': len(new_list)})
+    return jsonify({'success': True, 'count': len(new_list)})
+
+
+# ===== 18. POLL TEMPLATES =====
+@app.route('/api/bb/polls/template', methods=['POST'])
+def bb_poll_from_template():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_polls_collection is None or bb_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    kind = (request.json or {}).get('kind', 'winner')  # 'eviction' | 'winner'
+    week = (request.json or {}).get('week', 1)
+    cd = bb_collection.find_one({'key': 'contestants'}, {'_id': 0, 'list': 1})
+    contestants = cd.get('list', []) if cd else []
+    if kind == 'winner':
+        opts = [c['name'] for c in contestants if c.get('status') in ('active', 'nominated')]
+        q = f'Week {week} — Who will win Bigg Boss?'
+    else:  # eviction
+        latest = None
+        if bb_nominations_collection is not None:
+            latest = bb_nominations_collection.find_one({'week': week}, {'_id': 0})
+        opts = (latest or {}).get('nominated', []) or [c['name'] for c in contestants if c.get('status') == 'nominated']
+        q = f'Week {week} — Who will be evicted?'
+    if len(opts) < 2:
+        return jsonify({'error': 'Not enough candidates for template'}), 400
+    poll = {
+        'poll_id': str(uuid.uuid4())[:8],
+        'season_id': '', 'week': week,
+        'question': q, 'options': opts,
+        'poll_type': kind, 'votes': {},
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    bb_polls_collection.insert_one(poll)
+    poll.pop('_id', None)
+    _bb_audit('poll_template', {'kind': kind, 'week': week, 'poll_id': poll['poll_id']})
+    return jsonify(poll), 201
+
+
+# ===== 19. SCHEDULED POLLS (open/close times) =====
+@app.route('/api/bb/polls/<poll_id>/schedule', methods=['POST'])
+def bb_schedule_poll(poll_id):
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_polls_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    body = request.json or {}
+    bb_polls_collection.update_one(
+        {'poll_id': poll_id},
+        {'$set': {'opens_at': body.get('opens_at'),
+                  'closes_at': body.get('closes_at'),
+                  'auto_result': body.get('auto_result', '')}})
+    _bb_audit('poll_schedule', {'poll_id': poll_id})
+    return jsonify({'success': True})
+
+
+@app.route('/api/bb/polls/check_schedules', methods=['POST'])
+def bb_check_poll_schedules():
+    # Can be called by a cron job or on page load
+    if bb_polls_collection is None:
+        return jsonify({'closed': 0})
+    now = datetime.now(timezone.utc).isoformat()
+    to_close = list(bb_polls_collection.find(
+        {'closed': {'$ne': True}, 'closes_at': {'$lte': now, '$ne': None}},
+        {'_id': 0, 'poll_id': 1, 'auto_result': 1}))
+    closed = 0
+    for p in to_close:
+        bb_polls_collection.update_one(
+            {'poll_id': p['poll_id']},
+            {'$set': {'closed': True, 'result': p.get('auto_result', ''),
+                      'closed_at': now}})
+        closed += 1
+        # Award correct predictions
+        voters = bb_polls_collection.find_one({'poll_id': p['poll_id']}, {'_id': 0, 'votes': 1})
+        if p.get('auto_result') and voters:
+            for voter, choice in (voters.get('votes') or {}).items():
+                if choice == p['auto_result']:
+                    _bb_award_points(voter, 10, f'correct prediction poll {p["poll_id"]}')
+                    _bb_notify(voter, 'poll_result', f'✅ Correct prediction on "{p["poll_id"]}"! +10 pts', {'poll_id': p['poll_id']})
+    return jsonify({'closed': closed})
+
+
+# ===== 20. RATE-LIMIT HELPER (simple in-memory) =====
+from collections import defaultdict
+_rate_buckets = defaultdict(list)
+def _rate_ok(key, limit=10, window_sec=60):
+    import time
+    now = time.time()
+    _rate_buckets[key] = [t for t in _rate_buckets[key] if now - t < window_sec]
+    if len(_rate_buckets[key]) >= limit:
+        return False
+    _rate_buckets[key].append(now)
+    return True
+
+
+# ===== 21. PAGINATION HELPER ROUTES =====
+@app.route('/api/bb/reels/paged', methods=['GET'])
+def bb_reels_paged():
+    if bb_reels_collection is None:
+        return jsonify({'items': [], 'has_more': False})
+    limit = min(int(request.args.get('limit', 30)), 50)
+    skip = int(request.args.get('skip', 0))
+    items = list(bb_reels_collection.find({}, {'_id': 0}).sort('created_at', -1).skip(skip).limit(limit))
+    has_more = len(items) == limit
+    return jsonify({'items': items, 'has_more': has_more, 'next_skip': skip + len(items)})
+
+
+@app.route('/api/bb/polls/paged', methods=['GET'])
+def bb_polls_paged():
+    if bb_polls_collection is None:
+        return jsonify({'items': [], 'has_more': False})
+    limit = min(int(request.args.get('limit', 10)), 30)
+    skip = int(request.args.get('skip', 0))
+    items = list(bb_polls_collection.find({}, {'_id': 0}).sort('week', -1).skip(skip).limit(limit))
+    return jsonify({'items': items, 'has_more': len(items) == limit, 'next_skip': skip + len(items)})
+
+
+# ===== 22. IMAGE THUMBNAILS =====
+@app.route('/api/img/<image_id>/thumb')
+def bb_img_thumb(image_id):
+    if bb_image_thumbs_collection is not None:
+        doc = bb_image_thumbs_collection.find_one({'image_id': image_id})
+        if doc:
+            from flask import Response
+            return Response(doc['data'], mimetype=doc.get('mime', 'image/jpeg'))
+    # Fallback to full image
+    return bb_serve_img(image_id) if 'bb_serve_img' in globals() else ('', 404)
+
+
+@app.route('/api/bb/img/thumb', methods=['POST'])
+def bb_generate_thumb():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_image_thumbs_collection is None or images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    image_id = (request.json or {}).get('image_id', '')
+    if not image_id:
+        return jsonify({'error': 'image_id required'}), 400
+    src = images_collection.find_one({'image_id': image_id})
+    if not src:
+        return jsonify({'error': 'Image not found'}), 404
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(src['data']))
+        img.thumbnail((200, 200))
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=70)
+        thumb = buf.getvalue()
+        bb_image_thumbs_collection.update_one(
+            {'image_id': image_id},
+            {'$set': {'image_id': image_id, 'data': thumb, 'mime': 'image/jpeg'}},
+            upsert=True)
+        return jsonify({'success': True, 'url': f'/api/img/{image_id}/thumb'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ===== 23. SOFT DELETE support (for comments/reels) =====
+# To use soft-delete: modify existing DELETE routes to set deleted=True instead of removing.
+# New route to restore:
+@app.route('/api/bb/restore/reel/<reel_id>', methods=['POST'])
+def bb_restore_reel(reel_id):
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    if bb_reels_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    bb_reels_collection.update_one({'reel_id': reel_id}, {'$set': {'deleted': False}})
+    return jsonify({'success': True})
+
+
+@app.route('/api/bb/trash', methods=['GET'])
+def bb_get_trash():
+    if not _is_bb_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    out = {'reels': [], 'comments': []}
+    if bb_reels_collection is not None:
+        out['reels'] = list(bb_reels_collection.find({'deleted': True}, {'_id': 0}).limit(50))
+    if bb_reel_comments_collection is not None:
+        out['comments'] = list(bb_reel_comments_collection.find({'deleted': True}, {'_id': 0}).limit(50))
+    return jsonify(out)
+
+
+# ===== 24. SETTINGS: light/dark theme preference =====
+# (Frontend only — store in localStorage, no backend needed)
+
+
+# ===== 25. SHAREABLE POLL OG IMAGE (meta only) =====
+@app.route('/api/bb/polls/<poll_id>/og', methods=['GET'])
+def bb_poll_og(poll_id):
+    if bb_polls_collection is None:
+        return jsonify({})
+    p = bb_polls_collection.find_one({'poll_id': poll_id}, {'_id': 0})
+    if not p:
+        return jsonify({'error': 'Not found'}), 404
+    votes = p.get('votes', {})
+    counts = {}
+    for v in votes.values(): counts[v] = counts.get(v, 0) + 1
+    top = max(counts, key=counts.get) if counts else None
+    return jsonify({
+        'poll_id': poll_id,
+        'question': p.get('question'),
+        'top_choice': top,
+        'total_votes': len(votes),
+        'og_title': f'BB Poll: {p.get("question")}',
+        'og_desc': f'{top} is leading with {counts.get(top, 0)} votes' if top else 'Vote now!',
+    })
 
 # ===== KING OF CARDS =====
 
