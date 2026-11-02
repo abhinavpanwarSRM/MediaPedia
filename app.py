@@ -5172,6 +5172,16 @@ try:
 except Exception as e:
     log.error('Failed to init koc_live: %s', e)
 
+# KOC Gallery collection — metadata for photos captured during live sessions
+koc_gallery_collection = None
+try:
+    if db is not None:
+        koc_gallery_collection = db.koc_gallery
+        koc_gallery_collection.create_index('image_id', unique=True)
+        koc_gallery_collection.create_index('edition')
+except Exception as e:
+    log.error('Failed to init koc_gallery: %s', e)
+
 @app.route('/api/koc/live', methods=['POST'])
 def koc_live_start():
     username = current_user()
@@ -5253,6 +5263,71 @@ def koc_live_end(session_id):
     koc_live_collection.update_one({'session_id': session_id}, {'$set': {'active': False}})
     return jsonify({'success': True})
 
+@app.route('/api/koc/live/<session_id>/capture_photo', methods=['POST'])
+def koc_live_capture_photo(session_id):
+    """Capture a photo during a live KOC session (stored temporarily, moved to gallery on save)."""
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None or images_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'_id': 0})
+    if not doc:
+        return jsonify({'error': 'Session not found'}), 404
+    f = request.files.get('file')
+    if not f or not f.filename:
+        return jsonify({'error': 'No image'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else 'jpg'
+    if ext not in ALLOWED_EXT:
+        return jsonify({'error': 'Only jpg/png/gif/webp allowed'}), 400
+    data = f.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+    data, mime = _compress_image(data, ext)
+    image_id = uuid.uuid4().hex[:16]
+    images_collection.insert_one({
+        'image_id': image_id, 'data': data, 'mime': mime,
+        'uploaded_by': username, 'created_at': datetime.now(timezone.utc)
+    })
+    photo = {
+        'image_id': image_id,
+        'url': '/api/img/' + image_id,
+        'uploaded_by': username,
+        'caption': (request.form.get('caption') or '').strip()[:120],
+        'captured_at': datetime.now(timezone.utc).isoformat()
+    }
+    koc_live_collection.update_one(
+        {'session_id': session_id},
+        {'$push': {'photos': photo}}
+    )
+    return jsonify(photo), 201
+
+@app.route('/api/koc/live/<session_id>/photos', methods=['GET'])
+def koc_live_photos(session_id):
+    """Return photos captured during a live session."""
+    if koc_live_collection is None:
+        return jsonify([])
+    doc = koc_live_collection.find_one({'session_id': session_id}, {'photos': 1, '_id': 0})
+    if not doc:
+        return jsonify({'error': 'Session not found'}), 404
+    return jsonify(doc.get('photos', []))
+
+@app.route('/api/koc/live/<session_id>/photos/<image_id>', methods=['DELETE'])
+def koc_live_delete_photo(session_id, image_id):
+    """Delete a photo captured during a live session (before it's saved to gallery)."""
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_live_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    koc_live_collection.update_one(
+        {'session_id': session_id},
+        {'$pull': {'photos': {'image_id': image_id}}}
+    )
+    if images_collection is not None:
+        images_collection.delete_one({'image_id': image_id})
+    return jsonify({'success': True})
+
 @app.route('/api/koc/live/<session_id>/save_as_edition', methods=['POST'])
 def koc_live_save_as_edition(session_id):
     """Save a completed live session as a new official edition."""
@@ -5310,6 +5385,28 @@ def koc_live_save_as_edition(session_id):
         'created_at': datetime.now(timezone.utc).isoformat()
     })
     koc_live_collection.update_one({'session_id': session_id}, {'$set': {'active': False, 'saved_as_edition': edition}})
+    # Move captured photos from the live session into the gallery
+    photos_saved = 0
+    photos = doc.get('photos', [])
+    if photos and koc_gallery_collection is not None:
+        for ph in photos:
+            try:
+                koc_gallery_collection.insert_one({
+                    'image_id': ph.get('image_id'),
+                    'url': ph.get('url', '/api/img/' + str(ph.get('image_id'))),
+                    'edition': edition,
+                    'played_on': played_on,
+                    'uploaded_by': ph.get('uploaded_by', username),
+                    'caption': ph.get('caption', ''),
+                    'captured_at': ph.get('captured_at'),
+                    'from_live': session_id,
+                    'added_at': datetime.now(timezone.utc).isoformat()
+                })
+                photos_saved += 1
+            except Exception as e:
+                log.error('Failed to save gallery photo: %s', e)
+        # Photos now live in the gallery — clear them from the live session
+        koc_live_collection.update_one({'session_id': session_id}, {'$set': {'photos': []}})
     # Notify all KOC players
     for u in KOC_USERNAMES:
         if u != username:
@@ -5319,7 +5416,7 @@ def koc_live_save_as_edition(session_id):
                 'url': f'/kingofcards/{edition}',
                 'tag': f'koc-edition-{edition}'
             })
-    return jsonify({'edition': edition, 'winner': winner['username']}), 201
+    return jsonify({'edition': edition, 'winner': winner['username'], 'photos_saved': photos_saved}), 201
 
 @app.route('/api/koc/game_heatmap')
 def koc_game_heatmap():
@@ -5339,6 +5436,14 @@ def koc_game_heatmap():
         result.append({'username': u, 'display': KOC_DISPLAY.get(u,u), **scores,
                        'best_game': max(scores, key=scores.get) if any(scores.values()) else None})
     return jsonify(result)
+
+@app.route('/api/koc/gallery')
+def koc_gallery():
+    """Return all KOC gallery photos captured during live sessions."""
+    if koc_gallery_collection is None:
+        return jsonify([])
+    photos = list(koc_gallery_collection.find({}, {'_id': 0}).sort('added_at', -1))
+    return jsonify(photos)
 
 @app.route('/api/koc/push_status')
 def koc_push_status():

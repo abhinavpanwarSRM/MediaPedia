@@ -153,6 +153,11 @@
                     border: 1px solid var(--border); cursor: pointer; position: relative; }
     .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s; }
     .gallery-item:hover img { transform: scale(1.06); }
+    .gallery-ed-badge { position: absolute; bottom: 0; left: 0; right: 0;
+                       background: linear-gradient(transparent, rgba(0,0,0,.75));
+                       padding: .7rem .5rem .35rem; font-size: .68rem; font-weight: 600;
+                       color: var(--gold); text-align: center; letter-spacing: .5px; }
+    .gallery-cap { display:block; font-size:.62rem; color:#ccc; font-weight:400; margin-top:.1rem; }
     .gallery-lock { display: flex; flex-direction: column; align-items: center; justify-content: center;
                     height: 200px; background: var(--card); border: 1px solid var(--border);
                     border-radius: 14px; color: var(--muted); font-size: 0.9rem; gap: 0.5rem; }
@@ -403,7 +408,8 @@
     <section style="margin-bottom:3rem;">
       <div class="section-title">Gallery</div>
       {% if is_koc_player %}
-      <div class="gallery-grid">
+      <div id="gallery-dynamic" class="gallery-grid" style="margin-bottom:0;"></div>
+      <div class="gallery-grid" style="margin-top:.8rem;">
         {% set gallery_imgs = ['Certificate.jpg','1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] %}
         {% for img in gallery_imgs %}
         <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/' + img) }}')">
@@ -1362,6 +1368,22 @@
       }).catch(()=>{ const w=document.getElementById('recap-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
     }
 
+    // ===== DYNAMIC GALLERY (live-session captures) =====
+    function loadGallery() {
+      fetch('/api/koc/gallery').then(r=>r.json()).then(photos => {
+        const wrap = document.getElementById('gallery-dynamic');
+        if (!wrap) return;
+        if (!Array.isArray(photos) || !photos.length) { wrap.innerHTML=''; return; }
+        wrap.innerHTML = photos.map(p => `
+          <div class="gallery-item" onclick="openLightbox('${p.url}')">
+            <img src="${p.url}" alt="${(p.caption||'KOC Edition '+p.edition).replace(/'/g,'')}" loading="lazy" />
+            <div class="gallery-ed-badge">Edition ${p.edition}
+              ${p.caption ? `<span class="gallery-cap">${p.caption.replace(/</g,'&lt;')}</span>` : ''}
+            </div>
+          </div>`).join('');
+      }).catch(()=>{});
+    }
+
     // ===== INIT =====
     loadTrend();
     loadStreaks();
@@ -1371,6 +1393,7 @@
     loadChat();
     loadPushStatus();
     loadNextEdition();
+    loadGallery();
     chatInterval = setInterval(pollChat, 5000);
     setInterval(loadNextEdition, 30000);
     {% endif %}
