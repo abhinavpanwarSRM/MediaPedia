@@ -188,16 +188,17 @@
       <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.4rem;">
         <button class="btn btn-gold" onclick="pushScores()">Save Scores</button>
         <button class="btn btn-gold" onclick="saveAsEdition()" style="background:rgba(255,215,0,.2);">Save as Edition</button>
-        <button class="btn btn-gold" onclick="openCamera()" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2);color:#ccc;">&#x1F4F7; Capture Photo</button>
+        <button class="btn btn-gold" onclick="document.getElementById('attach-input').click()" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.2);color:#ccc;">&#128206; Attach Photos</button>
+        <input type="file" id="attach-input" accept="image/*" multiple style="display:none" onchange="attachPhotos(this)" />
         <button class="btn btn-red" onclick="endSession()">End Session</button>
       </div>
 
       <hr class="divider">
 
       <!-- CAPTURED PHOTOS -->
-      <div class="ctrl-label">Captured Photos</div>
+      <div class="ctrl-label">Attached Photos</div>
       <div id="session-photos" class="photo-strip">
-        <p style="color:var(--muted);font-size:.8rem;grid-column:1/-1;">No photos captured yet. Tap "Capture Photo" to snap one with your camera.</p>
+        <p style="color:var(--muted);font-size:.8rem;grid-column:1/-1;">No photos attached yet. Tap "Attach Photos" to add images.</p>
       </div>
 
       <hr class="divider">
@@ -241,34 +242,6 @@
       <div class="wb-scores" id="wb-scores"></div>
       <div class="wb-actions">
         <button class="btn btn-gold" onclick="closeCelebration()">Continue</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CAMERA CAPTURE MODAL -->
-  <div class="cam-modal" id="camera-modal" onclick="if(event.target===this)closeCamera()">
-    <div class="cam-box">
-      <h2>Capture Photo</h2>
-      <div id="camera-view">
-        <video id="camera-video" autoplay playsinline></video>
-        <div class="cam-btns">
-          <button class="cam-shutter" onclick="capturePhoto()" title="Take photo">&#x1F4F7;</button>
-        </div>
-      </div>
-      <div id="camera-preview" style="display:none;">
-        <img id="preview-img" src="" alt="Captured photo" />
-        <input type="text" class="cam-caption" id="photo-caption" placeholder="Caption (optional)" maxlength="120" />
-        <div class="cam-btns">
-          <button class="btn btn-muted" onclick="retakePhoto()">Retake</button>
-          <button class="btn btn-gold" onclick="savePhoto()">Save Photo</button>
-        </div>
-      </div>
-      <div id="camera-fallback" class="cam-fallback">
-        <p style="color:var(--muted);font-size:.82rem;margin-bottom:.6rem;">Live camera unavailable. Pick from gallery instead.</p>
-        <input type="file" accept="image/*" capture="environment" id="fallback-file" onchange="onFallbackFile(this)" style="font-size:.82rem;color:#ccc;" />
-      </div>
-      <div class="cam-btns" style="margin-top:.8rem;">
-        <button class="btn btn-muted" onclick="closeCamera()">Cancel</button>
       </div>
     </div>
   </div>
@@ -795,102 +768,26 @@
         });
     }
 
-    // ===== CAMERA CAPTURE =====
-    let cameraStream = null;
-    let _capturedBlob = null;
-
-    function openCamera() {
-      document.getElementById('camera-modal').classList.add('open');
-      document.body.style.overflow = 'hidden';
-      _capturedBlob = null;
-      document.getElementById('camera-view').style.display = 'block';
-      document.getElementById('camera-preview').style.display = 'none';
-      document.getElementById('camera-fallback').style.display = 'none';
-      startCamera();
+    // ===== ATTACH PHOTOS =====
+    function attachPhotos(input) {
+      const files = Array.from(input.files);
+      if (!files.length) return;
+      let done = 0;
+      files.forEach(file => {
+        const fd = new FormData();
+        fd.append('file', file, file.name || 'photo.jpg');
+        fetch(`/api/koc/live/${SESSION_ID}/capture_photo`, {
+          method: 'POST', body: fd
+        }).then(r => r.json()).then(d => {
+          done++;
+          if (done === files.length) {
+            showToast(done + ' photo' + (done !== 1 ? 's' : '') + ' attached');
+            loadSessionPhotos();
+            input.value = '';
+          }
+        }).catch(() => { done++; showToast('Failed to attach some photos'); if (done === files.length) input.value = ''; });
+      });
     }
-
-    async function startCamera() {
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        });
-        const video = document.getElementById('camera-video');
-        video.srcObject = cameraStream;
-        video.play();
-      } catch (err) {
-        document.getElementById('camera-view').style.display = 'none';
-        document.getElementById('camera-fallback').style.display = 'block';
-      }
-    }
-
-    function capturePhoto() {
-      const video = document.getElementById('camera-video');
-      if (!video.videoWidth) { showToast('Camera not ready'); return; }
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      // un-mirror since the preview is mirrored via CSS
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0);
-      canvas.toBlob(blob => {
-        if (!blob) { showToast('Capture failed'); return; }
-        _capturedBlob = blob;
-        document.getElementById('preview-img').src = URL.createObjectURL(blob);
-        document.getElementById('camera-view').style.display = 'none';
-        document.getElementById('camera-preview').style.display = 'block';
-      }, 'image/jpeg', 0.9);
-    }
-
-    function retakePhoto() {
-      _capturedBlob = null;
-      document.getElementById('camera-preview').style.display = 'none';
-      document.getElementById('camera-view').style.display = 'block';
-    }
-
-    function savePhoto() {
-      if (!_capturedBlob) { showToast('No photo captured'); return; }
-      const caption = (document.getElementById('photo-caption').value || '').trim();
-      const fd = new FormData();
-      fd.append('file', _capturedBlob, 'capture.jpg');
-      fd.append('caption', caption);
-      fetch(`/api/koc/live/${SESSION_ID}/capture_photo`, {
-        method: 'POST', body: fd
-      }).then(r => r.json()).then(d => {
-        if (d.error) { showToast(d.error); return; }
-        showToast('Photo added to session');
-        closeCamera();
-        loadSessionPhotos();
-      }).catch(() => showToast('Upload failed'));
-    }
-
-    function onFallbackFile(input) {
-      const file = input.files[0];
-      if (!file) return;
-      _capturedBlob = file;
-      const reader = new FileReader();
-      reader.onload = e => {
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('camera-view').style.display = 'none';
-        document.getElementById('camera-fallback').style.display = 'none';
-        document.getElementById('camera-preview').style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-      input.value = '';
-    }
-
-    function closeCamera() {
-      document.getElementById('camera-modal').classList.remove('open');
-      document.body.style.overflow = '';
-      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-      _capturedBlob = null;
-      document.getElementById('photo-caption').value = '';
-      document.getElementById('camera-preview').style.display = 'none';
-      document.getElementById('camera-fallback').style.display = 'none';
-    }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCamera(); });
 
     // ===== SESSION PHOTOS =====
     function loadSessionPhotos() {
@@ -899,7 +796,7 @@
         const wrap = document.getElementById('session-photos');
         if (!wrap) return;
         if (!photos.length) {
-          wrap.innerHTML = '<p style="color:var(--muted);font-size:.8rem;grid-column:1/-1;">No photos captured yet. Tap "Capture Photo" to snap one with your camera.</p>';
+          wrap.innerHTML = '<p style="color:var(--muted);font-size:.8rem;grid-column:1/-1;">No photos attached yet. Tap "Attach Photos" to add images.</p>';
           return;
         }
         wrap.innerHTML = photos.map(p => `

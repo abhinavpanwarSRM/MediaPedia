@@ -20,6 +20,37 @@ load_dotenv()
 logging.basicConfig(level=logging.ERROR)
 log = logging.getLogger(__name__)
 
+# ===== In-memory log ring buffer (for admin log viewer) =====
+import collections as _collections
+
+class _RingBufferLogHandler(logging.Handler):
+    """Stores recent log entries in memory for the admin log viewer."""
+    def __init__(self, capacity=400):
+        super().__init__()
+        self.buffer = _collections.deque(maxlen=capacity)
+    def emit(self, record):
+        try:
+            self.buffer.append({
+                'time': datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
+                'level': record.levelname,
+                'message': record.getMessage(),
+                'module': record.module,
+                'line': record.lineno,
+            })
+        except Exception:
+            pass
+
+_log_buffer = _RingBufferLogHandler()
+_log_buffer.setLevel(logging.INFO)
+_log_buffer.setFormatter(logging.Formatter('%(name)s: %(message)s'))
+# Allow INFO+ to reach handlers, but keep console output at ERROR only
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+for _h in _root.handlers:
+    _h.setLevel(logging.ERROR)
+_root.addHandler(_log_buffer)
+log.info('Logging ring buffer initialised (capacity 400)')
+
 app = Flask(__name__)
 import secrets as _secrets
 app.secret_key = os.getenv("SECRET_KEY") or _secrets.token_hex(32)
@@ -71,6 +102,77 @@ def _close_mongo():
             log.error("Error closing MongoDB client: %s", exc)
 
 atexit.register(_close_mongo)
+
+# ===== Build version fingerprint =====
+def _compute_build_id():
+    """Short fingerprint of the running code. Changes only when source files change."""
+    import hashlib, subprocess
+    # Prefer git commit hash (precise, survives restarts with same code)
+    try:
+        git_hash = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL, timeout=3
+        ).decode().strip()
+        if git_hash and len(git_hash) >= 7:
+            return git_hash
+    except Exception:
+        pass
+    # Fallback: hash key file modification times
+    h = hashlib.md5()
+    base = os.path.dirname(os.path.abspath(__file__))
+    files = [os.path.join(base, 'app.py')]
+    tpl_dir = os.path.join(base, 'templates')
+    if os.path.isdir(tpl_dir):
+        for f in sorted(os.listdir(tpl_dir)):
+            if f.endswith('.html'):
+                files.append(os.path.join(tpl_dir, f))
+    for fpath in files:
+        try:
+            h.update((os.path.basename(fpath) + ':' + str(int(os.path.getmtime(fpath)))).encode())
+        except Exception:
+            pass
+    return h.hexdigest()[:10]
+
+BUILD_ID = _compute_build_id()
+SERVER_STARTED_AT = datetime.now(timezone.utc).isoformat()
+
+@app.context_processor
+def inject_build_version():
+    return dict(BUILD_ID=BUILD_ID, SERVER_STARTED_AT=SERVER_STARTED_AT)
+
+@app.route('/api/version')
+def api_version():
+    return jsonify({'build': BUILD_ID, 'started_at': SERVER_STARTED_AT})
+
+@app.route('/api/admin/logs')
+def admin_logs():
+    """Return recent server log entries (admin only)."""
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    return jsonify(list(_log_buffer.buffer))
+
+@app.route('/api/admin/logs/clear', methods=['POST'])
+def admin_logs_clear():
+    """Clear the in-memory log buffer (admin only)."""
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    _log_buffer.buffer.clear()
+    log.info('Log buffer cleared by admin')
+    return jsonify({'success': True})
+
+@app.after_request
+def _log_request(response):
+    """Log every request at INFO level (stored in ring buffer only)."""
+    try:
+        if not request.path.startswith('/api/admin/logs'):
+            user = current_user() or '-'
+            log.info('%s %s %s | user=%s | ip=%s',
+                     request.method, request.path, response.status_code,
+                     user, request.remote_addr)
+    except Exception:
+        pass
+    return response
 
 # ===== Splitwise =====
 from splitwise import splitwise_bp, init_splitwise

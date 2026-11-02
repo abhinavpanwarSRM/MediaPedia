@@ -408,8 +408,7 @@
     <section style="margin-bottom:3rem;">
       <div class="section-title">Gallery</div>
       {% if is_koc_player %}
-      <div id="gallery-dynamic" class="gallery-grid" style="margin-bottom:0;"></div>
-      <div class="gallery-grid" style="margin-top:.8rem;">
+      <div class="gallery-grid">
         {% set gallery_imgs = ['Certificate.jpg','1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] %}
         {% for img in gallery_imgs %}
         <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/' + img) }}')">
@@ -417,6 +416,7 @@
         </div>
         {% endfor %}
       </div>
+      <div id="gallery-dynamic" class="gallery-grid" style="margin-top:.8rem;"></div>
       {% else %}
       <div class="gallery-lock">
 
