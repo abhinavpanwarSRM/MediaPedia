@@ -285,8 +285,7 @@
       display:flex;align-items:center;justify-content:center;overflow:hidden; }
     .koc-intro-overlay.hidden { opacity:0;pointer-events:none;transition:opacity 1.2s ease-out; }
     .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-      filter:grayscale(100%) contrast(1.2) brightness(.9);opacity:0;
-      transition:opacity 1s ease-in-out; }
+      opacity:0; transition:opacity 1s ease-in-out; }
     .koc-intro-img.active { opacity:1; }
     .koc-intro-img.kenburns { animation:kenburns 8s ease-out forwards; }
     @keyframes kenburns { 0%{transform:scale(1) translateX(0)} 100%{transform:scale(1.15) translateX(-3%)} }
@@ -1667,41 +1666,68 @@
     let _introPlayer = null, _introTimer = null, _introImgIdx = 0, _introImages = [];
     let _introSketchImages = [], _sketchReady = false;
 
-    // ===== SOBEL EDGE DETECTION (sketch effect) =====
+    // ===== SOBEL EDGE DETECTION + BLURRED BG (letterbox for any aspect ratio) =====
     function processSketchImage(src, callback) {
       var img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = function() {
         try {
-          var maxDim = 700, scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-          var w = Math.floor(img.width * scale), h = Math.floor(img.height * scale);
+          // Output canvas is always portrait 9:16 at 540×960
+          var OUT_W = 540, OUT_H = 960;
           var canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
+          canvas.width = OUT_W; canvas.height = OUT_H;
           var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          var imageData = ctx.getImageData(0, 0, w, h);
+
+          // --- LAYER 1: blurred grayscale background (covers full canvas) ---
+          var bgCanvas = document.createElement('canvas');
+          bgCanvas.width = OUT_W; bgCanvas.height = OUT_H;
+          var bgCtx = bgCanvas.getContext('2d');
+          // Scale image to cover the full output (may crop)
+          var coverScale = Math.max(OUT_W / img.width, OUT_H / img.height);
+          var bw = img.width * coverScale, bh = img.height * coverScale;
+          var bx = (OUT_W - bw) / 2, by = (OUT_H - bh) / 2;
+          bgCtx.filter = 'grayscale(100%) blur(18px) brightness(0.35)';
+          bgCtx.drawImage(img, bx, by, bw, bh);
+          bgCtx.filter = 'none';
+
+          // --- LAYER 2: Sobel sketch, fitted with contain (no crop) ---
+          var maxDim = 520;
+          var fitScale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          var sw = Math.floor(img.width * fitScale), sh = Math.floor(img.height * fitScale);
+          var skCanvas = document.createElement('canvas');
+          skCanvas.width = sw; skCanvas.height = sh;
+          var skCtx = skCanvas.getContext('2d');
+          skCtx.drawImage(img, 0, 0, sw, sh);
+          var imageData = skCtx.getImageData(0, 0, sw, sh);
           var data = imageData.data;
-          var gray = new Float32Array(w * h);
-          for (var i = 0; i < w * h; i++)
-            gray[i] = 0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2];
-          var edges = new Float32Array(w * h), maxMag = 0;
-          for (var y = 1; y < h - 1; y++) {
-            for (var x = 1; x < w - 1; x++) {
-              var idx = y * w + x;
-              var gx = -gray[(y-1)*w+(x-1)] + gray[(y-1)*w+(x+1)] - 2*gray[y*w+(x-1)] + 2*gray[y*w+(x+1)] - gray[(y+1)*w+(x-1)] + gray[(y+1)*w+(x+1)];
-              var gy = -gray[(y-1)*w+(x-1)] - 2*gray[(y-1)*w+x] - gray[(y-1)*w+(x+1)] + gray[(y+1)*w+(x-1)] + 2*gray[(y+1)*w+x] + gray[(y+1)*w+(x+1)];
-              var mag = Math.sqrt(gx * gx + gy * gy);
+          var gray = new Float32Array(sw * sh);
+          for (var i = 0; i < sw * sh; i++)
+            gray[i] = 0.299*data[i*4] + 0.587*data[i*4+1] + 0.114*data[i*4+2];
+          var edges = new Float32Array(sw * sh), maxMag = 0;
+          for (var y = 1; y < sh-1; y++) {
+            for (var x = 1; x < sw-1; x++) {
+              var idx = y*sw+x;
+              var gx = -gray[(y-1)*sw+(x-1)] + gray[(y-1)*sw+(x+1)] - 2*gray[y*sw+(x-1)] + 2*gray[y*sw+(x+1)] - gray[(y+1)*sw+(x-1)] + gray[(y+1)*sw+(x+1)];
+              var gy = -gray[(y-1)*sw+(x-1)] - 2*gray[(y-1)*sw+x] - gray[(y-1)*sw+(x+1)] + gray[(y+1)*sw+(x-1)] + 2*gray[(y+1)*sw+x] + gray[(y+1)*sw+(x+1)];
+              var mag = Math.sqrt(gx*gx + gy*gy);
               edges[idx] = mag; if (mag > maxMag) maxMag = mag;
             }
           }
           maxMag = maxMag || 1;
-          for (var i = 0; i < w * h; i++) {
+          for (var i = 0; i < sw * sh; i++) {
             var val = (edges[i] / maxMag) * 255;
-            val = val < 25 ? 0 : Math.min(255, (val - 25) * 1.8);
+            val = val < 25 ? 0 : Math.min(255, (val-25) * 1.8);
             data[i*4] = val; data[i*4+1] = val; data[i*4+2] = val; data[i*4+3] = 255;
           }
-          ctx.putImageData(imageData, 0, 0);
-          callback(canvas.toDataURL('image/png'));
-        } catch (e) { callback(null); }
+          skCtx.putImageData(imageData, 0, 0);
+
+          // --- COMPOSITE: bg first, then centered sketch on top ---
+          ctx.drawImage(bgCanvas, 0, 0);
+          var fx = (OUT_W - sw) / 2, fy = (OUT_H - sh) / 2;
+          ctx.drawImage(skCanvas, fx, fy, sw, sh);
+
+          callback(canvas.toDataURL('image/jpeg', 0.88));
+        } catch(e) { callback(null); }
       };
       img.onerror = function() { callback(null); };
       img.src = src;
