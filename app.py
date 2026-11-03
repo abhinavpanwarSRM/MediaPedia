@@ -5192,6 +5192,7 @@ def koc_add_tournament():
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     koc_tournaments_collection.insert_one(doc)
+    _evaluate_predictions(edition, winner.get('username', ''))
     return jsonify({'edition': edition, 'winner': winner.get('username', '')}), 201
 
 @app.route('/api/koc/leaderboard')
@@ -5518,6 +5519,7 @@ def koc_live_save_as_edition(session_id):
                 'url': f'/kingofcards/{edition}',
                 'tag': f'koc-edition-{edition}'
             })
+    _evaluate_predictions(edition, winner['username'])
     return jsonify({'edition': edition, 'winner': winner['username'], 'photos_saved': photos_saved}), 201
 
 @app.route('/api/koc/game_heatmap')
@@ -5738,24 +5740,56 @@ def koc_comments_post():
 
 # ===== KOC Predict =====
 koc_predict_collection = None
+koc_oracle_collection = None
 try:
     if db is not None:
         koc_predict_collection = db.koc_predictions
         koc_predict_collection.create_index('username', unique=True)
+        koc_oracle_collection = db.koc_oracle
+        koc_oracle_collection.create_index('username', unique=True)
 except Exception as e:
     log.error('Failed to init koc_predictions: %s', e)
+
+def _next_koc_edition():
+    """Return the next edition number (latest + 1, or 1)."""
+    if koc_tournaments_collection is None:
+        return 1
+    last = koc_tournaments_collection.find_one(sort=[('edition', -1)])
+    return (last['edition'] + 1) if last else 1
+
+def _evaluate_predictions(edition, winner_username):
+    """Evaluate predictions for a saved edition and update oracle stats."""
+    if koc_predict_collection is None or koc_oracle_collection is None:
+        return
+    preds = list(koc_predict_collection.find({'for_edition': edition, 'evaluated': {'$ne': True}}, {'_id': 0}))
+    for pred in preds:
+        uname = pred.get('username', '')
+        if not uname:
+            continue
+        is_correct = pred.get('prediction') == winner_username
+        oracle = koc_oracle_collection.find_one({'username': uname}) or {}
+        oracle['username'] = uname
+        oracle['total'] = oracle.get('total', 0) + 1
+        if is_correct:
+            oracle['correct'] = oracle.get('correct', 0) + 1
+            oracle['streak'] = oracle.get('streak', 0) + 1
+            oracle['best_streak'] = max(oracle.get('best_streak', 0), oracle.get('streak', 0))
+        else:
+            oracle['streak'] = 0
+        koc_oracle_collection.update_one({'username': uname}, {'$set': oracle}, upsert=True)
+    koc_predict_collection.update_many({'for_edition': edition, 'evaluated': {'$ne': True}}, {'$set': {'evaluated': True}})
 
 @app.route('/api/koc/predict', methods=['GET'])
 def koc_predict_get():
     if koc_predict_collection is None:
-        return jsonify({'tally': {}})
-    docs = list(koc_predict_collection.find({}, {'_id': 0, 'prediction': 1}))
+        return jsonify({'tally': {}, 'for_edition': _next_koc_edition()})
+    docs = list(koc_predict_collection.find({'evaluated': {'$ne': True}}, {'_id': 0, 'prediction': 1}))
     tally = {}
     for d in docs:
         p = d.get('prediction')
         if p:
             tally[p] = tally.get(p, 0) + 1
-    return jsonify({'tally': tally})
+    return jsonify({'tally': tally, 'for_edition': _next_koc_edition()})
 
 @app.route('/api/koc/predict', methods=['POST'])
 def koc_predict_post():
@@ -5767,18 +5801,31 @@ def koc_predict_post():
     prediction = (request.json or {}).get('prediction', '').strip()
     if not prediction:
         return jsonify({'error': 'prediction required'}), 400
+    for_edition = _next_koc_edition()
     koc_predict_collection.update_one(
         {'username': username},
-        {'$set': {'username': username, 'prediction': prediction}},
+        {'$set': {'username': username, 'prediction': prediction, 'for_edition': for_edition, 'evaluated': False, 'predicted_at': datetime.now(timezone.utc).isoformat()}},
         upsert=True
     )
-    docs = list(koc_predict_collection.find({}, {'_id': 0, 'prediction': 1}))
+    docs = list(koc_predict_collection.find({'evaluated': {'$ne': True}}, {'_id': 0, 'prediction': 1}))
     tally = {}
     for d in docs:
         p = d.get('prediction')
         if p:
             tally[p] = tally.get(p, 0) + 1
-    return jsonify({'tally': tally})
+    return jsonify({'tally': tally, 'for_edition': for_edition})
+
+@app.route('/api/koc/oracle')
+def koc_oracle():
+    """Return oracle stats (prediction accuracy leaderboard)."""
+    if koc_oracle_collection is None:
+        return jsonify([])
+    docs = list(koc_oracle_collection.find({}, {'_id': 0}))
+    for d in docs:
+        d['display'] = KOC_DISPLAY.get(d.get('username', ''), d.get('username', ''))
+        d['accuracy'] = round(d.get('correct', 0) / d['total'] * 100, 1) if d.get('total', 0) > 0 else 0
+    docs.sort(key=lambda x: (-x.get('correct', 0), -x.get('streak', 0)))
+    return jsonify(docs)
 
 # ===== KOC Next Edition =====
 koc_next_edition_collection = None

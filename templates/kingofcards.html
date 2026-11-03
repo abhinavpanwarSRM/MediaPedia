@@ -251,6 +251,35 @@
     /* GAME BADGE — fix font */
     .game-badge { font-family: 'Poppins', sans-serif; font-weight: 600; letter-spacing: .5px; }
 
+    /* BAR CHART RACE */
+    .race-bar { display:flex;align-items:center;gap:.5rem;height:30px; }
+    .race-bar-name { width:64px;font-size:.75rem;font-weight:600;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .race-bar-track { flex:1;background:rgba(255,255,255,.04);border-radius:6px;height:100%;position:relative;overflow:hidden; }
+    .race-bar-fill { height:100%;border-radius:6px;transition:width .6s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:.5rem;font-size:.72rem;font-weight:700;color:#000;white-space:nowrap;min-width:24px; }
+    .race-crown { font-size:.9rem;margin-right:.3rem; }
+
+    /* ELO */
+    .elo-row { display:flex;align-items:center;gap:.8rem;padding:.55rem 0;border-bottom:1px solid rgba(255,215,0,.07); }
+    .elo-rank { font-size:1.1rem;font-weight:700;color:var(--muted);width:24px;text-align:center; }
+    .elo-name { font-weight:600;font-size:.88rem;flex:1; }
+    .elo-val { font-size:1.1rem;font-weight:800;color:var(--gold); }
+    .elo-delta { font-size:.68rem;color:var(--muted); }
+
+    /* BADGES */
+    .badge-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.7rem; }
+    .badge-card { background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:.8rem;text-align:center;transition:all .2s; }
+    .badge-card:hover { border-color:rgba(255,215,0,.4);transform:translateY(-2px); }
+    .badge-icon { font-size:1.8rem;margin-bottom:.3rem; }
+    .badge-title { font-size:.76rem;font-weight:700;color:var(--gold); }
+    .badge-meta { font-size:.62rem;color:var(--muted);margin-top:.2rem; }
+
+    /* ORACLE */
+    .oracle-row { display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:1px solid rgba(255,215,0,.06);font-size:.82rem; }
+    .oracle-rank { width:20px;text-align:center;font-weight:700;color:var(--muted); }
+    .oracle-name { flex:1;font-weight:600; }
+    .oracle-acc { font-size:.72rem;color:var(--muted); }
+    .oracle-correct { font-weight:700;color:var(--gold); }
+
   </style>
 </head>
 <body>
@@ -325,6 +354,22 @@
     <section style="margin-bottom:3rem;">
       <div class="section-title">Win Streaks</div>
       <div class="streak-grid" id="streak-wrap"><p style="color:var(--muted);font-size:.85rem;">Loading...</p></div>
+    </section>
+
+    <!-- BAR CHART RACE -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Points Race Replay</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem;">
+          <div id="race-edition-label" style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--gold);">Edition 1</div>
+          <div style="display:flex;gap:.4rem;">
+            <button class="btn btn-gold" id="race-play-btn" onclick="toggleRace()" style="font-size:.78rem;padding:.35rem 1rem;">&#9654; Play</button>
+            <button class="btn btn-muted" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="1500">1x</button>
+            <button class="btn btn-muted" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="700">2x</button>
+          </div>
+        </div>
+        <div id="race-bars" style="display:flex;flex-direction:column;gap:.35rem;"></div>
+      </div>
     </section>
 
     <!-- ALL-TIME LEADERBOARD -->
@@ -441,6 +486,14 @@
   </div>
 </section>
 
+    <!-- ELO POWER RATINGS -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">ELO Power Ratings</div>
+      <div id="elo-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
+
     <!-- PER-GAME LEADERBOARD -->
     <section style="margin-bottom:3rem;">
       <div class="section-title">Per-Game Rankings</div>
@@ -505,6 +558,10 @@
           {% endfor %}
         </div>
         <div id="predict-result" style="margin-top:1rem;"></div>
+        <div style="margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1rem;">
+          <div style="font-size:.7rem;letter-spacing:2px;color:var(--gold2);text-transform:uppercase;margin-bottom:.8rem;">&#128302; Oracle Rankings (all-time prediction accuracy)</div>
+          <div id="oracle-list"></div>
+        </div>
       </div>
     </section>
     {% endif %}
@@ -521,6 +578,14 @@
     <section style="margin-bottom:3rem;">
       <div class="section-title">Hall of Fame</div>
       <div id="hof-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENT BADGES -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Achievement Badges</div>
+      <div id="badges-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;">
         <p style="color:var(--muted);font-size:.85rem;">Loading...</p>
       </div>
     </section>
@@ -1384,9 +1449,126 @@
       }).catch(()=>{});
     }
 
+    // ===== BAR CHART RACE =====
+    const RACE_COLORS = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
+    const RACE_NAMES = {'abhinav':'Abhinav','A3h1':'Abhishek','Akhil':'Akhil','sahil':'Sahil','shruti':'Shruti','utkarsh':'Utkarsh'};
+    let _raceData = null, _raceIdx = 0, _raceTimer = null, _raceSpeed = 1500;
+
+    function loadRace() {
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+        if (!tournaments.length) return;
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+        const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
+        const cum = {}; players.forEach(p => cum[p] = 0);
+        _raceData = sorted.map(t => {
+          (t.players||[]).forEach(p => { if(players.includes(p.username)) cum[p.username] += (p.total||0); });
+          return {edition: t.edition, snap: {...cum}};
+        });
+        _raceIdx = 0; renderRace();
+      }).catch(()=>{});
+    }
+    function renderRace() {
+      if (!_raceData) return;
+      const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+      const snap = _raceData[_raceIdx].snap;
+      const sorted = players.map(p => ({u:p, v:snap[p]||0})).sort((a,b)=>b.v-a.v);
+      const maxVal = Math.max(...sorted.map(s=>s.v), 1);
+      const label = document.getElementById('race-edition-label');
+      if (label) label.textContent = 'Edition ' + _raceData[_raceIdx].edition;
+      const wrap = document.getElementById('race-bars');
+      if (!wrap) return;
+      wrap.innerHTML = sorted.map((s,i) => {
+        const pct = (s.v / maxVal) * 100;
+        const crown = i === 0 && s.v > 0 ? '<span class="race-crown">&#x1F451;</span>' : '';
+        return '<div class="race-bar"><div class="race-bar-name">'+(RACE_NAMES[s.u]||s.u)+'</div><div class="race-bar-track"><div class="race-bar-fill" style="width:'+pct+'%;background:'+(RACE_COLORS[s.u]||'#888')+';">'+s.v+'</div></div>'+crown+'</div>';
+      }).join('');
+    }
+    function toggleRace() {
+      const btn = document.getElementById('race-play-btn');
+      if (_raceTimer) { clearInterval(_raceTimer); _raceTimer = null; if(btn) btn.innerHTML='&#9654; Play'; }
+      else {
+        if (_raceIdx >= _raceData.length - 1) _raceIdx = 0;
+        if(btn) btn.innerHTML='&#10073;&#10073; Pause';
+        _raceTimer = setInterval(() => {
+          _raceIdx++;
+          if (_raceIdx >= _raceData.length) { clearInterval(_raceTimer); _raceTimer=null; if(btn) btn.innerHTML='&#9654; Replay'; _raceIdx=_raceData.length-1; }
+          renderRace();
+        }, _raceSpeed);
+      }
+    }
+    function setRaceSpeed(btn) {
+      _raceSpeed = parseInt(btn.dataset.speed);
+      document.querySelectorAll('[onclick*="setRaceSpeed"]').forEach(b => b.className='btn btn-muted');
+      btn.className='btn btn-gold'; btn.style.fontSize='.72rem'; btn.style.padding='.35rem .6rem';
+      if (_raceTimer) { clearInterval(_raceTimer); _raceTimer=null; toggleRace(); }
+    }
+
+    // ===== ELO POWER RATINGS =====
+    function loadElo() {
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+        const wrap = document.getElementById('elo-wrap');
+        if (!wrap || !tournaments.length) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+        const elo = {}; players.forEach(p => elo[p] = 1000);
+        const K = 32;
+        [...tournaments].sort((a,b)=>a.edition-b.edition).forEach(t => {
+          const ps = (t.players||[]).filter(p => players.includes(p.username));
+          for (let i=0;i<ps.length;i++) for (let j=i+1;j<ps.length;j++) {
+            const a=ps[i], b=ps[j];
+            const ea = 1/(1+Math.pow(10,(elo[b.username]-elo[a.username])/400));
+            const sa = a.total>b.total?1:a.total===b.total?0.5:0;
+            elo[a.username] += K*(sa-ea); elo[b.username] += K*((1-sa)-(1-ea));
+          }
+        });
+        const ranked = players.map(p=>({u:p,r:Math.round(elo[p])})).sort((a,b)=>b.r-a.r);
+        wrap.innerHTML = ranked.map((p,i)=>'<div class="elo-row"><div class="elo-rank">'+(i===0?'&#x1F451;':i+1)+'</div><div class="elo-name">'+(RACE_NAMES[p.u]||p.u)+'</div><div class="elo-val">'+p.r+'</div><div class="elo-delta">'+(p.r>=1000?'+':'')+ (p.r-1000) +' vs base</div></div>').join('');
+      }).catch(()=>{ const w=document.getElementById('elo-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    // ===== ACHIEVEMENT BADGES =====
+    function loadBadges() {
+      fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
+        const wrap = document.getElementById('badges-wrap');
+        if (!wrap || !tournaments.length) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">No badges earned yet.</p>'; return; }
+        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+        const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
+        const badges = [];
+        let prevWinner = null, prevScores = {}, prevRank = {};
+        sorted.forEach((t, idx) => {
+          const ps = (t.players||[]).filter(p => players.includes(p.username));
+          if (!ps.length) return;
+          const ranked = [...ps].sort((a,b)=>(b.total||0)-(a.total||0));
+          const wU = ranked[0].username;
+          if (prevWinner && wU === prevWinner) badges.push({p:wU,ed:t.edition,ic:'&#x1F517;',t:'Back-to-Back',m:'Consecutive wins'});
+          if (idx>0 && prevRank[wU]) { const last=Object.entries(prevRank).sort((a,b)=>a[1]-b[1])[0]; if(last&&last[0]===wU) badges.push({p:wU,ed:t.edition,ic:'&#x1F525;',t:'Comeback King',m:'Last &#8594; 1st'}); }
+          const games=['monopoly','bluff','spoon','uno'];
+          if (games.every(g => ps.reduce((a,b)=>((b[g]||0)>(a[g]||0))?b:a,{username:''}).username===wU)) badges.push({p:wU,ed:t.edition,ic:'&#x1F9F9;',t:'Clean Sweep',m:'Won all 4 games'});
+          players.forEach(u => { const cur=ps.find(p=>p.username===u); if(cur&&prevScores[u]!==undefined){const d=(cur.total||0)-prevScores[u]; if(d>=4) badges.push({p:u,ed:t.edition,ic:'&#x1F4C8;',t:'Most Improved',m:'+'+d+' pts'});} });
+          prevWinner=wU; prevRank={}; ranked.forEach((p,i)=>prevRank[p.username]=i+1); ps.forEach(p=>prevScores[p.username]=p.total||0);
+        });
+        // Iron Man
+        const ep={}; sorted.forEach(t=>(t.players||[]).forEach(p=>{if(players.includes(p.username))ep[p.username]=(ep[p.username]||0)+1;}));
+        players.forEach(u=>{if(ep[u]===sorted.length&&sorted.length>=3) badges.push({p:u,ed:sorted.length,ic:'&#x1F6E1;&#xFE0F;',t:'Iron Man',m:'Played all '+sorted.length+' editions'});});
+        if (!badges.length) { wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">No badges earned yet.</p>'; return; }
+        wrap.innerHTML = '<div class="badge-grid">'+badges.map(b=>'<div class="badge-card"><div class="badge-icon">'+b.ic+'</div><div class="badge-title">'+b.t+'</div><div class="badge-meta">'+(RACE_NAMES[b.p]||b.p)+' &#183; Ed.'+b.ed+'</div><div class="badge-meta">'+b.m+'</div></div>').join('')+'</div>';
+      }).catch(()=>{ const w=document.getElementById('badges-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
+    }
+
+    // ===== ORACLE STATS =====
+    function loadOracle() {
+      fetch('/api/koc/oracle').then(r=>r.json()).then(data => {
+        const wrap = document.getElementById('oracle-list');
+        if (!wrap) return;
+        if (!Array.isArray(data) || !data.length) { wrap.innerHTML='<p style="color:var(--muted);font-size:.8rem;">No predictions scored yet. Predictions are evaluated when an edition is saved.</p>'; return; }
+        wrap.innerHTML = data.map((p,i)=>'<div class="oracle-row"><div class="oracle-rank">'+(i+1)+'</div><div class="oracle-name">'+((p.display||p.username).split(' ')[0])+'</div><div class="oracle-acc">'+(p.accuracy||0)+'% acc &#183; '+(p.total||0)+' pred.</div><div class="oracle-correct">'+(p.correct||0)+'&#10003;</div><div style="font-size:.7rem;color:var(--muted);">&#x1F525;'+(p.streak||0)+'</div></div>').join('');
+      }).catch(()=>{});
+    }
+
     // ===== INIT =====
     loadTrend();
+    loadRace();
     loadStreaks();
+    loadElo();
     loadGameLB();
     {% if is_koc_player %}
     loadHeatmap();
@@ -1394,11 +1576,13 @@
     loadPushStatus();
     loadNextEdition();
     loadGallery();
+    loadOracle();
     chatInterval = setInterval(pollChat, 5000);
     setInterval(loadNextEdition, 30000);
     {% endif %}
     loadRivalry();
     loadHallOfFame();
+    loadBadges();
     loadRecap();
   </script>
 </body>
