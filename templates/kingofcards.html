@@ -1773,6 +1773,7 @@
       _introVideoIdLocal = vid;
       _ensureYTScriptLoaded(vid);
       splash.onclick = function() {
+        if (!_sketchesReadyFlag || !_ytReadyFlag) return;
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display = 'none';
         _startPlayback();
@@ -1785,10 +1786,10 @@
       splash.style.display = 'flex';
       document.body.style.overflow = 'hidden';
       preProcessSketches();
-      // Pre-load the YT player while the splash is showing so audio is buffered
       _introVideoIdLocal = videoId;
       _ensureYTScriptLoaded(videoId);
       splash.onclick = function() {
+        if (!_sketchesReadyFlag || !_ytReadyFlag) return;
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display='none';
         _startPlayback();
@@ -1821,6 +1822,12 @@
         events: {
           onReady: function(e) {
             e.target.cueVideoById(videoId);
+            // Poll for duration once buffered — store it so tap fires both together
+            var poll = setInterval(function() {
+              var dur = e.target.getDuration();
+              if (dur > 0) { clearInterval(poll); _introDuration = dur; }
+            }, 300);
+            setTimeout(function() { clearInterval(poll); }, 8000);
             _introPlayerReady = true;
             _ytReadyFlag = true;
             _checkSplashReady();
@@ -1847,20 +1854,15 @@
     }
 
     function _startPlayback() {
-      // Guard: ignore tap if not fully ready yet
-      if (!_sketchesReadyFlag || !_ytReadyFlag) return;
       var overlay = document.getElementById('koc-intro-overlay');
       if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('hidden'); }
       _doStartPlayback();
     }
 
     function _doStartPlayback() {
+      // Both video and sketches are ready — fire together, no polling
       _introPlayer.playVideo();
-      var waitForDur = setInterval(function() {
-        var dur = _introPlayer.getDuration();
-        if (dur > 0) { clearInterval(waitForDur); startIntroSlideshow(dur); }
-      }, 200);
-      setTimeout(function() { clearInterval(waitForDur); startIntroSlideshow(30); }, 5000);
+      startIntroSlideshow(_introDuration);
     }
 
     function playIntro(videoId) {
