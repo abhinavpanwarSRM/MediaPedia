@@ -1737,36 +1737,47 @@
     }
 
     function loadIntroConfig() {
-      // If splash is already visible (server-rendered), check session first
-      var splash = document.getElementById('koc-splash');
-      if (splash && splash.style.display !== 'none') {
-        if (sessionStorage.getItem('koc-intro-played')) {
-          splash.style.display = 'none';
-          document.body.style.overflow = '';
-          return;
-        }
-        // Already visible — just wire up the click and start pre-processing
-        var vid = '{{ intro_video_id }}';
-        preProcessSketches();
-        splash.onclick = function() {
-          sessionStorage.setItem('koc-intro-played','1');
-          splash.style.display='none';
-          _startPlayback();
-        };
-        return;
-      }
-      // Splash hidden — check API in case config changed after page load
+      // Always fetch config to populate the settings form
       fetch('/api/koc/intro',{cache:'no-store'}).then(r=>r.json()).then(cfg => {
         var inp = document.getElementById('intro-video-input');
-        var cb = document.getElementById('intro-enabled');
+        var cb  = document.getElementById('intro-enabled');
         if (inp && cfg.video_id) inp.value = cfg.video_id;
-        if (cb) cb.checked = cfg.enabled||false;
+        if (cb)  cb.checked = cfg.enabled || false;
         if (cfg.video_id) {
           var p = document.getElementById('intro-preview');
           var f = document.getElementById('intro-preview-iframe');
-          if (p&&f) { p.classList.add('show'); f.src='https://www.youtube.com/embed/'+cfg.video_id; }
+          if (p && f) { p.classList.add('show'); f.src = 'https://www.youtube.com/embed/' + cfg.video_id; }
         }
       }).catch(()=>{});
+
+      // Handle splash visibility
+      var splash = document.getElementById('koc-splash');
+      if (!splash || splash.style.display === 'none') return;
+
+      // Splash is server-rendered visible — check session
+      if (sessionStorage.getItem('koc-intro-played')) {
+        splash.style.display = 'none';
+        document.body.style.overflow = '';
+        return;
+      }
+
+      // First visit — pre-process sketches AND prime the YT player now
+      var vid = '{{ intro_video_id }}';
+      preProcessSketches();
+      if (window.YT && window.YT.Player) {
+        _primeIntroPlayer(vid);
+      } else {
+        window._introVideoId = vid;
+        window._introPreload = true;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      splash.onclick = function() {
+        sessionStorage.setItem('koc-intro-played','1');
+        splash.style.display = 'none';
+        _startPlayback();
+      };
     }
 
     function startIntroSequence(videoId) {
