@@ -285,7 +285,7 @@
       display:flex;align-items:center;justify-content:center;overflow:hidden; }
     .koc-intro-overlay.hidden { opacity:0;pointer-events:none;transition:opacity 1.2s ease-out; }
     .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-      filter:grayscale(100%) contrast(1.1) brightness(.85);opacity:0;
+      filter:grayscale(100%) contrast(1.2) brightness(.9);opacity:0;
       transition:opacity 1s ease-in-out; }
     .koc-intro-img.active { opacity:1; }
     .koc-intro-img.kenburns { animation:kenburns 8s ease-out forwards; }
@@ -326,10 +326,14 @@
 
   </style>
 </head>
-<body>
+<body{% if intro_enabled and intro_video_id and is_koc_player %} style="overflow:hidden;"{% endif %}>
 
   <!-- CINEMATIC INTRO OVERLAY -->
+  {% if intro_enabled and intro_video_id and is_koc_player %}
+  <div class="koc-splash" id="koc-splash">
+  {% else %}
   <div class="koc-splash" id="koc-splash" style="display:none;">
+  {% endif %}
     <h1>KING OF CARDS</h1>
     <div class="enter-prompt">&#9654; Tap to Enter</div>
   </div>
@@ -1655,6 +1659,76 @@
       '/static/koc/Certificate.jpg'
     ];
     let _introPlayer = null, _introTimer = null, _introImgIdx = 0, _introImages = [];
+    let _introSketchImages = [], _sketchReady = false;
+
+    // ===== SOBEL EDGE DETECTION (sketch effect) =====
+    function processSketchImage(src, callback) {
+      var img = new Image();
+      img.onload = function() {
+        try {
+          var maxDim = 700, scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          var w = Math.floor(img.width * scale), h = Math.floor(img.height * scale);
+          var canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          var imageData = ctx.getImageData(0, 0, w, h);
+          var data = imageData.data;
+          var gray = new Float32Array(w * h);
+          for (var i = 0; i < w * h; i++)
+            gray[i] = 0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2];
+          var edges = new Float32Array(w * h), maxMag = 0;
+          for (var y = 1; y < h - 1; y++) {
+            for (var x = 1; x < w - 1; x++) {
+              var idx = y * w + x;
+              var gx = -gray[(y-1)*w+(x-1)] + gray[(y-1)*w+(x+1)] - 2*gray[y*w+(x-1)] + 2*gray[y*w+(x+1)] - gray[(y+1)*w+(x-1)] + gray[(y+1)*w+(x+1)];
+              var gy = -gray[(y-1)*w+(x-1)] - 2*gray[(y-1)*w+x] - gray[(y-1)*w+(x+1)] + gray[(y+1)*w+(x-1)] + 2*gray[(y+1)*w+x] + gray[(y+1)*w+(x+1)];
+              var mag = Math.sqrt(gx * gx + gy * gy);
+              edges[idx] = mag; if (mag > maxMag) maxMag = mag;
+            }
+          }
+          maxMag = maxMag || 1;
+          for (var i = 0; i < w * h; i++) {
+            var val = (edges[i] / maxMag) * 255;
+            val = val < 25 ? 0 : Math.min(255, (val - 25) * 1.8);
+            data[i*4] = val; data[i*4+1] = val; data[i*4+2] = val; data[i*4+3] = 255;
+          }
+          ctx.putImageData(imageData, 0, 0);
+          callback(canvas.toDataURL('image/png'));
+        } catch (e) { callback(null); }
+      };
+      img.onerror = function() { callback(null); };
+      img.src = src;
+    }
+
+    function preProcessSketches() {
+      _sketchReady = false;
+      var sources = [...INTRO_STATIC_IMAGES];
+      fetch('/api/koc/gallery').then(r=>r.json()).then(photos => {
+        if (Array.isArray(photos)) photos.forEach(p => { if(p.url) sources.push(p.url); });
+        _introImages = sources;
+        _introSketchImages = [];
+        var done = 0;
+        sources.forEach(function(src, i) {
+          processSketchImage(src, function(dataUrl) {
+            _introSketchImages[i] = dataUrl || src;
+            done++;
+            if (done === sources.length) _sketchReady = true;
+          });
+        });
+      }).catch(function() {
+        _introImages = sources;
+        _introSketchImages = [];
+        var done = 0;
+        sources.forEach(function(src, i) {
+          processSketchImage(src, function(dataUrl) {
+            _introSketchImages[i] = dataUrl || src;
+            done++;
+            if (done === sources.length) _sketchReady = true;
+          });
+        });
+      });
+    }
 
     function extractYouTubeId(url) {
       if (!url) return '';
@@ -1663,6 +1737,25 @@
     }
 
     function loadIntroConfig() {
+      // If splash is already visible (server-rendered), check session first
+      var splash = document.getElementById('koc-splash');
+      if (splash && splash.style.display !== 'none') {
+        if (sessionStorage.getItem('koc-intro-played')) {
+          splash.style.display = 'none';
+          document.body.style.overflow = '';
+          return;
+        }
+        // Already visible — just wire up the click and start pre-processing
+        var vid = '{{ intro_video_id }}';
+        preProcessSketches();
+        splash.onclick = function() {
+          sessionStorage.setItem('koc-intro-played','1');
+          splash.style.display='none';
+          playIntro(vid);
+        };
+        return;
+      }
+      // Splash hidden — check API in case config changed after page load
       fetch('/api/koc/intro',{cache:'no-store'}).then(r=>r.json()).then(cfg => {
         var inp = document.getElementById('intro-video-input');
         var cb = document.getElementById('intro-enabled');
@@ -1673,10 +1766,6 @@
           var f = document.getElementById('intro-preview-iframe');
           if (p&&f) { p.classList.add('show'); f.src='https://www.youtube.com/embed/'+cfg.video_id; }
         }
-        if (cfg.enabled && cfg.video_id && IS_KOC_PLAYER && !sessionStorage.getItem('koc-intro-played')) {
-          sessionStorage.setItem('koc-intro-played','1');
-          startIntroSequence(cfg.video_id);
-        }
       }).catch(()=>{});
     }
 
@@ -1685,7 +1774,65 @@
       if (!splash) return;
       splash.style.display = 'flex';
       document.body.style.overflow = 'hidden';
-      splash.onclick = function() { splash.style.display='none'; playIntro(videoId); };
+      preProcessSketches();
+      // Pre-load the YT player while the splash is showing so audio is buffered
+      if (window.YT && window.YT.Player) {
+        _primeIntroPlayer(videoId);
+      } else {
+        window._introVideoId = videoId;
+        window._introPreload = true;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      splash.onclick = function() {
+        sessionStorage.setItem('koc-intro-played','1');
+        splash.style.display='none';
+        _startPlayback();
+      };
+    }
+
+    let _introPlayerReady = false;
+    function _primeIntroPlayer(videoId) {
+      _introPlayerReady = false;
+      _introPlayer = new YT.Player('intro-yt-player', {
+        videoId: videoId,
+        playerVars: { autoplay:0, controls:0, showinfo:0, modestbranding:1, rel:0, iv_load_policy:3, mute:0 },
+        events: {
+          onReady: function(e) {
+            // Cue the video so it buffers — user hasn't tapped yet so we can't play
+            e.target.cueVideoById(videoId);
+            _introPlayerReady = true;
+          },
+          onStateChange: function(e) {
+            if (e.data === YT.PlayerState.ENDED) endIntro();
+          }
+        }
+      });
+    }
+
+    function _startPlayback() {
+      var overlay = document.getElementById('koc-intro-overlay');
+      overlay.style.display = 'flex';
+      overlay.classList.remove('hidden');
+      if (_introPlayerReady && _introPlayer) {
+        _introPlayer.playVideo();
+        var waitForDur = setInterval(function() {
+          var dur = _introPlayer.getDuration();
+          if (dur > 0) { clearInterval(waitForDur); startIntroSlideshow(dur); }
+        }, 200);
+        setTimeout(function() { clearInterval(waitForDur); startIntroSlideshow(30); }, 4000);
+      } else {
+        // Player not ready yet — start slideshow with estimate, sync when ready
+        startIntroSlideshow(30);
+        var waitReady = setInterval(function() {
+          if (_introPlayerReady && _introPlayer) {
+            clearInterval(waitReady);
+            _introPlayer.playVideo();
+          }
+        }, 300);
+        setTimeout(function() { clearInterval(waitReady); }, 8000);
+      }
     }
 
     function playIntro(videoId) {
@@ -1722,20 +1869,17 @@
     }
 
     function startIntroSlideshow(duration) {
-      _introImages = [...INTRO_STATIC_IMAGES];
-      fetch('/api/koc/gallery').then(r=>r.json()).then(photos => {
-        if (Array.isArray(photos)) photos.forEach(p => { if(p.url) _introImages.push(p.url); });
-        runIntroSlideshow(duration);
-      }).catch(()=>{ runIntroSlideshow(duration); });
+      runIntroSlideshow(duration);
     }
 
     function runIntroSlideshow(duration) {
       var overlay = document.getElementById('koc-intro-overlay');
       if (!overlay) return;
       overlay.querySelectorAll('.koc-intro-img').forEach(el => el.remove());
-      _introImages.forEach((src,i) => {
+      var images = (_sketchReady && _introSketchImages.length) ? _introSketchImages : _introImages;
+      images.forEach(function(src, i) {
         var img = document.createElement('img');
-        img.src = src; img.className='koc-intro-img'; img.dataset.idx=i;
+        img.src = src; img.className='koc-intro-img';
         overlay.insertBefore(img, overlay.firstChild);
       });
       var timePerImg = Math.min(Math.max(duration / _introImages.length, 1.5), 5);

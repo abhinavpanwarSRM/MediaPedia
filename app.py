@@ -5106,11 +5106,20 @@ def kingofcards():
             pos = positions.get(u)
             if pos == 1: form_guide[u].append('W')
             elif pos is not None: form_guide[u].append('L')
+    # Intro config — read once server-side so splash renders before JS
+    intro_enabled = False
+    intro_video_id = ''
+    if koc_intro_collection is not None and is_koc:
+        intro_doc = koc_intro_collection.find_one({}, {'_id': 0})
+        if intro_doc:
+            intro_enabled = bool(intro_doc.get('enabled', False))
+            intro_video_id = intro_doc.get('video_id', '') or ''
     return render_template('kingofcards.html',
         username=username, is_koc_player=is_koc,
         tournaments=tournaments, leaderboard=leaderboard,
         current_champion=current_champion, reign_days=reign_days,
-        latest_edition=latest_edition, form_guide=form_guide)
+        latest_edition=latest_edition, form_guide=form_guide,
+        intro_enabled=intro_enabled, intro_video_id=intro_video_id)
 
 @app.route('/kingofcards/<int:edition>')
 def koc_edition(edition):
