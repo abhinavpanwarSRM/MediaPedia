@@ -306,10 +306,15 @@
       text-shadow:0 0 60px rgba(255,215,0,.3); }
     .koc-intro-title p { color:#aaa;font-size:.8rem;letter-spacing:4px;text-transform:uppercase;margin-top:.5rem; }
     .koc-splash { position:fixed;inset:0;z-index:9999;background:#000;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer; }
+      display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default; }
     .koc-splash h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,7vw,4rem);
       color:var(--gold);letter-spacing:4px;text-align:center; }
-    .koc-splash .enter-prompt { color:#666;font-size:.85rem;margin-top:1.5rem;animation:splashPulse 2s ease-in-out infinite; }
+    .koc-splash-spinner { width:36px;height:36px;border:3px solid rgba(255,215,0,.2);
+      border-top-color:var(--gold);border-radius:50%;animation:splashSpin .8s linear infinite;
+      margin-top:1.8rem; }
+    @keyframes splashSpin { to{transform:rotate(360deg)} }
+    .koc-splash .enter-prompt { color:#666;font-size:.85rem;margin-top:1.5rem;
+      animation:splashPulse 2s ease-in-out infinite;display:none; }
     @keyframes splashPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
 
     /* INTRO SETTINGS (admin) */
@@ -335,7 +340,8 @@
   <div class="koc-splash" id="koc-splash" style="display:none;">
   {% endif %}
     <h1>KING OF CARDS</h1>
-    <div class="enter-prompt">&#9654; Tap to Enter</div>
+    <div class="koc-splash-spinner" id="koc-splash-spinner"></div>
+    <div class="enter-prompt" id="koc-enter-prompt">&#9654; Tap to Enter</div>
   </div>
   <div class="koc-intro-overlay hidden" id="koc-intro-overlay" style="display:none;">
     <div class="koc-intro-vignette"></div>
@@ -1713,7 +1719,7 @@
           processSketchImage(src, function(dataUrl) {
             _introSketchImages[i] = dataUrl || src;
             done++;
-            if (done === sources.length) _sketchReady = true;
+            if (done === sources.length) { _sketchReady = true; _sketchesReadyFlag = true; _checkSplashReady(); }
           });
         });
       }).catch(function() {
@@ -1724,7 +1730,7 @@
           processSketchImage(src, function(dataUrl) {
             _introSketchImages[i] = dataUrl || src;
             done++;
-            if (done === sources.length) _sketchReady = true;
+            if (done === sources.length) { _sketchReady = true; _sketchesReadyFlag = true; _checkSplashReady(); }
           });
         });
       });
@@ -1790,8 +1796,21 @@
     }
 
     let _introPlayerReady = false;
-    let _tapPending = false;       // user tapped before player was ready
-    let _introVideoIdLocal = '';   // store vid for deferred playback
+    let _tapPending = false;
+    let _introVideoIdLocal = '';
+    let _sketchesReadyFlag = false;
+    let _ytReadyFlag = false;
+    let _introDuration = 30; // filled during preload
+
+    function _checkSplashReady() {
+      if (!_sketchesReadyFlag || !_ytReadyFlag) return;
+      var spinner = document.getElementById('koc-splash-spinner');
+      var prompt  = document.getElementById('koc-enter-prompt');
+      var splash  = document.getElementById('koc-splash');
+      if (spinner) spinner.style.display = 'none';
+      if (prompt)  prompt.style.display  = 'block';
+      if (splash)  splash.style.cursor   = 'pointer';
+    }
 
     function _primeIntroPlayer(videoId) {
       _introPlayerReady = false;
@@ -1803,7 +1822,8 @@
           onReady: function(e) {
             e.target.cueVideoById(videoId);
             _introPlayerReady = true;
-            // If user already tapped while we were loading, start now
+            _ytReadyFlag = true;
+            _checkSplashReady();
             if (_tapPending) { _tapPending = false; _doStartPlayback(); }
           },
           onStateChange: function(e) {
@@ -1827,23 +1847,11 @@
     }
 
     function _startPlayback() {
+      // Guard: ignore tap if not fully ready yet
+      if (!_sketchesReadyFlag || !_ytReadyFlag) return;
       var overlay = document.getElementById('koc-intro-overlay');
       if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('hidden'); }
-
-      if (_introPlayerReady && _introPlayer) {
-        _doStartPlayback();
-      } else {
-        // Player not ready yet — flag the tap, show overlay, wait
-        _tapPending = true;
-        // Ensure the YT script is loading if it somehow wasn't started
-        if (_introVideoIdLocal && !window.YT) {
-          _ensureYTScriptLoaded(_introVideoIdLocal);
-        }
-        // Hard fallback: if player never becomes ready within 10s, play without audio
-        setTimeout(function() {
-          if (_tapPending) { _tapPending = false; startIntroSlideshow(30); }
-        }, 10000);
-      }
+      _doStartPlayback();
     }
 
     function _doStartPlayback() {
