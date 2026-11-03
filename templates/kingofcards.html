@@ -1751,7 +1751,7 @@
         splash.onclick = function() {
           sessionStorage.setItem('koc-intro-played','1');
           splash.style.display='none';
-          playIntro(vid);
+          _startPlayback();
         };
         return;
       }
@@ -1836,19 +1836,24 @@
     }
 
     function playIntro(videoId) {
+      // Used only by the preview button path
       var overlay = document.getElementById('koc-intro-overlay');
       overlay.style.display = 'flex';
       overlay.classList.remove('hidden');
       if (window.YT && window.YT.Player) { initIntroPlayer(videoId); }
       else {
         window._introVideoId = videoId;
+        window._introPreload = false;
         var tag = document.createElement('script');
         tag.src = 'https://www.youtube.com/iframe_api';
         document.head.appendChild(tag);
       }
     }
     window.onYouTubeIframeAPIReady = function() {
-      if (window._introVideoId) initIntroPlayer(window._introVideoId);
+      if (window._introVideoId) {
+        if (window._introPreload) { _primeIntroPlayer(window._introVideoId); }
+        else { initIntroPlayer(window._introVideoId); }
+      }
     };
 
     function initIntroPlayer(videoId) {
