@@ -1681,6 +1681,7 @@
     // ===== DEPLOY VERSION INDICATOR (admin only) =====
     (function() {
       const PAGE_BUILD = '{{ BUILD_ID }}';
+      const PAGE_STARTED = '{{ SERVER_STARTED_AT }}';
       let _wasDown = false;
       const el = document.getElementById('deploy-indicator');
 
@@ -1697,8 +1698,11 @@
         fetch('/api/version', { cache: 'no-store' })
           .then(r => r.json())
           .then(d => {
-            if (d.build && d.build !== PAGE_BUILD) {
-              show('live', '\u{1F195} New version live \u2014 tap to reload');
+            const buildChanged = d.build && d.build !== PAGE_BUILD;
+            const restartDetected = d.started_at && d.started_at !== PAGE_STARTED;
+            if (buildChanged || restartDetected) {
+              const label = buildChanged ? '\u{1F195} New version live' : '\u267B\uFE0F Server restarted';
+              show('live', label + ' \u2014 tap to reload');
               _wasDown = false;
             } else if (_wasDown) {
               show('online', '\u2705 Back online');
