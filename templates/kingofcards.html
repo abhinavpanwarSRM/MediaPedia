@@ -1865,41 +1865,10 @@
       startIntroSlideshow(_introDuration);
     }
 
-    function playIntro(videoId) {
-      // Used only by the preview button path
-      var overlay = document.getElementById('koc-intro-overlay');
-      overlay.style.display = 'flex';
-      overlay.classList.remove('hidden');
-      if (window.YT && window.YT.Player) { initIntroPlayer(videoId); }
-      else {
-        window._introVideoId = videoId;
-        window._introPreload = false;
-        var tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
-    }
     window.onYouTubeIframeAPIReady = function() {
       var vid = window._introVideoId || _introVideoIdLocal;
       if (vid && !_introPlayer) _primeIntroPlayer(vid);
     };
-
-    function initIntroPlayer(videoId) {
-      _introPlayer = new YT.Player('intro-yt-player', {
-        videoId: videoId,
-        playerVars: { autoplay:1, controls:0, showinfo:0, modestbranding:1, rel:0, iv_load_policy:3 },
-        events: {
-          onReady: function(e) {
-            e.target.playVideo();
-            var dur = _introPlayer.getDuration();
-            startIntroSlideshow(dur || 30);
-          },
-          onStateChange: function(e) {
-            if (e.data === YT.PlayerState.ENDED) endIntro();
-          }
-        }
-      });
-    }
 
     function startIntroSlideshow(duration) {
       // Safety fallback: if no YT player, auto-close after duration + 3s buffer
@@ -1974,7 +1943,20 @@
     function previewIntro() {
       var vid = extractYouTubeId(document.getElementById('intro-video-input').value);
       if (!vid) { showToast('Enter a YouTube URL first'); return; }
+      // Reset all state so a clean run starts
       sessionStorage.removeItem('koc-intro-played');
+      _sketchesReadyFlag = false;
+      _ytReadyFlag = false;
+      _introPlayerReady = false;
+      _introDuration = 30;
+      if (_introPlayer) { try { _introPlayer.destroy(); } catch(e){} _introPlayer = null; }
+      // Reset splash UI to loading state
+      var spinner = document.getElementById('koc-splash-spinner');
+      var prompt  = document.getElementById('koc-enter-prompt');
+      var splash  = document.getElementById('koc-splash');
+      if (spinner) spinner.style.display = 'block';
+      if (prompt)  prompt.style.display  = 'none';
+      if (splash)  splash.style.cursor   = 'default';
       startIntroSequence(vid);
     }
 
