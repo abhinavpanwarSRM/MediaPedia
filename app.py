@@ -5931,7 +5931,7 @@ def koc_intro_get():
 @app.route('/api/koc/intro', methods=['POST'])
 def koc_intro_set():
     username = current_user()
-    if not username or username not in KOC_USERNAMES:
+    if username != 'abhinav':
         return jsonify({'error': 'Unauthorized'}), 403
     if koc_intro_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
