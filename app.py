@@ -5537,17 +5537,26 @@ def koc_game_heatmap():
     if koc_tournaments_collection is None:
         return jsonify({})
     tournaments = list(koc_tournaments_collection.find({}, {'_id': 0}))
-    heatmap = {u: {'monopoly':0,'bluff':0,'spoon':0,'uno':0} for u in KOC_USERNAMES}
+    heatmap = {u: {'monopoly':0,'bluff':0,'spoon':0,'uno':0,
+                   'monopoly_wins':0,'bluff_wins':0,'spoon_wins':0,'uno_wins':0,
+                   'editions_played':0} for u in KOC_USERNAMES}
     for t in tournaments:
         for p in t.get('players', []):
             u = p.get('username','')
             if u in heatmap:
+                heatmap[u]['editions_played'] += 1
                 for g in ('monopoly','bluff','spoon','uno'):
-                    heatmap[u][g] += p.get(g, 0)
+                    pts = p.get(g, 0)
+                    heatmap[u][g] += pts
+                    # Count rounds finished 1st (score == 2 per round)
+                    r1 = p.get('r1_'+g, 0)
+                    r2 = p.get('r2_'+g, 0)
+                    heatmap[u][g+'_wins'] += (1 if r1 == 2 else 0) + (1 if r2 == 2 else 0)
     result = []
     for u, scores in heatmap.items():
+        game_scores = {g: scores[g] for g in ('monopoly','bluff','spoon','uno')}
         result.append({'username': u, 'display': KOC_DISPLAY.get(u,u), **scores,
-                       'best_game': max(scores, key=scores.get) if any(scores.values()) else None})
+                       'best_game': max(game_scores, key=game_scores.get) if any(game_scores.values()) else None})
     return jsonify(result)
 
 @app.route('/api/koc/gallery')

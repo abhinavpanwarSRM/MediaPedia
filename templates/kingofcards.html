@@ -1212,15 +1212,18 @@
       wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;">
         <thead><tr>
           <th style="text-align:left;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Player</th>
-          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Wins in ${game.charAt(0).toUpperCase()+game.slice(1)}</th>
-          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Win %</th>
+          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">Points</th>
+          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">1st Place</th>
+          <th style="text-align:center;padding:.5rem .8rem;font-size:.72rem;color:var(--gold2);text-transform:uppercase;">1st %</th>
         </tr></thead>
         <tbody>${sorted.map((p,i) => {
-          const total = (p.monopoly||0)+(p.bluff||0)+(p.spoon||0)+(p.uno||0);
-          const pct = total ? Math.round(((p[game]||0)/total)*100) : 0;
+          const rounds = (p.editions_played || 0) * 2;
+          const firstPlaceWins = p[game+'_wins'] || 0;
+          const pct = rounds ? Math.round((firstPlaceWins / rounds) * 100) : 0;
           return `<tr style="border-top:1px solid rgba(255,215,0,.07);">
             <td style="padding:.6rem .8rem;font-weight:600;font-size:.88rem;color:${i===0?'var(--gold)':'#ccc'}">${p.display.split(' ')[0]}</td>
             <td style="text-align:center;padding:.6rem .8rem;font-weight:${i===0?'800':'400'};color:${i===0?'var(--gold)':'#ccc'}">${p[game]||0}</td>
+            <td style="text-align:center;padding:.6rem .8rem;color:#ccc;">${firstPlaceWins}</td>
             <td style="text-align:center;padding:.6rem .8rem;font-size:.82rem;color:var(--muted)">${pct}%</td>
           </tr>`;
         }).join('')}</tbody>
