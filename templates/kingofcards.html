@@ -287,8 +287,7 @@
     .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
       opacity:0; transition:opacity 1s ease-in-out; }
     .koc-intro-img.active { opacity:1; }
-    .koc-intro-img.kenburns { animation:kenburns 8s ease-out forwards; }
-    @keyframes kenburns { 0%{transform:scale(1) translateX(0)} 100%{transform:scale(1.15) translateX(-3%)} }
+    .koc-intro-img.active { opacity:1; }
     .koc-intro-skip { position:fixed;bottom:1.5rem;right:1.5rem;z-index:10000;
       background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
       color:#aaa;padding:.4rem 1rem;border-radius:20px;font-size:.78rem;
@@ -1665,6 +1664,7 @@
     ];
     let _introPlayer = null, _introTimer = null, _introImgIdx = 0, _introImages = [];
     let _introSketchImages = [], _sketchReady = false;
+    let _introImageRatios = []; // aspect ratio (w/h) of each original image
 
     // ===== SOBEL EDGE DETECTION + BLURRED BG (letterbox for any aspect ratio) =====
     function processSketchImage(src, callback) {
@@ -1726,10 +1726,10 @@
           var fx = (OUT_W - sw) / 2, fy = (OUT_H - sh) / 2;
           ctx.drawImage(skCanvas, fx, fy, sw, sh);
 
-          callback(canvas.toDataURL('image/jpeg', 0.88));
-        } catch(e) { callback(null); }
+          callback(canvas.toDataURL('image/jpeg', 0.88), img.width / img.height);
+        } catch(e) { callback(null, 1); }
       };
-      img.onerror = function() { callback(null); };
+      img.onerror = function() { callback(null, 1); };
       img.src = src;
     }
 
@@ -1740,10 +1740,12 @@
         if (Array.isArray(photos)) photos.forEach(p => { if(p.url) sources.push(p.url); });
         _introImages = sources;
         _introSketchImages = [];
+        _introImageRatios = [];
         var done = 0;
         sources.forEach(function(src, i) {
-          processSketchImage(src, function(dataUrl) {
+          processSketchImage(src, function(dataUrl, ratio) {
             _introSketchImages[i] = dataUrl || src;
+            _introImageRatios[i] = ratio || 1;
             done++;
             if (done === sources.length) { _sketchReady = true; _sketchesReadyFlag = true; _checkSplashReady(); }
           });
@@ -1751,10 +1753,12 @@
       }).catch(function() {
         _introImages = sources;
         _introSketchImages = [];
+        _introImageRatios = [];
         var done = 0;
         sources.forEach(function(src, i) {
-          processSketchImage(src, function(dataUrl) {
+          processSketchImage(src, function(dataUrl, ratio) {
             _introSketchImages[i] = dataUrl || src;
+            _introImageRatios[i] = ratio || 1;
             done++;
             if (done === sources.length) { _sketchReady = true; _sketchesReadyFlag = true; _checkSplashReady(); }
           });
@@ -1928,12 +1932,39 @@
       }, timePerImg * 1000);
     }
 
+    var _kbStyleEl = null;
     function showIntroImage(idx) {
       var overlay = document.getElementById('koc-intro-overlay');
       if (!overlay) return;
-      overlay.querySelectorAll('.koc-intro-img').forEach(function(el,i) {
-        if (i===idx) { el.classList.add('active','kenburns'); el.style.animation='none'; el.offsetHeight; el.style.animation=''; }
-        else el.classList.remove('active','kenburns');
+      var images = overlay.querySelectorAll('.koc-intro-img');
+      var ratio = _introImageRatios[idx] || 1;
+      var isMobile = window.innerWidth < window.innerHeight; // portrait viewport
+      var isLandscape = ratio > 1;
+      var dur = Math.max(_introDuration / Math.max(_introImages.length, 1), 1.8);
+      var animName = 'kb_' + idx;
+      var kf;
+      if (isMobile && isLandscape) {
+        // Mobile + landscape photo: pan left↔right, alternate per image
+        var dir = idx % 2 === 0;
+        kf = '@keyframes ' + animName + ' { 0%{transform:scale(1.08) translateX(' + (dir?'-4%':'4%') + ')} 100%{transform:scale(1.12) translateX(' + (dir?'4%':'-4%') + ')} }';
+      } else if (!isMobile && !isLandscape) {
+        // Desktop + portrait photo: pan top↔bottom
+        var dir2 = idx % 2 === 0;
+        kf = '@keyframes ' + animName + ' { 0%{transform:scale(1.08) translateY(' + (dir2?'-3%':'3%') + ')} 100%{transform:scale(1.12) translateY(' + (dir2?'3%':'-3%') + ')} }';
+      } else {
+        // Else: classic zoom in/out alternating
+        var zIn = idx % 2 === 0;
+        kf = '@keyframes ' + animName + ' { 0%{transform:scale(' + (zIn?'1':'1.12') + ')} 100%{transform:scale(' + (zIn?'1.12':'1') + ')} }';
+      }
+      if (!_kbStyleEl) { _kbStyleEl = document.createElement('style'); document.head.appendChild(_kbStyleEl); }
+      _kbStyleEl.textContent = kf;
+      images.forEach(function(el, i) {
+        el.classList.remove('active');
+        el.style.animation = 'none';
+        if (i === idx) {
+          el.classList.add('active');
+          el.style.animation = animName + ' ' + dur + 's ease-in-out forwards';
+        }
       });
     }
 
