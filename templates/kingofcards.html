@@ -432,8 +432,9 @@
           <div id="race-edition-label" style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--gold);">Edition 1</div>
           <div style="display:flex;gap:.4rem;">
             <button class="btn btn-gold" id="race-play-btn" onclick="toggleRace()" style="font-size:.78rem;padding:.35rem 1rem;">&#9654; Play</button>
+            <button class="btn btn-gold" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="3000">0.5x</button>
             <button class="btn btn-muted" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="1500">1x</button>
-            <button class="btn btn-gold" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="700">2x</button>
+            <button class="btn btn-muted" onclick="setRaceSpeed(this)" style="font-size:.72rem;padding:.35rem .6rem;" data-speed="700">2x</button>
           </div>
         </div>
         <div id="race-bars" style="display:flex;flex-direction:column;gap:.35rem;"></div>
@@ -1548,7 +1549,7 @@
     const RACE_COLORS = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
     const RACE_NAMES = {'abhinav':'Abhinav','A3h1':'Abhishek','Akhil':'Akhil','sahil':'Sahil','shruti':'Shruti','utkarsh':'Utkarsh'};
     const RACE_PLAYERS = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
-    let _raceData = null, _raceSpeed = 700;
+    let _raceData = null, _raceSpeed = 3000;
     let _raceCurrent = {}, _raceRAF = null, _raceTweenStart = 0, _racePhase = 0, _racePlaying = false;
 
     function loadRace() {
