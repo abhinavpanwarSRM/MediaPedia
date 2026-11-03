@@ -5904,6 +5904,35 @@ def koc_next_edition_delete():
     koc_next_edition_collection.delete_many({})
     return jsonify({'success': True})
 
+# ===== KOC Intro (cinematic entrance) =====
+koc_intro_collection = None
+try:
+    if db is not None:
+        koc_intro_collection = db.koc_intro
+except Exception as e:
+    log.error('Failed to init koc_intro: %s', e)
+
+@app.route('/api/koc/intro', methods=['GET'])
+def koc_intro_get():
+    if koc_intro_collection is None:
+        return jsonify({'enabled': False, 'video_id': ''})
+    doc = koc_intro_collection.find_one({}, {'_id': 0})
+    return jsonify(doc or {'enabled': False, 'video_id': ''})
+
+@app.route('/api/koc/intro', methods=['POST'])
+def koc_intro_set():
+    username = current_user()
+    if not username or username not in KOC_USERNAMES:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if koc_intro_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    video_id = (data.get('video_id') or '').strip()[:20]
+    enabled = bool(data.get('enabled', False))
+    doc = {'video_id': video_id, 'enabled': enabled, 'set_by': username, 'set_at': datetime.now(timezone.utc).isoformat()}
+    koc_intro_collection.replace_one({}, doc, upsert=True)
+    return jsonify(doc)
+
 
 
 # ===== KOC All-Time Records =====

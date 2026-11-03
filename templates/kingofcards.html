@@ -280,9 +280,69 @@
     .oracle-acc { font-size:.72rem;color:var(--muted); }
     .oracle-correct { font-weight:700;color:var(--gold); }
 
+    /* CINEMATIC INTRO */
+    .koc-intro-overlay { position:fixed;inset:0;z-index:9999;background:#000;
+      display:flex;align-items:center;justify-content:center;overflow:hidden; }
+    .koc-intro-overlay.hidden { opacity:0;pointer-events:none;transition:opacity 1.2s ease-out; }
+    .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+      filter:grayscale(100%) contrast(1.1) brightness(.85);opacity:0;
+      transition:opacity 1s ease-in-out; }
+    .koc-intro-img.active { opacity:1; }
+    .koc-intro-img.kenburns { animation:kenburns 8s ease-out forwards; }
+    @keyframes kenburns { 0%{transform:scale(1) translateX(0)} 100%{transform:scale(1.15) translateX(-3%)} }
+    .koc-intro-skip { position:fixed;bottom:1.5rem;right:1.5rem;z-index:10000;
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+      color:#aaa;padding:.4rem 1rem;border-radius:20px;font-size:.78rem;
+      cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif; }
+    .koc-intro-skip:hover { color:#fff;border-color:rgba(255,255,255,.4); }
+    .koc-intro-vignette { position:absolute;inset:0;pointer-events:none;z-index:2;
+      background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.6) 100%); }
+    .koc-intro-title { position:absolute;z-index:3;text-align:center;opacity:0;transition:opacity 1.5s ease-out; }
+    .koc-intro-title.show { opacity:1; }
+    .koc-intro-title h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,9vw,6rem);
+      font-weight:700;letter-spacing:6px;
+      background:linear-gradient(135deg,#ffe066,#ffd700,#b8860b,#ffd700);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      text-shadow:0 0 60px rgba(255,215,0,.3); }
+    .koc-intro-title p { color:#aaa;font-size:.8rem;letter-spacing:4px;text-transform:uppercase;margin-top:.5rem; }
+    .koc-splash { position:fixed;inset:0;z-index:9999;background:#000;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer; }
+    .koc-splash h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,7vw,4rem);
+      color:var(--gold);letter-spacing:4px;text-align:center; }
+    .koc-splash .enter-prompt { color:#666;font-size:.85rem;margin-top:1.5rem;animation:splashPulse 2s ease-in-out infinite; }
+    @keyframes splashPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    /* INTRO SETTINGS (admin) */
+    .intro-settings { background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.4rem;margin-bottom:3rem; }
+    .intro-settings label { font-size:.82rem;color:var(--muted);display:block;margin-bottom:.3rem; }
+    .intro-settings input[type=text] { width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);
+      border-radius:8px;color:#fff;font-size:.9rem;padding:.55rem .85rem;margin-bottom:.8rem;font-family:'Poppins',sans-serif; }
+    .intro-settings input[type=text]:focus { outline:none;border-color:var(--gold); }
+    .intro-toggle-row { display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem; }
+    .intro-toggle-row label { margin:0; }
+    .intro-preview { margin-top:.8rem;border-radius:10px;overflow:hidden;border:1px solid var(--border);display:none; }
+    .intro-preview.show { display:block; }
+    .intro-preview iframe { width:100%;aspect-ratio:16/9;border:none; }
+
   </style>
 </head>
 <body>
+
+  <!-- CINEMATIC INTRO OVERLAY -->
+  <div class="koc-splash" id="koc-splash" style="display:none;">
+    <h1>KING OF CARDS</h1>
+    <div class="enter-prompt">&#9654; Tap to Enter</div>
+  </div>
+  <div class="koc-intro-overlay hidden" id="koc-intro-overlay" style="display:none;">
+    <div class="koc-intro-vignette"></div>
+    <div class="koc-intro-title" id="koc-intro-title">
+      <h1>KING OF CARDS</h1>
+      <p>The Private Card Game Tournament</p>
+    </div>
+    <button class="koc-intro-skip" onclick="skipIntro()">Skip &#9654;</button>
+  </div>
+  <div id="intro-yt-player" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;"></div>
+
   <nav class="topnav">
     <a href="/" class="brand">MediaPedia</a>
     <div class="nav-right">
@@ -609,6 +669,27 @@
     {% endif %}
 
     {% if is_koc_player %}
+    <!-- INTRO SETTINGS -->
+    <section style="margin-bottom:3rem;">
+      <div class="section-title">Cinematic Intro</div>
+      <div class="intro-settings">
+        <label>YouTube Song URL or Video ID</label>
+        <input type="text" id="intro-video-input" placeholder="Paste a YouTube link (e.g. https://youtube.com/watch?v=...)" oninput="onIntroInput(this)" />
+        <div class="intro-toggle-row">
+          <input type="checkbox" id="intro-enabled" style="cursor:pointer;" />
+          <label for="intro-enabled" style="cursor:pointer;">Enable intro (plays on page load for all visitors)</label>
+        </div>
+        <div class="intro-preview" id="intro-preview">
+          <iframe id="intro-preview-iframe" src="" allowfullscreen></iframe>
+        </div>
+        <div style="display:flex;gap:.6rem;margin-top:.8rem;">
+          <button class="btn btn-gold" onclick="saveIntro()">Save Intro</button>
+          <button class="btn btn-muted" onclick="previewIntro()">&#9654; Preview</button>
+        </div>
+        <p style="color:var(--muted);font-size:.78rem;margin-top:.8rem;">On page load: black &amp; white gallery images cycle through at a pace set by the song length, then the site fades in.</p>
+      </div>
+    </section>
+
     <!-- LIVE TRACKER -->
     <section style="margin-bottom:3rem;">
       <div class="section-title">Live Tracker</div>
@@ -1566,6 +1647,157 @@
       }).catch(()=>{});
     }
 
+    // ===== CINEMATIC INTRO =====
+    const IS_KOC_PLAYER = {{ 'true' if is_koc_player else 'false' }};
+    const INTRO_STATIC_IMAGES = [
+      '/static/koc/1.jpg','/static/koc/2.jpg','/static/koc/3.jpg',
+      '/static/koc/4.jpg','/static/koc/5.jpg','/static/koc/6.jpg',
+      '/static/koc/Certificate.jpg'
+    ];
+    let _introPlayer = null, _introTimer = null, _introImgIdx = 0, _introImages = [];
+
+    function extractYouTubeId(url) {
+      if (!url) return '';
+      var m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      return m ? m[1] : (url.length===11 ? url : '');
+    }
+
+    function loadIntroConfig() {
+      fetch('/api/koc/intro',{cache:'no-store'}).then(r=>r.json()).then(cfg => {
+        var inp = document.getElementById('intro-video-input');
+        var cb = document.getElementById('intro-enabled');
+        if (inp && cfg.video_id) inp.value = cfg.video_id;
+        if (cb) cb.checked = cfg.enabled||false;
+        if (cfg.video_id) {
+          var p = document.getElementById('intro-preview');
+          var f = document.getElementById('intro-preview-iframe');
+          if (p&&f) { p.classList.add('show'); f.src='https://www.youtube.com/embed/'+cfg.video_id; }
+        }
+        if (cfg.enabled && cfg.video_id && IS_KOC_PLAYER && !sessionStorage.getItem('koc-intro-played')) {
+          sessionStorage.setItem('koc-intro-played','1');
+          startIntroSequence(cfg.video_id);
+        }
+      }).catch(()=>{});
+    }
+
+    function startIntroSequence(videoId) {
+      var splash = document.getElementById('koc-splash');
+      if (!splash) return;
+      splash.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      splash.onclick = function() { splash.style.display='none'; playIntro(videoId); };
+    }
+
+    function playIntro(videoId) {
+      var overlay = document.getElementById('koc-intro-overlay');
+      overlay.style.display = 'flex';
+      overlay.classList.remove('hidden');
+      if (window.YT && window.YT.Player) { initIntroPlayer(videoId); }
+      else {
+        window._introVideoId = videoId;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+    }
+    window.onYouTubeIframeAPIReady = function() {
+      if (window._introVideoId) initIntroPlayer(window._introVideoId);
+    };
+
+    function initIntroPlayer(videoId) {
+      _introPlayer = new YT.Player('intro-yt-player', {
+        videoId: videoId,
+        playerVars: { autoplay:1, controls:0, showinfo:0, modestbranding:1, rel:0, iv_load_policy:3 },
+        events: {
+          onReady: function(e) {
+            e.target.playVideo();
+            var dur = _introPlayer.getDuration();
+            startIntroSlideshow(dur || 30);
+          },
+          onStateChange: function(e) {
+            if (e.data === YT.PlayerState.ENDED) endIntro();
+          }
+        }
+      });
+    }
+
+    function startIntroSlideshow(duration) {
+      _introImages = [...INTRO_STATIC_IMAGES];
+      fetch('/api/koc/gallery').then(r=>r.json()).then(photos => {
+        if (Array.isArray(photos)) photos.forEach(p => { if(p.url) _introImages.push(p.url); });
+        runIntroSlideshow(duration);
+      }).catch(()=>{ runIntroSlideshow(duration); });
+    }
+
+    function runIntroSlideshow(duration) {
+      var overlay = document.getElementById('koc-intro-overlay');
+      if (!overlay) return;
+      overlay.querySelectorAll('.koc-intro-img').forEach(el => el.remove());
+      _introImages.forEach((src,i) => {
+        var img = document.createElement('img');
+        img.src = src; img.className='koc-intro-img'; img.dataset.idx=i;
+        overlay.insertBefore(img, overlay.firstChild);
+      });
+      var timePerImg = Math.min(Math.max(duration / _introImages.length, 1.5), 5);
+      _introImgIdx = 0; showIntroImage(0);
+      _introTimer = setInterval(function() {
+        _introImgIdx++;
+        if (_introImgIdx >= _introImages.length) {
+          var title = document.getElementById('koc-intro-title');
+          if (title) title.classList.add('show');
+          clearInterval(_introTimer); _introTimer = null;
+          setTimeout(endIntro, 2500);
+          return;
+        }
+        showIntroImage(_introImgIdx);
+      }, timePerImg * 1000);
+    }
+
+    function showIntroImage(idx) {
+      var overlay = document.getElementById('koc-intro-overlay');
+      if (!overlay) return;
+      overlay.querySelectorAll('.koc-intro-img').forEach(function(el,i) {
+        if (i===idx) { el.classList.add('active','kenburns'); el.style.animation='none'; el.offsetHeight; el.style.animation=''; }
+        else el.classList.remove('active','kenburns');
+      });
+    }
+
+    function endIntro() {
+      if (_introTimer) { clearInterval(_introTimer); _introTimer=null; }
+      if (_introPlayer) { try { _introPlayer.stopVideo(); } catch(e){} }
+      var overlay = document.getElementById('koc-intro-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      document.body.style.overflow = '';
+      setTimeout(function(){ if(overlay) overlay.style.display='none'; }, 1300);
+    }
+    function skipIntro() { endIntro(); }
+
+    function onIntroInput(input) {
+      var vid = extractYouTubeId(input.value);
+      var p = document.getElementById('intro-preview');
+      var f = document.getElementById('intro-preview-iframe');
+      if (vid) { p.classList.add('show'); f.src = 'https://www.youtube.com/embed/'+vid; }
+      else p.classList.remove('show');
+    }
+    function saveIntro() {
+      var vid = extractYouTubeId(document.getElementById('intro-video-input').value);
+      var en = document.getElementById('intro-enabled').checked;
+      if (!vid) { showToast('Enter a valid YouTube URL or video ID'); return; }
+      fetch('/api/koc/intro', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({video_id:vid, enabled:en})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { showToast(d.error); return; }
+        showToast(en ? 'Intro enabled!' : 'Intro saved (disabled)');
+      }).catch(()=>showToast('Failed to save'));
+    }
+    function previewIntro() {
+      var vid = extractYouTubeId(document.getElementById('intro-video-input').value);
+      if (!vid) { showToast('Enter a YouTube URL first'); return; }
+      sessionStorage.removeItem('koc-intro-played');
+      startIntroSequence(vid);
+    }
+
     // ===== INIT =====
     loadTrend();
     loadRace();
@@ -1586,6 +1818,7 @@
     loadHallOfFame();
     loadBadges();
     loadRecap();
+    loadIntroConfig();
   </script>
 </body>
 </html>
