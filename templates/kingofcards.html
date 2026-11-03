@@ -1885,6 +1885,8 @@
     }
 
     function startIntroSlideshow(duration) {
+      // Safety fallback: if no YT player, auto-close after duration + 3s buffer
+      if (!_introPlayer) setTimeout(endIntro, (duration + 3) * 1000);
       runIntroSlideshow(duration);
     }
 
@@ -1903,10 +1905,11 @@
       _introTimer = setInterval(function() {
         _introImgIdx++;
         if (_introImgIdx >= _introImages.length) {
+          // All images shown — display title and hold until the song ends
           var title = document.getElementById('koc-intro-title');
           if (title) title.classList.add('show');
           clearInterval(_introTimer); _introTimer = null;
-          setTimeout(endIntro, 2500);
+          // Keep the last image visible; endIntro() will be called by YT ENDED event
           return;
         }
         showIntroImage(_introImgIdx);

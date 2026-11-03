@@ -428,7 +428,7 @@
 
   <div class="profile-banner">
     {% if username == 'abhinav' and viewer == 'abhinav' %}
-    <div class="deploy-indicator" id="deploy-indicator" style="display:none;"></div>
+    <div class="deploy-indicator" id="deploy-indicator"></div>
     {% endif %}
     <div class="avatar-wrap">
       {% if viewer == username %}
@@ -1692,7 +1692,7 @@
         const click = (state === 'live') ? ' onclick="window.location.reload()" title="Click to reload"' : '';
         el.innerHTML = '<div class="' + cls + '"' + click + '>' + text + '</div>';
       }
-      function hide() { if (el) el.style.display = 'none'; }
+      function hide() { /* always visible — no-op */ }
 
       function check() {
         fetch('/api/version', { cache: 'no-store' })
@@ -1705,13 +1705,10 @@
               show('live', label + ' \u2014 tap to reload');
               _wasDown = false;
             } else if (_wasDown) {
-              show('online', '\u2705 Back online');
+              show('online', '\u2705 Back online \u2014 same version');
               _wasDown = false;
-              setTimeout(() => {
-                if (el && el.querySelector('.deploy-pill') && !el.querySelector('.deploy-pill.live')) hide();
-              }, 3000);
             } else {
-              hide();
+              show('online', '\u{1F7E2} Live \u2014 build&nbsp;' + (d.build || '?'));
             }
           })
           .catch(() => {
