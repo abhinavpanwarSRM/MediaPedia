@@ -969,6 +969,7 @@
 
     function deleteEdition(edition) {
       if (!confirm('Delete Edition ' + edition + '? This cannot be undone.')) return;
+      if (!confirm('Are you sure? Edition ' + edition + ' and all its scores will be permanently deleted.')) return;
       fetch('/api/koc/tournaments/' + edition, {method:'DELETE'})
         .then(r=>r.json()).then(d => {
           showToast('Edition ' + edition + ' deleted');
