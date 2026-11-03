@@ -1547,57 +1547,91 @@
     // ===== BAR CHART RACE =====
     const RACE_COLORS = {'abhinav':'#ffd700','A3h1':'#5799ef','Akhil':'#2ed573','sahil':'#ff6b6b','shruti':'#ff9f43','utkarsh':'#a29bfe'};
     const RACE_NAMES = {'abhinav':'Abhinav','A3h1':'Abhishek','Akhil':'Akhil','sahil':'Sahil','shruti':'Shruti','utkarsh':'Utkarsh'};
-    let _raceData = null, _raceIdx = 0, _raceTimer = null, _raceSpeed = 1500;
+    const RACE_PLAYERS = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
+    let _raceData = null, _raceSpeed = 1500;
+    let _raceCurrent = {}, _raceRAF = null, _raceTweenStart = 0, _racePhase = 0, _racePlaying = false;
 
     function loadRace() {
       fetch('/api/koc/tournaments').then(r=>r.json()).then(tournaments => {
         if (!tournaments.length) return;
-        const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
         const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
-        const cum = {}; players.forEach(p => cum[p] = 0);
-        // Start with an all-zero "starting line" so edition 1 animates in
-        _raceData = [{edition: 0, snap: {...cum}, isStart: true}];
+        const cum = {}; RACE_PLAYERS.forEach(p => cum[p] = 0);
+        _raceData = [{edition:0, snap:{...cum}, isStart:true}];
         sorted.forEach(t => {
-          (t.players||[]).forEach(p => { if(players.includes(p.username)) cum[p.username] += (p.total||0); });
-          _raceData.push({edition: t.edition, snap: {...cum}});
+          (t.players||[]).forEach(p => { if(RACE_PLAYERS.includes(p.username)) cum[p.username] += (p.total||0); });
+          _raceData.push({edition:t.edition, snap:{...cum}});
         });
-        _raceIdx = 0; renderRace();
+        RACE_PLAYERS.forEach(p => { _raceCurrent[p] = 0; });
+        _racePhase = 0;
+        renderRaceFrame();
       }).catch(()=>{});
     }
-    function renderRace() {
+
+    function renderRaceFrame() {
       if (!_raceData) return;
-      const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
-      const snap = _raceData[_raceIdx].snap;
-      const sorted = players.map(p => ({u:p, v:snap[p]||0})).sort((a,b)=>b.v-a.v);
-      const maxVal = Math.max(...sorted.map(s=>s.v), 1);
       const label = document.getElementById('race-edition-label');
-      if (label) label.textContent = _raceData[_raceIdx].isStart ? 'Starting Line' : 'Edition ' + _raceData[_raceIdx].edition;
+      if (label) label.textContent = _raceData[_racePhase].isStart ? 'Starting Line' : 'Edition ' + _raceData[_racePhase].edition;
+      const maxVal = Math.max(...RACE_PLAYERS.map(p => _raceCurrent[p]), 1);
+      const sorted = RACE_PLAYERS.map(p => ({u:p, v:_raceCurrent[p]})).sort((a,b)=>b.v-a.v);
       const wrap = document.getElementById('race-bars');
       if (!wrap) return;
       wrap.innerHTML = sorted.map((s,i) => {
         const pct = (s.v / maxVal) * 100;
         const crown = i === 0 && s.v > 0 ? '<span class="race-crown">&#x1F451;</span>' : '';
-        return '<div class="race-bar"><div class="race-bar-name">'+(RACE_NAMES[s.u]||s.u)+'</div><div class="race-bar-track"><div class="race-bar-fill" style="width:'+pct+'%;background:'+(RACE_COLORS[s.u]||'#888')+';">'+s.v+'</div></div>'+crown+'</div>';
+        return '<div class="race-bar"><div class="race-bar-name">'+(RACE_NAMES[s.u]||s.u)+'</div><div class="race-bar-track"><div class="race-bar-fill" style="width:'+pct.toFixed(2)+'%;background:'+(RACE_COLORS[s.u]||'#888')+';">'+Math.round(s.v)+'</div></div>'+crown+'</div>';
       }).join('');
     }
+
+    function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+    function tweenToPhase(phase) {
+      if (!_raceData || phase >= _raceData.length) return;
+      _racePhase = phase;
+      const from = {..._raceCurrent};
+      const to = _raceData[phase].snap;
+      const duration = _raceSpeed * 0.85;
+      _raceTweenStart = performance.now();
+      if (_raceRAF) cancelAnimationFrame(_raceRAF);
+      function step(now) {
+        const t = Math.min((now - _raceTweenStart) / duration, 1);
+        const e = easeInOut(t);
+        RACE_PLAYERS.forEach(p => { _raceCurrent[p] = from[p] + (to[p] - from[p]) * e; });
+        renderRaceFrame();
+        if (t < 1) { _raceRAF = requestAnimationFrame(step); }
+        else { RACE_PLAYERS.forEach(p => { _raceCurrent[p] = to[p]; }); renderRaceFrame(); _raceRAF = null; }
+      }
+      _raceRAF = requestAnimationFrame(step);
+    }
+
     function toggleRace() {
       const btn = document.getElementById('race-play-btn');
-      if (_raceTimer) { clearInterval(_raceTimer); _raceTimer = null; if(btn) btn.innerHTML='&#9654; Play'; }
-      else {
-        if (_raceIdx >= _raceData.length - 1) _raceIdx = 0;
-        if(btn) btn.innerHTML='&#10073;&#10073; Pause';
-        _raceTimer = setInterval(() => {
-          _raceIdx++;
-          if (_raceIdx >= _raceData.length) { clearInterval(_raceTimer); _raceTimer=null; if(btn) btn.innerHTML='&#9654; Replay'; _raceIdx=_raceData.length-1; }
-          renderRace();
-        }, _raceSpeed);
+      if (_racePlaying) {
+        _racePlaying = false;
+        if (_raceRAF) { cancelAnimationFrame(_raceRAF); _raceRAF = null; }
+        if (btn) btn.innerHTML = '&#9654; Play';
+        return;
       }
+      if (_racePhase >= _raceData.length - 1) {
+        _racePhase = 0; RACE_PLAYERS.forEach(p => { _raceCurrent[p] = 0; }); renderRaceFrame();
+      }
+      _racePlaying = true;
+      if (btn) btn.innerHTML = '&#10073;&#10073; Pause';
+      function advance() {
+        if (!_racePlaying) return;
+        _racePhase++;
+        if (_racePhase >= _raceData.length) {
+          _racePlaying = false; if (btn) btn.innerHTML = '&#9654; Replay'; _racePhase = _raceData.length - 1; return;
+        }
+        tweenToPhase(_racePhase);
+        setTimeout(advance, _raceSpeed);
+      }
+      setTimeout(advance, 300);
     }
+
     function setRaceSpeed(btn) {
       _raceSpeed = parseInt(btn.dataset.speed);
-      document.querySelectorAll('[onclick*="setRaceSpeed"]').forEach(b => b.className='btn btn-muted');
+      document.querySelectorAll('[onclick*="setRaceSpeed"]').forEach(b => { b.className='btn btn-muted'; b.style.fontSize='.72rem'; b.style.padding='.35rem .6rem'; });
       btn.className='btn btn-gold'; btn.style.fontSize='.72rem'; btn.style.padding='.35rem .6rem';
-      if (_raceTimer) { clearInterval(_raceTimer); _raceTimer=null; toggleRace(); }
     }
 
     // ===== ELO POWER RATINGS =====
