@@ -1608,7 +1608,11 @@
             const a=ps[i], b=ps[j];
             const ea = 1/(1+Math.pow(10,(elo[b.username]-elo[a.username])/400));
             const sa = a.total>b.total?1:a.total===b.total?0.5:0;
-            elo[a.username] += K*(sa-ea); elo[b.username] += K*((1-sa)-(1-ea));
+            // Margin multiplier: log(1 + |gap|) so a 6pt gap (~1.95) matters more than 1pt gap (~0.69)
+            const margin = Math.abs((a.total||0)-(b.total||0));
+            const mMult = Math.log1p(margin);
+            const kAdj = K * (1 + mMult);
+            elo[a.username] += kAdj*(sa-ea); elo[b.username] += kAdj*((1-sa)-(1-ea));
           }
         });
         const ranked = players.map(p=>({u:p,r:Math.round(elo[p])})).sort((a,b)=>b.r-a.r);
