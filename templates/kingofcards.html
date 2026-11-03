@@ -1764,15 +1764,8 @@
       // First visit — pre-process sketches AND prime the YT player now
       var vid = '{{ intro_video_id }}';
       preProcessSketches();
-      if (window.YT && window.YT.Player) {
-        _primeIntroPlayer(vid);
-      } else {
-        window._introVideoId = vid;
-        window._introPreload = true;
-        var tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
+      _introVideoIdLocal = vid;
+      _ensureYTScriptLoaded(vid);
       splash.onclick = function() {
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display = 'none';
@@ -1787,15 +1780,8 @@
       document.body.style.overflow = 'hidden';
       preProcessSketches();
       // Pre-load the YT player while the splash is showing so audio is buffered
-      if (window.YT && window.YT.Player) {
-        _primeIntroPlayer(videoId);
-      } else {
-        window._introVideoId = videoId;
-        window._introPreload = true;
-        var tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-      }
+      _introVideoIdLocal = videoId;
+      _ensureYTScriptLoaded(videoId);
       splash.onclick = function() {
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display='none';
@@ -1804,16 +1790,21 @@
     }
 
     let _introPlayerReady = false;
+    let _tapPending = false;       // user tapped before player was ready
+    let _introVideoIdLocal = '';   // store vid for deferred playback
+
     function _primeIntroPlayer(videoId) {
       _introPlayerReady = false;
+      _introVideoIdLocal = videoId;
       _introPlayer = new YT.Player('intro-yt-player', {
         videoId: videoId,
         playerVars: { autoplay:0, controls:0, showinfo:0, modestbranding:1, rel:0, iv_load_policy:3, mute:0 },
         events: {
           onReady: function(e) {
-            // Cue the video so it buffers — user hasn't tapped yet so we can't play
             e.target.cueVideoById(videoId);
             _introPlayerReady = true;
+            // If user already tapped while we were loading, start now
+            if (_tapPending) { _tapPending = false; _doStartPlayback(); }
           },
           onStateChange: function(e) {
             if (e.data === YT.PlayerState.ENDED) endIntro();
@@ -1822,28 +1813,46 @@
       });
     }
 
+    function _ensureYTScriptLoaded(videoId) {
+      if (window.YT && window.YT.Player) {
+        _primeIntroPlayer(videoId);
+      } else if (!document.querySelector('script[src*="iframe_api"]')) {
+        window._introVideoId = videoId;
+        window._introPreload = true;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      }
+      // If script already loading, onYouTubeIframeAPIReady will call _primeIntroPlayer
+    }
+
     function _startPlayback() {
       var overlay = document.getElementById('koc-intro-overlay');
-      overlay.style.display = 'flex';
-      overlay.classList.remove('hidden');
+      if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('hidden'); }
+
       if (_introPlayerReady && _introPlayer) {
-        _introPlayer.playVideo();
-        var waitForDur = setInterval(function() {
-          var dur = _introPlayer.getDuration();
-          if (dur > 0) { clearInterval(waitForDur); startIntroSlideshow(dur); }
-        }, 200);
-        setTimeout(function() { clearInterval(waitForDur); startIntroSlideshow(30); }, 4000);
+        _doStartPlayback();
       } else {
-        // Player not ready yet — start slideshow with estimate, sync when ready
-        startIntroSlideshow(30);
-        var waitReady = setInterval(function() {
-          if (_introPlayerReady && _introPlayer) {
-            clearInterval(waitReady);
-            _introPlayer.playVideo();
-          }
-        }, 300);
-        setTimeout(function() { clearInterval(waitReady); }, 8000);
+        // Player not ready yet — flag the tap, show overlay, wait
+        _tapPending = true;
+        // Ensure the YT script is loading if it somehow wasn't started
+        if (_introVideoIdLocal && !window.YT) {
+          _ensureYTScriptLoaded(_introVideoIdLocal);
+        }
+        // Hard fallback: if player never becomes ready within 10s, play without audio
+        setTimeout(function() {
+          if (_tapPending) { _tapPending = false; startIntroSlideshow(30); }
+        }, 10000);
       }
+    }
+
+    function _doStartPlayback() {
+      _introPlayer.playVideo();
+      var waitForDur = setInterval(function() {
+        var dur = _introPlayer.getDuration();
+        if (dur > 0) { clearInterval(waitForDur); startIntroSlideshow(dur); }
+      }, 200);
+      setTimeout(function() { clearInterval(waitForDur); startIntroSlideshow(30); }, 5000);
     }
 
     function playIntro(videoId) {
@@ -1861,10 +1870,8 @@
       }
     }
     window.onYouTubeIframeAPIReady = function() {
-      if (window._introVideoId) {
-        if (window._introPreload) { _primeIntroPlayer(window._introVideoId); }
-        else { initIntroPlayer(window._introVideoId); }
-      }
+      var vid = window._introVideoId || _introVideoIdLocal;
+      if (vid && !_introPlayer) _primeIntroPlayer(vid);
     };
 
     function initIntroPlayer(videoId) {
