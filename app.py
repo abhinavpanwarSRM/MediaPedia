@@ -5055,6 +5055,9 @@ def _koc_leaderboard():
                     if p.get('r1_' + game, 0) >= 2: stats[u]['game_wins'] += 1
                     if p.get('r2_' + game, 0) >= 2: stats[u]['game_wins'] += 1
                 else:
+                    # Old data without r1/r2 — can't determine round-level wins from total alone
+                    # A total of 2 could be 1st+2nd (2+0? no — 2pts = 1st only) or 2nd+2nd(1+1)
+                    # Conservatively count: if total >= 2, assume at least one 1st place
                     if p.get(game, 0) >= 2: stats[u]['game_wins'] += 1
     for u, tw in tournament_winners.items():
         if u in stats:
@@ -5977,8 +5980,13 @@ def koc_records():
         for p in players:
             if p.get('total', 0) > highest_score['score']:
                 highest_score = {'score': p['total'], 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
-            gw = sum(1 for g in ('monopoly','bluff','spoon','uno')
-                     for rk in ('r1_','r2_') if p.get(rk+g, p.get(g,0) if rk=='r1_' else 0) >= 2)
+            gw = 0
+            for g in ('monopoly', 'bluff', 'spoon', 'uno'):
+                if p.get('r1_' + g) is not None:
+                    if p.get('r1_' + g, 0) >= 2: gw += 1
+                    if p.get('r2_' + g, 0) >= 2: gw += 1
+                else:
+                    if p.get(g, 0) >= 2: gw += 1
             if gw > most_dominant['game_wins']:
                 most_dominant = {'game_wins': gw, 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
             if gw == 8:
