@@ -1390,7 +1390,7 @@
         const wrap = document.getElementById('hof-wrap');
         if (!wrap || !d.total_editions) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
         const records = [
-          { icon:'&#x1F3C6;', label:'Most Titles', val: '—', sub:'' },
+          { icon:'&#x1F3C6;', label:'Most Titles', val: d.most_titles?.titles ? d.most_titles.titles+' title'+(d.most_titles.titles!==1?'s':'') : '\u2014', sub: d.most_titles?.players?.length ? d.most_titles.players.map(p=>p.split(' ')[0]).join(' & ') : '' },
           { icon:'&#x1F4A5;', label:'Biggest Margin', val: d.biggest_margin?.margin ? d.biggest_margin.margin+' pts' : '—', sub: d.biggest_margin?.winner ? 'by '+d.biggest_margin.winner.split(' ')[0]+' (Ed.'+d.biggest_margin.edition+')' : '' },
           { icon:'&#x2B50;', label:'Highest Score', val: d.highest_score?.score ? d.highest_score.score+' pts' : '—', sub: d.highest_score?.player ? d.highest_score.player.split(' ')[0]+' (Ed.'+d.highest_score.edition+')' : '' },
           { icon:'&#x1F451;', label:'First Champion', val: d.first_champion?.split(' ')[0] || '—', sub: 'Edition 1' },
@@ -1460,9 +1460,11 @@
         const players = ['abhinav','A3h1','Akhil','sahil','shruti','utkarsh'];
         const sorted = [...tournaments].sort((a,b)=>a.edition-b.edition);
         const cum = {}; players.forEach(p => cum[p] = 0);
-        _raceData = sorted.map(t => {
+        // Start with an all-zero "starting line" so edition 1 animates in
+        _raceData = [{edition: 0, snap: {...cum}, isStart: true}];
+        sorted.forEach(t => {
           (t.players||[]).forEach(p => { if(players.includes(p.username)) cum[p.username] += (p.total||0); });
-          return {edition: t.edition, snap: {...cum}};
+          _raceData.push({edition: t.edition, snap: {...cum}});
         });
         _raceIdx = 0; renderRace();
       }).catch(()=>{});
@@ -1474,7 +1476,7 @@
       const sorted = players.map(p => ({u:p, v:snap[p]||0})).sort((a,b)=>b.v-a.v);
       const maxVal = Math.max(...sorted.map(s=>s.v), 1);
       const label = document.getElementById('race-edition-label');
-      if (label) label.textContent = 'Edition ' + _raceData[_raceIdx].edition;
+      if (label) label.textContent = _raceData[_raceIdx].isStart ? 'Starting Line' : 'Edition ' + _raceData[_raceIdx].edition;
       const wrap = document.getElementById('race-bars');
       if (!wrap) return;
       wrap.innerHTML = sorted.map((s,i) => {

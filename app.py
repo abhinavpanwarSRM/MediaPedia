@@ -5947,6 +5947,18 @@ def koc_records():
 
     longest_winless = max(winless_streaks.items(), key=lambda x: x[1]['best'])
 
+    # Most titles (most edition wins)
+    title_counts = {}
+    for t in tournaments:
+        w = t.get('winner_username', '')
+        if w:
+            title_counts[w] = title_counts.get(w, 0) + 1
+    most_titles = None
+    if title_counts:
+        max_titles = max(title_counts.values())
+        tied = [KOC_DISPLAY.get(u, u) for u, c in title_counts.items() if c == max_titles]
+        most_titles = {'players': tied, 'titles': max_titles}
+
     return jsonify({
         'biggest_margin': biggest_margin,
         'highest_score': highest_score,
@@ -5954,7 +5966,8 @@ def koc_records():
         'perfect_editions': perfect_editions,
         'longest_winless': {'player': KOC_DISPLAY.get(longest_winless[0], longest_winless[0]), 'streak': longest_winless[1]['best']},
         'total_editions': len(tournaments),
-        'first_champion': KOC_DISPLAY.get(tournaments[0].get('winner_username',''), '') if tournaments else ''
+        'first_champion': KOC_DISPLAY.get(tournaments[0].get('winner_username',''), '') if tournaments else '',
+        'most_titles': most_titles
     })
 
 # ===== KOC Form Guide (last 5 editions per player) =====
