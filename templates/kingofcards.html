@@ -241,7 +241,7 @@
                     opacity:0; transition:opacity .9s ease-in-out; }
     .lightbox img.visible { opacity:1; }
     /* Metadata overlay */
-    .lb-meta { position:absolute; top:1.4rem; right:1.6rem; text-align:right;
+    .lb-meta { position:absolute; top:1.4rem; left:1.6rem; text-align:left;
                z-index:10; pointer-events:none; }
     .lb-meta-date { font-family:'Cormorant Garamond',serif; font-size:clamp(.9rem,3vw,1.3rem);
                     color:rgba(255,255,255,.55); letter-spacing:2px; opacity:0;
@@ -255,7 +255,7 @@
                       opacity:0; transform:translateY(-6px);
                       transition:opacity .6s ease .3s, transform .6s ease .3s; }
     .lb-meta-rule { width:0; height:1px; background:rgba(255,255,255,.25);
-                    margin-left:auto; margin-bottom:.4rem;
+                    margin-right:auto; margin-bottom:.4rem;
                     transition:width .7s ease .05s; }
     .lb-meta.show .lb-meta-date,
     .lb-meta.show .lb-meta-edition,
@@ -267,16 +267,16 @@
                   text-transform:uppercase; z-index:10; pointer-events:none;
                   opacity:0; transition:opacity .7s ease .4s; white-space:nowrap; }
     .lb-caption.show { opacity:1; }
-    /* Controls */
-    .lightbox-close { position:absolute; top:1rem; right:1.5rem; font-size:1.8rem;
-                       color:rgba(255,255,255,.5); cursor:pointer; background:none; border:none;
-                       line-height:1; z-index:20; transition:color .2s; }
+    .lightbox-controls { position:absolute; top:1rem; right:1.5rem; z-index:20;
+                          display:flex; align-items:center; gap:.5rem; }
+    .lightbox-close { font-size:1.8rem; color:rgba(255,255,255,.5); cursor:pointer;
+                       background:none; border:none; line-height:1; transition:color .2s;
+                       padding:0; }
     .lightbox-close:hover { color:#fff; }
-    .lightbox-rotate { position:absolute; top:1rem; right:4rem; font-size:1.4rem;
-                       color:var(--gold); cursor:pointer; background:rgba(0,0,0,.5);
-                       border:1px solid rgba(255,215,0,.3); border-radius:8px;
-                       width:36px; height:36px; display:flex; align-items:center;
-                       justify-content:center; z-index:20; transition:all .2s; }
+    .lightbox-rotate { font-size:1.4rem; color:var(--gold); cursor:pointer;
+                       background:rgba(0,0,0,.5); border:1px solid rgba(255,215,0,.3);
+                       border-radius:8px; width:36px; height:36px; display:flex;
+                       align-items:center; justify-content:center; transition:all .2s; }
     .lightbox-rotate:hover { background:rgba(255,215,0,.2); }
     .lightbox-rotate.saving { opacity:.4; pointer-events:none; }
 
@@ -895,9 +895,9 @@
       </div>
       <div class="lb-meta" id="lb-meta">
         <div class="lb-meta-rule" id="lb-meta-rule"></div>
-        <div class="lb-meta-date" id="lb-meta-date"></div>
-        <div class="lb-meta-edition" id="lb-meta-edition"></div>
         <div class="lb-meta-winner" id="lb-meta-winner"></div>
+        <div class="lb-meta-edition" id="lb-meta-edition"></div>
+        <div class="lb-meta-date" id="lb-meta-date"></div>
       </div>
       <div class="lb-caption" id="lb-caption"></div>
     </div>
