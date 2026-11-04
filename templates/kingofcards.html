@@ -102,18 +102,20 @@
     .throne-glow { display:none; }
 
     /* Crown animation: float + rotate on axis */
+    .throne-crown-wrap { perspective: 400px; margin-bottom: .6rem; }
     .throne-crown {
-      font-size: 3rem; line-height: 1; margin-bottom: .6rem; display: block;
-      animation: crownAnim 4s ease-in-out infinite;
+      font-size: 3rem; line-height: 1; display: block;
+      animation: crownAnim3d 4s ease-in-out infinite;
       transform-origin: center center;
+      transform-style: preserve-3d;
       filter: grayscale(1) brightness(2);
     }
-    @keyframes crownAnim {
-      0%   { transform: translateY(0)   rotateY(0deg);   }
-      25%  { transform: translateY(-6px) rotateY(90deg);  }
-      50%  { transform: translateY(-10px) rotateY(180deg); }
-      75%  { transform: translateY(-6px) rotateY(270deg); }
-      100% { transform: translateY(0)   rotateY(360deg); }
+    @keyframes crownAnim3d {
+      0%   { transform: translateY(0)    rotateY(0deg)   rotateX(0deg); }
+      25%  { transform: translateY(-6px) rotateY(90deg)  rotateX(10deg); }
+      50%  { transform: translateY(-10px) rotateY(180deg) rotateX(0deg); }
+      75%  { transform: translateY(-6px) rotateY(270deg) rotateX(-10deg); }
+      100% { transform: translateY(0)    rotateY(360deg) rotateX(0deg); }
     }
 
     .throne-label {
@@ -536,7 +538,9 @@
     {% if current_champion %}
     <div class="throne-card">
       <div class="throne-glow"></div>
-      <div class="throne-crown">&#x1F451;</div>
+      <div class="throne-crown-wrap">
+        <div class="throne-crown">&#x1F451;</div>
+      </div>
       <div class="throne-label">⬥ Reigning Champion ⬥</div>
       <div class="throne-name">{{ current_champion }}</div>
       <div class="throne-divider"></div>
