@@ -404,8 +404,7 @@
     .koc-intro-skip:hover { color:#fff;border-color:rgba(255,255,255,.4); }
     .koc-intro-vignette { position:absolute;inset:0;pointer-events:none;z-index:3;
       background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.6) 100%); }
-    .koc-intro-title { position:absolute;z-index:4;text-align:center;opacity:0;transition:opacity 1.5s ease-out; }
-    .koc-intro-title.show { opacity:1; }
+    .koc-intro-title { position:absolute;z-index:4;text-align:center;opacity:.85; }
     .koc-intro-title h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,9vw,6rem);
       font-weight:700;letter-spacing:6px;
       background:linear-gradient(135deg,#ffe066,#ffd700,#b8860b,#ffd700);
@@ -2243,15 +2242,13 @@
       images.forEach(function(src, i) {
         var img = document.createElement('img');
         img.src = src; img.className='koc-intro-img';
-        overlay.insertBefore(img, overlay.firstChild);
+        overlay.appendChild(img);
       });
       var timePerImg = Math.min(Math.max(duration / _introImages.length, 1.5), 5);
       _introImgIdx = 0; showIntroImage(0);
       _introTimer = setInterval(function() {
         _introImgIdx++;
         if (_introImgIdx >= _introImages.length) {
-          var title = document.getElementById('koc-intro-title');
-          if (title) title.classList.add('show');
           var meta = document.getElementById('koc-intro-meta');
           if (meta) meta.classList.remove('show');
           clearInterval(_introTimer); _introTimer = null;
