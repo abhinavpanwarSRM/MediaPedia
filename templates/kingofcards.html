@@ -1010,16 +1010,13 @@
       document.getElementById('lb-meta-date').textContent = _formatDate(photo.played_on);
       document.getElementById('lb-meta-edition').textContent = 'Edition ' + photo.edition;
       document.getElementById('lb-meta-winner').textContent = photo.winner ? '⚔ ' + photo.winner.split(' ')[0] : '';
-      if (cap) cap.textContent = photo.caption || '';
 
       function onLoaded() {
         img.classList.add('visible');
         setTimeout(() => {
           meta.classList.add('show');
-          const cap = document.getElementById('lb-caption');
           if (cap) cap.classList.add('show');
         }, 300);
-        // Fade background out after new image is settled
         setTimeout(() => { if (bg) bg.classList.remove('visible'); }, 1800);
       }
       img.onload = onLoaded;
