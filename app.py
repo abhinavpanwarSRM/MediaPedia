@@ -5576,10 +5576,18 @@ def koc_game_heatmap():
 
 @app.route('/api/koc/gallery')
 def koc_gallery():
-    """Return all KOC gallery photos sorted by edition ascending."""
+    """Return all KOC gallery photos sorted by edition ascending, enriched with tournament metadata."""
     if koc_gallery_collection is None:
         return jsonify([])
     photos = list(koc_gallery_collection.find({}, {'_id': 0}).sort('edition', 1))
+    # Enrich with tournament metadata (winner display name, date)
+    if koc_tournaments_collection is not None:
+        tournaments = {t['edition']: t for t in koc_tournaments_collection.find({}, {'_id': 0, 'edition': 1, 'played_on': 1, 'winner_username': 1})}
+        for p in photos:
+            t = tournaments.get(p.get('edition'))
+            if t:
+                p['played_on'] = t.get('played_on', '')
+                p['winner'] = KOC_DISPLAY.get(t.get('winner_username', ''), t.get('winner_username', ''))
     return jsonify(photos)
 
 @app.route('/api/koc/gallery/<image_id>/rotate', methods=['POST'])
