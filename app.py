@@ -24,11 +24,13 @@ log = logging.getLogger(__name__)
 import collections as _collections
 
 class _RingBufferLogHandler(logging.Handler):
-    """Stores recent log entries in memory for the admin log viewer."""
-    def __init__(self, capacity=400):
+    """Stores only ERROR and WARNING log entries in memory for the admin log viewer."""
+    def __init__(self, capacity=200):
         super().__init__()
         self.buffer = _collections.deque(maxlen=capacity)
     def emit(self, record):
+        if record.levelno < logging.WARNING:
+            return  # skip INFO and below
         try:
             self.buffer.append({
                 'time': datetime.fromtimestamp(record.created, timezone.utc).isoformat(),
@@ -41,15 +43,13 @@ class _RingBufferLogHandler(logging.Handler):
             pass
 
 _log_buffer = _RingBufferLogHandler()
-_log_buffer.setLevel(logging.INFO)
+_log_buffer.setLevel(logging.WARNING)
 _log_buffer.setFormatter(logging.Formatter('%(name)s: %(message)s'))
-# Allow INFO+ to reach handlers, but keep console output at ERROR only
 _root = logging.getLogger()
-_root.setLevel(logging.INFO)
+_root.setLevel(logging.WARNING)
 for _h in _root.handlers:
     _h.setLevel(logging.ERROR)
 _root.addHandler(_log_buffer)
-log.info('Logging ring buffer initialised (capacity 400)')
 
 app = Flask(__name__)
 import secrets as _secrets
@@ -158,21 +158,7 @@ def admin_logs_clear():
     if current_user() != 'abhinav':
         return jsonify({'error': 'Unauthorized'}), 403
     _log_buffer.buffer.clear()
-    log.info('Log buffer cleared by admin')
     return jsonify({'success': True})
-
-@app.after_request
-def _log_request(response):
-    """Log every request at INFO level (stored in ring buffer only)."""
-    try:
-        if not request.path.startswith('/api/admin/logs'):
-            user = current_user() or '-'
-            log.info('%s %s %s | user=%s | ip=%s',
-                     request.method, request.path, response.status_code,
-                     user, request.remote_addr)
-    except Exception:
-        pass
-    return response
 
 # ===== Splitwise =====
 from splitwise import splitwise_bp, init_splitwise

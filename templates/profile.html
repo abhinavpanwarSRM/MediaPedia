@@ -537,7 +537,7 @@
     <!-- ADMIN LOG VIEWER -->
     <div class="admin-logs">
       <div class="admin-logs-head" onclick="document.getElementById('admin-logs-body').classList.toggle('open'); const t=document.getElementById('admin-logs-toggle'); t.textContent = document.getElementById('admin-logs-body').classList.contains('open') ? '\u25B2' : '\u25BC'; if(document.getElementById('admin-logs-body').classList.contains('open')) loadAdminLogs();">
-        <h3>&#128187; Server Logs <span class="log-count" id="admin-log-count"></span></h3>
+        <h3>&#128187; Errors &amp; Warnings <span class="log-count" id="admin-log-count"></span></h3>
         <span class="admin-logs-toggle" id="admin-logs-toggle">&#9660;</span>
       </div>
       <div class="admin-logs-body" id="admin-logs-body">
@@ -1736,13 +1736,19 @@
         .then(r => r.json())
         .then(entries => {
           if (!Array.isArray(entries)) return;
-          document.getElementById('admin-log-count').textContent = entries.length;
           const wrap = document.getElementById('admin-logs-entries');
+          const countEl = document.getElementById('admin-log-count');
+          if (!entries.length) {
+            wrap.innerHTML = '<div style="padding:.8rem;text-align:center;color:var(--green);font-size:.82rem;">&#10003; No errors or warnings</div>';
+            if (countEl) countEl.textContent = '';
+            return;
+          }
+          if (countEl) countEl.textContent = entries.length;
           const wasScrolledBottom = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 40;
           wrap.innerHTML = entries.slice().reverse().map(e => {
             const t = (e.time || '').slice(11, 19);
-            const lvl = e.level || 'INFO';
-            const cls = { 'ERROR': 'log-level ERROR', 'WARNING': 'log-level WARNING', 'INFO': 'log-level INFO' }[lvl] || 'log-level INFO';
+            const lvl = e.level || 'ERROR';
+            const cls = { 'ERROR': 'log-level ERROR', 'WARNING': 'log-level WARNING' }[lvl] || 'log-level ERROR';
             return '<div class="log-entry"><span class="log-time">' + t + '</span><span class="' + cls + '">' + lvl + '</span><span class="log-msg">' + (e.message || '').replace(/</g, '&lt;') + '</span></div>';
           }).join('');
           if (wasScrolledBottom) wrap.scrollTop = 0;
