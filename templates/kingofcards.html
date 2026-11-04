@@ -1914,6 +1914,10 @@
         if (!_sketchesReadyFlag || !_ytReadyFlag) return;
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display = 'none';
+        // Request fullscreen on the user gesture before playback starts
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{});
+        }
         _startPlayback();
       };
     }
@@ -1930,6 +1934,9 @@
         if (!_sketchesReadyFlag || !_ytReadyFlag) return;
         sessionStorage.setItem('koc-intro-played','1');
         splash.style.display='none';
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(()=>{});
+        }
         _startPlayback();
       };
     }
@@ -2082,6 +2089,7 @@
       var overlay = document.getElementById('koc-intro-overlay');
       if (overlay) overlay.classList.add('hidden');
       document.body.style.overflow = '';
+      if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen().catch(()=>{}); }
       setTimeout(function(){ if(overlay) overlay.style.display='none'; }, 1300);
     }
     function skipIntro() { endIntro(); }
@@ -2239,7 +2247,7 @@
       }, { threshold: 0.05 });
       obs.observe(hero);
     })();
-  <script>
+    
     // Fullscreen on F/f
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'f' && e.key !== 'F') return;
