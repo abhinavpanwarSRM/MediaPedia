@@ -884,11 +884,12 @@
 
   <!-- LIGHTBOX / SHOWREEL -->
   <div class="lightbox" id="lightbox" onclick="if(event.target===this||event.target.classList.contains('lightbox-inner'))closeLightbox()">
-    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-    {% if username == 'abhinav' %}
-    <button class="lightbox-rotate" id="lightbox-rotate-btn" onclick="rotateGalleryImg(event)" title="Rotate 90°">&#10227;</button>
-    {% endif %}
-    <div class="lightbox-inner" id="lightbox-inner">
+    <div class="lightbox-controls">
+      {% if username == 'abhinav' %}
+      <button class="lightbox-rotate" id="lightbox-rotate-btn" onclick="rotateGalleryImg(event)" title="Rotate 90°">&#10227;</button>
+      {% endif %}
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    </div>
       <div class="lb-bg" id="lb-bg"></div>
       <div class="lightbox-img-wrap">
         <img id="lightbox-img" src="" alt="" />
