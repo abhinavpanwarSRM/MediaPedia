@@ -398,3 +398,19 @@
     registerServiceWorker: registerServiceWorker
   };
 })();
+
+// ── Fullscreen toggle on F / f key ──
+(function() {
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'f' && e.key !== 'F') return;
+    // Don't trigger while typing in an input/textarea/select
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (document.activeElement && document.activeElement.isContentEditable) return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen && document.exitFullscreen();
+    }
+  });
+})();

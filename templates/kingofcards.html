@@ -37,45 +37,102 @@
     .nav-drawer a:hover { color: #fff; background: rgba(255,255,255,0.04); }
     @media (max-width: 600px) { .nav-right { display: none; } .nav-burger { display: flex; } }
 
-    /* HERO */
+    /* HERO — Gothic / Game of Thrones */
+    @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
     .hero {
-      min-height: 60vh; display: flex; flex-direction: column;
+      min-height: 72vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center; text-align: center;
-      padding: 4rem 2rem 3rem;
-      background: radial-gradient(ellipse at center top, rgba(255,215,0,0.08) 0%, transparent 70%),
-                  linear-gradient(180deg, #1a1500 0%, #0d0d0d 100%);
-      border-bottom: 1px solid var(--border); position: relative; overflow: hidden;
+      padding: 5rem 2rem 4rem; position: relative; overflow: hidden;
+      background: #000;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
+    /* Radial vignette */
     .hero::before {
-      content: ''; position: absolute; inset: 0;
-      opacity: 0.06; pointer-events: none;
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 65%),
+                  radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.04) 0%, transparent 50%);
     }
+    /* Animated horizontal scan lines */
+    .hero::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    /* Decorative top border line */
+    .hero-rule { width: clamp(80px,20vw,200px); height: 1px; background: linear-gradient(90deg,transparent,#fff,transparent); margin-bottom: 1.4rem; }
+
     .hero h1 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.5rem, 9vw, 6rem); font-weight: 700; letter-spacing: 4px;
-      background: linear-gradient(135deg, #ffe066, #ffd700, #b8860b, #ffd700);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; text-shadow: none; line-height: 1.1;
+      font-size: clamp(2.8rem, 10vw, 7rem); font-weight: 700;
+      letter-spacing: 8px; color: #fff;
+      text-shadow: 0 0 60px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.8);
+      line-height: 1; margin-bottom: 0;
+      -webkit-background-clip: unset; -webkit-text-fill-color: unset;
+      background: none;
     }
-    .hero-sub { color: #aaa; font-size: 0.85rem; letter-spacing: 4px; text-transform: uppercase;
-                margin-top: 0.5rem; margin-bottom: 2rem; }
+    .hero-ornament { font-size: clamp(1rem,2.5vw,1.4rem); letter-spacing: 6px; color: rgba(255,255,255,.25); margin: .6rem 0; }
+    .hero-sub { color: rgba(255,255,255,.35); font-size: 0.75rem; letter-spacing: 5px;
+                text-transform: uppercase; margin-bottom: 2.2rem; }
+
+    .games-row { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2.4rem; }
+    .game-badge {
+      background: transparent; border: 1px solid rgba(255,255,255,.15);
+      border-radius: 3px; padding: .35rem 1rem; font-size: .72rem; font-weight: 600;
+      color: rgba(255,255,255,.4); letter-spacing: 2px; text-transform: uppercase;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* THRONE CARD */
     .throne-card {
       position: relative; overflow: hidden;
-      background: linear-gradient(135deg, rgba(255,215,0,0.13), rgba(184,134,11,0.08));
-      border: 1px solid rgba(255,215,0,0.4); border-radius: 20px;
-      padding: 1.8rem 2.5rem 1.5rem; text-align: center; margin-top: 0.5rem;
-      backdrop-filter: blur(8px); max-width: 420px; width: 100%;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 4px;
+      padding: 2rem 2.5rem 1.8rem; text-align: center; margin-top: 0;
+      max-width: 400px; width: 100%;
     }
-    .throne-glow { position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(255,215,0,.18),transparent 65%);pointer-events:none; }
-    .throne-crown { font-size: 2.8rem; line-height: 1; margin-bottom: .4rem; animation: throneFloat 3s ease-in-out infinite; }
-    @keyframes throneFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    .throne-label { font-size: 0.65rem; letter-spacing: 4px; color: var(--gold2); text-transform: uppercase; margin-bottom: .3rem; }
-    .throne-name { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem,6vw,2.8rem); font-weight: 700;
-                   color: var(--gold); letter-spacing: 2px; line-height: 1.1;
-                   text-shadow: 0 0 40px rgba(255,215,0,.4); margin-bottom: .7rem; }
+    /* corner ornaments */
+    .throne-card::before, .throne-card::after {
+      content: '✦'; position: absolute; font-size: .7rem; color: rgba(255,255,255,.2);
+    }
+    .throne-card::before { top: .5rem; left: .7rem; }
+    .throne-card::after  { bottom: .5rem; right: .7rem; }
+    .throne-glow { display:none; }
+
+    /* Crown animation: float + rotate on axis */
+    .throne-crown {
+      font-size: 3rem; line-height: 1; margin-bottom: .6rem; display: block;
+      animation: crownAnim 4s ease-in-out infinite;
+      transform-origin: center center;
+      filter: grayscale(1) brightness(2);
+    }
+    @keyframes crownAnim {
+      0%   { transform: translateY(0)   rotateY(0deg);   }
+      25%  { transform: translateY(-6px) rotateY(90deg);  }
+      50%  { transform: translateY(-10px) rotateY(180deg); }
+      75%  { transform: translateY(-6px) rotateY(270deg); }
+      100% { transform: translateY(0)   rotateY(360deg); }
+    }
+
+    .throne-label {
+      font-size: 0.6rem; letter-spacing: 5px; color: rgba(255,255,255,.3);
+      text-transform: uppercase; margin-bottom: .4rem; font-family: 'Poppins', sans-serif;
+    }
+    .throne-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.8rem,6vw,2.6rem); font-weight: 700;
+      color: #fff; letter-spacing: 3px; line-height: 1.1;
+      text-shadow: 0 0 30px rgba(255,255,255,.2);
+      margin-bottom: .8rem;
+    }
+    .throne-divider { width: 60px; height: 1px; background: rgba(255,255,255,.15); margin: 0 auto .8rem; }
     .throne-meta { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
-    .throne-pill { background: rgba(255,215,0,.1); border: 1px solid rgba(255,215,0,.2); border-radius: 20px;
-                   padding: .3rem .9rem; font-size: .75rem; color: #ccc; }
+    .throne-pill {
+      background: transparent; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 2px; padding: .28rem .8rem; font-size: .68rem;
+      color: rgba(255,255,255,.35); letter-spacing: 1px; font-family: 'Poppins', sans-serif;
+    }
 
     /* CONTENT */
     .content { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
@@ -385,10 +442,12 @@
 
   <!-- HERO -->
   <div class="hero">
+    <div class="hero-rule"></div>
     <h1>KING OF CARDS</h1>
+    <div class="hero-ornament">⚔ &nbsp;&nbsp; ✦ &nbsp;&nbsp; ⚔</div>
     <div class="hero-sub">The Private Card Game Tournament</div>
 
-    <div class="games-row" style="margin-top:1.5rem;margin-bottom:1.5rem;">
+    <div class="games-row">
       <div class="game-badge">Monopoly</div>
       <div class="game-badge">Bluff</div>
       <div class="game-badge">Spoon</div>
@@ -399,14 +458,16 @@
     <div class="throne-card">
       <div class="throne-glow"></div>
       <div class="throne-crown">&#x1F451;</div>
-      <div class="throne-label">Reigning Champion</div>
+      <div class="throne-label">⬥ Reigning Champion ⬥</div>
       <div class="throne-name">{{ current_champion }}</div>
+      <div class="throne-divider"></div>
       <div class="throne-meta">
-        <span class="throne-pill">&#x23F3; {{ reign_days }} days on the throne</span>
-        <span class="throne-pill">&#x1F3C6; Edition {{ latest_edition }}</span>
+        <span class="throne-pill">&#x2694;&#xFE0F; {{ reign_days }} days on the throne</span>
+        <span class="throne-pill">&#x2766; Edition {{ latest_edition }}</span>
       </div>
     </div>
     {% endif %}
+    <div class="hero-rule" style="margin-top:2rem;margin-bottom:0;"></div>
   </div>
 
   <div class="content">
