@@ -379,5 +379,14 @@
     loadReactions();
     loadComments();
   </script>
+  <script>
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'f' && e.key !== 'F') return;
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (document.activeElement && document.activeElement.isContentEditable) return;
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    });
+  </script>
 </body>
 </html>
