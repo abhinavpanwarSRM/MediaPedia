@@ -5576,11 +5576,42 @@ def koc_game_heatmap():
 
 @app.route('/api/koc/gallery')
 def koc_gallery():
-    """Return all KOC gallery photos captured during live sessions."""
+    """Return all KOC gallery photos sorted by edition ascending."""
     if koc_gallery_collection is None:
         return jsonify([])
-    photos = list(koc_gallery_collection.find({}, {'_id': 0}).sort('added_at', -1))
+    photos = list(koc_gallery_collection.find({}, {'_id': 0}).sort('edition', 1))
     return jsonify(photos)
+
+@app.route('/api/koc/gallery/<image_id>/rotate', methods=['POST'])
+def koc_gallery_rotate(image_id):
+    """Rotate a gallery image 90° clockwise. Abhinav only. Saves back to images_collection."""
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if images_collection is None or koc_gallery_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    # Check image belongs to gallery
+    gal = koc_gallery_collection.find_one({'image_id': image_id}, {'_id': 0})
+    if not gal:
+        return jsonify({'error': 'Not found'}), 404
+    img_doc = images_collection.find_one({'image_id': image_id}, {'data': 1, 'mime': 1, '_id': 0})
+    if not img_doc:
+        return jsonify({'error': 'Image data not found'}), 404
+    try:
+        from PIL import Image as PILImage
+        import io
+        img = PILImage.open(io.BytesIO(img_doc['data']))
+        img = img.rotate(-90, expand=True)  # -90 = 90° clockwise
+        buf = io.BytesIO()
+        mime = img_doc.get('mime', 'image/jpeg')
+        fmt = 'PNG' if mime == 'image/png' else 'JPEG'
+        kw = {} if fmt == 'PNG' else {'quality': 82, 'optimize': True}
+        img.save(buf, format=fmt, **kw)
+        new_data = buf.getvalue()
+    except Exception as e:
+        log.error('Rotate failed: %s', e)
+        return jsonify({'error': 'Rotation failed'}), 500
+    images_collection.update_one({'image_id': image_id}, {'$set': {'data': new_data}})
+    return jsonify({'success': True, 'url': '/api/img/' + image_id})
 
 @app.route('/api/koc/push_status')
 def koc_push_status():

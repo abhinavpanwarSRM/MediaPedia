@@ -225,10 +225,18 @@
     .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
                 z-index: 999; align-items: center; justify-content: center; padding: 1rem; }
     .lightbox.open { display: flex; }
-    .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 10px;
-                    border: 1px solid var(--border); object-fit: contain; }
+    .lightbox-inner { display:flex;flex-direction:column;align-items:center;gap:.6rem;max-width:90vw;max-height:90vh; }
+    .lightbox img { max-width: 90vw; max-height: 82vh; border-radius: 10px;
+                    border: 1px solid var(--border); object-fit: contain; display:block; }
+    .lightbox-caption { color:#ccc;font-size:.8rem;text-align:center;letter-spacing:1px; min-height:1.2em; }
     .lightbox-close { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem;
                        color: #fff; cursor: pointer; background: none; border: none; line-height: 1; }
+    .lightbox-rotate { position:absolute;top:1rem;right:4.5rem;font-size:1.5rem;color:var(--gold);
+                       cursor:pointer;background:rgba(0,0,0,.5);border:1px solid rgba(255,215,0,.3);
+                       border-radius:8px;width:38px;height:38px;display:flex;align-items:center;
+                       justify-content:center;transition:all .2s;line-height:1; }
+    .lightbox-rotate:hover { background:rgba(255,215,0,.2); }
+    .lightbox-rotate.saving { opacity:.5;pointer-events:none; }
 
     /* ADD TOURNAMENT MODAL */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
@@ -588,7 +596,7 @@
       {% if is_koc_player %}
       <div id="gallery-dynamic" class="gallery-grid"></div>
       <div class="gallery-grid" style="margin-top:.8rem;">
-        <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/Certificate.jpg') }}')">
+        <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/Certificate.jpg') }}','Certificate')">
           <img src="{{ url_for('static', filename='koc/Certificate.jpg') }}" alt="Certificate" loading="lazy" />
           <div class="gallery-ed-badge">Certificate</div>
         </div>
@@ -806,9 +814,15 @@
   </div>
 
   <!-- LIGHTBOX -->
-  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
-    <img id="lightbox-img" src="" alt="" />
+    {% if username == 'abhinav' %}
+    <button class="lightbox-rotate" id="lightbox-rotate-btn" onclick="rotateGalleryImg(event)" title="Rotate 90°">&#10227;</button>
+    {% endif %}
+    <div class="lightbox-inner">
+      <img id="lightbox-img" src="" alt="" />
+      <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
   </div>
 
   <!-- ADD EDITION MODAL -->
@@ -904,14 +918,37 @@
     let _editEdition = null;
     let _editData = null;
 
-    function openLightbox(src) {
-      document.getElementById('lightbox-img').src = src;
+    let _lightboxImageId = null;
+    function openLightbox(src, caption, imageId) {
+      _lightboxImageId = imageId || null;
+      const img = document.getElementById('lightbox-img');
+      img.src = src;
+      const cap = document.getElementById('lightbox-caption');
+      if (cap) cap.textContent = caption || '';
       document.getElementById('lightbox').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
     function closeLightbox() {
       document.getElementById('lightbox').classList.remove('open');
       document.body.style.overflow = '';
+      _lightboxImageId = null;
+    }
+    function rotateGalleryImg(e) {
+      e.stopPropagation();
+      if (!_lightboxImageId) return;
+      const btn = document.getElementById('lightbox-rotate-btn');
+      if (btn) btn.classList.add('saving');
+      fetch('/api/koc/gallery/' + _lightboxImageId + '/rotate', { method: 'POST' })
+        .then(r => r.json()).then(d => {
+          if (d.error) { showToast(d.error); if(btn) btn.classList.remove('saving'); return; }
+          // Bust the browser cache by appending a timestamp
+          const img = document.getElementById('lightbox-img');
+          img.src = d.url + '?t=' + Date.now();
+          showToast('Rotation saved');
+          if (btn) btn.classList.remove('saving');
+          // Refresh the gallery grid to show updated image
+          loadGallery();
+        }).catch(() => { showToast('Rotation failed'); if(btn) btn.classList.remove('saving'); });
     }
     document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeLightbox(); closeModal('add-modal'); closeModal('edit-modal'); } });
 
@@ -1603,13 +1640,16 @@
         const wrap = document.getElementById('gallery-dynamic');
         if (!wrap) return;
         if (!Array.isArray(photos) || !photos.length) { wrap.innerHTML=''; return; }
-        wrap.innerHTML = photos.map(p => `
-          <div class="gallery-item" onclick="openLightbox('${p.url}')">
-            <img src="${p.url}" alt="${(p.caption||'KOC Edition '+p.edition).replace(/'/g,'')}" loading="lazy" />
-            <div class="gallery-ed-badge">Edition ${p.edition}
-              ${p.caption ? `<span class="gallery-cap">${p.caption.replace(/</g,'&lt;')}</span>` : ''}
+        wrap.innerHTML = photos.map(p => {
+          const caption = p.caption || ('Edition ' + p.edition);
+          const cacheBust = '?t=' + (new Date(p.added_at||0).getTime()||'');
+          return `<div class="gallery-item" onclick="openLightbox('${p.url}${cacheBust}','${caption.replace(/'/g,'&apos;')}','${p.image_id}')">
+            <img src="${p.url}${cacheBust}" alt="${caption.replace(/'/g,'')}" loading="lazy" />
+            <div class="gallery-ed-badge">${caption}
+              ${p.caption && p.caption !== caption ? `<span class="gallery-cap">${p.caption.replace(/</g,'&lt;')}</span>` : ''}
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
       }).catch(()=>{});
     }
 
