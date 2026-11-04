@@ -1808,7 +1808,7 @@
           return `<div class="gallery-item" onclick="openLightbox('${p.url}','${caption.replace(/'/g,'&apos;')}','${p.image_id}')">
             <img src="${p.url}" alt="${caption.replace(/'/g,'')}" loading="lazy" />
             <div class="gallery-ed-badge">Edition ${p.edition}
-              ${p.caption ? `<span class="gallery-cap">${p.caption.replace(/</g,'&lt;')}</span>` : ''}
+              ${p.caption && p.caption !== 'Edition ' + p.edition ? `<span class="gallery-cap">${p.caption.replace(/</g,'&lt;')}</span>` : ''}
             </div>
           </div>`;
         }).join('');
