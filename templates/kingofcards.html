@@ -222,30 +222,34 @@
                     border-radius: 14px; color: var(--muted); font-size: 0.9rem; gap: 0.5rem; }
 
     /* LIGHTBOX / SHOWREEL */
-    .lightbox { display: none; position: fixed; inset: 0; background: #000;
-                z-index: 999; align-items: center; justify-content: center; }
-    .lightbox.open { display: flex; }
+    /* LIGHTBOX / SHOWREEL */
+    .lightbox { display:none; position:fixed; inset:0; background:#000;
+                z-index:999; align-items:center; justify-content:center; }
+    .lightbox.open { display:flex; }
     .lightbox-inner { position:relative; width:100%; height:100%; overflow:hidden; }
-    /* Background mountain layer — previous image, blurred + darkened */
-    .lb-bg { position:absolute; inset:-20px; background-size:cover; background-position:center;
+    /* Background mountain — previous image, blurred+darkened, z-index 0 */
+    .lb-bg { position:absolute; inset:-20px; z-index:0; background-size:cover;
+              background-position:center;
               filter:blur(22px) brightness(0.22) saturate(0.4);
               transform:scale(1.08); opacity:0;
-              transition:opacity 1.2s ease, background-image 0s; }
+              transition:opacity 1.2s ease; }
     .lb-bg.visible { opacity:1; }
-    /* Foreground image */
-    .lightbox-img-wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:2; }
+    /* Foreground sharp image */
+    .lightbox-img-wrap { position:absolute; inset:0; z-index:2; display:flex;
+                         align-items:center; justify-content:center; }
     .lightbox img { max-width:100vw; max-height:100vh; object-fit:contain; display:block;
                     opacity:0; transition:opacity .9s ease-in-out; }
     .lightbox img.visible { opacity:1; }
-    /* Top-right metadata overlay */
+    /* Metadata overlay */
     .lb-meta { position:absolute; top:1.4rem; right:1.6rem; text-align:right;
                z-index:10; pointer-events:none; }
     .lb-meta-date { font-family:'Cormorant Garamond',serif; font-size:clamp(.9rem,3vw,1.3rem);
-                    color:rgba(255,255,255,.5); letter-spacing:2px; opacity:0;
+                    color:rgba(255,255,255,.55); letter-spacing:2px; opacity:0;
                     transform:translateY(-10px); transition:opacity .6s ease, transform .6s ease; }
     .lb-meta-edition { font-family:'Cormorant Garamond',serif; font-size:clamp(1.4rem,5vw,2.2rem);
                        font-weight:700; color:#fff; letter-spacing:3px; opacity:0;
-                       transform:translateY(-8px); transition:opacity .6s ease .15s, transform .6s ease .15s; }
+                       transform:translateY(-8px);
+                       transition:opacity .6s ease .15s, transform .6s ease .15s; }
     .lb-meta-winner { font-family:'Cormorant Garamond',serif; font-size:clamp(.85rem,2.5vw,1.1rem);
                       color:rgba(255,255,255,.45); letter-spacing:4px; text-transform:uppercase;
                       opacity:0; transform:translateY(-6px);
@@ -257,6 +261,12 @@
     .lb-meta.show .lb-meta-edition,
     .lb-meta.show .lb-meta-winner { opacity:1; transform:translateY(0); }
     .lb-meta.show .lb-meta-rule { width:100%; }
+    /* Caption */
+    .lb-caption { position:absolute; bottom:1.6rem; left:50%; transform:translateX(-50%);
+                  color:rgba(255,255,255,.35); font-size:.72rem; letter-spacing:3px;
+                  text-transform:uppercase; z-index:10; pointer-events:none;
+                  opacity:0; transition:opacity .7s ease .4s; white-space:nowrap; }
+    .lb-caption.show { opacity:1; }
     /* Controls */
     .lightbox-close { position:absolute; top:1rem; right:1.5rem; font-size:1.8rem;
                        color:rgba(255,255,255,.5); cursor:pointer; background:none; border:none;
@@ -269,50 +279,6 @@
                        justify-content:center; z-index:20; transition:all .2s; }
     .lightbox-rotate:hover { background:rgba(255,215,0,.2); }
     .lightbox-rotate.saving { opacity:.4; pointer-events:none; }
-    /* Bottom caption */
-    .lb-caption { position:absolute; bottom:1.6rem; left:50%; transform:translateX(-50%);
-                  color:rgba(255,255,255,.3); font-size:.72rem; letter-spacing:3px;
-                  text-transform:uppercase; z-index:10; pointer-events:none;
-                  opacity:0; transition:opacity .6s ease .4s; white-space:nowrap; }
-    .lb-meta.show ~ .lb-caption { opacity:1; }
-    /* Top-right metadata overlay */
-    .lb-meta { position:absolute; top:1.4rem; right:1.6rem; text-align:right;
-               z-index:10; pointer-events:none; }
-    .lb-meta-date { font-family:'Cormorant Garamond',serif; font-size:clamp(.9rem,3vw,1.3rem);
-                    color:rgba(255,255,255,.5); letter-spacing:2px; opacity:0;
-                    transform:translateY(-10px); transition:opacity .6s ease, transform .6s ease; }
-    .lb-meta-edition { font-family:'Cormorant Garamond',serif; font-size:clamp(1.4rem,5vw,2.2rem);
-                       font-weight:700; color:#fff; letter-spacing:3px; opacity:0;
-                       transform:translateY(-8px); transition:opacity .6s ease .15s, transform .6s ease .15s; }
-    .lb-meta-winner { font-family:'Cormorant Garamond',serif; font-size:clamp(.85rem,2.5vw,1.1rem);
-                      color:rgba(255,255,255,.45); letter-spacing:4px; text-transform:uppercase;
-                      opacity:0; transform:translateY(-6px);
-                      transition:opacity .6s ease .3s, transform .6s ease .3s; }
-    .lb-meta-rule { width:0; height:1px; background:rgba(255,255,255,.25);
-                    margin-left:auto; margin-bottom:.4rem;
-                    transition:width .7s ease .05s; }
-    .lb-meta.show .lb-meta-date,
-    .lb-meta.show .lb-meta-edition,
-    .lb-meta.show .lb-meta-winner { opacity:1; transform:translateY(0); }
-    .lb-meta.show .lb-meta-rule { width:100%; }
-    /* Controls */
-    .lightbox-close { position:absolute; top:1rem; right:1.5rem; font-size:1.8rem;
-                       color:rgba(255,255,255,.5); cursor:pointer; background:none; border:none;
-                       line-height:1; z-index:20; transition:color .2s; }
-    .lightbox-close:hover { color:#fff; }
-    .lightbox-rotate { position:absolute; top:1rem; right:4rem; font-size:1.4rem;
-                       color:var(--gold); cursor:pointer; background:rgba(0,0,0,.5);
-                       border:1px solid rgba(255,215,0,.3); border-radius:8px;
-                       width:36px; height:36px; display:flex; align-items:center;
-                       justify-content:center; z-index:20; transition:all .2s; }
-    .lightbox-rotate:hover { background:rgba(255,215,0,.2); }
-    .lightbox-rotate.saving { opacity:.4; pointer-events:none; }
-    /* Bottom caption */
-    .lb-caption { position:absolute; bottom:1.6rem; left:50%; transform:translateX(-50%);
-                  color:rgba(255,255,255,.3); font-size:.72rem; letter-spacing:3px;
-                  text-transform:uppercase; z-index:10; pointer-events:none;
-                  opacity:0; transition:opacity .6s ease .4s; white-space:nowrap; }
-    .lb-meta.show ~ .lb-caption { opacity:1; }
 
     /* ADD TOURNAMENT MODAL */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
@@ -1032,6 +998,8 @@
       // Reset foreground
       meta.classList.remove('show');
       img.classList.remove('visible');
+      const cap = document.getElementById('lb-caption');
+      if (cap) { cap.classList.remove('show'); cap.textContent = photo.caption || ''; }
 
       // Load new foreground
       const newSrc = (photo.url || '') + (cacheBust ? '?t=' + cacheBust : '');
@@ -1046,7 +1014,11 @@
 
       function onLoaded() {
         img.classList.add('visible');
-        setTimeout(() => meta.classList.add('show'), 300);
+        setTimeout(() => {
+          meta.classList.add('show');
+          const cap = document.getElementById('lb-caption');
+          if (cap) cap.classList.add('show');
+        }, 300);
         // Fade background out after new image is settled
         setTimeout(() => { if (bg) bg.classList.remove('visible'); }, 1800);
       }
@@ -1085,9 +1057,11 @@
       const meta = document.getElementById('lb-meta');
       const img = document.getElementById('lightbox-img');
       const bg = document.getElementById('lb-bg');
+      const cap = document.getElementById('lb-caption');
       lb.classList.remove('open');
       meta.classList.remove('show');
       img.classList.remove('visible');
+      if (cap) cap.classList.remove('show');
       if (bg) { bg.classList.remove('visible'); bg.style.backgroundImage = ''; }
       document.body.style.overflow = '';
       _lightboxImageId = null;
