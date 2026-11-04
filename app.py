@@ -5240,6 +5240,13 @@ def koc_edit_tournament(edition):
             'updated_at': datetime.now(timezone.utc).isoformat()
         }}
     )
+    # Recompute oracle since the winner may have changed
+    if koc_predict_collection is not None and koc_oracle_collection is not None:
+        koc_predict_collection.update_many({'for_edition': edition}, {'$set': {'evaluated': False}})
+        koc_oracle_collection.delete_many({})
+        remaining = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+        for t in remaining:
+            _evaluate_predictions(t['edition'], t.get('winner_username', ''))
     return jsonify({'success': True, 'winner': winner.get('username','')})
 
 @app.route('/api/koc/tournaments/<int:edition>', methods=['DELETE'])
@@ -5250,6 +5257,24 @@ def koc_delete_tournament(edition):
     if koc_tournaments_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     koc_tournaments_collection.delete_one({'edition': edition})
+    # Roll back oracle stats for predictions evaluated against this edition
+    if koc_predict_collection is not None and koc_oracle_collection is not None:
+        evaluated = list(koc_predict_collection.find({'for_edition': edition, 'evaluated': True}, {'_id': 0}))
+        # Fetch the deleted tournament's winner to know which predictions were correct
+        # (already deleted above, so we work from the evaluated prediction records)
+        # Just un-evaluate them so they'll be re-evaluated if edition is re-added
+        koc_predict_collection.update_many(
+            {'for_edition': edition},
+            {'$set': {'evaluated': False}}
+        )
+        # Recompute oracle from scratch using remaining tournaments
+        remaining = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
+        koc_oracle_collection.delete_many({})
+        for t in remaining:
+            _evaluate_predictions(t['edition'], t.get('winner_username', ''))
+    # Also clean up gallery photos from this edition
+    if koc_gallery_collection is not None:
+        koc_gallery_collection.delete_many({'edition': edition})
     return jsonify({'success': True})
 
 @app.route('/api/koc/h2h')

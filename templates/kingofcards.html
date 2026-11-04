@@ -586,15 +586,13 @@
     <section style="margin-bottom:3rem;">
       <div class="section-title">Gallery</div>
       {% if is_koc_player %}
-      <div class="gallery-grid">
-        {% set gallery_imgs = ['Certificate.jpg','1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] %}
-        {% for img in gallery_imgs %}
-        <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/' + img) }}')">
-          <img src="{{ url_for('static', filename='koc/' + img) }}" alt="KOC {{ img }}" loading="lazy" />
+      <div id="gallery-dynamic" class="gallery-grid"></div>
+      <div class="gallery-grid" style="margin-top:.8rem;">
+        <div class="gallery-item" onclick="openLightbox('{{ url_for('static', filename='koc/Certificate.jpg') }}')">
+          <img src="{{ url_for('static', filename='koc/Certificate.jpg') }}" alt="Certificate" loading="lazy" />
+          <div class="gallery-ed-badge">Certificate</div>
         </div>
-        {% endfor %}
       </div>
-      <div id="gallery-dynamic" class="gallery-grid" style="margin-top:.8rem;"></div>
       {% else %}
       <div class="gallery-lock">
 
@@ -1773,8 +1771,6 @@
     // ===== CINEMATIC INTRO =====
     const IS_KOC_PLAYER = {{ 'true' if is_koc_player else 'false' }};
     const INTRO_STATIC_IMAGES = [
-      '/static/koc/1.jpg','/static/koc/2.jpg','/static/koc/3.jpg',
-      '/static/koc/4.jpg','/static/koc/5.jpg','/static/koc/6.jpg',
       '/static/koc/Certificate.jpg'
     ];
     let _introPlayer = null, _introTimer = null, _introImgIdx = 0, _introImages = [];
