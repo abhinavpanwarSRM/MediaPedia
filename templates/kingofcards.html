@@ -394,17 +394,17 @@
       display:flex;align-items:center;justify-content:center;overflow:hidden; }
     .koc-intro-overlay.hidden { opacity:0;pointer-events:none;transition:opacity 1.2s ease-out; }
     .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-      opacity:0; transition:opacity 1s ease-in-out; }
-    .koc-intro-img.active { opacity:1; }
-    .koc-intro-img.active { opacity:1; }
+      opacity:0; transition:opacity 1s ease-in-out; z-index:1; }
+    .koc-intro-img.active { opacity:1; z-index:2; }
+    .koc-intro-img.trail { opacity:.13; filter:blur(1px); z-index:1; transition:opacity 1.4s ease; }
     .koc-intro-skip { position:fixed;bottom:1.5rem;right:1.5rem;z-index:10000;
       background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
       color:#aaa;padding:.4rem 1rem;border-radius:20px;font-size:.78rem;
       cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif; }
     .koc-intro-skip:hover { color:#fff;border-color:rgba(255,255,255,.4); }
-    .koc-intro-vignette { position:absolute;inset:0;pointer-events:none;z-index:2;
+    .koc-intro-vignette { position:absolute;inset:0;pointer-events:none;z-index:3;
       background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.6) 100%); }
-    .koc-intro-title { position:absolute;z-index:3;text-align:center;opacity:0;transition:opacity 1.5s ease-out; }
+    .koc-intro-title { position:absolute;z-index:4;text-align:center;opacity:0;transition:opacity 1.5s ease-out; }
     .koc-intro-title.show { opacity:1; }
     .koc-intro-title h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,9vw,6rem);
       font-weight:700;letter-spacing:6px;
@@ -412,6 +412,27 @@
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
       text-shadow:0 0 60px rgba(255,215,0,.3); }
     .koc-intro-title p { color:#aaa;font-size:.8rem;letter-spacing:4px;text-transform:uppercase;margin-top:.5rem; }
+    /* Per-image metadata overlay */
+    .koc-intro-meta { position:absolute;top:1.4rem;right:1.6rem;text-align:right;
+      z-index:5;pointer-events:none; }
+    .koc-intro-meta-rule { width:0;height:1px;background:rgba(255,255,255,.2);
+      margin-left:auto;margin-bottom:.4rem;transition:width .6s ease; }
+    .koc-intro-meta-winner { font-family:'Cormorant Garamond',serif;
+      font-size:clamp(.75rem,2.5vw,.95rem);color:rgba(255,255,255,.45);letter-spacing:4px;
+      text-transform:uppercase;opacity:0;transform:translateY(-6px);
+      transition:opacity .5s ease .3s,transform .5s ease .3s; }
+    .koc-intro-meta-edition { font-family:'Cormorant Garamond',serif;
+      font-size:clamp(1.1rem,4vw,1.7rem);font-weight:700;color:#fff;letter-spacing:3px;
+      opacity:0;transform:translateY(-8px);
+      transition:opacity .5s ease .15s,transform .5s ease .15s; }
+    .koc-intro-meta-date { font-family:'Cormorant Garamond',serif;
+      font-size:clamp(.7rem,2vw,.9rem);color:rgba(255,255,255,.4);letter-spacing:2px;
+      opacity:0;transform:translateY(-10px);
+      transition:opacity .5s ease,transform .5s ease; }
+    .koc-intro-meta.show .koc-intro-meta-rule { width:80px; }
+    .koc-intro-meta.show .koc-intro-meta-winner,
+    .koc-intro-meta.show .koc-intro-meta-edition,
+    .koc-intro-meta.show .koc-intro-meta-date { opacity:1;transform:translateY(0); }
     .koc-splash { position:fixed;inset:0;z-index:9999;background:#000;
       display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:default; }
     .koc-splash h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,7vw,4rem);
@@ -455,6 +476,12 @@
     <div class="koc-intro-title" id="koc-intro-title">
       <h1>KING OF CARDS</h1>
       <p>The Private Card Game Tournament</p>
+    </div>
+    <div class="koc-intro-meta" id="koc-intro-meta">
+      <div class="koc-intro-meta-rule"></div>
+      <div class="koc-intro-meta-winner" id="koc-intro-meta-winner"></div>
+      <div class="koc-intro-meta-edition" id="koc-intro-meta-edition"></div>
+      <div class="koc-intro-meta-date" id="koc-intro-meta-date"></div>
     </div>
     <button class="koc-intro-skip" onclick="skipIntro()">Skip &#9654;</button>
   </div>
@@ -2007,11 +2034,30 @@
       img.src = src;
     }
 
+    let _introImageMeta = []; // metadata per image {edition, winner, date, isLast}
+
     function preProcessSketches() {
       _sketchReady = false;
-      var sources = [...INTRO_STATIC_IMAGES];
+      // Fetch gallery sorted by edition ASC, then append Certificate last
       fetch('/api/koc/gallery').then(r=>r.json()).then(photos => {
-        if (Array.isArray(photos)) photos.forEach(p => { if(p.url) sources.push(p.url); });
+        var sources = [];
+        _introImageMeta = [];
+        if (Array.isArray(photos)) {
+          photos.forEach(p => {
+            if (p.url) {
+              sources.push(p.url);
+              _introImageMeta.push({
+                edition: p.edition || '',
+                winner: p.winner ? p.winner.split(' ')[0] : '',
+                date: p.played_on || '',
+                isCert: false
+              });
+            }
+          });
+        }
+        // Certificate last
+        sources.push('/static/koc/Certificate.jpg');
+        _introImageMeta.push({edition:'', winner:'', date:'', isCert:true});
         _introImages = sources;
         _introSketchImages = [];
         _introImageRatios = [];
@@ -2025,6 +2071,8 @@
           });
         });
       }).catch(function() {
+        var sources = ['/static/koc/Certificate.jpg'];
+        _introImageMeta = [{edition:'', winner:'', date:'', isCert:true}];
         _introImages = sources;
         _introSketchImages = [];
         _introImageRatios = [];
@@ -2202,11 +2250,11 @@
       _introTimer = setInterval(function() {
         _introImgIdx++;
         if (_introImgIdx >= _introImages.length) {
-          // All images shown — display title and hold until the song ends
           var title = document.getElementById('koc-intro-title');
           if (title) title.classList.add('show');
+          var meta = document.getElementById('koc-intro-meta');
+          if (meta) meta.classList.remove('show');
           clearInterval(_introTimer); _introTimer = null;
-          // Keep the last image visible; endIntro() will be called by YT ENDED event
           return;
         }
         showIntroImage(_introImgIdx);
@@ -2219,34 +2267,57 @@
       if (!overlay) return;
       var images = overlay.querySelectorAll('.koc-intro-img');
       var ratio = _introImageRatios[idx] || 1;
-      var isMobile = window.innerWidth < window.innerHeight; // portrait viewport
+      var isMobile = window.innerWidth < window.innerHeight;
       var isLandscape = ratio > 1;
       var dur = Math.max(_introDuration / Math.max(_introImages.length, 1), 1.8);
       var animName = 'kb_' + idx;
       var kf;
       if (isMobile && isLandscape) {
-        // Mobile + landscape photo: pan left↔right, alternate per image
         var dir = idx % 2 === 0;
         kf = '@keyframes ' + animName + ' { 0%{transform:scale(1.08) translateX(' + (dir?'-4%':'4%') + ')} 100%{transform:scale(1.12) translateX(' + (dir?'4%':'-4%') + ')} }';
       } else if (!isMobile && !isLandscape) {
-        // Desktop + portrait photo: pan top↔bottom
         var dir2 = idx % 2 === 0;
         kf = '@keyframes ' + animName + ' { 0%{transform:scale(1.08) translateY(' + (dir2?'-3%':'3%') + ')} 100%{transform:scale(1.12) translateY(' + (dir2?'3%':'-3%') + ')} }';
       } else {
-        // Else: classic zoom in/out alternating
         var zIn = idx % 2 === 0;
         kf = '@keyframes ' + animName + ' { 0%{transform:scale(' + (zIn?'1':'1.12') + ')} 100%{transform:scale(' + (zIn?'1.12':'1') + ')} }';
       }
       if (!_kbStyleEl) { _kbStyleEl = document.createElement('style'); document.head.appendChild(_kbStyleEl); }
       _kbStyleEl.textContent = kf;
+
+      // Trail: previous → ghost, current → active
       images.forEach(function(el, i) {
-        el.classList.remove('active');
+        el.classList.remove('active', 'trail');
         el.style.animation = 'none';
         if (i === idx) {
           el.classList.add('active');
           el.style.animation = animName + ' ' + dur + 's ease-in-out forwards';
+        } else if (i === idx - 1) {
+          el.classList.add('trail'); // previous image stays faintly behind
         }
       });
+
+      // Metadata overlay
+      var meta = document.getElementById('koc-intro-meta');
+      if (meta) {
+        meta.classList.remove('show');
+        var m = _introImageMeta[idx] || {};
+        document.getElementById('koc-intro-meta-winner').textContent = m.winner ? '\u2694 ' + m.winner : '';
+        document.getElementById('koc-intro-meta-edition').textContent = m.edition ? 'Edition ' + m.edition : (m.isCert ? 'Certificate' : '');
+        document.getElementById('koc-intro-meta-date').textContent = m.date ? _formatIntroDate(m.date) : '';
+        if (m.edition || m.isCert) {
+          setTimeout(function() { if(meta) meta.classList.add('show'); }, 400);
+        }
+      }
+    }
+
+    function _formatIntroDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        var d = new Date(dateStr + 'T00:00:00');
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+      } catch(e) { return dateStr; }
     }
 
     function endIntro() {
