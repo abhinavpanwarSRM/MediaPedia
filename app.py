@@ -5109,6 +5109,7 @@ def kingofcards():
             pos = positions.get(u)
             if pos == 1: form_guide[u].append('W')
             elif pos is not None: form_guide[u].append('L')
+            else: form_guide[u].append('-')
     # Intro config — read once server-side so splash renders before JS
     intro_enabled = False
     intro_video_id = ''

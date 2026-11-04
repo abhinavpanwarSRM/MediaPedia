@@ -1457,7 +1457,9 @@
         const wrap = document.getElementById('rivalry-wrap');
         if (!wrap || !d.p1) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
         const total = d.p1_wins + d.p2_wins + d.draws;
-        const p1pct = total ? Math.round(d.p1_wins/total*100) : 50;
+        const p1pct = total ? (d.p1_wins/total*100) : 50;
+        const p2pct = total ? (d.p2_wins/total*100) : 50;
+        const drawpct = 100 - p1pct - p2pct;
         wrap.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
             <div style="text-align:center;flex:1;">
@@ -1475,7 +1477,11 @@
             </div>
           </div>
           <div style="background:rgba(255,255,255,.06);border-radius:20px;height:8px;overflow:hidden;margin-bottom:.6rem;">
-            <div style="background:linear-gradient(90deg,var(--gold2),var(--gold));height:100%;width:${p1pct}%;border-radius:20px;transition:width .6s;"></div>
+            <div style="display:flex;height:100%;border-radius:20px;overflow:hidden;">
+              <div style="background:linear-gradient(90deg,var(--gold2),var(--gold));height:100%;width:${p1pct.toFixed(1)}%;transition:width .6s;"></div>
+              ${drawpct > 0 ? `<div style="background:rgba(255,255,255,.15);height:100%;width:${drawpct.toFixed(1)}%;"></div>` : ''}
+              <div style="background:linear-gradient(90deg,#a29bfe,#5799ef);height:100%;width:${p2pct.toFixed(1)}%;transition:width .6s;"></div>
+            </div>
           </div>
           <p style="font-size:.75rem;color:var(--muted);text-align:center;">${total} head-to-head encounters</p>`;
       }).catch(()=>{ const w=document.getElementById('rivalry-wrap'); if(w) w.innerHTML='<p style="color:#ff4757;font-size:.85rem;">Failed to load.</p>'; });
