@@ -109,6 +109,7 @@
     .form-pill { font-size: .55rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; letter-spacing: .5px; }
     .fp-w { background: rgba(46,213,115,.2); color: #2ed573; border: 1px solid rgba(46,213,115,.3); }
     .fp-l { background: rgba(255,71,87,.15); color: #ff6b6b; border: 1px solid rgba(255,71,87,.25); }
+    .fp-n { background: rgba(255,255,255,.05); color: #555; border: 1px solid rgba(255,255,255,.1); }
 
     /* EDITIONS GRID */
     .editions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 1.2rem; }
@@ -475,7 +476,7 @@
               {% set form = form_guide.get(p.username, []) %}
               {% if form %}
               <div class="form-pills">
-                {% for r in form %}<span class="form-pill {{ 'fp-w' if r=='W' else 'fp-l' }}">{{ r }}</span>{% endfor %}
+                {% for r in form %}<span class="form-pill {{ 'fp-w' if r=='W' else 'fp-l' if r=='L' else 'fp-n' }}">{{ r }}</span>{% endfor %}
               </div>
               {% endif %}
             </div>
