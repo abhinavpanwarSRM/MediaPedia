@@ -1754,11 +1754,19 @@
         if (!wrap || !d.total_editions) { if(wrap) wrap.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Not enough data yet.</p>'; return; }
         const records = [
           { icon:'&#x1F3C6;', label:'Most Titles', val: d.most_titles?.titles ? d.most_titles.titles+' title'+(d.most_titles.titles!==1?'s':'') : '\u2014', sub: d.most_titles?.players?.length ? d.most_titles.players.map(p=>p.split(' ')[0]).join(' & ') : '' },
-          { icon:'&#x1F4A5;', label:'Biggest Margin', val: d.biggest_margin?.margin ? d.biggest_margin.margin+' pts' : '—', sub: d.biggest_margin?.winner ? 'by '+d.biggest_margin.winner.split(' ')[0]+' (Ed.'+d.biggest_margin.edition+')' : '' },
-          { icon:'&#x2B50;', label:'Highest Score', val: d.highest_score?.score ? d.highest_score.score+' pts' : '—', sub: d.highest_score?.player ? d.highest_score.player.split(' ')[0]+' (Ed.'+d.highest_score.edition+')' : '' },
+          { icon:'&#x1F4A5;', label:'Biggest Margin',
+            val: d.biggest_margin?.margin ? d.biggest_margin.margin+' pts' : '—',
+            sub: (d.biggest_margin_all||[d.biggest_margin]).filter(Boolean).map(r=>r.winner?.split(' ')[0]+' Ed.'+r.edition).join(' / ') },
+          { icon:'&#x2B50;', label:'Highest Score',
+            val: d.highest_score?.score ? d.highest_score.score+' pts' : '—',
+            sub: (d.highest_score_all||[d.highest_score]).filter(Boolean).map(r=>r.player?.split(' ')[0]+' Ed.'+r.edition).join(' / ') },
           { icon:'&#x1F451;', label:'First Champion', val: d.first_champion?.split(' ')[0] || '—', sub: 'Edition 1' },
-          { icon:'&#x1F480;', label:'Longest Winless', val: d.longest_winless?.streak ? d.longest_winless.streak+' editions' : '—', sub: d.longest_winless?.player?.split(' ')[0] || '' },
-          { icon:'&#x1F525;', label:'Most Dominant', val: d.most_dominant?.game_wins ? d.most_dominant.game_wins+' game wins' : '—', sub: d.most_dominant?.player ? d.most_dominant.player.split(' ')[0]+' (Ed.'+d.most_dominant.edition+')' : '' },
+          { icon:'&#x1F480;', label:'Longest Winless',
+            val: d.longest_winless?.streak ? d.longest_winless.streak+' editions' : '—',
+            sub: (d.longest_winless_all||[d.longest_winless]).filter(Boolean).map(r=>r.player?.split(' ')[0]).join(' & ') },
+          { icon:'&#x1F525;', label:'Most Dominant',
+            val: d.most_dominant?.game_wins ? d.most_dominant.game_wins+' game wins' : '—',
+            sub: (d.most_dominant_all||[d.most_dominant]).filter(Boolean).map(r=>r.player?.split(' ')[0]+' Ed.'+r.edition).join(' / ') },
         ];
         wrap.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem;">' +
           records.map(r=>`<div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:1rem .8rem;text-align:center;">
@@ -1781,10 +1789,15 @@
           const last = sorted[sorted.length-1];
           const winCounts = {};
           sorted.forEach(t => { const w=t.winner_username; if(w) winCounts[w]=(winCounts[w]||0)+1; });
-          const topWinner = Object.entries(winCounts).sort((a,b)=>b[1]-a[1])[0];
+          // Find all tied leaders, not just one
+          const maxTitles = winCounts ? Math.max(...Object.values(winCounts)) : 0;
+          const topWinners = Object.entries(winCounts).filter(([,c])=>c===maxTitles);
+          const topWinnerLine = topWinners.length
+            ? `&#x1F451; <strong>${topWinners.map(([u])=>u.charAt(0).toUpperCase()+u.slice(1)).join(' &amp; ')}</strong> lead${topWinners.length>1?'':'s'} all-time with <strong>${maxTitles} title${maxTitles!==1?'s':''}</strong>.`
+            : '';
           const lines = [
             `&#x1F4C5; <strong>${d.total_editions} editions</strong> played in KOC history.`,
-            topWinner ? `&#x1F451; <strong>${(topWinner[0].charAt(0).toUpperCase()+topWinner[0].slice(1))}</strong> leads all-time with <strong>${topWinner[1]} title${topWinner[1]!==1?'s':''}</strong>.` : '',
+            topWinnerLine,
             d.biggest_margin?.margin ? `&#x1F4A5; Biggest ever margin: <strong>${d.biggest_margin.margin} points</strong> by ${d.biggest_margin.winner?.split(' ')[0]} in Edition ${d.biggest_margin.edition}.` : '',
             d.highest_score?.score ? `&#x2B50; Highest ever score: <strong>${d.highest_score.score} points</strong> by ${d.highest_score.player?.split(' ')[0]} in Edition ${d.highest_score.edition}.` : '',
             last ? `&#x1F3AE; Most recent: Edition ${last.edition} won by <strong>${(last.winner_display||last.winner_username||'').split(' ')[0]}</strong> on ${last.played_on}.` : '',
@@ -1945,12 +1958,38 @@
           if (!ps.length) return;
           const ranked = [...ps].sort((a,b)=>(b.total||0)-(a.total||0));
           const wU = ranked[0].username;
+
+          // Back-to-Back: won previous edition too
           if (prevWinner && wU === prevWinner) badges.push({p:wU,ed:t.edition,ic:'&#x1F517;',t:'Back-to-Back',m:'Consecutive wins'});
-          if (idx>0 && prevRank[wU]) { const last=Object.entries(prevRank).sort((a,b)=>a[1]-b[1])[0]; if(last&&last[0]===wU) badges.push({p:wU,ed:t.edition,ic:'&#x1F525;',t:'Comeback King',m:'Last &#8594; 1st'}); }
+
+          // Comeback King: winner was last place in previous edition (fixed: sort desc to get worst rank)
+          if (idx>0 && prevRank[wU]!==undefined) {
+            const worstRank = Math.max(...Object.values(prevRank));
+            if (prevRank[wU] === worstRank) badges.push({p:wU,ed:t.edition,ic:'&#x1F525;',t:'Comeback King',m:'Last \u2192 1st'});
+          }
+
+          // Clean Sweep: won at least one round in all 4 games (scored 2 in r1 OR r2 for each game)
           const games=['monopoly','bluff','spoon','uno'];
-          if (games.every(g => ps.reduce((a,b)=>((b[g]||0)>(a[g]||0))?b:a,{username:''}).username===wU)) badges.push({p:wU,ed:t.edition,ic:'&#x1F9F9;',t:'Clean Sweep',m:'Won all 4 games'});
-          players.forEach(u => { const cur=ps.find(p=>p.username===u); if(cur&&prevScores[u]!==undefined){const d=(cur.total||0)-prevScores[u]; if(d>=4) badges.push({p:u,ed:t.edition,ic:'&#x1F4C8;',t:'Most Improved',m:'+'+d+' pts'});} });
-          prevWinner=wU; prevRank={}; ranked.forEach((p,i)=>prevRank[p.username]=i+1); ps.forEach(p=>prevScores[p.username]=p.total||0);
+          const cleanSweep = games.every(g => {
+            const r1 = ps.find(p=>p.username===wU)?.['r1_'+g]||0;
+            const r2 = ps.find(p=>p.username===wU)?.['r2_'+g]||0;
+            return r1>=2 || r2>=2;
+          });
+          if (cleanSweep) badges.push({p:wU,ed:t.edition,ic:'&#x1F9F9;',t:'Clean Sweep',m:'Won a round in all 4 games'});
+
+          // Most Improved: +4 or more pts vs previous edition (all players, not just winner)
+          players.forEach(u => {
+            const cur=ps.find(p=>p.username===u);
+            if(cur&&prevScores[u]!==undefined){
+              const diff=(cur.total||0)-prevScores[u];
+              if(diff>=4) badges.push({p:u,ed:t.edition,ic:'&#x1F4C8;',t:'Most Improved',m:'+'+diff+' pts'});
+            }
+          });
+
+          prevWinner=wU;
+          prevRank={};
+          ranked.forEach((p,i)=>prevRank[p.username]=i+1);
+          ps.forEach(p=>prevScores[p.username]=p.total||0);
         });
         // Iron Man
         const ep={}; sorted.forEach(t=>(t.players||[]).forEach(p=>{if(players.includes(p.username))ep[p.username]=(ep[p.username]||0)+1;}));

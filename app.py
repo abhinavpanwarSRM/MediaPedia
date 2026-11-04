@@ -6016,21 +6016,33 @@ def koc_records():
     if not tournaments:
         return jsonify({})
 
-    biggest_margin = {'margin': 0, 'winner': '', 'edition': 0}
-    highest_score = {'score': 0, 'player': '', 'edition': 0}
-    most_dominant = {'game_wins': 0, 'player': '', 'edition': 0}
-    perfect_editions = []  # won all 8 games
+    biggest_margin_val = 0
+    biggest_margin_records = []
+    highest_score_val = 0
+    highest_score_records = []
+    most_dominant_val = 0
+    most_dominant_records = []
+    perfect_editions = []
     winless_streaks = {u: {'cur': 0, 'best': 0} for u in KOC_USERNAMES}
 
     for t in tournaments:
         players = sorted(t.get('players', []), key=lambda x: -x.get('total', 0))
         if len(players) >= 2:
             margin = players[0].get('total', 0) - players[1].get('total', 0)
-            if margin > biggest_margin['margin']:
-                biggest_margin = {'margin': margin, 'winner': KOC_DISPLAY.get(players[0].get('username',''), players[0].get('username','')), 'edition': t['edition']}
+            winner_name = KOC_DISPLAY.get(players[0].get('username',''), players[0].get('username',''))
+            if margin > biggest_margin_val:
+                biggest_margin_val = margin
+                biggest_margin_records = [{'margin': margin, 'winner': winner_name, 'edition': t['edition']}]
+            elif margin == biggest_margin_val and margin > 0:
+                biggest_margin_records.append({'margin': margin, 'winner': winner_name, 'edition': t['edition']})
         for p in players:
-            if p.get('total', 0) > highest_score['score']:
-                highest_score = {'score': p['total'], 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
+            score = p.get('total', 0)
+            pname = KOC_DISPLAY.get(p.get('username',''), p.get('username',''))
+            if score > highest_score_val:
+                highest_score_val = score
+                highest_score_records = [{'score': score, 'player': pname, 'edition': t['edition']}]
+            elif score == highest_score_val and score > 0:
+                highest_score_records.append({'score': score, 'player': pname, 'edition': t['edition']})
             gw = 0
             for g in ('monopoly', 'bluff', 'spoon', 'uno'):
                 if p.get('r1_' + g) is not None:
@@ -6038,10 +6050,13 @@ def koc_records():
                     if p.get('r2_' + g, 0) >= 2: gw += 1
                 else:
                     if p.get(g, 0) >= 2: gw += 1
-            if gw > most_dominant['game_wins']:
-                most_dominant = {'game_wins': gw, 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username','')), 'edition': t['edition']}
+            if gw > most_dominant_val:
+                most_dominant_val = gw
+                most_dominant_records = [{'game_wins': gw, 'player': pname, 'edition': t['edition']}]
+            elif gw == most_dominant_val and gw > 0:
+                most_dominant_records.append({'game_wins': gw, 'player': pname, 'edition': t['edition']})
             if gw == 8:
-                perfect_editions.append({'edition': t['edition'], 'player': KOC_DISPLAY.get(p.get('username',''), p.get('username',''))})
+                perfect_editions.append({'edition': t['edition'], 'player': pname})
         winner_u = t.get('winner_username', '')
         for u in KOC_USERNAMES:
             if u == winner_u:
@@ -6051,9 +6066,13 @@ def koc_records():
                 if winless_streaks[u]['cur'] > winless_streaks[u]['best']:
                     winless_streaks[u]['best'] = winless_streaks[u]['cur']
 
-    longest_winless = max(winless_streaks.items(), key=lambda x: x[1]['best'])
+    max_winless = max((v['best'] for v in winless_streaks.values()), default=0)
+    longest_winless_list = [
+        {'player': KOC_DISPLAY.get(u, u), 'streak': v['best']}
+        for u, v in winless_streaks.items() if v['best'] == max_winless and max_winless > 0
+    ]
 
-    # Most titles (most edition wins)
+    # Most titles
     title_counts = {}
     for t in tournaments:
         w = t.get('winner_username', '')
@@ -6065,12 +6084,21 @@ def koc_records():
         tied = [KOC_DISPLAY.get(u, u) for u, c in title_counts.items() if c == max_titles]
         most_titles = {'players': tied, 'titles': max_titles}
 
+    # Build single-record fields for backward compat (first in list)
+    biggest_margin = biggest_margin_records[0] if biggest_margin_records else {'margin': 0, 'winner': '', 'edition': 0}
+    highest_score = highest_score_records[0] if highest_score_records else {'score': 0, 'player': '', 'edition': 0}
+    most_dominant = most_dominant_records[0] if most_dominant_records else {'game_wins': 0, 'player': '', 'edition': 0}
+
     return jsonify({
         'biggest_margin': biggest_margin,
+        'biggest_margin_all': biggest_margin_records,
         'highest_score': highest_score,
+        'highest_score_all': highest_score_records,
         'most_dominant': most_dominant,
+        'most_dominant_all': most_dominant_records,
         'perfect_editions': perfect_editions,
-        'longest_winless': {'player': KOC_DISPLAY.get(longest_winless[0], longest_winless[0]), 'streak': longest_winless[1]['best']},
+        'longest_winless': longest_winless_list[0] if longest_winless_list else {'player': '', 'streak': 0},
+        'longest_winless_all': longest_winless_list,
         'total_editions': len(tournaments),
         'first_champion': KOC_DISPLAY.get(tournaments[0].get('winner_username',''), '') if tournaments else '',
         'most_titles': most_titles
