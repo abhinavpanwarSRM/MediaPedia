@@ -1172,12 +1172,31 @@
         <span class="auth-sep">|</span>
         <a href="/register" class="auth-reg">Register</a>
       {% endif %}
-        <button id="app-setup-btn" onclick="toggleAppPanel()" title="App Setup"
-          style="background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.4);border-radius:20px;color:#fff;font-size:.88rem;font-weight:800;padding:.28rem .75rem;cursor:pointer;margin-left:.5rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle;letter-spacing:1px;">
-          ! <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#fff;animation:dotBlink 1.2s ease-in-out infinite;"></span>
-          <style>@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:0}}</style>
-        </button>
       </div>
+
+      <!-- APP SETUP BTN — fixed top-right below navbar -->
+      <style>
+        #app-setup-btn {
+          position:fixed;top:54px;right:1rem;z-index:999;
+          background:rgba(13,13,13,.92);
+          border:1.5px solid rgba(229,9,20,.6);
+          border-radius:6px;
+          color:#e50914;font-size:.9rem;font-weight:900;
+          width:32px;height:32px;
+          display:flex;align-items:center;justify-content:center;
+          cursor:pointer;letter-spacing:0;
+          backdrop-filter:blur(6px);
+          transition:background .2s,border-color .2s,transform .15s;
+        }
+        #app-setup-btn:hover { background:rgba(229,9,20,.18);border-color:#e50914;transform:scale(1.08); }
+        #app-setup-btn.needs-action { animation:btnPulse 1.8s ease-in-out infinite; }
+        @keyframes btnPulse {
+          0%,100% { box-shadow:0 0 0 0 rgba(229,9,20,.5); color:#e50914; }
+          50%      { box-shadow:0 0 0 7px rgba(229,9,20,0); color:#ff6b6b; }
+        }
+        @keyframes dotBlink{0%,100%{opacity:1}50%{opacity:0}}
+      </style>
+      <button id="app-setup-btn" onclick="toggleAppPanel()" title="App Setup">!</button>
 
       <!-- APP SETUP PANEL -->
       <div id="app-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;width:min(340px,92vw);
@@ -3886,9 +3905,10 @@
         // Show battery row only on Android
         if (battRow) battRow.style.display = isAndroid ? 'block' : 'none';
 
-        // Show dot if any action is needed
-        var dot = document.getElementById('app-setup-dot');
-        if (dot) dot.style.display = (!isStandalone || state !== 'granted') ? 'inline-block' : 'none';
+        // Blink if any action still needed
+        var btn = document.getElementById('app-setup-btn');
+        var allDone = (isStandalone || !window.pwaIsInstallable || !window.pwaIsInstallable()) && state === 'granted';
+        if (btn) btn.classList.toggle('needs-action', !allDone);
       }
       function doInstall() {
         if (!window.pwaInstall) return;
@@ -3918,19 +3938,19 @@
           alert('Battery optimization only applies on Android devices.');
         }
       }
-      // Show dot on load if setup incomplete
+      // Show blink on load if setup incomplete
       window.addEventListener('load', function() {
         setTimeout(function() {
           var state = window.pwaNotificationState ? window.pwaNotificationState() : 'default';
           var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-          var dot = document.getElementById('app-setup-dot');
-          if (dot && (!isStandalone || state !== 'granted')) dot.style.display = 'inline-block';
+          var btn = document.getElementById('app-setup-btn');
+          if (btn && (!isStandalone || state !== 'granted')) btn.classList.add('needs-action');
         }, 1500);
       });
-      // When browser signals installable, update dot
+      // When browser signals installable, start blinking
       window.addEventListener('pwa-installable', function() {
-        var dot = document.getElementById('app-setup-dot');
-        if (dot) dot.style.display = 'inline-block';
+        var btn = document.getElementById('app-setup-btn');
+        if (btn) btn.classList.add('needs-action');
         if (_panelOpen) refreshPanelState();
       });
       </script>
