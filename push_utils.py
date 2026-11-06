@@ -28,7 +28,8 @@ def send_push(username, payload):
             subscription_info=doc['subscription'],
             data=json.dumps(payload),
             vapid_private_key=_vapid_private_key,
-            vapid_claims={'sub': _vapid_claims_email}
+            vapid_claims={'sub': _vapid_claims_email},
+            headers={'Urgency': 'high', 'TTL': '86400'}
         )
     except WebPushException as ex:
         log.error('WebPush failed for %s: %s', username, ex)

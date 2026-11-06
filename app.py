@@ -570,6 +570,20 @@ def add_comment():
         # Prepare response
         comment["_id"] = str(result.inserted_id)
         comment["created_at"] = comment["created_at"].isoformat()
+
+        # Notify followers of new review
+        reviewer = comment['username']
+        if follows_collection is not None:
+            title_preview = str(data.get('id',''))[:40]
+            for f in follows_collection.find({'following': reviewer}, {'_id': 0, 'follower': 1}):
+                follower = f['follower']
+                if follower != reviewer:
+                    send_push(follower, {
+                        'title': f'⭐ {reviewer} left a review',
+                        'body': f'{comment["rating"]}/5 — {title_preview}',
+                        'url': '/feed',
+                        'tag': f'review-{comment["comment_id"]}'
+                    })
         
         return jsonify(comment), 201
         
@@ -1712,6 +1726,15 @@ def follow_user(target):
         'url': f'/u/{username}',
         'tag': f'follow-{username}'
     })
+    # Mutual follow — notify both if they now follow each other
+    is_mutual = follows_collection.find_one({'follower': target, 'following': username}) is not None
+    if is_mutual:
+        send_push(username, {
+            'title': f'🤝 {target} follows you back!',
+            'body': f'You and {target} are now mutuals',
+            'url': f'/u/{target}',
+            'tag': f'mutual-{target}'
+        })
     return jsonify({'status': 'followed'})
 
 # ===== User Lists =====
@@ -1764,6 +1787,18 @@ def add_to_list(list_id):
     )
     if result.matched_count == 0:
         return jsonify({'error': 'List not found'}), 404
+    # Notify followers when you add to a list
+    if follows_collection is not None:
+        list_doc = lists_collection.find_one({'list_id': list_id}, {'_id': 0, 'name': 1})
+        list_name = list_doc.get('name', 'a list') if list_doc else 'a list'
+        followers_list = [f['follower'] for f in follows_collection.find({'following': username}, {'_id': 0, 'follower': 1})]
+        for f in followers_list:
+            send_push(f, {
+                'title': f'📋 {username} updated {list_name}',
+                'body': f'Added: {item.get("title", "")}',
+                'url': f'/u/{username}',
+                'tag': f'list-update-{username}'
+            })
     return jsonify({'success': True})
 
 @app.route('/api/lists/<list_id>/remove', methods=['POST'])
@@ -1995,6 +2030,12 @@ def birthday_trigger():
             upsert=True
         )
         sent += 1
+        send_push(mutual, {
+            'title': f'🎂 {username}\'s birthday today!',
+            'body': f'Wish {username} a happy birthday 🎉',
+            'url': f'/u/{username}',
+            'tag': f'birthday-{username}'
+        })
     users_collection.update_one({'username': username}, {'$set': {'last_birthday_dm_date': today_full}})
     return jsonify({'ok': True, 'sent': sent})
 
@@ -2240,6 +2281,18 @@ def create_post():
                     'url': '/feed',
                     'tag': f'mention-{post["post_id"]}'
                 })
+        # Notify followers of new post
+        if follows_collection is not None:
+            preview = (tagged_media.get('title','') if tagged_media else '') or text[:60] or 'New post'
+            for f in follows_collection.find({'following': username}, {'_id': 0, 'follower': 1}):
+                follower = f['follower']
+                if follower != username:
+                    send_push(follower, {
+                        'title': f'📝 {username} posted',
+                        'body': preview,
+                        'url': '/feed',
+                        'tag': f'post-{post["post_id"]}'
+                    })
         return jsonify(post), 201
     except Exception as e:
         log.error('create_post error: %s', e)
@@ -2262,6 +2315,15 @@ def like_post(post_id):
         return jsonify({'liked': False, 'count': len(new_likes), 'likers': new_likes})
     posts_collection.update_one({'post_id': post_id}, {'$addToSet': {'likes': username}})
     new_likes = likes + [username]
+    # Notify post owner
+    post_doc = posts_collection.find_one({'post_id': post_id}, {'_id': 0, 'username': 1})
+    if post_doc and post_doc.get('username') and post_doc['username'] != username:
+        send_push(post_doc['username'], {
+            'title': f'❤️ {username} liked your post',
+            'body': 'Tap to see your post',
+            'url': f'/u/{post_doc["username"]}',
+            'tag': f'post-like-{post_id}'
+        })
     return jsonify({'liked': True, 'count': len(new_likes), 'likers': new_likes})
 
 @app.route('/api/posts/<post_id>/comments', methods=['GET'])
@@ -2414,6 +2476,25 @@ def repost_review():
     posts_collection.insert_one(post)
     post.pop('_id', None)
     post['created_at'] = _to_ist_str(post['created_at'])
+    # Notify original review author
+    if original.get('username') and original['username'] != username:
+        send_push(original['username'], {
+            'title': f'↩️ {username} reposted your review',
+            'body': original.get('text', '')[:80],
+            'url': f'/u/{username}',
+            'tag': f'repost-{username}'
+        })
+    # Notify followers of reposter
+    if follows_collection is not None:
+        followers_list = [f['follower'] for f in follows_collection.find({'following': username}, {'_id': 0, 'follower': 1})]
+        for f in followers_list:
+            if f != username and f != original.get('username'):
+                send_push(f, {
+                    'title': f'↩️ {username} reposted a review',
+                    'body': original.get('content_title', '')[:60],
+                    'url': f'/u/{username}',
+                    'tag': f'repost-feed-{username}'
+                })
     return jsonify(post), 201
 
 # ===== Activity Ticker =====
@@ -2653,6 +2734,13 @@ def add_collaborator(playlist_id):
     )
     if result.matched_count == 0:
         return jsonify({'error': 'Playlist not found or not owner'}), 404
+    pl = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'name': 1})
+    send_push(target, {
+        'title': f'🎵 {username} added you to a playlist',
+        'body': f'Playlist: {pl.get("name","") if pl else ""}',
+        'url': f'/playlist/{playlist_id}',
+        'tag': f'playlist-collab-{playlist_id}'
+    })
     return jsonify({'success': True})
 
 @app.route('/api/playlists/<playlist_id>/collaborators/<target>', methods=['DELETE'])
@@ -2699,6 +2787,18 @@ def add_song(playlist_id):
     if not song['song_title'] or not song['artist_name']:
         return jsonify({'error': 'Song title and artist required'}), 400
     playlists_collection.update_one({'playlist_id': playlist_id}, {'$push': {'songs': song}})
+    # Notify playlist owner and collaborators (except the adder)
+    notify_users = [pl['username']] + pl.get('collaborators', [])
+    pl_name_doc = playlists_collection.find_one({'playlist_id': playlist_id}, {'_id': 0, 'name': 1})
+    pl_name = pl_name_doc.get('name', 'playlist') if pl_name_doc else 'playlist'
+    for u in set(notify_users):
+        if u != username:
+            send_push(u, {
+                'title': f'🎵 {username} added to {pl_name}',
+                'body': f'{song["song_title"]} — {song["artist_name"]}',
+                'url': f'/playlist/{playlist_id}',
+                'tag': f'song-add-{playlist_id}'
+            })
     return jsonify(song), 201
 
 @app.route('/api/playlists/<playlist_id>/songs/<song_id>', methods=['DELETE'])
@@ -5834,6 +5934,15 @@ def koc_comments_post():
         'created_at': datetime.now(timezone.utc).isoformat()
     }
     koc_comments_collection.insert_one(comment)
+    # Notify all other KOC players
+    for u in KOC_USERNAMES:
+        if u != username:
+            send_push(u, {
+                'title': f'💬 {KOC_DISPLAY.get(username, username).split()[0]} commented on Ed.{edition}',
+                'body': text[:80],
+                'url': f'/kingofcards/{edition}',
+                'tag': f'koc-comment-{edition}'
+            })
     return jsonify(comment), 201
 
 # ===== KOC Predict =====
@@ -5875,6 +5984,13 @@ def _evaluate_predictions(edition, winner_username):
         else:
             oracle['streak'] = 0
         koc_oracle_collection.update_one({'username': uname}, {'$set': oracle}, upsert=True)
+        winner_first = KOC_DISPLAY.get(winner_username, winner_username).split()[0]
+        send_push(uname, {
+            'title': '🔮 Prediction result' + (' — Correct! ✅' if is_correct else ' — Wrong ❌'),
+            'body': f'KOC Edition {edition} winner: {winner_first}',
+            'url': '/kingofcards',
+            'tag': f'koc-predict-{edition}'
+        })
     koc_predict_collection.update_many({'for_edition': edition, 'evaluated': {'$ne': True}}, {'$set': {'evaluated': True}})
 
 @app.route('/api/koc/predict', methods=['GET'])

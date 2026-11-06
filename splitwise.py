@@ -189,6 +189,14 @@ def create_group():
         'created_at': _now()
     }
     sw_groups_col.insert_one(doc)
+    for m in members:
+        if m != username:
+            send_push(m, {
+                'title': f'👥 {username} added you to a group',
+                'body': f'New split group: "{name}"',
+                'url': '/splitwise',
+                'tag': f'sw-group-{group_id}'
+            })
     return jsonify({'group_id': group_id, 'name': name, 'members': members}), 201
 
 
@@ -483,6 +491,15 @@ def edit_expense(group_id, expense_id):
         'image_url': image_url,
     }
     sw_expenses_col.update_one({'expense_id': expense_id}, {'$set': update})
+    # Notify other members about the edit
+    for m in g['members']:
+        if m != username:
+            send_push(m, {
+                'title': f'✏️ {username} edited an expense',
+                'body': f'{desc or "Expense"} — ₹{amount:.2f} in {g["name"]}',
+                'url': '/splitwise',
+                'tag': f'sw-edit-{group_id}'
+            })
     return jsonify({'success': True, **update})
 
 
@@ -500,6 +517,15 @@ def delete_expense(group_id, expense_id):
     if exp['created_by'] != username and g.get('created_by') != username:
         return jsonify({'error': 'Not authorized'}), 403
     sw_expenses_col.delete_one({'expense_id': expense_id})
+    # Notify other members about deletion
+    for m in g['members']:
+        if m != username:
+            send_push(m, {
+                'title': f'🗑️ {username} deleted an expense',
+                'body': f'{exp.get("description","Expense")} — ₹{exp.get("amount",0):.2f} in {g["name"]}',
+                'url': '/splitwise',
+                'tag': f'sw-del-{group_id}'
+            })
     return jsonify({'success': True})
 
 
@@ -614,7 +640,13 @@ def settle_all(group_id):
         sw_settlements_col.insert_one(doc)
         doc.pop('_id', None)
         created.append(doc)
-    
+        # Notify creditor they've been paid
+        send_push(t['to'], {
+            'title': f'✅ {t["from"]} settled up with you',
+            'body': f'₹{t["amount"]:.2f} in {g["name"]}',
+            'url': '/splitwise',
+            'tag': f'sw-settleall-{group_id}'
+        })
     return jsonify({'success': True, 'count': len(created)})
 
 
