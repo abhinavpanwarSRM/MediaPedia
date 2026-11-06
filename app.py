@@ -3264,6 +3264,14 @@ def group_poll_vote(group_id, poll_id):
         {'$set': {f'votes.{username}': option}}
     )
     updated = group_polls_collection.find_one({'group_id': group_id, 'poll_id': poll_id}, {'_id': 0})
+    # Notify poll creator
+    if poll.get('creator') and poll['creator'] != username:
+        send_push(poll['creator'], {
+            'title': f'📊 {username} voted on your poll',
+            'body': f'"{poll.get("question","Poll")[:60]}" — voted: {option}',
+            'url': f'/group_chat',
+            'tag': f'poll-vote-{poll_id}'
+        })
     return jsonify({'votes': updated['votes'], 'options': updated['options']})
 
 @app.route('/api/groups/<group_id>/polls/<poll_id>', methods=['GET'])
@@ -4520,6 +4528,15 @@ def bb_add_reel_comment(reel_id):
     bb_reel_comments_collection.insert_one(doc)
     doc.pop('_id', None)
     _bb_award_points(username, 1, f'commented on reel {reel_id}')
+    # Notify reel owner
+    reel_doc = bb_reels_collection.find_one({'reel_id': reel_id}, {'_id': 0, 'username': 1}) if bb_reels_collection else None
+    if reel_doc and reel_doc.get('username') and reel_doc['username'] != username:
+        send_push(reel_doc['username'], {
+            'title': f'💬 {username} commented on your reel',
+            'body': text[:80],
+            'url': '/biggboss',
+            'tag': f'bb-reel-comment-{reel_id}'
+        })
     return jsonify(doc), 201
 
 @app.route('/api/bb/reels/<reel_id>/comments/<comment_id>', methods=['DELETE'])
@@ -4592,6 +4609,15 @@ def bb_like_reel(reel_id):
         return jsonify({'liked': False, 'count': len(likes) - 1})
     bb_reels_collection.update_one({'reel_id': reel_id}, {'$addToSet': {'likes': username}})
     _bb_award_points(username, 1, f'liked reel {reel_id}')
+    # Notify reel owner
+    reel_doc = bb_reels_collection.find_one({'reel_id': reel_id}, {'_id': 0, 'username': 1})
+    if reel_doc and reel_doc.get('username') and reel_doc['username'] != username:
+        send_push(reel_doc['username'], {
+            'title': f'❤️ {username} liked your reel',
+            'body': 'Tap to see your reel',
+            'url': '/biggboss',
+            'tag': f'bb-reel-like-{reel_id}'
+        })
     return jsonify({'liked': True, 'count': len(likes) + 1})
 
 @app.route('/api/bb/reels/<reel_id>', methods=['DELETE'])
