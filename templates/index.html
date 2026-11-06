@@ -3891,9 +3891,21 @@
         });
       }
       function doBattery() {
-        // Deep-link to Android app battery settings
-        try { window.location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;end'; }
-        catch(e) { alert('Go to Settings → Apps → Chrome → Battery → select Unrestricted'); }
+        var isAndroid = /android/i.test(navigator.userAgent);
+        if (isAndroid) {
+          var msg = '📋 To get reliable notifications on Android:\n\n' +
+            '1. Go to Settings → Apps\n' +
+            '2. Find Chrome (or your browser)\n' +
+            '3. Tap Battery\n' +
+            '4. Select "Unrestricted"\n\n' +
+            'Also turn off:\n' +
+            'Settings → Battery → Adaptive Battery → OFF\n\n' +
+            'On Xiaomi/MIUI:\n' +
+            'Settings → Apps → Chrome → Battery Saver → No restrictions';
+          alert(msg);
+        } else {
+          alert('Battery optimization only applies on Android devices.');
+        }
       }
       // Show dot on load if setup incomplete
       window.addEventListener('load', function() {
