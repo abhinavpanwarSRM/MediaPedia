@@ -1172,6 +1172,51 @@
         <span class="auth-sep">|</span>
         <a href="/register" class="auth-reg">Register</a>
       {% endif %}
+        <button id="app-setup-btn" onclick="toggleAppPanel()" title="App Setup"
+          style="background:none;border:1px solid rgba(255,255,255,.25);border-radius:20px;color:#aaa;font-size:.8rem;padding:.28rem .7rem;cursor:pointer;margin-left:.5rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle;">
+          🔔 <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#e50914;"></span>
+        </button>
+      </div>
+
+      <!-- APP SETUP PANEL -->
+      <div id="app-panel" style="display:none;position:fixed;top:3.2rem;left:1rem;z-index:9999;width:min(340px,92vw);
+        background:#111;border:1px solid rgba(255,255,255,.12);border-radius:14px;
+        box-shadow:0 8px 32px rgba(0,0,0,.7);padding:1.2rem;font-family:'Poppins',sans-serif;animation:panelFadeIn .18s ease;">
+        <style>@keyframes panelFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}</style>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <span style="font-weight:700;font-size:.95rem;color:#fff;">App Setup</span>
+          <button onclick="toggleAppPanel()" style="background:none;border:none;color:#888;font-size:1.3rem;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+
+        <!-- 1. Install -->
+        <div style="margin-bottom:.9rem;padding:.8rem;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:.8rem;font-weight:600;color:#fff;margin-bottom:.3rem;">📲 Install App</div>
+          <div style="font-size:.73rem;color:#999;margin-bottom:.6rem;" id="install-hint">Add MediaPedia to your Home Screen for the best experience and to receive notifications on iOS.</div>
+          <button id="btn-install" onclick="doInstall()"
+            style="background:rgba(29,185,84,.15);border:1px solid #1db954;color:#1db954;border-radius:8px;padding:.38rem .9rem;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;">
+            Install App
+          </button>
+        </div>
+
+        <!-- 2. Notifications -->
+        <div style="margin-bottom:.9rem;padding:.8rem;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:.8rem;font-weight:600;color:#fff;margin-bottom:.3rem;">🔔 Push Notifications</div>
+          <div style="font-size:.73rem;color:#999;margin-bottom:.6rem;">Get notified about messages, likes, KOC updates and more — even when the app is closed.</div>
+          <button id="btn-notif" onclick="doNotif()"
+            style="background:rgba(87,153,239,.15);border:1px solid #5799ef;color:#5799ef;border-radius:8px;padding:.38rem .9rem;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;">
+            Enable Notifications
+          </button>
+        </div>
+
+        <!-- 3. Battery Optimization (Android hint) -->
+        <div id="battery-row" style="padding:.8rem;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:.8rem;font-weight:600;color:#fff;margin-bottom:.3rem;">⚡ Unrestricted Battery</div>
+          <div style="font-size:.73rem;color:#999;margin-bottom:.6rem;">For reliable notifications on Android, disable battery optimization for your browser.</div>
+          <button id="btn-battery" onclick="doBattery()"
+            style="background:rgba(255,193,7,.12);border:1px solid #ffc107;color:#ffc107;border-radius:8px;padding:.38rem .9rem;font-size:.8rem;font-weight:600;cursor:pointer;width:100%;">
+            Open Battery Settings
+          </button>
+        </div>
       </div>
       <h1
         class="title"
@@ -3779,5 +3824,92 @@
       });
     </script>
       <script src="/static/pwa.js"></script>
+      <script>
+      // ── App Setup Panel ──
+      var _panelOpen = false;
+      function toggleAppPanel() {
+        var panel = document.getElementById('app-panel');
+        _panelOpen = !_panelOpen;
+        panel.style.display = _panelOpen ? 'block' : 'none';
+        if (_panelOpen) refreshPanelState();
+      }
+      document.addEventListener('click', function(e) {
+        if (_panelOpen && !document.getElementById('app-panel').contains(e.target) && e.target.id !== 'app-setup-btn') {
+          _panelOpen = false; document.getElementById('app-panel').style.display = 'none';
+        }
+      });
+      function refreshPanelState() {
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        var isAndroid = /android/i.test(navigator.userAgent);
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+        // Install button
+        var btnI = document.getElementById('btn-install');
+        var hint = document.getElementById('install-hint');
+        var battRow = document.getElementById('battery-row');
+        if (isStandalone) {
+          btnI.textContent = '✅ Already installed';
+          btnI.disabled = true; btnI.style.opacity = '.5';
+        } else if (isIOS) {
+          btnI.textContent = 'How to install on iOS';
+          hint.textContent = 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen". This is required to receive notifications on iOS.';
+          btnI.onclick = function() { alert('1. Open this site in Safari\n2. Tap the Share button (box with arrow)\n3. Tap "Add to Home Screen"\n4. Tap "Add"'); };
+        } else if (window.pwaIsInstallable && window.pwaIsInstallable()) {
+          btnI.textContent = 'Install App';
+        } else {
+          btnI.textContent = 'Open in browser menu to install';
+          btnI.disabled = true; btnI.style.opacity = '.5';
+        }
+
+        // Notification button
+        var btnN = document.getElementById('btn-notif');
+        var state = window.pwaNotificationState ? window.pwaNotificationState() : 'default';
+        if (state === 'granted') {
+          btnN.textContent = '✅ Notifications enabled'; btnN.disabled = true; btnN.style.opacity = '.5';
+        } else if (state === 'denied') {
+          btnN.textContent = '🔕 Blocked — allow in browser settings'; btnN.disabled = true; btnN.style.opacity = '.5';
+        } else if (state === 'unsupported') {
+          btnN.textContent = 'Not supported on this browser'; btnN.disabled = true; btnN.style.opacity = '.5';
+        }
+
+        // Show battery row only on Android
+        if (battRow) battRow.style.display = isAndroid ? 'block' : 'none';
+
+        // Show dot if any action is needed
+        var dot = document.getElementById('app-setup-dot');
+        if (dot) dot.style.display = (!isStandalone || state !== 'granted') ? 'inline-block' : 'none';
+      }
+      function doInstall() {
+        if (!window.pwaInstall) return;
+        window.pwaInstall().then(function(r) { if (r === 'accepted') refreshPanelState(); });
+      }
+      function doNotif() {
+        if (!window.pwaEnableNotifications) return;
+        Notification.requestPermission().then(function(p) {
+          if (p === 'granted' && window.pwaEnableNotifications) window.pwaEnableNotifications();
+          refreshPanelState();
+        });
+      }
+      function doBattery() {
+        // Deep-link to Android app battery settings
+        try { window.location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;end'; }
+        catch(e) { alert('Go to Settings → Apps → Chrome → Battery → select Unrestricted'); }
+      }
+      // Show dot on load if setup incomplete
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var state = window.pwaNotificationState ? window.pwaNotificationState() : 'default';
+          var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+          var dot = document.getElementById('app-setup-dot');
+          if (dot && (!isStandalone || state !== 'granted')) dot.style.display = 'inline-block';
+        }, 1500);
+      });
+      // When browser signals installable, update dot
+      window.addEventListener('pwa-installable', function() {
+        var dot = document.getElementById('app-setup-dot');
+        if (dot) dot.style.display = 'inline-block';
+        if (_panelOpen) refreshPanelState();
+      });
+      </script>
 </body>
 </html>

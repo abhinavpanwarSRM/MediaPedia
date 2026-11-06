@@ -5,51 +5,28 @@
   var _deferredInstallPrompt = null;
   var _subscription = null;
 
-  // ── Install prompt ──
+  // ── Install prompt — capture but don't auto-show banner ──
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     _deferredInstallPrompt = e;
-    showInstallBanner();
+    // Signal the app panel to update install button state
+    window.dispatchEvent(new CustomEvent('pwa-installable'));
   });
 
-  function showInstallBanner() {
-    if (document.getElementById('pwa-install-banner')) return;
-    var banner = document.createElement('div');
-    banner.id = 'pwa-install-banner';
-    banner.style.cssText =
-      'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
-      'background:#1a1a1a;border:1px solid #1db954;border-radius:16px;' +
-      'padding:0.8rem 1.2rem;z-index:99999;display:flex;align-items:center;' +
-      'gap:0.8rem;box-shadow:0 4px 20px rgba(0,0,0,0.6);max-width:90vw;' +
-      'animation:pwaSlideUp 0.3s ease;font-family:sans-serif;';
-    banner.innerHTML =
-      '<style>@keyframes pwaSlideUp{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>' +
-      '<span style="font-size:1.2rem">📲</span>' +
-      '<span style="font-size:0.88rem;color:#ccc">Install MediaPedia for the best experience</span>' +
-      '<button id="pwa-install-btn" style="background:#1db954;border:none;border-radius:8px;' +
-      'padding:0.35rem 0.9rem;font-weight:700;cursor:pointer;color:#000;font-size:0.82rem;white-space:nowrap;">Install</button>' +
-      '<button id="pwa-dismiss-btn" style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.2rem;">&times;</button>';
-    document.body.appendChild(banner);
-    
-    var installBtn = document.getElementById('pwa-install-btn');
-    var dismissBtn = document.getElementById('pwa-dismiss-btn');
-    if (installBtn) installBtn.onclick = installPWA;
-    if (dismissBtn) dismissBtn.onclick = function() { banner.remove(); };
+  function installPWA() {
+    if (!_deferredInstallPrompt) return Promise.resolve('not-available');
+    _deferredInstallPrompt.prompt();
+    return _deferredInstallPrompt.userChoice.then(function(result) {
+      _deferredInstallPrompt = null;
+      if (result.outcome === 'accepted') {
+        setTimeout(initPushNotifications, 2000);
+        return 'accepted';
+      }
+      return 'dismissed';
+    }).catch(function() { return 'error'; });
   }
 
-  function installPWA() {
-    var banner = document.getElementById('pwa-install-banner');
-    if (banner) banner.remove();
-    if (!_deferredInstallPrompt) return;
-    _deferredInstallPrompt.prompt();
-    _deferredInstallPrompt.userChoice.then(function(result) {
-      if (result.outcome === 'accepted') {
-        showPwaToast('MediaPedia installed! 🎉');
-        setTimeout(initPushNotifications, 2000);
-      }
-      _deferredInstallPrompt = null;
-    }).catch(function() {});
-  }
+  function isInstallable() { return !!_deferredInstallPrompt; }
 
   // ── Service Worker ──
   function registerServiceWorker() {
@@ -396,5 +373,14 @@
     checkPendingInvites: checkPendingInvites,
     initPushNotifications: initPushNotifications,
     registerServiceWorker: registerServiceWorker
+  };
+
+  // ── Global helpers for the app panel ──
+  window.pwaInstall = installPWA;
+  window.pwaIsInstallable = isInstallable;
+  window.pwaEnableNotifications = function() { return initPushNotifications(_swReg); };
+  window.pwaNotificationState = function() {
+    if (!('Notification' in window)) return 'unsupported';
+    return Notification.permission; // 'default' | 'granted' | 'denied'
   };
 })();

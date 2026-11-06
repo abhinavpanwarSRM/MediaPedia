@@ -2018,43 +2018,6 @@
       // ========== PWA: SERVICE WORKER + PUSH + MEDIA SESSION ==========
 
       var _swReg = null;
-      var _deferredInstallPrompt = null;
-
-      // 1. Capture install prompt before browser shows it
-      window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        _deferredInstallPrompt = e;
-        showInstallBanner();
-      });
-
-      function showInstallBanner() {
-        if (document.getElementById('pwa-install-banner')) return;
-        var banner = document.createElement('div');
-        banner.id = 'pwa-install-banner';
-        banner.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
-          'background:#1a1a1a;border:1px solid #1db954;border-radius:16px;padding:0.8rem 1.2rem;' +
-          'z-index:9997;display:flex;align-items:center;gap:0.8rem;box-shadow:0 4px 20px rgba(0,0,0,0.5);' +
-          'max-width:90vw;animation:slideDown 0.3s ease;';
-        banner.innerHTML =
-          '<span style="font-size:1.2rem">📲</span>' +
-          '<span style="font-size:0.88rem;color:#ccc">Install MediaPedia for the full experience</span>' +
-          '<button onclick="installPWA()" style="background:#1db954;border:none;border-radius:8px;' +
-          'padding:0.35rem 0.9rem;font-weight:700;cursor:pointer;color:#000;font-size:0.82rem;white-space:nowrap;">Install</button>' +
-          '<button onclick="document.getElementById(\'pwa-install-banner\').remove()" ' +
-          'style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;padding:0 0.2rem;">&times;</button>';
-        document.body.appendChild(banner);
-      }
-
-      function installPWA() {
-        var banner = document.getElementById('pwa-install-banner');
-        if (banner) banner.remove();
-        if (!_deferredInstallPrompt) return;
-        _deferredInstallPrompt.prompt();
-        _deferredInstallPrompt.userChoice.then(function(result) {
-          if (result.outcome === 'accepted') showToast('MediaPedia installed! 🎉');
-          _deferredInstallPrompt = null;
-        });
-      }
 
       // Update notification button state on load
       function updateNotifBtn() {
