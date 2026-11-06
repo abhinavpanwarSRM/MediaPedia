@@ -1174,7 +1174,8 @@
       {% endif %}
         <button id="app-setup-btn" onclick="toggleAppPanel()" title="App Setup"
           style="background:rgba(229,9,20,.12);border:1px solid rgba(229,9,20,.4);border-radius:20px;color:#fff;font-size:.88rem;font-weight:800;padding:.28rem .75rem;cursor:pointer;margin-left:.5rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle;letter-spacing:1px;">
-          ! <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#fff;"></span>
+          ! <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#fff;animation:dotBlink 1.2s ease-in-out infinite;"></span>
+          <style>@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:0}}</style>
         </button>
       </div>
 
