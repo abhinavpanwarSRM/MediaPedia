@@ -160,6 +160,32 @@ def admin_logs_clear():
     _log_buffer.buffer.clear()
     return jsonify({'success': True})
 
+@app.route('/api/admin/broadcast', methods=['POST'])
+def admin_broadcast():
+    """Send a push notification to all subscribed users (admin only)."""
+    if current_user() != 'abhinav':
+        return jsonify({'error': 'Unauthorized'}), 403
+    if push_subs_collection is None:
+        return jsonify({'error': 'DB unavailable'}), 500
+    data = request.json or {}
+    title = (data.get('title') or '').strip()[:80]
+    body  = (data.get('body')  or '').strip()[:200]
+    url   = (data.get('url')   or '/').strip()[:200]
+    if not title or not body:
+        return jsonify({'error': 'title and body required'}), 400
+    subs = list(push_subs_collection.find({}, {'_id': 0, 'username': 1}))
+    sent = 0; failed = 0
+    for s in subs:
+        u = s.get('username')
+        if not u: continue
+        try:
+            send_push(u, {'title': title, 'body': body, 'url': url, 'tag': 'broadcast'})
+            sent += 1
+        except Exception:
+            failed += 1
+    log.warning('Broadcast sent by abhinav: "%s" — %d sent, %d failed', title, sent, failed)
+    return jsonify({'sent': sent, 'failed': failed, 'total': len(subs)})
+
 # ===== Splitwise =====
 from splitwise import splitwise_bp, init_splitwise
 if db is not None:

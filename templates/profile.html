@@ -534,6 +534,25 @@
     <div id="games-section" style="display:none;margin-bottom:2rem;"></div>
 
     {% if username == 'abhinav' and viewer == 'abhinav' %}
+    <!-- ADMIN BROADCAST -->
+    <div class="admin-logs" style="margin-bottom:1rem;">
+      <div class="admin-logs-head" style="cursor:default;">
+        <h3>&#128226; Broadcast Announcement</h3>
+      </div>
+      <div style="padding:.8rem 1rem;">
+        <input type="text" id="bc-title" placeholder="Title (e.g. Happy Diwali 🎆)" maxlength="80"
+          style="width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:.88rem;padding:.5rem .8rem;margin-bottom:.5rem;font-family:'Poppins',sans-serif;" />
+        <textarea id="bc-body" placeholder="Message body..." maxlength="200" rows="2"
+          style="width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:.88rem;padding:.5rem .8rem;margin-bottom:.5rem;font-family:'Poppins',sans-serif;resize:vertical;"></textarea>
+        <input type="text" id="bc-url" placeholder="URL on tap (default: /)" maxlength="200"
+          style="width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;color:#fff;font-size:.88rem;padding:.5rem .8rem;margin-bottom:.7rem;font-family:'Poppins',sans-serif;" />
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-red" id="bc-send-btn" onclick="sendBroadcast()">&#128226; Send to All</button>
+          <span id="bc-result" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
+      </div>
+    </div>
+
     <!-- ADMIN LOG VIEWER -->
     <div class="admin-logs">
       <div class="admin-logs-head" onclick="document.getElementById('admin-logs-body').classList.toggle('open'); const t=document.getElementById('admin-logs-toggle'); t.textContent = document.getElementById('admin-logs-body').classList.contains('open') ? '\u25B2' : '\u25BC'; if(document.getElementById('admin-logs-body').classList.contains('open')) loadAdminLogs();">
@@ -1731,6 +1750,24 @@
   {% if username == 'abhinav' and viewer == 'abhinav' %}
   <script>
     let _logInterval = null;
+    function sendBroadcast() {
+      const title = document.getElementById('bc-title').value.trim();
+      const body  = document.getElementById('bc-body').value.trim();
+      const url   = document.getElementById('bc-url').value.trim() || '/';
+      const res   = document.getElementById('bc-result');
+      const btn   = document.getElementById('bc-send-btn');
+      if (!title || !body) { res.textContent = 'Title and message required.'; res.style.color='#ff6b6b'; return; }
+      if (!confirm('Send "' + title + '" to ALL subscribed users?')) return;
+      btn.disabled = true; res.textContent = 'Sending…'; res.style.color = 'var(--muted)';
+      fetch('/api/admin/broadcast', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({title, body, url})
+      }).then(r=>r.json()).then(d => {
+        if (d.error) { res.textContent = d.error; res.style.color='#ff6b6b'; }
+        else { res.textContent = '✓ Sent to ' + d.sent + ' / ' + d.total + ' users'; res.style.color='var(--green)'; }
+        btn.disabled = false;
+      }).catch(()=>{ res.textContent = 'Failed'; res.style.color='#ff6b6b'; btn.disabled=false; });
+    }
     function loadAdminLogs() {
       fetch('/api/admin/logs', { cache: 'no-store' })
         .then(r => r.json())
