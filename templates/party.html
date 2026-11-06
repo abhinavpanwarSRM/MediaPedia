@@ -1101,7 +1101,6 @@
         maxlength="60"
       />
       <button class="btn-g" onclick="createParty()">🎵 Create New Party</button>
-      <button class="btn-outline" id="btn-notif" onclick="requestNotifPermission()" style="margin-bottom:0.6rem;">🔔 Enable Notifications</button>
       <div class="divider">— or join existing —</div>
       <input
         class="inp"
@@ -2019,73 +2018,13 @@
 
       var _swReg = null;
 
-      // Update notification button state on load
-      function updateNotifBtn() {
-        var btn = document.getElementById('btn-notif');
-        if (!btn) return;
-        if (!('Notification' in window)) { btn.style.display = 'none'; return; }
-        if (Notification.permission === 'granted') {
-          btn.textContent = '✅ Notifications On';
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-        } else if (Notification.permission === 'denied') {
-          btn.textContent = '🔕 Notifications Blocked';
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-        }
-      }
+      // Notification state handled globally via pwa.js
       updateNotifBtn();
 
       function requestNotifPermission() {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          showToast('Push not supported on this browser');
-          return;
-        }
-        Notification.requestPermission().then(function(perm) {
-          if (perm === 'granted') {
-            showToast('Notifications enabled! ✅');
-            updateNotifBtn();
-            navigator.serviceWorker.ready.then(function(reg) {
-              subscribeAndSave(reg);
-            });
-          } else if (perm === 'denied') {
-            showToast('Notifications blocked — enable in browser settings');
-            updateNotifBtn();
-          }
-        });
-      }
-
       function subscribeAndSave(reg) {
-        fetch('/api/push/vapid_public_key')
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            if (!d.key) { console.warn('No VAPID key'); return; }
-            // Unsubscribe existing first to get fresh endpoint
-            reg.pushManager.getSubscription().then(function(existing) {
-              var unsub = existing ? existing.unsubscribe() : Promise.resolve();
-              unsub.then(function() {
-                reg.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey: urlBase64ToUint8Array('BNCfhD-i3gRMYPV7Q4Ky3pslclijDLbtNn8NPUUIIQt92xHGr-nMFeWmMbQplU_J3SgBo_lKmQKbDVPG5s7pPU4')
-                }).then(function(sub) {
-                  return fetch('/api/push/subscribe', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(sub.toJSON())
-                  });
-                }).then(function(r) { return r.json(); })
-                  .then(function(res) {
-                    if (res.success) showToast('Push subscription saved ✅');
-                    else showToast('Subscription error: ' + (res.error || '?'));
-                  })
-                  .catch(function(err) {
-                    console.error('Subscribe failed:', err);
-                    showToast('Push subscribe failed — check console');
-                  });
-              });
-            });
-          })
-          .catch(function(err) { console.error('VAPID key fetch failed:', err); });
+        // Delegated to pwa.js global pwaEnableNotifications
+        if (window.pwaEnableNotifications) window.pwaEnableNotifications();
       }
 
       // 2. Unregister any old SW, then register new one from root

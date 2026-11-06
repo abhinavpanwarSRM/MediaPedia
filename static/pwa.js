@@ -56,7 +56,7 @@
           if (Notification.permission === 'granted') {
             initPushNotifications(reg);
           } else if (Notification.permission === 'default') {
-            setTimeout(requestNotificationPermission, 3000);
+            // User hasn't decided — they can enable via the 🔔 panel on the home page
           }
         }
         registerPeriodicSync(reg);
