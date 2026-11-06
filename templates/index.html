@@ -1174,12 +1174,12 @@
       {% endif %}
         <button id="app-setup-btn" onclick="toggleAppPanel()" title="App Setup"
           style="background:none;border:1px solid rgba(255,255,255,.25);border-radius:20px;color:#aaa;font-size:.8rem;padding:.28rem .7rem;cursor:pointer;margin-left:.5rem;display:inline-flex;align-items:center;gap:.3rem;vertical-align:middle;">
-          ! <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#e50914;"></span>
+          <span id="app-setup-dot" style="display:none;width:7px;height:7px;border-radius:50%;background:#e50914;"></span>
         </button>
       </div>
 
       <!-- APP SETUP PANEL -->
-      <div id="app-panel" style="display:none;position:fixed;top:3.2rem;left:1rem;z-index:9999;width:min(340px,92vw);
+      <div id="app-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;width:min(340px,92vw);
         background:#111;border:1px solid rgba(255,255,255,.12);border-radius:14px;
         box-shadow:0 8px 32px rgba(0,0,0,.7);padding:1.2rem;font-family:'Poppins',sans-serif;animation:panelFadeIn .18s ease;">
         <style>@keyframes panelFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}</style>
