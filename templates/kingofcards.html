@@ -406,7 +406,7 @@
     .koc-intro-skip:hover { color:#fff;border-color:rgba(255,255,255,.4); }
     .koc-intro-vignette { position:absolute;inset:0;pointer-events:none;z-index:3;
       background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.6) 100%); }
-    .koc-intro-title { position:absolute;z-index:4;text-align:center;opacity:.85; }
+    .koc-intro-title { position:absolute;z-index:4;text-align:center;opacity:0;transition:opacity 1s ease; }
     @media (max-width:600px) { .koc-intro-title { display:none; } }
     .koc-intro-title h1 { font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,9vw,6rem);
       font-weight:700;letter-spacing:6px;
@@ -2341,6 +2341,13 @@
 
       // Metadata overlay
       var meta = document.getElementById('koc-intro-meta');
+      var title = document.getElementById('koc-intro-title');
+      var isLast = idx === _introImages.length - 1; // certificate
+      var isSecondLast = idx === _introImages.length - 2;
+
+      // Show title on second-last image, hide on certificate
+      if (title) title.style.opacity = isSecondLast ? '.85' : '0';
+
       if (meta) {
         meta.classList.remove('show');
         var m = _introImageMeta[idx] || {};
