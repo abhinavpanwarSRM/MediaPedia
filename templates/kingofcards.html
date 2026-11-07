@@ -2345,8 +2345,8 @@
       var isLast = idx === _introImages.length - 1; // certificate
       var isSecondLast = idx === _introImages.length - 2;
 
-      // Show title on second-last image, hide on certificate
-      if (title) title.style.opacity = isSecondLast ? '.85' : '0';
+      // Show title on all images except the certificate (last)
+      if (title) title.style.opacity = isLast ? '0' : '.85';
 
       if (meta) {
         meta.classList.remove('show');
