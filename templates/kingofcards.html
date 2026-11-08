@@ -40,45 +40,46 @@
     /* HERO — Gothic / Game of Thrones */
     @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
     .hero {
-      height: 100vh; width: 100vw;
-      display: flex; flex-direction: column;
+      min-height: 72vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center; text-align: center;
-      padding: 0 2rem; position: relative; overflow: hidden;
+      padding: 5rem 2rem 4rem; position: relative; overflow: hidden;
       background: #000;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     /* Radial vignette */
     .hero::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.04) 0%, transparent 60%),
-                  radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.03) 0%, transparent 50%);
+      background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 65%),
+                  radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.04) 0%, transparent 50%);
     }
-    /* Scan lines */
+    /* Animated horizontal scan lines */
     .hero::after {
       content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.009) 3px, rgba(255,255,255,.009) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
     }
     .hero > * { position: relative; z-index: 1; }
 
-    .hero-rule { width: clamp(60px,15vw,160px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent); margin-bottom: 1.8rem; }
+    /* Decorative top border line */
+    .hero-rule { width: clamp(80px,20vw,200px); height: 1px; background: linear-gradient(90deg,transparent,#fff,transparent); margin-bottom: 1.4rem; }
 
     .hero h1 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(3.5rem, 12vw, 9rem); font-weight: 700;
-      letter-spacing: 10px; color: #fff;
-      text-shadow: 0 0 80px rgba(255,255,255,0.12), 0 2px 12px rgba(0,0,0,0.9);
+      font-size: clamp(2.8rem, 10vw, 7rem); font-weight: 700;
+      letter-spacing: 8px; color: #fff;
+      text-shadow: 0 0 60px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.8);
       line-height: 1; margin-bottom: 0;
-      background: none; -webkit-background-clip: unset; -webkit-text-fill-color: unset;
+      -webkit-background-clip: unset; -webkit-text-fill-color: unset;
+      background: none;
     }
-    .hero-ornament { font-size: clamp(.9rem,2vw,1.2rem); letter-spacing: 8px; color: rgba(255,255,255,.2); margin: .8rem 0; }
-    .hero-sub { color: rgba(255,255,255,.28); font-size: 0.72rem; letter-spacing: 6px;
-                text-transform: uppercase; margin-bottom: 2.8rem; }
+    .hero-ornament { font-size: clamp(1rem,2.5vw,1.4rem); letter-spacing: 6px; color: rgba(255,255,255,.25); margin: .6rem 0; }
+    .hero-sub { color: rgba(255,255,255,.35); font-size: 0.75rem; letter-spacing: 5px;
+                text-transform: uppercase; margin-bottom: 2.2rem; }
 
-    .games-row { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
+    .games-row { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2.4rem; }
     .game-badge {
-      background: transparent; border: 1px solid rgba(255,255,255,.1);
-      border-radius: 2px; padding: .3rem .9rem; font-size: .68rem; font-weight: 600;
-      color: rgba(255,255,255,.3); letter-spacing: 3px; text-transform: uppercase;
+      background: transparent; border: 1px solid rgba(255,255,255,.15);
+      border-radius: 3px; padding: .35rem 1rem; font-size: .72rem; font-weight: 600;
+      color: rgba(255,255,255,.4); letter-spacing: 2px; text-transform: uppercase;
       font-family: 'Poppins', sans-serif;
       display: inline-flex; align-items: center; justify-content: center;
     }
@@ -86,20 +87,36 @@
     /* THRONE CARD */
     .throne-card {
       position: relative; overflow: hidden;
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 3px;
-      padding: 1.8rem 2.8rem 1.6rem; text-align: center; margin-top: 0;
-      max-width: 420px; width: 100%;
-      backdrop-filter: blur(4px);
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 4px;
+      padding: 2rem 2.5rem 1.8rem; text-align: center; margin-top: 0;
+      max-width: 400px; width: 100%;
     }
+    /* corner ornaments */
     .throne-card::before, .throne-card::after {
-      content: '✦'; position: absolute; font-size: .65rem; color: rgba(255,255,255,.15);
+      content: '✦'; position: absolute; font-size: .7rem; color: rgba(255,255,255,.2);
     }
     .throne-card::before { top: .5rem; left: .7rem; }
     .throne-card::after  { bottom: .5rem; right: .7rem; }
     .throne-glow { display:none; }
-    .throne-crown-wrap { display:none; }    }
+
+    /* Crown animation: float + rotate on axis */
+    .throne-crown-wrap { perspective: 400px; margin-bottom: .6rem; }
+    .throne-crown {
+      font-size: 3rem; line-height: 1; display: block;
+      animation: crownAnim3d 4s ease-in-out infinite;
+      transform-origin: center center;
+      transform-style: preserve-3d;
+      filter: grayscale(1) brightness(2);
+    }
+    @keyframes crownAnim3d {
+      0%   { transform: translateY(0)    rotateY(0deg)   rotateX(0deg); }
+      25%  { transform: translateY(-6px) rotateY(90deg)  rotateX(10deg); }
+      50%  { transform: translateY(-10px) rotateY(180deg) rotateX(0deg); }
+      75%  { transform: translateY(-6px) rotateY(270deg) rotateX(-10deg); }
+      100% { transform: translateY(0)    rotateY(360deg) rotateX(0deg); }
+    }
 
     .throne-label {
       font-size: 0.6rem; letter-spacing: 5px; color: rgba(255,255,255,.3);
@@ -545,6 +562,9 @@
     {% if current_champion %}
     <div class="throne-card">
       <div class="throne-glow"></div>
+      <div class="throne-crown-wrap">
+        <div class="throne-crown">&#x1F451;</div>
+      </div>
       <div class="throne-label">⬥ Reigning Champion ⬥</div>
       <div class="throne-name">{{ current_champion }}</div>
       <div class="throne-divider"></div>
