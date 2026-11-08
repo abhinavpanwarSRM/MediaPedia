@@ -2019,9 +2019,7 @@
       var _swReg = null;
 
       // Notification state handled globally via pwa.js
-      updateNotifBtn();
 
-      function requestNotifPermission() {
       function subscribeAndSave(reg) {
         // Delegated to pwa.js global pwaEnableNotifications
         if (window.pwaEnableNotifications) window.pwaEnableNotifications();
