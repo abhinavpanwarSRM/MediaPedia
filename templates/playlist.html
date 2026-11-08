@@ -547,6 +547,30 @@
         overflow: hidden;
         text-overflow: ellipsis;
         margin-bottom: 2px;
+        cursor: pointer;
+      }
+
+      /* Marquee wrapper — clips the scrolling text */
+      .song-title-wrap {
+        overflow: hidden;
+        position: relative;
+        min-width: 0;
+        flex: 1;
+      }
+
+      /* Scroll animation — only fires when text overflows (.overflow class added by JS) */
+      @keyframes songMarquee {
+        0%   { transform: translateX(0); }
+        15%  { transform: translateX(0); }
+        85%  { transform: translateX(var(--marquee-dist, -60%)); }
+        100% { transform: translateX(var(--marquee-dist, -60%)); }
+      }
+
+      .song-title-wrap.scrolling .song-title {
+        animation: songMarquee 6s linear infinite alternate;
+        text-overflow: clip;
+        display: inline-block;
+        padding-right: 2rem; /* breathing room at end */
       }
 
       .song-row.playing .song-title {
@@ -1379,12 +1403,14 @@
                 src="" alt="" loading="lazy"
                 style="display:none;width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;"
                 onerror="this.style.display='none'" />
-              <div style="min-width:0;">
-                <div
+              <div style="min-width:0;flex:1;">
+                <div class="song-title-wrap">
+                  <div
                   class="song-title"
                   onclick="playSongRow(this.closest('.song-row'))"
                 >
                   {{ song.song_title }}
+                </div>
                 </div>
                 <div class="song-artist">
                   <a href="/artist/{{ song.artist_id }}"
@@ -2083,8 +2109,10 @@
               src="" alt="" loading="lazy"
               style="display:none;width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;"
               onerror="this.style.display='none'" />
-            <div style="min-width:0;">
-              <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
+            <div style="min-width:0;flex:1;">
+              <div class="song-title-wrap">
+                <div class="song-title" onclick="playSongRow(this.closest('.song-row'))">${escHtml(song.song_title)}</div>
+              </div>
               <div class="song-artist"><a href="/artist/${song.artist_id}">${escHtml(song.artist_name)}</a>${addedByLabel}</div>
             </div>
           </div>
@@ -2095,6 +2123,7 @@
             ${canDelete ? `<button class="sd-btn" onclick="deleteSong('${song.song_id}',this.closest('.song-row'))">&#10005;</button>` : ''}
           </div>`;
         list.appendChild(div);
+        applyMarquee(div);
         if (IS_OWNER) attachDrag(div);
         const newArt = div.querySelector('.song-art');
         if (newArt) loadArtistPhoto(newArt);
@@ -2184,9 +2213,30 @@
         }
       }
       if (IS_OWNER) document.querySelectorAll('.song-row').forEach(attachDrag);
+      if (IS_OWNER) document.querySelectorAll('.song-row').forEach(attachDrag);
 
-      // Artist photos
-      const _artistPhotoCache = {};
+      // ── Marquee: activate scrolling on song titles that overflow ──
+      function applyMarquee(row) {
+        const wrap = row.querySelector('.song-title-wrap');
+        const title = row.querySelector('.song-title');
+        if (!wrap || !title) return;
+        // Measure overflow
+        const overflow = title.scrollWidth - wrap.clientWidth;
+        if (overflow > 4) {
+          const dist = -((overflow + 32) / title.scrollWidth * 100);
+          title.style.setProperty('--marquee-dist', dist.toFixed(1) + '%');
+          wrap.classList.add('scrolling');
+        } else {
+          wrap.classList.remove('scrolling');
+          title.style.removeProperty('--marquee-dist');
+        }
+      }
+      function applyAllMarquees() {
+        document.querySelectorAll('.song-row').forEach(applyMarquee);
+      }
+      // Run on load and on resize
+      setTimeout(applyAllMarquees, 400);
+      window.addEventListener('resize', applyAllMarquees);toCache = {};
       function loadArtistPhoto(img) {
         const artist = img.dataset.artist;
         if (!artist) return;
