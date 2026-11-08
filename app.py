@@ -145,6 +145,49 @@ def inject_build_version():
 def api_version():
     return jsonify({'build': BUILD_ID, 'started_at': SERVER_STARTED_AT})
 
+GUARDIAN_API_KEY = os.getenv('GUARDIAN_API_KEY', 'test')
+
+@app.route('/api/news')
+def api_news():
+    """Fetch entertainment news from The Guardian API."""
+    import time
+    q = request.args.get('q', 'bollywood OR hollywood OR film OR series').strip()[:100]
+    page = max(1, int(request.args.get('page', 1)))
+    try:
+        resp = http_requests.get(
+            'https://content.guardianapis.com/search',
+            params={
+                'q': q,
+                'section': 'film',
+                'show-fields': 'headline,trailText,thumbnail,shortUrl,byline',
+                'order-by': 'newest',
+                'page-size': 12,
+                'page': page,
+                'api-key': GUARDIAN_API_KEY
+            },
+            timeout=8
+        )
+        data = resp.json()
+        results = data.get('response', {}).get('results', [])
+        total_pages = data.get('response', {}).get('pages', 1)
+        articles = []
+        for r in results:
+            f = r.get('fields', {})
+            articles.append({
+                'id': r.get('id', ''),
+                'title': f.get('headline') or r.get('webTitle', ''),
+                'snippet': f.get('trailText', ''),
+                'image': f.get('thumbnail', ''),
+                'url': f.get('shortUrl') or r.get('webUrl', ''),
+                'byline': f.get('byline', ''),
+                'date': r.get('webPublicationDate', '')[:10],
+                'source': 'The Guardian'
+            })
+        return jsonify({'articles': articles, 'total_pages': total_pages, 'page': page})
+    except Exception as e:
+        log.error('News API error: %s', e)
+        return jsonify({'articles': [], 'error': str(e)}), 500
+
 @app.route('/api/admin/logs')
 def admin_logs():
     """Return recent server log entries (admin only)."""

@@ -500,8 +500,31 @@
 
 
 
-      /* Recommendation Engine Styles */
-      #recommendation-engine {
+      /* ── Entertainment News ── */
+      .news-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+        border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .2s,border-color .2s;
+        display:flex;flex-direction:column; }
+      .news-card:hover { transform:translateY(-3px);border-color:rgba(229,9,20,.4); }
+      .news-card-img { width:100%;height:150px;object-fit:cover;display:block; }
+      .news-card-img-placeholder { width:100%;height:150px;background:linear-gradient(135deg,#1a1a1a,#2a2a2a);
+        display:flex;align-items:center;justify-content:center;font-size:2rem;color:#444; }
+      .news-card-body { padding:.85rem;flex:1;display:flex;flex-direction:column;gap:.35rem; }
+      .news-card-meta { font-size:.65rem;color:var(--primary);font-weight:700;letter-spacing:.8px;text-transform:uppercase; }
+      .news-card-title { font-size:.88rem;font-weight:600;color:#fff;line-height:1.4;
+        display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden; }
+      .news-card-snippet { font-size:.75rem;color:#aaa;line-height:1.5;
+        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1; }
+      .news-card-date { font-size:.65rem;color:#666;margin-top:auto; }
+      .news-tab { background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+        color:#aaa;padding:.3rem .8rem;border-radius:20px;cursor:pointer;font-size:.78rem;
+        font-family:inherit;transition:all .2s; }
+      .news-tab:hover { border-color:var(--primary);color:#fff; }
+      .news-tab.active { background:rgba(229,9,20,.15);border-color:var(--primary);color:var(--primary);font-weight:600; }
+      .news-skeleton { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+        border-radius:10px;height:260px;animation:skPulse 1.4s ease-in-out infinite; }
+      @keyframes skPulse { 0%,100%{opacity:.4} 50%{opacity:.9} }
+
+      /* Recommendation Engine Styles */      #recommendation-engine {
         padding: 2rem;
         background: var(--card-bg);
         border-radius: 8px;
@@ -1372,6 +1395,48 @@
           <button onclick="heroNav(1)"  style="position:absolute;right:0.8rem;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.45);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8250;</button>
         </div>
       </section>
+
+      <!-- ===== ENTERTAINMENT NEWS ===== -->
+      <section id="news-section" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1.4rem;margin-bottom:2.5rem;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1.2rem;">
+          <h2 style="margin:0;border:none;padding:0;font-size:1.25rem;">🎬 Entertainment News</h2>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="news-tab active" data-q="bollywood OR hindi film">Bollywood</button>
+            <button class="news-tab" data-q="hollywood film">Hollywood</button>
+            <button class="news-tab" data-q="film review">Reviews</button>
+            <button class="news-tab" data-q="tv series streaming">Series</button>
+          </div>
+        </div>
+        <div id="news-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
+        <div style="text-align:center;margin-top:1.2rem;display:flex;gap:.6rem;justify-content:center;align-items:center;">
+          <button id="news-prev" onclick="newsPage(-1)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#ccc;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;display:none;">← Prev</button>
+          <span id="news-page-label" style="font-size:.8rem;color:#666;"></span>
+          <button id="news-next" onclick="newsPage(1)" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#ccc;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;display:none;">Next →</button>
+        </div>
+      </section>
+
+      <!-- FULLSCREEN ARTICLE READER -->
+      <div id="article-overlay" onclick="if(event.target===this)closeArticle()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:8000;overflow-y:auto;padding:2rem 1rem;">
+        <div style="max-width:720px;margin:0 auto;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;">
+          <img id="ao-img" src="" alt="" style="width:100%;max-height:320px;object-fit:cover;display:none;" />
+          <div style="padding:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem;">
+              <div style="flex:1;">
+                <span id="ao-source" style="font-size:.68rem;color:var(--primary);font-weight:700;letter-spacing:1px;text-transform:uppercase;"></span>
+                <span id="ao-date" style="font-size:.68rem;color:#666;margin-left:.6rem;"></span>
+              </div>
+              <button onclick="closeArticle()" style="background:none;border:none;color:#888;font-size:1.5rem;cursor:pointer;flex-shrink:0;line-height:1;">✕</button>
+            </div>
+            <h2 id="ao-title" style="font-size:clamp(1.2rem,3vw,1.7rem);font-weight:700;color:#fff;line-height:1.3;margin-bottom:.8rem;"></h2>
+            <p id="ao-byline" style="font-size:.8rem;color:#888;margin-bottom:1rem;"></p>
+            <p id="ao-snippet" style="font-size:.95rem;color:#ccc;line-height:1.7;margin-bottom:1.4rem;"></p>
+            <a id="ao-link" href="#" target="_blank" rel="noopener noreferrer"
+              style="display:inline-block;background:var(--primary);color:#fff;padding:.55rem 1.3rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:.88rem;">
+              Read Full Article ↗
+            </a>
+          </div>
+        </div>
+      </div>
 
       <section id="filters">
         <h2>Search Filters</h2>
@@ -3845,6 +3910,94 @@
       });
     </script>
       <script src="/static/pwa.js"></script>
+      <script>
+      // ── Entertainment News ──
+      var _newsQ = 'bollywood OR hindi film';
+      var _newsPage = 1;
+      var _newsTotalPages = 1;
+
+      document.querySelectorAll('.news-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.news-tab').forEach(function(b){b.classList.remove('active');});
+          btn.classList.add('active');
+          _newsQ = btn.dataset.q;
+          _newsPage = 1;
+          loadNews();
+        });
+      });
+
+      function loadNews() {
+        var grid = document.getElementById('news-grid');
+        grid.innerHTML = Array(6).fill('<div class="news-skeleton"></div>').join('');
+        fetch('/api/news?q=' + encodeURIComponent(_newsQ) + '&page=' + _newsPage)
+          .then(function(r){return r.json();})
+          .then(function(data) {
+            _newsTotalPages = data.total_pages || 1;
+            var articles = data.articles || [];
+            updateNewsPager();
+            if (!articles.length) { grid.innerHTML = '<p style="color:#666;font-style:italic;grid-column:1/-1;">No articles found.</p>'; return; }
+            grid.innerHTML = articles.map(function(a) {
+              var imgHtml = a.image
+                ? '<img class="news-card-img" src="' + escHtml(a.image) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" /><div class="news-card-img-placeholder" style="display:none;">📰</div>'
+                : '<div class="news-card-img-placeholder">🎬</div>';
+              return '<div class="news-card" onclick=\'openArticle(' + JSON.stringify(a).replace(/'/g,"&#39;") + ')\'>'
+                + imgHtml
+                + '<div class="news-card-body">'
+                + '<div class="news-card-meta">' + escHtml(a.source) + '</div>'
+                + '<div class="news-card-title">' + escHtml(a.title) + '</div>'
+                + '<div class="news-card-snippet">' + escHtml(a.snippet || '') + '</div>'
+                + '<div class="news-card-date">' + escHtml(a.date) + (a.byline ? ' · ' + escHtml(a.byline) : '') + '</div>'
+                + '</div></div>';
+            }).join('');
+          })
+          .catch(function() { grid.innerHTML = '<p style="color:#666;grid-column:1/-1;">Failed to load news.</p>'; });
+      }
+
+      function updateNewsPager() {
+        var prev = document.getElementById('news-prev');
+        var next = document.getElementById('news-next');
+        var lbl  = document.getElementById('news-page-label');
+        prev.style.display = _newsPage > 1 ? 'inline-block' : 'none';
+        next.style.display = _newsPage < _newsTotalPages ? 'inline-block' : 'none';
+        lbl.textContent = _newsTotalPages > 1 ? 'Page ' + _newsPage + ' of ' + _newsTotalPages : '';
+      }
+
+      function newsPage(dir) {
+        _newsPage = Math.max(1, Math.min(_newsTotalPages, _newsPage + dir));
+        loadNews();
+        document.getElementById('news-section').scrollIntoView({behavior:'smooth', block:'start'});
+      }
+
+      function openArticle(a) {
+        var ov = document.getElementById('article-overlay');
+        var img = document.getElementById('ao-img');
+        if (a.image) { img.src = a.image; img.style.display = 'block'; }
+        else img.style.display = 'none';
+        document.getElementById('ao-source').textContent = a.source;
+        document.getElementById('ao-date').textContent = a.date;
+        document.getElementById('ao-title').textContent = a.title;
+        document.getElementById('ao-byline').textContent = a.byline || '';
+        document.getElementById('ao-snippet').innerHTML = a.snippet || '';
+        document.getElementById('ao-link').href = a.url;
+        ov.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        ov.scrollTop = 0;
+      }
+      function closeArticle() {
+        document.getElementById('article-overlay').style.display = 'none';
+        document.body.style.overflow = '';
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeArticle();
+      });
+
+      function escHtml(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      // Load on page ready
+      document.addEventListener('DOMContentLoaded', function() { loadNews(); });
+      </script>
       <script>
       // ── App Setup Panel ──
       var _panelOpen = false;
