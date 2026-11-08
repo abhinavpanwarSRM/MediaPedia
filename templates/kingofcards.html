@@ -40,46 +40,45 @@
     /* HERO — Gothic / Game of Thrones */
     @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
     .hero {
-      min-height: 72vh; display: flex; flex-direction: column;
+      height: 100vh; width: 100vw;
+      display: flex; flex-direction: column;
       align-items: center; justify-content: center; text-align: center;
-      padding: 5rem 2rem 4rem; position: relative; overflow: hidden;
+      padding: 0 2rem; position: relative; overflow: hidden;
       background: #000;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
     /* Radial vignette */
     .hero::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 65%),
-                  radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.04) 0%, transparent 50%);
+      background: radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.04) 0%, transparent 60%),
+                  radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.03) 0%, transparent 50%);
     }
-    /* Animated horizontal scan lines */
+    /* Scan lines */
     .hero::after {
       content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.009) 3px, rgba(255,255,255,.009) 4px);
     }
     .hero > * { position: relative; z-index: 1; }
 
-    /* Decorative top border line */
-    .hero-rule { width: clamp(80px,20vw,200px); height: 1px; background: linear-gradient(90deg,transparent,#fff,transparent); margin-bottom: 1.4rem; }
+    .hero-rule { width: clamp(60px,15vw,160px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent); margin-bottom: 1.8rem; }
 
     .hero h1 {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.8rem, 10vw, 7rem); font-weight: 700;
-      letter-spacing: 8px; color: #fff;
-      text-shadow: 0 0 60px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.8);
+      font-size: clamp(3.5rem, 12vw, 9rem); font-weight: 700;
+      letter-spacing: 10px; color: #fff;
+      text-shadow: 0 0 80px rgba(255,255,255,0.12), 0 2px 12px rgba(0,0,0,0.9);
       line-height: 1; margin-bottom: 0;
-      -webkit-background-clip: unset; -webkit-text-fill-color: unset;
-      background: none;
+      background: none; -webkit-background-clip: unset; -webkit-text-fill-color: unset;
     }
-    .hero-ornament { font-size: clamp(1rem,2.5vw,1.4rem); letter-spacing: 6px; color: rgba(255,255,255,.25); margin: .6rem 0; }
-    .hero-sub { color: rgba(255,255,255,.35); font-size: 0.75rem; letter-spacing: 5px;
-                text-transform: uppercase; margin-bottom: 2.2rem; }
+    .hero-ornament { font-size: clamp(.9rem,2vw,1.2rem); letter-spacing: 8px; color: rgba(255,255,255,.2); margin: .8rem 0; }
+    .hero-sub { color: rgba(255,255,255,.28); font-size: 0.72rem; letter-spacing: 6px;
+                text-transform: uppercase; margin-bottom: 2.8rem; }
 
-    .games-row { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; margin-bottom: 2.4rem; }
+    .games-row { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; margin-bottom: 3rem; }
     .game-badge {
-      background: transparent; border: 1px solid rgba(255,255,255,.15);
-      border-radius: 3px; padding: .35rem 1rem; font-size: .72rem; font-weight: 600;
-      color: rgba(255,255,255,.4); letter-spacing: 2px; text-transform: uppercase;
+      background: transparent; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 2px; padding: .3rem .9rem; font-size: .68rem; font-weight: 600;
+      color: rgba(255,255,255,.3); letter-spacing: 3px; text-transform: uppercase;
       font-family: 'Poppins', sans-serif;
       display: inline-flex; align-items: center; justify-content: center;
     }
@@ -87,36 +86,20 @@
     /* THRONE CARD */
     .throne-card {
       position: relative; overflow: hidden;
-      background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 4px;
-      padding: 2rem 2.5rem 1.8rem; text-align: center; margin-top: 0;
-      max-width: 400px; width: 100%;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 3px;
+      padding: 1.8rem 2.8rem 1.6rem; text-align: center; margin-top: 0;
+      max-width: 420px; width: 100%;
+      backdrop-filter: blur(4px);
     }
-    /* corner ornaments */
     .throne-card::before, .throne-card::after {
-      content: '✦'; position: absolute; font-size: .7rem; color: rgba(255,255,255,.2);
+      content: '✦'; position: absolute; font-size: .65rem; color: rgba(255,255,255,.15);
     }
     .throne-card::before { top: .5rem; left: .7rem; }
     .throne-card::after  { bottom: .5rem; right: .7rem; }
     .throne-glow { display:none; }
-
-    /* Crown animation: float + rotate on axis */
-    .throne-crown-wrap { perspective: 400px; margin-bottom: .6rem; }
-    .throne-crown {
-      font-size: 3rem; line-height: 1; display: block;
-      animation: crownAnim3d 4s ease-in-out infinite;
-      transform-origin: center center;
-      transform-style: preserve-3d;
-      filter: grayscale(1) brightness(2);
-    }
-    @keyframes crownAnim3d {
-      0%   { transform: translateY(0)    rotateY(0deg)   rotateX(0deg); }
-      25%  { transform: translateY(-6px) rotateY(90deg)  rotateX(10deg); }
-      50%  { transform: translateY(-10px) rotateY(180deg) rotateX(0deg); }
-      75%  { transform: translateY(-6px) rotateY(270deg) rotateX(-10deg); }
-      100% { transform: translateY(0)    rotateY(360deg) rotateX(0deg); }
-    }
+    .throne-crown-wrap { display:none; }    }
 
     .throne-label {
       font-size: 0.6rem; letter-spacing: 5px; color: rgba(255,255,255,.3);
@@ -391,8 +374,24 @@
     .oracle-acc { font-size:.72rem;color:var(--muted); }
     .oracle-correct { font-weight:700;color:var(--gold); }
 
-    /* CINEMATIC INTRO */
-    .koc-intro-overlay { position:fixed;inset:0;z-index:9999;background:#000;
+    /* HERO BIRDS & CLOUDS */
+    @keyframes anim  { from{transform:translateX(200%)} to{transform:translateX(-200%)} }
+    @keyframes anime { from{transform:translateX(0)}    to{transform:translateX(-200%)} }
+    .sky  { position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden; }
+    .c1,.c2 { width:800px;height:700px;position:absolute;
+      background:transparent url("https://s3-us-west-2.amazonaws.com/s.cdpn.io/131045/clouds.png") 0 0 no-repeat;
+      background-size:100%;z-index:0;opacity:.12; }
+    .c1.one,.c2.one   { top:-260px;left:0; }
+    .c1.two,.c2.two   { top:-200px;left:100px; }
+    .c1.three,.c2.three { top:-240px;right:100px; }
+    .c1.four,.c2.four { top:-180px;right:0; }
+    .c1 { animation:anime 1000s linear infinite forwards; }
+    .c2 { transform:translateX(200%);animation:anim 1000s linear infinite forwards; }
+    @media(max-width:1023px){
+      .c2.one{left:-80px}.c2.two{left:-120px}.c2.three{right:220px}.c2.four{right:220px}
+    }
+
+    /* CINEMATIC INTRO */    .koc-intro-overlay { position:fixed;inset:0;z-index:9999;background:#000;
       display:flex;align-items:center;justify-content:center;overflow:hidden; }
     .koc-intro-overlay.hidden { opacity:0;pointer-events:none;transition:opacity 1.2s ease-out; }
     .koc-intro-img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
@@ -522,7 +521,15 @@
 
   <!-- HERO -->
   <div class="hero">
-    <canvas id="hero-sparks" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+    <canvas id="canv" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;background:transparent;"></canvas>
+    <div class="sky" style="position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden;">
+      <div class="clouds">
+        <div class="c1 one"></div><div class="c1 two"></div>
+        <div class="c1 three"></div><div class="c1 four"></div>
+        <div class="c2 one"></div><div class="c2 two"></div>
+        <div class="c2 three"></div><div class="c2 four"></div>
+      </div>
+    </div>
     <div class="hero-rule"></div>
     <h1>KING OF CARDS</h1>
     <div class="hero-ornament">⚔ &nbsp;&nbsp; ✦ &nbsp;&nbsp; ⚔</div>
@@ -538,9 +545,6 @@
     {% if current_champion %}
     <div class="throne-card">
       <div class="throne-glow"></div>
-      <div class="throne-crown-wrap">
-        <div class="throne-crown">&#x1F451;</div>
-      </div>
       <div class="throne-label">⬥ Reigning Champion ⬥</div>
       <div class="throne-name">{{ current_champion }}</div>
       <div class="throne-divider"></div>
@@ -2441,97 +2445,112 @@
     loadRecap();
     loadIntroConfig();
 
-    // ===== HERO SPARKS & ASHES =====
+    // ===== HERO BIRDS =====
     (function() {
-      const canvas = document.getElementById('hero-sparks');
-      if (!canvas) return;
-      const hero = canvas.parentElement;
-      const ctx = canvas.getContext('2d');
-      let W, H, particles = [], raf;
+      var Bird = {
+        def: function(n,m,s){if(m)this.e(n.prototype,m);if(s)this.e(n,s);return n;},
+        e: function(o,p){for(var prop in p)o[prop]=p[prop];return o;},
+        v:[[5,0,0],[-5,-2,1],[-5,0,0],[-5,-2,-1],[0,2,-6],[0,2,6],[2,0,0],[-3,0,0]],
+        beak:[[0,1,2],[4,7,6],[5,6,7]],
+        L:null,
+        V:{x:0,y:0,z:5000}
+      };
+      Bird.Vtr=Bird.def(function(x,y,z){this.x=x||0;this.y=y||0;this.z=z||0;this.fl=1000;},{
+        Pt:function(){var z=this.fl+this.z,s=this.fl/z;return{x:this.x*s,y:this.y*s,scale:s};},
+        set:function(x,y,z){this.x=x;this.y=y;this.z=z;return this;},
+        len:function(){return Math.sqrt(this.x*this.x+this.y*this.y+this.z*this.z);},
+        add:function(v){this.x+=v.x;this.y+=v.y;this.z+=v.z;return this;},
+        sub:function(v){this.x-=v.x;this.y-=v.y;this.z-=v.z;return this;},
+        subv:function(a,b){this.x=a.x-b.x;this.y=a.y-b.y;this.z=a.z-b.z;return this;},
+        scale:function(u){this.x*=u;this.y*=u;this.z*=u;return this;},
+        lowscale:function(u){if(u!==0){var i=1/u;this.x*=i;this.y*=i;this.z*=i;}else{this.x=0;this.y=0;this.z=0;}return this;},
+        copy:function(){return new Bird.Vtr(this.x,this.y,this.z);},
+        dst:function(v){return Math.sqrt(this.dsq(v));},
+        dsq:function(v){var dx=this.x-v.x,dy=this.y-v.y,dz=this.z-v.z;return dx*dx+dy*dy+dz*dz;},
+        cross:function(v){var x=this.x,y=this.y,z=this.z;this.x=y*v.z-z*v.y;this.y=z*v.x-x*v.z;this.z=x*v.y-y*v.x;return this;},
+        p:function(v){return this.x*v.x+this.y*v.y+this.z*v.z;},
+        level:function(){return this.lowscale(this.len());}
+      });
+      Bird.Matrix={
+        rotY:function(pt,a){var p=[pt.x,pt.y,pt.z],s=Math.sin(a),c=Math.cos(a),r=[[c,0,s],[0,1,0],[-s,0,c]],q=this.mm(p,r);pt.x=q[0];pt.y=q[1];pt.z=q[2];},
+        rotZ:function(pt,a){var p=[pt.x,pt.y,pt.z],s=Math.sin(a),c=Math.cos(a),r=[[c,s,0],[-s,c,0],[0,0,1]],q=this.mm(p,r);pt.x=q[0];pt.y=q[1];pt.z=q[2];},
+        trans:function(pt,s){pt.x+=s[0];pt.y+=s[1];pt.z+=s[2];},
+        mm:function(m,r){return[m[0]*r[0][0]+m[1]*r[1][0]+m[2]*r[2][0],m[0]*r[0][1]+m[1]*r[1][1]+m[2]*r[2][1],m[0]*r[0][2]+m[1]*r[1][2]+m[2]*r[2][2]];}
+      };
+      Bird.Tri=Bird.def(function(p1,p2,p3){this.mainv=[p1.copy(),p2.copy(),p3.copy()];this.Vtxs=[p1.copy(),p2.copy(),p3.copy()];this.bv=new Bird.Vtr(0.5,0.5,0.8);},{
+        draw:function(){var v1=[this.Vtxs[0].Pt().x,this.Vtxs[0].Pt().y],v2=[this.Vtxs[1].Pt().x,this.Vtxs[1].Pt().y],v3=[this.Vtxs[2].Pt().x,this.Vtxs[2].Pt().y],col=this.col();Bird.$.fillStyle=col;Bird.$.strokeStyle=col;Bird.$.lineWidth=0.1;Bird.$.beginPath();Bird.$.moveTo(v1[0],v1[1]);Bird.$.lineTo(v2[0],v2[1]);Bird.$.lineTo(v3[0],v3[1]);Bird.$.closePath();Bird.$.fill();Bird.$.stroke();},
+        rotY:function(a){this.Vtxs.forEach(function(e){Bird.Matrix.rotY(e,a);});},
+        rotZ:function(a){this.Vtxs.forEach(function(e){Bird.Matrix.rotZ(e,a);});},
+        trans:function(s){this.Vtxs.forEach(function(e){Bird.Matrix.trans(e,[s.x,s.y,s.z]);});},
+        vtx:function(){for(var i=0;i<3;i++){this.Vtxs[i].x=this.mainv[i].x;this.Vtxs[i].y=this.mainv[i].y;this.Vtxs[i].z=this.mainv[i].z;}},
+        wingY:function(y){this.Vtxs[0].y=y;},
+        _z:function(){return Math.min(this.Vtxs[0].z,this.Vtxs[1].z,this.Vtxs[2].z);},
+        col:function(){var e=0.3,f=0.3,g=0.7,bw=new Bird.Vtr(1,1,1),n=this.norm(),x=this.Vtxs[0].copy(),v=x.sub(Bird.V);v.level();x=this.Vtxs[0].copy();var l=x.sub(Bird.L);l.level();var pp=l.p(n),x1=n.copy();x1.scale(pp*2);var r=l.copy();r.sub(x1);x1.scale(-1);pp=Math.max(x1.p(l),0);var col=this.bv.copy();col.scale(pp*e);x1=col.copy();var x2=r.copy();x2.scale(-1);pp=Math.pow(Math.max(x2.p(v)),20);x2=bw.copy();x2.scale(pp*f);var x3=this.bv.copy();x3.scale(g);x1.add(x2);x1.add(x3);return'rgb('+Math.floor(x1.x*255)+','+Math.floor(x1.y*255)+','+Math.floor(x1.z*255)+')';},
+        norm:function(){var v1=this.Vtxs[0],v2=this.Vtxs[1],v3=this.Vtxs[2];v3.sub(v2);v1.sub(v3);v3.cross(v1);v3.level();return v3;}
+      });
+      Bird.Build=Bird.def(function(){this.pos=new Bird.Vtr();this.rot=new Bird.Vtr();this.bbase=this.tri(0);this.leftwing=this.tri(1);this.rightwing=this.tri(2);},{
+        matrix:function(){this.bbase.vtx();this.leftwing.vtx();this.rightwing.vtx();this.leftwing.wingY(this.wY);this.rightwing.wingY(this.wY);this.bbase.rotY(this.rot.y);this.bbase.rotZ(this.rot.z);this.leftwing.rotY(this.rot.y);this.leftwing.rotZ(this.rot.z);this.rightwing.rotY(this.rot.y);this.rightwing.rotZ(this.rot.z);this.bbase.trans(this.pos);this.leftwing.trans(this.pos);this.rightwing.trans(this.pos);},
+        draw:function(){this.bbase.draw();this.leftwing.draw();this.rightwing.draw();},
+        tri:function(i){var v=Bird.v[Bird.beak[i][0]],v1=new Bird.Vtr(v[0],v[1],v[2]);v=Bird.v[Bird.beak[i][1]];var v2=new Bird.Vtr(v[0],v[1],v[2]);v=Bird.v[Bird.beak[i][2]];var v3=new Bird.Vtr(v[0],v[1],v[2]);return new Bird.Tri(v1,v2,v3);},
+        zpos:function(){return Math.min(this.bbase._z(),this.leftwing._z(),this.rightwing._z());},
+        wing:function(y){this.wY=y;}
+      });
+      Bird.obj=Bird.def(function(){this.vtr=new Bird.Vtr();this.width=600;this.height=600;this.depth=300;this.area=200;this.msp=4;this.mfrc=0.1;this.coll=false;this.pos=new Bird.Vtr();this.vel=new Bird.Vtr();this.accel=new Bird.Vtr();},{
+        _coll:function(v){this.coll=v;},
+        param:function(w,h,d){this.width=w;this.height=h;this.depth=d;},
+        run:function(b){if(this.coll){var dirs=[['-x','y','z'],['x','y','z'],['x','-y','z'],['x','y','z'],['x','y','-z'],['x','y','z']];var pts=[new Bird.Vtr(-this.width,this.pos.y,this.pos.z),new Bird.Vtr(this.width,this.pos.y,this.pos.z),new Bird.Vtr(this.pos.x,-this.height,this.pos.z),new Bird.Vtr(this.pos.x,this.height,this.pos.z),new Bird.Vtr(this.pos.x,this.pos.y,-this.depth),new Bird.Vtr(this.pos.x,this.pos.y,this.depth)];for(var k=0;k<pts.length;k++){var d=this.detect(pts[k]);d.scale(5);this.accel.add(d);}}if(Math.random()>0.5)this.fly(b);this.move();},
+        fly:function(b){this.accel.add(this.line(b));this.accel.add(this.togeth(b));this.accel.add(this.apart(b));},
+        move:function(){this.vel.add(this.accel);var l=this.vel.len();if(l>this.msp)this.vel.lowscale(l/this.msp);this.pos.add(this.vel);this.accel.set(0,0,0);},
+        detect:function(pt){var dir=new Bird.Vtr();dir.subv(this.pos,pt);dir.scale(1/this.pos.dsq(pt));return dir;},
+        line:function(b){var tot=new Bird.Vtr(),cnt=0;for(var i=0;i<b.length;i++){if(Math.random()>0.6)continue;var d=b[i].pos.dst(this.pos);if(d>0&&d<=this.area){tot.add(b[i].vel);cnt++;}}if(cnt>0){tot.lowscale(cnt);var v=tot.len();if(v>this.mfrc)tot.lowscale(v/this.mfrc);}return tot;},
+        togeth:function(b){var plus=new Bird.Vtr(),dir=new Bird.Vtr(),cnt=0;for(var i=0;i<b.length;i++){if(Math.random()>0.6)continue;var d=b[i].pos.dst(this.pos);if(d>0&&d<=this.area){plus.add(b[i].pos);cnt++;}}if(cnt>0)plus.lowscale(cnt);dir.subv(plus,this.pos);var l=dir.len();if(l>this.mfrc)dir.lowscale(l/this.mfrc);return dir;},
+        apart:function(b){var plus=new Bird.Vtr(),rep=new Bird.Vtr();for(var i=0;i<b.length;i++){if(Math.random()>0.6)continue;var d=b[i].pos.dst(this.pos);if(d>0&&d<=this.area){rep.subv(this.pos,b[i].pos);rep.level();rep.lowscale(d);plus.add(rep);}}return plus;}
+      });
 
-      function resize() {
-        W = canvas.width  = hero.offsetWidth;
-        H = canvas.height = hero.offsetHeight;
+      var c=document.getElementById('canv');
+      if(!c)return;
+      Bird.$=c.getContext('2d');
+      Bird.canv={w:c.width=c.offsetWidth||window.innerWidth,h:c.height=c.offsetHeight||window.innerHeight};
+      Bird.L=new Bird.Vtr(0,2000,5000);
+      Bird.V=new Bird.Vtr(0,0,5000);
+      var boids=[],birds=[];
+      for(var i=0;i<80;i++){
+        var _b=boids[i]=new Bird.obj();
+        _b.pos.x=Math.random()*800-400;_b.pos.y=Math.random()*800-400;_b.pos.z=Math.random()*800-400;
+        _b.vel.x=Math.random()*2-1;_b.vel.y=Math.random()*2-1;_b.vel.z=Math.random()*2-1;
+        _b._coll(true);_b.param(400,400,800);
+        var bird=birds[i]=new Bird.Build();
+        bird.phase=Math.floor(Math.random()*62.83);bird.pos=_b.pos;
       }
-      window.addEventListener('resize', resize);
-      resize();
-
-      // Particle types: spark (bright dot) or ash (grey flake)
-      function spawn() {
-        const isSpark = Math.random() < 0.55;
-        return {
-          x: Math.random() * W,
-          y: H + Math.random() * 20,
-          vx: (Math.random() - 0.5) * 0.9,
-          vy: -(Math.random() * 1.4 + 0.6),
-          size: isSpark ? Math.random() * 2.2 + 0.8 : Math.random() * 3.5 + 1.5,
-          life: 1,
-          decay: Math.random() * 0.006 + 0.003,
-          isSpark,
-          // sparks get a bright white/gold hue, ashes get grey
-          hue: isSpark ? Math.random() * 30 : 0,
-          wobble: (Math.random() - 0.5) * 0.04,
-          angle: Math.random() * Math.PI * 2,
-          angleSpeed: (Math.random() - 0.5) * 0.06,
-        };
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-        // Spawn new particles
-        if (particles.length < 160) {
-          for (let i = 0; i < 3; i++) particles.push(spawn());
-        }
-        particles.forEach(p => {
-          p.x  += p.vx + Math.sin(p.angle) * 0.3;
-          p.y  += p.vy;
-          p.vy += 0.008; // very slight gravity
-          p.angle += p.angleSpeed;
-          p.life -= p.decay;
-          if (p.isSpark) {
-            // Bright spark — white/gold dot with glow
-            const alpha = p.life * p.life;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
-            grad.addColorStop(0, `hsla(${40+p.hue},100%,98%,1)`);
-            grad.addColorStop(0.3, `hsla(${30+p.hue},100%,80%,0.6)`);
-            grad.addColorStop(1, `hsla(${20+p.hue},60%,50%,0)`);
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = grad;
-            ctx.fill();
-            // bright core
-            ctx.globalAlpha = alpha * 0.9;
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff';
-            ctx.fill();
-            ctx.restore();
-          } else {
-            // Ash — small grey irregular flake
-            const alpha = p.life * 0.55;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.translate(p.x, p.y);
-            ctx.rotate(p.angle);
-            const g = 120 + Math.floor(p.life * 80);
-            ctx.fillStyle = `rgb(${g},${g},${g})`;
-            ctx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2);
-            ctx.restore();
-          }
+      var heroEl=c.parentElement;
+      var _braf=null;
+      function birdDraw(){
+        c.width=heroEl.offsetWidth;c.height=heroEl.offsetHeight;
+        Bird.canv.w=c.width;Bird.canv.h=c.height;
+        Bird.$.setTransform(1,0,0,1,0,0);
+        Bird.$.translate(Bird.canv.w/2,Bird.canv.h/2);
+        Bird.$.clearRect(-Bird.canv.w/2,-Bird.canv.h/2,Bird.canv.w,Bird.canv.h);
+        Bird.$.scale(1,-1);
+        var arr=[];
+        boids.forEach(function(e,i){
+          e.run(boids);
+          var bird=birds[i];
+          bird.rot.y=Math.atan2(-e.vel.z,e.vel.x);
+          bird.rot.z=Math.asin(e.vel.y/e.vel.len());
+          bird.phase=(bird.phase+(Math.max(0,bird.rot.z)+0.1))%62.83;
+          bird.wing(Math.sin(bird.phase)*5);
+          bird.matrix();
+          arr.push({z:bird.zpos(),o:bird});
         });
-        // Remove dead or out-of-bounds particles
-        particles = particles.filter(p => p.life > 0 && p.y > -20);
-        raf = requestAnimationFrame(draw);
+        arr.sort(function(a,b){return a.z<b.z?-1:a.z>b.z?1:0;});
+        arr.forEach(function(e){e.o.draw();});
+        _braf=requestAnimationFrame(birdDraw);
       }
-
-      // Only animate when hero is visible
-      const obs = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting) { if (!raf) draw(); }
-        else { if (raf) { cancelAnimationFrame(raf); raf = null; } }
-      }, { threshold: 0.05 });
-      obs.observe(hero);
+      var obs=new IntersectionObserver(function(entries){
+        if(entries[0].isIntersecting){if(!_braf)birdDraw();}
+        else{if(_braf){cancelAnimationFrame(_braf);_braf=null;}}
+      },{threshold:0.05});
+      obs.observe(heroEl);
     })();
     
     // Fullscreen on F/f
