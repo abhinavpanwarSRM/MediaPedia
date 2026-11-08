@@ -538,6 +538,7 @@
       .col-info {
         flex: 1;
         min-width: 0;
+        overflow: hidden;
       }
 
       .song-title {
@@ -550,27 +551,27 @@
         cursor: pointer;
       }
 
-      /* Marquee wrapper — clips the scrolling text */
+      /* Marquee wrapper */
       .song-title-wrap {
         overflow: hidden;
         position: relative;
         min-width: 0;
-        flex: 1;
       }
 
-      /* Scroll animation — only fires when text overflows (.overflow class added by JS) */
+      /* One-direction scroll (left only, like DVD ticker) */
       @keyframes songMarquee {
         0%   { transform: translateX(0); }
-        15%  { transform: translateX(0); }
-        85%  { transform: translateX(var(--marquee-dist, -60%)); }
-        100% { transform: translateX(var(--marquee-dist, -60%)); }
+        10%  { transform: translateX(0); }
+        90%  { transform: translateX(var(--marquee-dist, -50%)); }
+        100% { transform: translateX(var(--marquee-dist, -50%)); }
       }
 
       .song-title-wrap.scrolling .song-title {
-        animation: songMarquee 6s linear infinite alternate;
+        animation: songMarquee 7s linear infinite;
+        animation-direction: normal;
         text-overflow: clip;
         display: inline-block;
-        padding-right: 2rem; /* breathing room at end */
+        padding-right: 3rem;
       }
 
       .song-row.playing .song-title {
@@ -595,7 +596,7 @@
       }
 
       .col-dur {
-        width: 56px;
+        width: 44px;
         text-align: right;
         flex-shrink: 0;
         color: var(--text-muted);
@@ -603,11 +604,12 @@
       }
 
       .col-act {
-        width: 68px;
+        width: 96px;
         flex-shrink: 0;
         display: flex;
         justify-content: flex-end;
-        gap: 6px;
+        align-items: center;
+        gap: 2px;
         opacity: 0.6;
       }
 
@@ -616,13 +618,30 @@
         opacity: 1;
       }
 
+      /* Tighter buttons so they fit */
+      .sp-btn, .sl-btn, .sd-btn {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+      }
+
+      /* Mobile — hide duration, shrink num col */
+      @media (max-width: 480px) {
+        .col-num  { width: 28px; }
+        .col-dur  { display: none; }
+        .songs-hdr .col-dur { display: none; }
+        .col-act  { width: 80px; gap: 1px; }
+        .sp-btn, .sl-btn, .sd-btn { width: 26px; height: 26px; font-size: 0.75rem; }
+        .song-title { font-size: 0.82rem; }
+      }
+
       .sp-btn,
       .sl-btn,
       .sd-btn {
         background: none;
         border: none;
-        width: 34px;
-        height: 34px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: inline-flex;
         align-items: center;
