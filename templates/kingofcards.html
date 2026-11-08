@@ -2497,7 +2497,7 @@
         trans:function(pt,s){pt.x+=s[0];pt.y+=s[1];pt.z+=s[2];},
         mm:function(m,r){return[m[0]*r[0][0]+m[1]*r[1][0]+m[2]*r[2][0],m[0]*r[0][1]+m[1]*r[1][1]+m[2]*r[2][1],m[0]*r[0][2]+m[1]*r[1][2]+m[2]*r[2][2]];}
       };
-      Bird.Tri=Bird.def(function(p1,p2,p3){this.mainv=[p1.copy(),p2.copy(),p3.copy()];this.Vtxs=[p1.copy(),p2.copy(),p3.copy()];this.bv=new Bird.Vtr(0.5,0.5,0.8);},{
+      Bird.Tri=Bird.def(function(p1,p2,p3){this.mainv=[p1.copy(),p2.copy(),p3.copy()];this.Vtxs=[p1.copy(),p2.copy(),p3.copy()];this.bv=new Bird.Vtr(0.9,0.9,0.95);},{
         draw:function(){var v1=[this.Vtxs[0].Pt().x,this.Vtxs[0].Pt().y],v2=[this.Vtxs[1].Pt().x,this.Vtxs[1].Pt().y],v3=[this.Vtxs[2].Pt().x,this.Vtxs[2].Pt().y],col=this.col();Bird.$.fillStyle=col;Bird.$.strokeStyle=col;Bird.$.lineWidth=0.1;Bird.$.beginPath();Bird.$.moveTo(v1[0],v1[1]);Bird.$.lineTo(v2[0],v2[1]);Bird.$.lineTo(v3[0],v3[1]);Bird.$.closePath();Bird.$.fill();Bird.$.stroke();},
         rotY:function(a){this.Vtxs.forEach(function(e){Bird.Matrix.rotY(e,a);});},
         rotZ:function(a){this.Vtxs.forEach(function(e){Bird.Matrix.rotZ(e,a);});},

@@ -5395,17 +5395,9 @@ def koc_delete_tournament(edition):
     if koc_tournaments_collection is None:
         return jsonify({'error': 'DB unavailable'}), 500
     koc_tournaments_collection.delete_one({'edition': edition})
-    # Roll back oracle stats for predictions evaluated against this edition
+    # Roll back oracle — delete predictions for this edition and recompute from scratch
     if koc_predict_collection is not None and koc_oracle_collection is not None:
-        evaluated = list(koc_predict_collection.find({'for_edition': edition, 'evaluated': True}, {'_id': 0}))
-        # Fetch the deleted tournament's winner to know which predictions were correct
-        # (already deleted above, so we work from the evaluated prediction records)
-        # Just un-evaluate them so they'll be re-evaluated if edition is re-added
-        koc_predict_collection.update_many(
-            {'for_edition': edition},
-            {'$set': {'evaluated': False}}
-        )
-        # Recompute oracle from scratch using remaining tournaments
+        koc_predict_collection.delete_many({'for_edition': edition})
         remaining = list(koc_tournaments_collection.find({}, {'_id': 0}).sort('edition', 1))
         koc_oracle_collection.delete_many({})
         for t in remaining:
