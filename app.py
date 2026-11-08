@@ -151,16 +151,31 @@ GUARDIAN_API_KEY = os.getenv('GUARDIAN_API_KEY', 'test')
 def api_news():
     """Fetch entertainment news from The Guardian API."""
     import time
-    q = request.args.get('q', 'bollywood OR hollywood OR film OR series').strip()[:100]
+
+    # Per-tab query strings (tightened: quoted phrases instead of bare words).
+    # Default falls back to a broad film/entertainment query.
+    q = request.args.get('q', '"film" OR "cinema" OR "bollywood" OR "hollywood"').strip()[:100]
     page = max(1, int(request.args.get('page', 1)))
+
+    # Allow the frontend to optionally override the section; default to a
+    # broad entertainment filter so all tabs don't collapse into one section.
+    section = request.args.get(
+        'section',
+        'film|tv-and-radio|culture'   # pipe-separated = "any of these"
+    ).strip()
+
+    # Allow the frontend to optionally choose ordering; default to relevance
+    # so the query actually influences which articles surface.
+    order_by = request.args.get('order_by', 'relevance').strip()
+
     try:
         resp = http_requests.get(
             'https://content.guardianapis.com/search',
             params={
                 'q': q,
-                'section': 'film',
+                'section': section,
                 'show-fields': 'headline,trailText,thumbnail,shortUrl,byline',
-                'order-by': 'newest',
+                'order-by': order_by,
                 'page-size': 12,
                 'page': page,
                 'api-key': GUARDIAN_API_KEY
@@ -168,8 +183,10 @@ def api_news():
             timeout=8
         )
         data = resp.json()
-        results = data.get('response', {}).get('results', [])
-        total_pages = data.get('response', {}).get('pages', 1)
+        response = data.get('response', {})
+        results = response.get('results', [])
+        total_pages = response.get('pages', 1)
+
         articles = []
         for r in results:
             f = r.get('fields', {})
@@ -183,7 +200,16 @@ def api_news():
                 'date': r.get('webPublicationDate', '')[:10],
                 'source': 'The Guardian'
             })
-        return jsonify({'articles': articles, 'total_pages': total_pages, 'page': page})
+
+        return jsonify({
+            'articles': articles,
+            'total_pages': total_pages,
+            'page': page,
+            'q': q,                # echo back for debugging
+            'section': section,
+            'order_by': order_by
+        })
+
     except Exception as e:
         log.error('News API error: %s', e)
         return jsonify({'articles': [], 'error': str(e)}), 500
