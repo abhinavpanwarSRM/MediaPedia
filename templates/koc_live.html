@@ -516,10 +516,12 @@
 
       const cg = state.current_game || 'monopoly';
       const cr = state.current_round || 1;
-      document.getElementById('current-game-label').textContent = cg.charAt(0).toUpperCase()+cg.slice(1);
-      document.getElementById('round-info').innerHTML =
-        `Round ${cr} &nbsp;&bull;&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${cg.charAt(0).toUpperCase()+cg.slice(1)}</strong>`;
-      document.getElementById('session-id-label').textContent = `#${SESSION_ID}`;
+      const cgl = document.getElementById('current-game-label');
+      if (cgl) cgl.textContent = cg.charAt(0).toUpperCase()+cg.slice(1);
+      const ri = document.getElementById('round-info');
+      if (ri) ri.innerHTML = `Round ${cr} &nbsp;&bull;&nbsp; Game: <strong style="color:var(--gold);margin-left:.3rem;">${cg.charAt(0).toUpperCase()+cg.slice(1)}</strong>`;
+      const sil = document.getElementById('session-id-label');
+      if (sil) sil.textContent = `#${SESSION_ID}`;
       checkCompletion(scores);
       trackComeback(scores);
       loadWhoCanWin();
@@ -791,6 +793,7 @@
 
     // ===== SESSION PHOTOS =====
     function loadSessionPhotos() {
+      if (!IS_PLAYER) return;
       fetch(`/api/koc/live/${SESSION_ID}/photos`).then(r => r.json()).then(photos => {
         if (!Array.isArray(photos)) return;
         const wrap = document.getElementById('session-photos');
